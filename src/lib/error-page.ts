@@ -1,30 +1,30 @@
 export function renderErrorPage(): string {
   return `<!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>This page didn't load</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <style>
-      body { font: 15px/1.5 system-ui, -apple-system, sans-serif; background: #fafafa; color: #111; display: grid; place-items: center; min-height: 100vh; margin: 0; padding: 1.5rem; }
-      .card { max-width: 28rem; width: 100%; text-align: center; padding: 2rem; }
-      h1 { font-size: 1.25rem; margin: 0 0 0.5rem; }
-      p { color: #4b5563; margin: 0 0 1.5rem; }
-      .actions { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
-      a, button { padding: 0.5rem 1rem; border-radius: 0.375rem; font: inherit; cursor: pointer; text-decoration: none; border: 1px solid transparent; }
-      .primary { background: #111; color: #fff; }
-      .secondary { background: #fff; color: #111; border-color: #d1d5db; }
-    </style>
-  </head>
-  <body>
-    <div class="card">
-      <h1>This page didn't load</h1>
-      <p>Something went wrong on our end. You can try refreshing or head back home.</p>
-      <div class="actions">
-        <button class="primary" onclick="location.reload()">Try again</button>
-        <a class="secondary" href="/">Go home</a>
-      </div>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Something went wrong</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background:#fafafa; color:#111; }
+  .card { max-width: 480px; padding: 2rem; text-align:center; }
+  h1 { font-size: 1.5rem; margin: 0 0 .5rem; }
+  p { color:#555; margin: 0 0 1.5rem; }
+  .row { display:flex; gap:.5rem; justify-content:center; }
+  button, a.btn { font: inherit; padding:.6rem 1rem; border-radius:.5rem; border:1px solid #ddd; background:#fff; color:#111; cursor:pointer; text-decoration:none; }
+  button.primary { background:#111; color:#fff; border-color:#111; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Something went wrong</h1>
+    <p>The page failed to load. Please try again.</p>
+    <div class="row">
+      <button class="primary" onclick="location.reload()">Refresh</button>
+      <a class="btn" href="/">Go home</a>
     </div>
-  </body>
+  </div>
+</body>
 </html>`;
 }
