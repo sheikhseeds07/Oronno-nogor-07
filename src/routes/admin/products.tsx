@@ -6,6 +6,7 @@ import { supabase } from "@/lib/personal-supabase/client";
 import { taka } from "@/lib/format";
 import { toast } from "sonner";
 import { Plus, Edit, Trash2, X } from "lucide-react";
+import { uploadToBucket, safeFileName } from "@/lib/storage-upload";
 
 export const Route = createFileRoute("/admin/products")({ component: Products });
 
@@ -98,11 +99,10 @@ function ProductModal({ product, categories, onClose, onSaved, onAdded }: { prod
     if (!files) return;
     const newImgs = [...(p.images ?? [])];
     for (const file of Array.from(files)) {
-      const path = `${Date.now()}-${file.name}`;
-      const { error } = await supabase.storage.from("product-images").upload(path, file);
-      if (error) { toast.error(error.message); continue; }
-      const { data: { publicUrl } } = supabase.storage.from("product-images").getPublicUrl(path);
-      newImgs.push(publicUrl);
+      try {
+        const url = await uploadToBucket("product-images", safeFileName(file.name), file);
+        newImgs.push(url);
+      } catch (e) { toast.error(e instanceof Error ? e.message : "আপলোড হয়নি"); continue; }
     }
     setP({ ...p, images: newImgs });
   };

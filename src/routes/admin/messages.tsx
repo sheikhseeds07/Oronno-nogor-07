@@ -59,6 +59,7 @@ import {
 } from "@/lib/fb-connect.functions";
 import { chatWithFbTrainer, listFbTrainerChat, clearFbTrainerChat } from "@/lib/fb-trainer.functions";
 import { syncFacebookNow, autoSyncAndReply } from "@/lib/fb-sync.functions";
+import { uploadToBucket, safeFileName } from "@/lib/storage-upload";
 
 function Facebook({ className }: { className?: string }) {
   return (
@@ -208,11 +209,8 @@ function AiTrain() {
   const pickImage = async (file: File) => {
     setUploading(true);
     try {
-      const path = `fb-train/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-      const { error } = await supabase.storage.from("site-assets").upload(path, file, { upsert: true });
-      if (error) throw new Error(error.message);
-      const { data } = supabase.storage.from("site-assets").getPublicUrl(path);
-      setImage({ url: data.publicUrl, name: file.name });
+      const url = await uploadToBucket("site-assets", `fb-train/${safeFileName(file.name)}`, file, { upsert: true });
+      setImage({ url, name: file.name });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "ছবি আপলোড হয়নি");
     } finally {

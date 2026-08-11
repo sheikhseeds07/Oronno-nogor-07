@@ -5,6 +5,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { supabase } from "@/lib/personal-supabase/client";
 import { toast } from "sonner";
 import { Plus, Trash2, ExternalLink, Edit, X, PackagePlus } from "lucide-react";
+import { uploadToBucket, safeFileName } from "@/lib/storage-upload";
 
 type Feature = { title: string; text?: string };
 type WhyItem = { title: string; text?: string };
@@ -103,14 +104,12 @@ function LandingPagesAdmin() {
   };
 
   const uploadImage = async (file: File): Promise<string | null> => {
-    const path = `landing-${Date.now()}-${file.name}`;
-    const { error } = await supabase.storage.from("site-assets").upload(path, file);
-    if (error) {
-      toast.error(error.message);
+    try {
+      return await uploadToBucket("site-assets", `landing-${safeFileName(file.name)}`, file);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "আপলোড হয়নি");
       return null;
     }
-    const { data: { publicUrl } } = supabase.storage.from("site-assets").getPublicUrl(path);
-    return publicUrl;
   };
 
   // Quick-create a product → also inserts into main products table, returns the new product
