@@ -114,7 +114,8 @@ function Home() {
 
       {/* Popular Categories — single-line auto scroll */}
       <section className="py-8 bg-gradient-to-b from-brand-light/30 to-transparent">
-        <h2 className="text-2xl sm:text-3xl font-extrabold text-center text-brand-dark mb-6">পপুলার ক্যাটেগরি</h2>
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-center text-brand-dark mb-1">পপুলার ক্যাটেগরি</h2>
+        <p className="text-center text-sm font-semibold text-brand mb-6">Shawon</p>
         <div className="marquee-pause overflow-hidden relative" style={{ maskImage: "linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent)", WebkitMaskImage: "linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent)" }}>
           <div className="flex gap-4 sm:gap-6 w-max animate-marquee">
             {[...categories, ...categories, ...categories].map((c, idx) => (
