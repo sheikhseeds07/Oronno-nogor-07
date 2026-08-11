@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import {
   Outlet,
   Link,
@@ -7,29 +7,21 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect } from "react";
+import { Toaster } from "@/components/ui/sonner";
+import { supabase } from "@/lib/personal-supabase/client";
 
 import appCss from "../styles.css?url";
-import { Toaster } from "../components/ui/sonner";
-import { reportLovableError } from "../lib/lovable-error-reporting";
 
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
-        </p>
-        <div className="mt-6">
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Go home
-          </Link>
-        </div>
+        <h1 className="text-7xl font-bold text-brand">৪০৪</h1>
+        <h2 className="mt-4 text-xl font-semibold">পেজটি খুঁজে পাওয়া যায়নি</h2>
+        <Link to="/" className="mt-6 inline-flex rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark">
+          হোমে ফিরে যান
+        </Link>
       </div>
     </div>
   );
@@ -38,36 +30,17 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
-  useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
-        </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <button
-            onClick={() => {
-              router.invalidate();
-              reset();
-            }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Try again
-          </button>
-          <a
-            href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-          >
-            Go home
-          </a>
-        </div>
+        <h1 className="text-xl font-semibold">পেজ লোড হয়নি</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
+        <button
+          onClick={() => { router.invalidate(); reset(); }}
+          className="mt-6 rounded-md bg-brand px-4 py-2 text-sm text-white hover:bg-brand-dark"
+        >
+          আবার চেষ্টা করুন
+        </button>
       </div>
     </div>
   );
@@ -78,45 +51,59 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Alhamdulillah — Messaging app" },
-      {
-        name: "description",
-        content: "Alhamdulillah is a calm, private, real-time messaging app for your browser.",
-      },
-      { property: "og:title", content: "Alhamdulillah — Messaging app" },
-      {
-        property: "og:description",
-        content: "Calm, private, real-time messaging in your browser.",
-      },
+      { title: "শেখ সিড — দেশের ১ নম্বর অনলাইন সিড কোম্পানি" },
+      { name: "description", content: "১০০% অরিজিনাল বীজ, গার্ডেন টুলস ও সরঞ্জাম। সারাদেশে হোম ডেলিভারি — ক্যাশ অন ডেলিভারি।" },
+      { property: "og:title", content: "শেখ সিড" },
+      { property: "og:description", content: "দেশের ১ নম্বর অনলাইন সিড কোম্পানি" },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
+      { rel: "stylesheet", href: appCss },
+      { rel: "icon", type: "image/png", sizes: "180x180", href: "/favicon.png" },
+      { rel: "apple-touch-icon", href: "/favicon.png" },
+      { rel: "icon", type: "image/x-icon", href: "/favicon.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" },
+      { rel: "preconnect", href: "https://qqubscomvvoymomtxzct.supabase.co", crossOrigin: "anonymous" },
+      { rel: "preconnect", href: "https://yqhtenonavuzxzemaiyk.supabase.co", crossOrigin: "anonymous" },
+      { rel: "dns-prefetch", href: "https://connect.facebook.net" },
+    ],
+    scripts: [
       {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap",
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "শেখ সিড",
+          alternateName: "Sheikh Seeds",
+          url: "https://sheikhseeds.site",
+          logo: "https://sheikhseeds.site/favicon.png",
+          image: "https://sheikhseeds.site/favicon.png",
+        }),
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebSite",
+          name: "শেখ সিড",
+          url: "https://sheikhseeds.site",
+        }),
+      },
     ],
   }),
+
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
 });
 
-function RootShell({ children }: { children: ReactNode }) {
+function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
+    <html lang="bn">
+      <head><HeadContent /></head>
       <body>
         {children}
         <Scripts />
@@ -127,12 +114,26 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+      <AuthCacheSync />
       <Outlet />
-      <Toaster position="top-center" richColors />
+      <Toaster richColors position="top-center" />
     </QueryClientProvider>
   );
+}
+
+function AuthCacheSync() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      router.invalidate();
+      queryClient.invalidateQueries();
+    });
+    return () => subscription.unsubscribe();
+  }, [queryClient, router]);
+
+  return null;
 }
