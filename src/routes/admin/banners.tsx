@@ -5,6 +5,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { supabase } from "@/lib/personal-supabase/client";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
+import { uploadToBucket, safeFileName } from "@/lib/storage-upload";
 
 export const Route = createFileRoute("/admin/banners")({ component: Banners });
 
@@ -19,11 +20,10 @@ function Banners() {
   });
 
   const upload = async (file: File) => {
-    const path = `${Date.now()}-${file.name}`;
-    const { error } = await supabase.storage.from("banners").upload(path, file);
-    if (error) return toast.error(error.message);
-    const { data: { publicUrl } } = supabase.storage.from("banners").getPublicUrl(path);
-    setForm({ ...form, image_url: publicUrl });
+    try {
+      const url = await uploadToBucket("banners", safeFileName(file.name), file);
+      setForm({ ...form, image_url: url });
+    } catch (e) { toast.error(e instanceof Error ? e.message : "আপলোড হয়নি"); }
   };
 
   const save = async () => {

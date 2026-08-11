@@ -5,6 +5,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { supabase } from "@/lib/personal-supabase/client";
 import { toast } from "sonner";
 import { Plus, Edit, Trash2 } from "lucide-react";
+import { uploadToBucket, safeFileName } from "@/lib/storage-upload";
 
 export const Route = createFileRoute("/admin/categories")({ component: Categories });
 
@@ -42,11 +43,10 @@ function Categories() {
   };
 
   const upload = async (file: File) => {
-    const path = `${Date.now()}-${file.name}`;
-    const { error } = await supabase.storage.from("category-images").upload(path, file);
-    if (error) return toast.error(error.message);
-    const { data: { publicUrl } } = supabase.storage.from("category-images").getPublicUrl(path);
-    setEditing(editing ? { ...editing, image_url: publicUrl } : null);
+    try {
+      const url = await uploadToBucket("category-images", safeFileName(file.name), file);
+      setEditing(editing ? { ...editing, image_url: url } : null);
+    } catch (e) { toast.error(e instanceof Error ? e.message : "আপলোড হয়নি"); }
   };
 
   return (
