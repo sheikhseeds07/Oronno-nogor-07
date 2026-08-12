@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 import { assertCanManageOrders, assertIsAdmin } from "@/lib/_admin-guard.server";
+import { ensureOrderInvoiceNo } from "@/lib/invoice-no.server";
 
 
 async function callSteadfast(path: string, cfg: Record<string, string>, body?: unknown) {
@@ -69,7 +70,8 @@ export const sendOrdersToSteadfast = createServerFn({ method: "POST" })
         results.push({ id: o.id, ok: false, already: true, consignment: o.courier_consignment, message: "ইতিমধ্যে এন্ট্রি হয়েছে (Already entry)" });
         continue;
       }
-      const invoice = o.invoice_no || o.id.slice(0, 8).toUpperCase();
+      // Invoice format is admin-configurable (All API → Invoice), e.g. AA1, AA2...
+      const invoice = await ensureOrderInvoiceNo(o.id, o.invoice_no);
 
       // Dedup: ask Steadfast if invoice already exists
       try {

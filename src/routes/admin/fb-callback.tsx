@@ -47,8 +47,8 @@ function FbCallback() {
     } else {
       // Same-tab fallback: hand the code back to the messages page.
       const target = code && state
-        ? `/admin/messages?fb_code=${encodeURIComponent(code)}&fb_state=${encodeURIComponent(state)}`
-        : `/admin/messages?fb_error=${encodeURIComponent(error || "লগইন বাতিল হয়েছে")}`;
+        ? `/admin/all-api?fb_code=${encodeURIComponent(code)}&fb_state=${encodeURIComponent(state)}`
+        : `/admin/all-api?fb_error=${encodeURIComponent(error || "লগইন বাতিল হয়েছে")}`;
       window.location.replace(target);
     }
   }, []);

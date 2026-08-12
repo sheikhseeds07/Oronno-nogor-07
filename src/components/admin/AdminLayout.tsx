@@ -5,7 +5,7 @@ import { supabase } from "@/lib/personal-supabase/client";
 import logo from "@/assets/logo.jpg";
 import {
   LayoutDashboard, Package, ShoppingBag, Users, FolderTree, Image as ImageIcon,
-  Tag, Settings, Globe, UserCog, LogOut, Menu, X, Layers, Clock, MessagesSquare,
+  Tag, Settings, Globe, UserCog, LogOut, Menu, X, Layers, Clock, FileSpreadsheet,
 } from "lucide-react";
 import { NewOrderNotifier } from "@/components/admin/NewOrderNotifier";
 
@@ -20,7 +20,7 @@ type NavItem = {
 const NAV: NavItem[] = [
   { to: "/admin", label: "ড্যাশবোর্ড", icon: LayoutDashboard, exact: true, perm: "always" },
   { to: "/admin/orders", label: "অর্ডার", icon: ShoppingBag, perm: "orders" },
-  { to: "/admin/messages", label: "মেসেজ", icon: MessagesSquare, perm: "messages" },
+  { to: "/admin/order-import", label: "ফাইল থেকে অর্ডার", icon: FileSpreadsheet, perm: "orders" },
   { to: "/admin/products", label: "প্রোডাক্ট", icon: Package, perm: "products" },
   { to: "/admin/categories", label: "ক্যাটাগরি", icon: FolderTree, perm: "categories" },
   { to: "/admin/customers", label: "কাস্টমার", icon: Users, perm: "customers" },
