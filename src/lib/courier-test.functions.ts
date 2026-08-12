@@ -48,6 +48,19 @@ export const sendOrdersToSteadfast = createServerFn({ method: "POST" })
       .select("id,invoice_no,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment")
       .in("id", data.orderIds);
 
+    // Product names for the courier "note" (item description) — one query for all orders
+    const { data: itemRows } = await supabaseAdmin
+      .from("order_items")
+      .select("order_id,product_name,quantity")
+      .in("order_id", data.orderIds);
+    const itemsByOrder = new Map<string, string[]>();
+    for (const it of itemRows ?? []) {
+      const list = itemsByOrder.get(it.order_id) ?? [];
+      list.push(`${it.product_name} x${it.quantity}`);
+      itemsByOrder.set(it.order_id, list);
+    }
+
+
     // Deep search for a key in nested objects — handles any response shape
     const deepFind = (obj: unknown, keys: string[]): string | undefined => {
       if (!obj || typeof obj !== "object") return undefined;
@@ -93,7 +106,7 @@ export const sendOrdersToSteadfast = createServerFn({ method: "POST" })
         recipient_phone: (o.customer_phone || "").replace(/\D/g, "").slice(-11),
         recipient_address: [o.customer_address, o.thana, o.district].filter(Boolean).join(", "),
         cod_amount: Number(o.total) || 0,
-        note: "",
+        note: (itemsByOrder.get(o.id) ?? []).join(", ").slice(0, 240),
       };
       let r: Awaited<ReturnType<typeof callSteadfast>>;
       try {

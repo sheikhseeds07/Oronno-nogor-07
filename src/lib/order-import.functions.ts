@@ -122,7 +122,18 @@ export const importOrdersFromFile = createServerFn({ method: "POST" })
       });
     }
 
-    if (!prepared.length) return { imported: 0, skipped, errors };
+    type PrevOrder = {
+      id: string;
+      invoice_no: string | null;
+      customer_name: string;
+      customer_phone: string;
+      status: string;
+      courier_status: string | null;
+      total: number;
+      created_at: string;
+    };
+
+    if (!prepared.length) return { imported: 0, skipped, errors, previous: [] as PrevOrder[] };
 
     // --- One invoice allocation for the whole batch ---
     const { allocateInvoiceNos } = await import("@/lib/invoice-no.server");
@@ -131,6 +142,7 @@ export const importOrdersFromFile = createServerFn({ method: "POST" })
     // --- Bulk insert orders + items in a few chunked requests ---
     const CHUNK = 100;
     let imported = 0;
+    const createdIds: string[] = [];
     for (let i = 0; i < prepared.length; i += CHUNK) {
       const chunk = prepared.slice(i, i + CHUNK);
       const rows = chunk.map((p, idx) => ({ ...p.order, invoice_no: invoices[i + idx] }));
@@ -149,8 +161,35 @@ export const importOrdersFromFile = createServerFn({ method: "POST" })
         continue;
       }
       imported += chunk.length;
+      createdIds.push(...created.map((c) => c.id));
     }
 
-    return { imported, skipped, errors };
+    // --- Earlier orders from the same phone numbers (one query) ---
+    let previous: PrevOrder[] = [];
+    const phones = [...new Set(prepared.map((p) => p.order.customer_phone))];
+    if (phones.length) {
+      const { data: prevRows } = await supabaseAdmin
+        .from("orders")
+        .select("id,invoice_no,customer_name,customer_phone,status,courier_status,total,created_at")
+        .in("customer_phone", phones)
+        .order("created_at", { ascending: false })
+        .limit(300);
+      const newSet = new Set(createdIds);
+      previous = (prevRows ?? [])
+        .filter((r) => !newSet.has(r.id))
+        .map((r) => ({
+          id: r.id,
+          invoice_no: r.invoice_no ?? null,
+          customer_name: r.customer_name,
+          customer_phone: r.customer_phone,
+          status: String(r.status),
+          courier_status: r.courier_status ?? null,
+          total: Number(r.total) || 0,
+          created_at: r.created_at ?? new Date().toISOString(),
+        }));
+    }
+
+    return { imported, skipped, errors, previous };
   });
+
 

@@ -56,6 +56,19 @@ export const deleteOrders = createServerFn({ method: "POST" })
     return { ok: true, deleted: data.ids.length };
   });
 
+export const cancelOrders = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => IdsSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    await assertCanManageOrders(context.userId);
+    const { error } = await supabaseAdmin
+      .from("orders")
+      .update({ status: "cancelled" })
+      .in("id", data.ids);
+    if (error) throw new Error(error.message);
+    return { ok: true, cancelled: data.ids.length };
+  });
+
 async function assertCanManageOrders(userId: string) {
   const { data: roles } = await supabaseAdmin
     .from("user_roles")
