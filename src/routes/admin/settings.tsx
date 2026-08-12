@@ -8,10 +8,52 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/admin/settings")({ component: SettingsPage });
 
 type Settings = {
-  site_name?: string; tagline?: string; phone?: string; email?: string; address?: string;
-  whatsapp?: string; messenger?: string; facebook?: string;
-  delivery_charge_inside?: number; delivery_charge_outside?: number; free_delivery_above?: number;
+  // ডেলিভারি
+  delivery_charge_inside?: number;
+  delivery_charge_outside?: number;
+  free_delivery_above?: number;
+  // SEO
+  seo_title?: string;
+  seo_description?: string;
+  seo_keywords?: string;
+  seo_og_image?: string;
+  seo_site_url?: string;
+  seo_google_verification?: string;
+  seo_robots?: string;
+  [key: string]: unknown;
 };
+
+const SEO_DEFAULTS = {
+  seo_title: "অরন্য নগর — অরিজিনাল বীজ, গার্ডেন টুলস ও সার অনলাইন শপ",
+  seo_description:
+    "১০০% অরিজিনাল সবজি, ফল ও ফুলের বীজ, গার্ডেন টুলস, সার ও কীটনাশক কিনুন অরন্য নগর থেকে। সারাদেশে হোম ডেলিভারি ও ক্যাশ অন ডেলিভারি সুবিধা।",
+  seo_keywords:
+    "অরন্য নগর, বীজ, সবজির বীজ, ফুলের বীজ, ফলের বীজ, গার্ডেন টুলস, সার, কীটনাশক, ছাদ বাগান, oronno nogor, seeds bd, garden tools bd",
+  seo_og_image: "https://oronnonogor.com/banner-seeds.jpg",
+  seo_site_url: "https://oronnonogor.com",
+  seo_google_verification: "",
+  seo_robots: "index, follow",
+};
+
+function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label className="text-sm font-medium">{label}</label>
+      {children}
+      {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
+    </div>
+  );
+}
+
+const inputCls = "w-full border rounded-lg px-3 py-2 mt-1";
 
 function SettingsPage() {
   const qc = useQueryClient();
@@ -25,42 +67,105 @@ function SettingsPage() {
 
   useEffect(() => {
     if (data) {
-      setS((data.settings as Settings) ?? {});
+      const cur = (data.settings as Settings) ?? {};
+      // SEO ঘর ফাঁকা থাকলে ডিফল্ট ভ্যালু বসে যাবে (পরে ইচ্ছেমতো বদলানো যাবে)
+      setS({
+        ...cur,
+        seo_title: cur.seo_title || SEO_DEFAULTS.seo_title,
+        seo_description: cur.seo_description || SEO_DEFAULTS.seo_description,
+        seo_keywords: cur.seo_keywords || SEO_DEFAULTS.seo_keywords,
+        seo_og_image: cur.seo_og_image || SEO_DEFAULTS.seo_og_image,
+        seo_site_url: cur.seo_site_url || SEO_DEFAULTS.seo_site_url,
+        seo_google_verification: cur.seo_google_verification || SEO_DEFAULTS.seo_google_verification,
+        seo_robots: cur.seo_robots || SEO_DEFAULTS.seo_robots,
+      });
       setId(data.id);
     }
   }, [data]);
 
   const save = async () => {
+    const payload: Settings = {
+      ...s,
+      delivery_charge_inside: s.delivery_charge_inside ?? 60,
+      delivery_charge_outside: s.delivery_charge_outside ?? 130,
+      free_delivery_above: s.free_delivery_above ?? 1000,
+    };
     if (id) {
-      const { error } = await supabase.from("site_settings").update({ settings: s }).eq("id", id);
+      const { error } = await supabase.from("site_settings").update({ settings: payload as never }).eq("id", id);
       if (error) return toast.error(error.message);
     } else {
-      const { error } = await supabase.from("site_settings").insert({ settings: s });
+      const { error } = await supabase.from("site_settings").insert({ settings: payload as never });
       if (error) return toast.error(error.message);
     }
     toast.success("সংরক্ষণ হয়েছে");
     qc.invalidateQueries({ queryKey: ["site-settings-admin"] });
+    qc.invalidateQueries({ queryKey: ["site-settings-public"] });
   };
 
   return (
     <AdminLayout>
       <h1 className="text-2xl font-bold mb-4">সেটিংস</h1>
-      <div className="bg-white border rounded-xl p-5 max-w-2xl space-y-3">
-        <div className="grid sm:grid-cols-2 gap-3">
-          <div><label className="text-sm font-medium">সাইট নাম</label><input value={s.site_name ?? ""} onChange={(e) => setS({ ...s, site_name: e.target.value })} className="w-full border rounded-lg px-3 py-2 mt-1" /></div>
-          <div><label className="text-sm font-medium">ট্যাগলাইন</label><input value={s.tagline ?? ""} onChange={(e) => setS({ ...s, tagline: e.target.value })} className="w-full border rounded-lg px-3 py-2 mt-1" /></div>
-          <div><label className="text-sm font-medium">ফোন</label><input value={s.phone ?? ""} onChange={(e) => setS({ ...s, phone: e.target.value })} className="w-full border rounded-lg px-3 py-2 mt-1" /></div>
-          <div><label className="text-sm font-medium">ইমেইল</label><input value={s.email ?? ""} onChange={(e) => setS({ ...s, email: e.target.value })} className="w-full border rounded-lg px-3 py-2 mt-1" /></div>
-          <div><label className="text-sm font-medium">WhatsApp (8801...)</label><input value={s.whatsapp ?? ""} onChange={(e) => setS({ ...s, whatsapp: e.target.value })} className="w-full border rounded-lg px-3 py-2 mt-1" /></div>
-          <div><label className="text-sm font-medium">Messenger লিংক</label><input value={s.messenger ?? ""} onChange={(e) => setS({ ...s, messenger: e.target.value })} className="w-full border rounded-lg px-3 py-2 mt-1" /></div>
-          <div><label className="text-sm font-medium">Facebook পেজ</label><input value={s.facebook ?? ""} onChange={(e) => setS({ ...s, facebook: e.target.value })} className="w-full border rounded-lg px-3 py-2 mt-1" /></div>
-        </div>
-        <div><label className="text-sm font-medium">ঠিকানা</label><textarea rows={2} value={s.address ?? ""} onChange={(e) => setS({ ...s, address: e.target.value })} className="w-full border rounded-lg px-3 py-2 mt-1" /></div>
+
+      <div className="bg-white border rounded-xl p-5 max-w-3xl space-y-4 mb-5">
+        <h2 className="font-bold text-lg">ডেলিভারি চার্জ</h2>
         <div className="grid sm:grid-cols-3 gap-3">
-          <div><label className="text-sm font-medium">ঢাকার ভেতরে চার্জ (৳)</label><input type="number" value={s.delivery_charge_inside ?? 60} onChange={(e) => setS({ ...s, delivery_charge_inside: +e.target.value })} className="w-full border rounded-lg px-3 py-2 mt-1" /></div>
-          <div><label className="text-sm font-medium">ঢাকার বাইরে চার্জ (৳)</label><input type="number" value={s.delivery_charge_outside ?? 130} onChange={(e) => setS({ ...s, delivery_charge_outside: +e.target.value })} className="w-full border rounded-lg px-3 py-2 mt-1" /></div>
-          <div><label className="text-sm font-medium">ফ্রি ডেলিভারি (৳ এর বেশি)</label><input type="number" value={s.free_delivery_above ?? 1000} onChange={(e) => setS({ ...s, free_delivery_above: +e.target.value })} className="w-full border rounded-lg px-3 py-2 mt-1" /></div>
+          <Field label="ঢাকার ভেতরে চার্জ (৳)">
+            <input type="number" value={s.delivery_charge_inside ?? 60} onChange={(e) => setS({ ...s, delivery_charge_inside: +e.target.value })} className={inputCls} />
+          </Field>
+          <Field label="ঢাকার বাইরে চার্জ (৳)">
+            <input type="number" value={s.delivery_charge_outside ?? 130} onChange={(e) => setS({ ...s, delivery_charge_outside: +e.target.value })} className={inputCls} />
+          </Field>
+          <Field label="ফ্রি ডেলিভারি (৳ এর বেশি)">
+            <input type="number" value={s.free_delivery_above ?? 1000} onChange={(e) => setS({ ...s, free_delivery_above: +e.target.value })} className={inputCls} />
+          </Field>
         </div>
+      </div>
+
+      <div className="bg-white border rounded-xl p-5 max-w-3xl space-y-4">
+        <div>
+          <h2 className="font-bold text-lg">SEO সেটিংস</h2>
+          <p className="text-xs text-muted-foreground">Google ও Facebook-এ সাইট কেমন দেখাবে তা এখান থেকে নিয়ন্ত্রণ করুন।</p>
+        </div>
+
+        <Field label="Meta Title (৬০ অক্ষরের ভেতরে ভালো)" hint={`বর্তমান: ${(s.seo_title ?? "").length} অক্ষর`}>
+          <input value={s.seo_title ?? ""} onChange={(e) => setS({ ...s, seo_title: e.target.value })} className={inputCls} />
+        </Field>
+
+        <Field label="Meta Description (১৬০ অক্ষরের ভেতরে ভালো)" hint={`বর্তমান: ${(s.seo_description ?? "").length} অক্ষর`}>
+          <textarea rows={3} value={s.seo_description ?? ""} onChange={(e) => setS({ ...s, seo_description: e.target.value })} className={inputCls} />
+        </Field>
+
+        <Field label="Keywords (কমা দিয়ে আলাদা)">
+          <textarea rows={2} value={s.seo_keywords ?? ""} onChange={(e) => setS({ ...s, seo_keywords: e.target.value })} className={inputCls} />
+        </Field>
+
+        <div className="grid sm:grid-cols-2 gap-3">
+          <Field label="সাইট URL (canonical)" hint="যেমন: https://oronnonogor.com">
+            <input value={s.seo_site_url ?? ""} onChange={(e) => setS({ ...s, seo_site_url: e.target.value })} className={inputCls} />
+          </Field>
+          <Field label="Share Image (OG image URL)" hint="১২০০x৬৩০ px ছবি সবচেয়ে ভালো">
+            <input value={s.seo_og_image ?? ""} onChange={(e) => setS({ ...s, seo_og_image: e.target.value })} className={inputCls} />
+          </Field>
+          <Field label="Google Site Verification code" hint="Search Console-এর meta ট্যাগের content অংশটুকু">
+            <input value={s.seo_google_verification ?? ""} onChange={(e) => setS({ ...s, seo_google_verification: e.target.value })} className={inputCls} />
+          </Field>
+          <Field label="Robots" hint="সাধারণত: index, follow">
+            <select value={s.seo_robots ?? "index, follow"} onChange={(e) => setS({ ...s, seo_robots: e.target.value })} className={inputCls}>
+              <option value="index, follow">index, follow (Google-এ দেখাবে)</option>
+              <option value="noindex, nofollow">noindex, nofollow (লুকানো থাকবে)</option>
+            </select>
+          </Field>
+        </div>
+
+        {s.seo_og_image && (
+          <div className="border rounded-lg p-3 bg-slate-50">
+            <p className="text-xs font-medium mb-2">Google প্রিভিউ</p>
+            <p className="text-[13px] text-emerald-700">{s.seo_site_url}</p>
+            <p className="text-[#1a0dab] text-base leading-snug">{s.seo_title}</p>
+            <p className="text-xs text-slate-600 line-clamp-2">{s.seo_description}</p>
+          </div>
+        )}
+
         <button onClick={save} className="bg-brand text-white px-6 py-2.5 rounded-lg font-semibold">সংরক্ষণ করুন</button>
       </div>
     </AdminLayout>

@@ -4,6 +4,7 @@ import { Footer } from "./Footer";
 import { FloatingContact } from "./FloatingContact";
 import { FacebookPixel } from "./FacebookPixel";
 import { VisitTracker } from "./VisitTracker";
+import { SeoFromSettings } from "./SeoFromSettings";
 
 export function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -15,6 +16,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
       <FloatingContact />
       <FacebookPixel />
       <VisitTracker />
+      <SeoFromSettings />
     </div>
   );
 }
