@@ -4,17 +4,47 @@ import { useEffect, useState } from "react";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { ProductCard, type Product } from "@/components/shop/ProductCard";
 import { ShieldCheck, Truck, Headphones, ArrowRight, Sparkles } from "lucide-react";
-import { fallbackBanners, fallbackCategories, fallbackProducts } from "@/lib/fallback-shop";
+import { fallbackCategories, fallbackProducts } from "@/lib/fallback-shop";
 import { getHomeData, type HomeData } from "@/lib/home.functions";
 import { toImg, imgSrcSet } from "@/lib/img";
 
-const PROMO_BANNER_URL = "/__l5e/assets-v1/dcc4e046-2dc8-41c7-8c72-4e81d4ead269/banner-speaker.jpeg";
-const promoBanner = { id: "banner-speaker", title: null as string | null, image_url: PROMO_BANNER_URL, link_url: "#", is_active: true, display_order: 0 };
+type HeroCopy = { eyebrow: string; heading: string; sub: string; cta: string };
+
+const HERO_COPY: Record<string, HeroCopy> = {
+  "hero-seeds": {
+    eyebrow: "১০০% অরিজিনাল বীজ",
+    heading: "প্রিমিয়াম বীজের\nবিশাল সংগ্রহ",
+    sub: "সবজি, ফল ও ফুলের পরীক্ষিত বীজ — উচ্চ অংকুরোদগম হারের নিশ্চয়তা।",
+    cta: "বীজ কিনুন",
+  },
+  "hero-tools": {
+    eyebrow: "টেকসই কৃষি সরঞ্জাম",
+    heading: "কৃষি ও গার্ডেন\nটুলস",
+    sub: "বাগান পরিচর্যার সব প্রয়োজনীয় হাতিয়ার — মজবুত, ধারালো ও দীর্ঘস্থায়ী।",
+    cta: "টুলস দেখুন",
+  },
+  "hero-fertilizer": {
+    eyebrow: "নিরাপদ ও কার্যকর",
+    heading: "সার ও\nকীটনাশক",
+    sub: "গাছের পুষ্টি ও রোগবালাই দমনে বিশ্বস্ত সমাধান, সঠিক ব্যবহারবিধি সহ।",
+    cta: "অর্ডার করুন",
+  },
+};
+
+const HERO_BANNERS = [
+  { id: "hero-seeds", title: "প্রিমিয়াম বীজ — সবজি, ফল ও ফুল", image_url: "/banner-seeds.jpg", link_url: "/shop", is_active: true, display_order: 1 },
+  { id: "hero-tools", title: "কৃষি ও গার্ডেন টুলস", image_url: "/banner-tools.jpg", link_url: "/shop", is_active: true, display_order: 2 },
+  { id: "hero-fertilizer", title: "সার ও কীটনাশক", image_url: "/banner-fertilizer.jpg", link_url: "/shop", is_active: true, display_order: 3 },
+] as unknown as HomeData["banners"];
+
+
+const PROMO_BANNER_URL = "/banner-seeds.jpg";
 const FALLBACK_HOME: HomeData = {
-  banners: fallbackBanners as unknown as HomeData["banners"],
+  banners: HERO_BANNERS,
   categories: fallbackCategories as unknown as HomeData["categories"],
   products: (fallbackProducts.filter((p) => p.is_featured).slice(0, 8)) as unknown as HomeData["products"],
 };
+
 
 const homeQueryOptions = queryOptions({
   queryKey: ["home-data"],
@@ -29,17 +59,17 @@ export const Route = createFileRoute("/")({
     const firstBanner = PROMO_BANNER_URL;
     return {
       meta: [
-        { title: "শেখ সিড — অরিজিনাল বীজ ও গার্ডেন টুলস অনলাইন শপ" },
+        { title: "অরন্য নগর — অরিজিনাল বীজ ও গার্ডেন টুলস অনলাইন শপ" },
         { name: "description", content: "১০০% অরিজিনাল সবজি, ফল ও ফুলের বীজ, গার্ডেন টুলস ও সরঞ্জাম। সারাদেশে হোম ডেলিভারি, ক্যাশ অন ডেলিভারি সুবিধা।" },
-        { property: "og:title", content: "শেখ সিড — অরিজিনাল বীজ ও গার্ডেন টুলস অনলাইন শপ" },
+        { property: "og:title", content: "অরন্য নগর — অরিজিনাল বীজ ও গার্ডেন টুলস অনলাইন শপ" },
         { property: "og:description", content: "১০০% অরিজিনাল বীজ ও গার্ডেন টুলস। সারাদেশে হোম ডেলিভারি — ক্যাশ অন ডেলিভারি।" },
-        { property: "og:url", content: "https://sheikhseeds.site/" },
-        { property: "og:image", content: "https://sheikhseeds.site/favicon.png" },
+        { property: "og:url", content: "https://oronnonogor.com/" },
+        { property: "og:image", content: "https://oronnonogor.com/favicon.png" },
         { name: "twitter:card", content: "summary_large_image" },
-        { name: "twitter:image", content: "https://sheikhseeds.site/favicon.png" },
+        { name: "twitter:image", content: "https://oronnonogor.com/favicon.png" },
       ],
       links: [
-        { rel: "canonical", href: "https://sheikhseeds.site/" },
+        { rel: "canonical", href: "https://oronnonogor.com/" },
         ...(firstBanner ? [{ rel: "preload", as: "image", href: firstBanner }] : []),
       ],
     };
@@ -86,7 +116,7 @@ function Home() {
   const router = useRouter();
   const { data } = useQuery(homeQueryOptions);
 
-  const banners = (data?.banners?.length ? [promoBanner, ...data.banners] : [promoBanner, ...fallbackBanners]) as HomeData["banners"];
+  const banners = (data?.banners?.length ? data.banners : HERO_BANNERS) as HomeData["banners"];
   const categories = (data?.categories?.length ? data.categories : fallbackCategories) as HomeData["categories"];
   const featured = ((data?.products?.length ? data.products : (fallbackProducts.filter((p) => p.is_featured).slice(0, 8) as unknown as HomeData["products"])) as unknown) as Product[];
 
@@ -122,7 +152,9 @@ function Home() {
               onMouseEnter={() => setIsPaused(true)}
               onMouseLeave={() => setIsPaused(false)}
             >
-              {banners.map((b, i) => (
+              {banners.map((b, i) => {
+                const copy = HERO_COPY[b.id as string];
+                return (
                 <a
                   key={b.id}
                   href={b.link_url || "#"}
@@ -139,16 +171,42 @@ function Home() {
                     decoding={i === 0 ? "sync" : "async"}
                     {...(i === 0 ? { fetchPriority: "high" } as React.ImgHTMLAttributes<HTMLImageElement> : {})}
                   />
-                  {b.title && (
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-                  )}
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/45 to-transparent" />
+                  <div className="absolute inset-0 flex flex-col justify-center">
+                    <div className="pl-6 sm:pl-12 lg:pl-20 pr-4 w-full max-w-[72%] sm:max-w-[58%] lg:max-w-[52%] py-2">
+                      {copy ? (
+                        <>
+                          <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-white/15 backdrop-blur-sm px-2.5 py-1 text-[10px] sm:text-xs font-semibold tracking-wide text-white/95 ring-1 ring-white/25">
+                            <Sparkles className="w-3 h-3" />
+                            {copy.eyebrow}
+                          </span>
+                          <h2 className="mt-0 sm:mt-3 whitespace-pre-line font-extrabold leading-[1.2] tracking-tight text-white text-[15px] sm:text-2xl lg:text-[2.5rem] drop-shadow-[0_2px_12px_rgba(0,0,0,0.45)]">
+                            {copy.heading}
+                          </h2>
+                          <p className="hidden sm:block mt-2 text-xs lg:text-sm text-white/85 leading-relaxed max-w-sm">
+                            {copy.sub}
+                          </p>
+                          <span className="mt-2 sm:mt-4 inline-flex items-center gap-1.5 rounded-full bg-white text-brand-dark px-3.5 sm:px-5 py-1.5 sm:py-2.5 text-[11px] sm:text-sm font-bold whitespace-nowrap shadow-lg shadow-black/20 transition-transform group-hover:translate-x-0.5">
+                            {copy.cta}
+                            <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          </span>
+                        </>
+                      ) : (
+                        b.title && (
+                          <h2 className="font-extrabold leading-tight tracking-tight text-white text-lg sm:text-3xl lg:text-4xl drop-shadow-[0_2px_12px_rgba(0,0,0,0.45)]">
+                            {b.title}
+                          </h2>
+                        )
+                      )}
+                    </div>
+                  </div>
                 </a>
-              ))}
+                );
+              })}
 
-              <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/30 to-transparent pointer-events-none z-10" />
 
               {banners.length > 1 && (
-                <div className="absolute bottom-4 sm:bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-2 z-20">
+                <div className="absolute bottom-3 sm:bottom-5 right-4 sm:right-6 flex items-center gap-2 z-20">
                   {banners.map((_, i) => (
                     <button
                       key={i}
@@ -161,9 +219,32 @@ function Home() {
                 </div>
               )}
             </div>
+
+            {/* Trust strip */}
+            <div className="mt-3 sm:mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+              {[
+                { icon: ShieldCheck, t: "অরিজিনাল বীজ", s: "মান যাচাই করা" },
+                { icon: Truck, t: "সারাদেশে ডেলিভারি", s: "ক্যাশ অন ডেলিভারি" },
+                { icon: Headphones, t: "কৃষি পরামর্শ", s: "বিশেষজ্ঞ সহায়তা" },
+              ].map(({ icon: Icon, t, s }) => (
+                <div
+                  key={t}
+                  className="flex items-center gap-2 sm:gap-3 rounded-xl sm:rounded-2xl bg-card border border-black/5 shadow-sm px-2.5 sm:px-4 py-2.5 sm:py-3.5"
+                >
+                  <span className="shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-brand-light/60 text-brand flex items-center justify-center">
+                    <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-[10px] leading-tight sm:text-sm font-bold text-foreground">{t}</span>
+                    <span className="block text-[9px] leading-tight sm:text-xs text-muted-foreground">{s}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       )}
+
 
       {/* Popular Categories */}
       <section className="py-10 sm:py-14 bg-gradient-to-b from-brand-light/25 via-transparent to-transparent">
