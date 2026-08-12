@@ -1,5 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
+import {
+  createSupabaseFetch,
+  resolveSupabasePublishableKey,
+  resolveSupabaseUrl,
+} from "@/integrations/supabase/public-env";
 
 const SITE = "https://sheikhseeds.site";
 
@@ -7,9 +12,9 @@ export const Route = createFileRoute("/api/public/sitemap")({
   server: {
     handlers: {
       GET: async () => {
-        const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL!;
-        const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY!;
-        const sb = createClient(url, key);
+        const url = resolveSupabaseUrl();
+        const key = resolveSupabasePublishableKey();
+        const sb = createClient(url, key, { global: { fetch: createSupabaseFetch(key) } });
 
         const [{ data: products }, { data: cats }, { data: landings }] = await Promise.all([
           sb.from("products").select("slug,updated_at").eq("is_active", true).limit(1000),
