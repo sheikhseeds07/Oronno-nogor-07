@@ -4,12 +4,11 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/personal-supabase/client";
 import { toast } from "sonner";
-import { Save, CheckCircle2, XCircle, Plug, Loader2, Layers, Truck, Wallet, RefreshCw, MessageSquare, Send, Hash } from "lucide-react";
+import { Save, CheckCircle2, XCircle, Plug, Loader2, Layers, Truck, Wallet, RefreshCw, MessageSquare, Send } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { fetchCourierHistory } from "@/lib/courier-history.functions";
 import { testCourierConnection, fetchSteadfastBalance } from "@/lib/courier-test.functions";
 import { sendPhoneOtp } from "@/lib/phone-otp.functions";
-import { getInvoiceSettings, saveInvoiceSettings } from "@/lib/invoice-settings.functions";
 
 export const Route = createFileRoute("/admin/all-api")({ component: AllApi });
 
@@ -70,35 +69,6 @@ function AllApi() {
   const testFn = useServerFn(testCourierConnection);
   const balanceFn = useServerFn(fetchSteadfastBalance);
   const sendOtpFn = useServerFn(sendPhoneOtp);
-  const getInvoiceFn = useServerFn(getInvoiceSettings);
-  const saveInvoiceFn = useServerFn(saveInvoiceSettings);
-
-  // ----- Invoice format (courier invoice: AA1, AA2, ...) -----
-  const [invPrefix, setInvPrefix] = useState("AA");
-  const [invNext, setInvNext] = useState(1);
-  const [savingInv, setSavingInv] = useState(false);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const r = await getInvoiceFn();
-        setInvPrefix(r.prefix); setInvNext(r.next);
-      } catch { /* ignore */ }
-    })();
-  }, [getInvoiceFn]);
-
-  const saveInvoice = async () => {
-    const prefix = invPrefix.trim();
-    if (!prefix) { toast.error("প্রিফিক্স দিন"); return; }
-    setSavingInv(true);
-    try {
-      await saveInvoiceFn({ data: { prefix, next: Math.max(1, Number(invNext) || 1) } });
-      toast.success("ইনভয়েস ফরম্যাট সেভ হয়েছে");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "সেভ ব্যর্থ");
-    } finally { setSavingInv(false); }
-  };
-
   useEffect(() => {
     (async () => {
       const [{ data: ss }, { data: hRow }, { data: sRow }, { data: smsRow }, { data: fbRow }] = await Promise.all([
@@ -269,33 +239,6 @@ function AllApi() {
 
       {loading ? <BrandLoader /> : (
         <div className="grid gap-5 max-w-3xl">
-          {/* Invoice format */}
-          <div className="rounded-xl border bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-2">
-              <Hash className="w-5 h-5 text-brand" />
-              <h2 className="font-bold text-lg">Invoice ফরম্যাট (কুরিয়ার)</h2>
-            </div>
-            <p className="text-xs text-muted-foreground mb-3">
-              কুরিয়ারে অর্ডার পাঠানোর সময় এই ফরম্যাটে invoice তৈরি হবে — যেমন {invPrefix.trim() || "AA"}1, {invPrefix.trim() || "AA"}2, {invPrefix.trim() || "AA"}3...
-            </p>
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Prefix</label>
-                <input value={invPrefix} onChange={(e) => setInvPrefix(e.target.value)} placeholder="AA" className="w-full mt-1 rounded-lg border px-3 py-2 text-sm font-mono" />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">পরের নাম্বার</label>
-                <input type="number" min={1} value={invNext} onChange={(e) => setInvNext(Number(e.target.value))} className="w-full mt-1 rounded-lg border px-3 py-2 text-sm font-mono" />
-              </div>
-            </div>
-            <div className="mt-4 flex items-center justify-between gap-3">
-              <span className="text-xs text-muted-foreground">পরের invoice: <b className="text-brand-dark">{(invPrefix.trim() || "AA") + (Math.max(1, Number(invNext) || 1))}</b></span>
-              <button onClick={saveInvoice} disabled={savingInv} className="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
-                <Save className="w-4 h-4" /> {savingInv ? "সেভ হচ্ছে..." : "সেভ করুন"}
-              </button>
-            </div>
-          </div>
-
           {/* Steadfast */}
           <div className="rounded-xl border bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">

@@ -1,8 +1,12 @@
-// Server-only helper: allocates courier invoice numbers using the
-// admin-configurable prefix (All API → Invoice) e.g. AA1, AA2, AA3...
+// Server-only helper: allocates invoice numbers using the admin-configurable
+// prefix (All API → Invoice ফরম্যাট) e.g. AA1, AA2, AA3...
+// Invoice numbers are guaranteed unique: every candidate is checked against
+// existing orders before the counter is persisted.
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 
 const NAME = "invoice_settings";
+
+const PREFIX = "AA"; // fixed invoice prefix: AA1, AA2, AA3...
 
 export async function getInvoiceConfig(): Promise<{ prefix: string; next: number }> {
   const { data } = await supabaseAdmin
@@ -10,38 +14,93 @@ export async function getInvoiceConfig(): Promise<{ prefix: string; next: number
     .select("config")
     .eq("name", NAME)
     .maybeSingle();
-  const cfg = (data?.config as { prefix?: string; next?: number } | undefined) ?? {};
-  return { prefix: (cfg.prefix || "AA").trim(), next: Math.max(1, Number(cfg.next ?? 1)) };
+  const cfg = (data?.config as { next?: number } | undefined) ?? {};
+  return { prefix: PREFIX, next: Math.max(1, Number(cfg.next ?? 1)) };
 }
 
-/** Returns the next unused invoice number and persists the counter. */
-export async function allocateInvoiceNo(): Promise<string> {
-  const { prefix, next } = await getInvoiceConfig();
-  let n = next;
-  // Skip numbers already used by existing orders.
-  for (let guard = 0; guard < 500; guard++) {
-    const candidate = `${prefix}${n}`;
-    const { data: taken } = await supabaseAdmin
-      .from("orders")
-      .select("id")
-      .eq("invoice_no", candidate)
-      .limit(1);
-    if (!taken || !taken.length) break;
-    n++;
-  }
-  const invoice = `${prefix}${n}`;
+async function saveNext(prefix: string, next: number) {
   await supabaseAdmin.from("integrations").upsert(
-    { name: NAME, is_active: true, config: { prefix, next: n + 1 }, updated_at: new Date().toISOString() },
+    { name: NAME, is_active: true, config: { prefix, next }, updated_at: new Date().toISOString() },
     { onConflict: "name" },
   );
+}
+
+/** True when the invoice already follows the configured format (e.g. AA123). */
+export function isValidInvoice(invoice: string | null, prefix: string): boolean {
+  if (!invoice) return false;
+  return new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\d+$`).test(invoice);
+}
+
+/**
+ * Allocates `count` unique invoice numbers and persists the counter.
+ * Any number already used by an order is skipped, so duplicates cannot happen.
+ */
+export async function allocateInvoiceNos(count = 1): Promise<string[]> {
+  const { prefix, next } = await getInvoiceConfig();
+  let start = next;
+
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const candidates = Array.from({ length: count }, (_, i) => `${prefix}${start + i}`);
+    const { data: taken } = await supabaseAdmin
+      .from("orders")
+      .select("invoice_no")
+      .in("invoice_no", candidates);
+
+    if (!taken || taken.length === 0) {
+      await saveNext(prefix, start + count);
+      return candidates;
+    }
+
+    // Jump past the highest colliding number and try again.
+    const highest = taken.reduce((max, row) => {
+      const n = Number(String(row.invoice_no ?? "").slice(prefix.length));
+      return Number.isFinite(n) && n > max ? n : max;
+    }, start);
+    start = highest + 1;
+  }
+
+  throw new Error("ইনভয়েস নাম্বার তৈরি করা যাচ্ছে না — All API তে ইনভয়েস সেটিং চেক করুন");
+}
+
+/** Single invoice number in the configured format. */
+export async function allocateInvoiceNo(): Promise<string> {
+  const [invoice] = await allocateInvoiceNos(1);
   return invoice;
 }
 
 /** Ensures the order has an invoice number in the configured format. */
 export async function ensureOrderInvoiceNo(orderId: string, current: string | null): Promise<string> {
   const { prefix } = await getInvoiceConfig();
-  if (current && current.startsWith(prefix)) return current;
+  if (isValidInvoice(current, prefix)) return current as string;
   const invoice = await allocateInvoiceNo();
   await supabaseAdmin.from("orders").update({ invoice_no: invoice }).eq("id", orderId);
   return invoice;
+}
+
+/**
+ * Makes sure every given order has a valid invoice number BEFORE its status
+ * leaves the web stage — this keeps the old DB fallback (SK…) from firing.
+ */
+export async function ensureInvoicesForOrders(ids: string[]): Promise<Record<string, string>> {
+  if (!ids.length) return {};
+  const { prefix } = await getInvoiceConfig();
+  const { data: rows } = await supabaseAdmin
+    .from("orders")
+    .select("id,invoice_no")
+    .in("id", ids);
+
+  const result: Record<string, string> = {};
+  const missing: string[] = [];
+  for (const row of rows ?? []) {
+    if (isValidInvoice(row.invoice_no, prefix)) result[row.id] = row.invoice_no as string;
+    else missing.push(row.id);
+  }
+  if (!missing.length) return result;
+
+  const invoices = await allocateInvoiceNos(missing.length);
+  for (let i = 0; i < missing.length; i++) {
+    await supabaseAdmin.from("orders").update({ invoice_no: invoices[i] }).eq("id", missing[i]);
+    result[missing[i]] = invoices[i];
+  }
+  return result;
 }

@@ -97,9 +97,13 @@ export const createManualOrder = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertCanManageOrders(context.userId);
 
+    const { allocateInvoiceNo } = await import("@/lib/invoice-no.server");
+    const invoiceNo = await allocateInvoiceNo();
+
     const { data: order, error } = await supabaseAdmin
       .from("orders")
       .insert({
+        invoice_no: invoiceNo,
         customer_name: data.customer_name,
         customer_phone: data.customer_phone,
         customer_address: data.customer_address ?? null,
@@ -134,6 +138,11 @@ export const updateAdminOrder = createServerFn({ method: "POST" })
   .inputValidator((input) => UpdateOrderSchema.parse(input))
   .handler(async ({ data, context }) => {
     await assertCanManageOrders(context.userId);
+
+    if (data.confirm) {
+      const { ensureInvoicesForOrders } = await import("@/lib/invoice-no.server");
+      await ensureInvoicesForOrders([data.id]);
+    }
 
     const updates = {
       customer_name: data.customer_name,

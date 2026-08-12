@@ -167,9 +167,13 @@ async function runCreateOrder(args: {
   }
 
 
+  const { allocateInvoiceNo } = await import("@/lib/invoice-no.server");
+  const invoiceNo = await allocateInvoiceNo();
+
   const { data: order, error } = await supabaseAdmin
     .from("orders")
     .insert({
+      invoice_no: invoiceNo,
       customer_name: args.customer_name.slice(0, 255),
       customer_phone: args.customer_phone.replace(/\s+/g, "").slice(0, 32),
       customer_address: args.customer_address.slice(0, 1000),

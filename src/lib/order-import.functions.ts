@@ -73,9 +73,13 @@ export const importOrdersFromFile = createServerFn({ method: "POST" })
 
       const notes = [o.notes?.trim() || null, ref ? `Ref: ${ref}` : null].filter(Boolean).join(" | ") || null;
 
+      const { allocateInvoiceNo } = await import("@/lib/invoice-no.server");
+      const invoiceNo = await allocateInvoiceNo();
+
       const { data: order, error } = await supabaseAdmin
         .from("orders")
         .insert({
+          invoice_no: invoiceNo,
           customer_name: o.customer_name,
           customer_phone: o.customer_phone,
           customer_address: o.customer_address ?? null,

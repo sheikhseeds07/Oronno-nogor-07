@@ -15,6 +15,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { fetchCourierHistory } from "@/lib/courier-history.functions";
 import { sendOrdersToSteadfast, syncSteadfastStatuses } from "@/lib/courier-test.functions";
 import { createManualOrder, updateAdminOrder, markOrdersPrinted, deleteOrders } from "@/lib/admin-order.functions";
+import { ensureOrderInvoices, reserveInvoiceNos } from "@/lib/order-invoice.functions";
 import { getOrderStatusCounts } from "@/lib/reports.functions";
 import { acquireOrderLock, heartbeatOrderLock, releaseOrderLock, listOrderLocks } from "@/lib/order-lock.functions";
 import { useAuth } from "@/lib/auth";
@@ -169,11 +170,16 @@ function SearchPanel({ onOpen }: { onOpen: (id: string) => void }) {
     },
   });
 
+  const ensureInvoices = useServerFn(ensureOrderInvoices);
+
   const confirmChange = async (id: string, current: OrderStatus) => {
     const next = pending[id];
     if (!next || next === current) return;
     if (next === "incomplete") { toast.error("ইনকমপ্লিট স্ট্যাটাসে ম্যানুয়ালি যাওয়া যাবে না"); return; }
     setSavingId(id);
+    if (next !== "web_pending") {
+      try { await ensureInvoices({ data: { ids: [id] } }); } catch { /* invoice পরে সেট হবে */ }
+    }
     const { error } = await supabase.from("orders").update({ status: next }).eq("id", id);
     setSavingId(null);
     if (error) { toast.error(error.message); return; }
@@ -486,6 +492,7 @@ function OrdersTable({
   const [dupModal, setDupModal] = useState<{ loading: boolean; rows: DupRow[] } | null>(null);
   const qc = useQueryClient();
   const sendBulk = useServerFn(sendOrdersToSteadfast);
+  const ensureInvoices = useServerFn(ensureOrderInvoices);
   const markPrinted = useServerFn(markOrdersPrinted);
   const deleteOrdersFn = useServerFn(deleteOrders);
   const syncStatuses = useServerFn(syncSteadfastStatuses);
@@ -639,6 +646,9 @@ function OrdersTable({
 
   const updateStatus = async (id: string, status: OrderStatus) => {
     if (status === "incomplete") return;
+    if (status !== "web_pending") {
+      try { await ensureInvoices({ data: { ids: [id] } }); } catch { /* invoice পরে সেট হবে */ }
+    }
     // Optimistic remove from current visible list
     qc.setQueriesData<OrderRow[] | undefined>({ queryKey: ["admin-orders"] }, (old) =>
       old ? old.filter((o) => o.id !== id) : old,
@@ -792,6 +802,7 @@ function OrdersTable({
     if (!selectedIds.size) return;
     const ids = Array.from(selectedIds);
     optimisticRemove(ids);
+    try { await ensureInvoices({ data: { ids } }); } catch { /* invoice পরে সেট হবে */ }
     const { error } = await supabase.from("orders").update({ status: target }).in("id", ids);
     if (error) {
       toast.error(error.message);
@@ -828,6 +839,9 @@ function OrdersTable({
     if (!selectedIds.size) return;
     const ids = Array.from(selectedIds);
     optimisticRemove(ids);
+    if (status !== "web_pending") {
+      try { await ensureInvoices({ data: { ids } }); } catch { /* invoice পরে সেট হবে */ }
+    }
     const { error } = await supabase.from("orders").update({ status }).in("id", ids);
     if (error) {
       toast.error(error.message);
@@ -1938,6 +1952,7 @@ function OurRecordCard({ history, total, success, cancelled }: { history: Histor
 function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => void; onConfirmed?: () => void }) {
   const qc = useQueryClient();
   const updateOrder = useServerFn(updateAdminOrder);
+  const reserveInvoices = useServerFn(reserveInvoiceNos);
   const acquire = useServerFn(acquireOrderLock);
   const heartbeat = useServerFn(heartbeatOrderLock);
   const release = useServerFn(releaseOrderLock);
@@ -2148,9 +2163,11 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
           // Promote to a real order with status='pending'
           if (!items.length) throw new Error("কমপক্ষে ১টি প্রোডাক্ট যোগ করুন");
           if (!name.trim()) throw new Error("কাস্টমারের নাম দিন");
+          const { invoices } = await reserveInvoices({ data: { count: 1 } });
           const { data: created, error } = await supabase
             .from("orders")
             .insert({
+              invoice_no: invoices[0],
               customer_name: name,
               customer_phone: phoneVal,
               customer_address: address || null,
