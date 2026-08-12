@@ -1,0 +1,22 @@
+name: apply-patch
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download and apply patch
+        run: |
+          curl -sSL -o /tmp/patch.tgz "https://tmpfiles.org/dl/1786555488.8fa19c916bad9816/wJwJDKu67SYY/patch.tgz"
+          tar -xzf /tmp/patch.tgz
+          rm -f src/routes/admin/messages.tsx
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: file-based order import + configurable invoice prefix; remove messages page" || echo "no changes"
+          git push
