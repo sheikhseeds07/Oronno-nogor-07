@@ -35,9 +35,22 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
   };
 }
 
+function firstEnv(...names: string[]): string | undefined {
+  for (const n of names) {
+    const v = getServerEnv(n);
+    if (v) return v;
+  }
+  return undefined;
+}
+
 function createSupabaseAdminClient() {
-  const SUPABASE_URL = getServerEnv('SUPABASE_URL');
-  const SUPABASE_SERVICE_ROLE_KEY = getServerEnv('SUPABASE_SERVICE_ROLE_KEY');
+  // Hosts often only configure the VITE_* URL, so accept those aliases too.
+  const SUPABASE_URL = firstEnv('SUPABASE_URL', 'VITE_SUPABASE_URL');
+  const SUPABASE_SERVICE_ROLE_KEY = firstEnv(
+    'SUPABASE_SERVICE_ROLE_KEY',
+    'SUPABASE_SECRET_KEY',
+    'SERVICE_ROLE_KEY',
+  );
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     const missing = [
@@ -48,6 +61,7 @@ function createSupabaseAdminClient() {
       `Missing Supabase server environment variable(s): ${missing.join(', ')}. Configure them as Cloudflare runtime variables/secrets.`,
     );
   }
+
 
   return createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     global: { fetch: createSupabaseFetch(SUPABASE_SERVICE_ROLE_KEY) },
