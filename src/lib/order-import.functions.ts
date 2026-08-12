@@ -39,21 +39,52 @@ export const importOrdersFromFile = createServerFn({ method: "POST" })
       );
     };
 
-    let imported = 0;
     let skipped = 0;
     const errors: string[] = [];
 
+    // --- Duplicate refs: ONE query for all refs (Worker subrequest limit) ---
+    const refs = data.orders.map((o) => o.order_ref?.trim() || null).filter(Boolean) as string[];
+    const existingRefs = new Set<string>();
+    if (refs.length) {
+      const orFilter = refs
+        .map((r) => `notes.ilike.%${r.replace(/[,()]/g, "")}%`)
+        .join(",");
+      const { data: dups } = await supabaseAdmin.from("orders").select("notes").or(orFilter);
+      for (const row of dups ?? []) {
+        const notes = String(row.notes ?? "");
+        for (const r of refs) if (notes.includes(r)) existingRefs.add(r);
+      }
+    }
+
+    // --- Build all rows in memory ---
+    const prepared: Array<{
+      name: string;
+      order: {
+        customer_name: string;
+        customer_phone: string;
+        customer_address: string | null;
+        notes: string | null;
+        subtotal: number;
+        delivery_fee: number;
+        discount: number;
+        total: number;
+        source: "manual";
+        status: "pending";
+        payment_method: "cod";
+      };
+      items: Array<{
+        product_id: string | null;
+        product_name: string;
+        price: number;
+        quantity: number;
+        subtotal: number;
+      }>;
+    }> = [];
+
+
     for (const o of data.orders) {
       const ref = o.order_ref?.trim() || null;
-
-      if (ref) {
-        const { data: dup } = await supabaseAdmin
-          .from("orders")
-          .select("id")
-          .ilike("notes", `%${ref}%`)
-          .limit(1);
-        if (dup && dup.length) { skipped++; continue; }
-      }
+      if (ref && existingRefs.has(ref)) { skipped++; continue; }
 
       const items = o.items.map((it) => {
         const p = findProduct(it.product_name);
@@ -70,16 +101,12 @@ export const importOrdersFromFile = createServerFn({ method: "POST" })
       const subtotal = items.reduce((s, it) => s + it.subtotal, 0);
       const total = o.total > 0 ? o.total : subtotal;
       const deliveryFee = Math.max(0, total - subtotal);
-
       const notes = [o.notes?.trim() || null, ref ? `Ref: ${ref}` : null].filter(Boolean).join(" | ") || null;
 
-      const { allocateInvoiceNo } = await import("@/lib/invoice-no.server");
-      const invoiceNo = await allocateInvoiceNo();
-
-      const { data: order, error } = await supabaseAdmin
-        .from("orders")
-        .insert({
-          invoice_no: invoiceNo,
+      prepared.push({
+        name: o.customer_name,
+        items,
+        order: {
           customer_name: o.customer_name,
           customer_phone: o.customer_phone,
           customer_address: o.customer_address ?? null,
@@ -91,27 +118,39 @@ export const importOrdersFromFile = createServerFn({ method: "POST" })
           source: "manual",
           status: "pending",
           payment_method: "cod",
-        })
-        .select("id")
-        .single();
+        },
+      });
+    }
 
-      if (error || !order) {
-        errors.push(`${o.customer_name}: ${error?.message ?? "তৈরি হয়নি"}`);
+    if (!prepared.length) return { imported: 0, skipped, errors };
+
+    // --- One invoice allocation for the whole batch ---
+    const { allocateInvoiceNos } = await import("@/lib/invoice-no.server");
+    const invoices = await allocateInvoiceNos(prepared.length);
+
+    // --- Bulk insert orders + items in a few chunked requests ---
+    const CHUNK = 100;
+    let imported = 0;
+    for (let i = 0; i < prepared.length; i += CHUNK) {
+      const chunk = prepared.slice(i, i + CHUNK);
+      const rows = chunk.map((p, idx) => ({ ...p.order, invoice_no: invoices[i + idx] }));
+      const { data: created, error } = await supabaseAdmin.from("orders").insert(rows).select("id");
+      if (error || !created || created.length !== chunk.length) {
+        errors.push(`${chunk[0]?.name ?? "অর্ডার"}: ${error?.message ?? "তৈরি হয়নি"}`);
         continue;
       }
-
-      const { error: itemErr } = await supabaseAdmin
-        .from("order_items")
-        .insert(items.map((it) => ({ ...it, order_id: order.id })));
-
+      const itemRows = chunk.flatMap((p, idx) =>
+        p.items.map((it) => ({ ...it, order_id: created[idx].id })),
+      );
+      const { error: itemErr } = await supabaseAdmin.from("order_items").insert(itemRows);
       if (itemErr) {
-        await supabaseAdmin.from("orders").delete().eq("id", order.id);
-        errors.push(`${o.customer_name}: ${itemErr.message}`);
+        await supabaseAdmin.from("orders").delete().in("id", created.map((c) => c.id));
+        errors.push(`${chunk[0]?.name ?? "অর্ডার"}: ${itemErr.message}`);
         continue;
       }
-
-      imported++;
+      imported += chunk.length;
     }
 
     return { imported, skipped, errors };
   });
+
