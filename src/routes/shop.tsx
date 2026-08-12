@@ -32,20 +32,26 @@ function Shop() {
   const { data: products = [] } = useQuery({
     queryKey: ["shop-products", q, cat],
     queryFn: async () => {
-      let query = supabase.from("products").select("*, categories!inner(slug, is_hidden_from_home)").eq("is_active", true).eq("categories.is_hidden_from_home", false);
-      if (cat) query = query.eq("categories.slug", cat);
-      if (q) query = query.ilike("name", `%${q}%`);
-      const { data, error } = await query.order("created_at", { ascending: false });
+      // Left join so active products WITHOUT a category still appear in the shop.
+      const run = async (withHidden: boolean) => {
+        let query = supabase
+          .from("products")
+          .select(withHidden ? "*, categories!left(slug, is_hidden_from_home)" : "*, categories!left(slug)")
+          .eq("is_active", true);
+        if (cat) query = query.eq("categories.slug", cat);
+        if (q) query = query.ilike("name", `%${q}%`);
+        return query.order("created_at", { ascending: false });
+      };
+      let { data, error } = await run(true);
       if (error?.message?.includes("is_hidden_from_home")) {
-        let fallback = supabase.from("products").select("*, categories!inner(slug)").eq("is_active", true);
-        if (cat) fallback = fallback.eq("categories.slug", cat);
-        if (q) fallback = fallback.ilike("name", `%${q}%`);
-        const legacy = await fallback.order("created_at", { ascending: false });
-        return (legacy.data ?? []) as unknown as Product[];
+        ({ data } = await run(false));
+        return (data ?? []) as unknown as Product[];
       }
-      return (data ?? []) as unknown as Product[];
+      const rows = (data ?? []) as unknown as (Product & { categories?: { is_hidden_from_home?: boolean } | null })[];
+      return rows.filter((p) => !p.categories?.is_hidden_from_home) as Product[];
     },
   });
+
 
 
   const activeCat = categories.find((c) => c.slug === cat);
