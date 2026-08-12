@@ -59,19 +59,23 @@ export const Route = createFileRoute("/")({
     const firstBanner = PROMO_BANNER_URL;
     return {
       meta: [
-        { title: "অরন্য নগর — অরিজিনাল বীজ ও গার্ডেন টুলস অনলাইন শপ" },
-        { name: "description", content: "১০০% অরিজিনাল সবজি, ফল ও ফুলের বীজ, গার্ডেন টুলস ও সরঞ্জাম। সারাদেশে হোম ডেলিভারি, ক্যাশ অন ডেলিভারি সুবিধা।" },
-        { property: "og:title", content: "অরন্য নগর — অরিজিনাল বীজ ও গার্ডেন টুলস অনলাইন শপ" },
-        { property: "og:description", content: "১০০% অরিজিনাল বীজ ও গার্ডেন টুলস। সারাদেশে হোম ডেলিভারি — ক্যাশ অন ডেলিভারি।" },
+        { title: "অরন্য নগর (Oronno Nogor) — অরিজিনাল বীজ, গার্ডেন টুলস ও সার" },
+        { name: "description", content: "অরন্য নগর — ছাদ বাগানির বিশ্বস্ত সঙ্গী। ১০০% অরিজিনাল সবজি, ফল ও ফুলের বীজ, গার্ডেন টুলস, সার ও কীটনাশক অনলাইনে অর্ডার করুন। সারাদেশে হোম ডেলিভারি ও ক্যাশ অন ডেলিভারি।" },
+        { name: "keywords", content: "অরন্য নগর, oronno nogor, oronnonogor, বীজ, সবজির বীজ, ফুলের বীজ, গার্ডেন টুলস, সার, কীটনাশক, ছাদ বাগান" },
+        { property: "og:title", content: "অরন্য নগর (Oronno Nogor) — অরিজিনাল বীজ, গার্ডেন টুলস ও সার" },
+        { property: "og:description", content: "ছাদ বাগানির বিশ্বস্ত সঙ্গী — ১০০% অরিজিনাল বীজ, গার্ডেন টুলস ও সার। সারাদেশে ক্যাশ অন ডেলিভারি।" },
         { property: "og:url", content: "https://oronnonogor.com/" },
-        { property: "og:image", content: "https://oronnonogor.com/favicon.png" },
+        { property: "og:image", content: "https://oronnonogor.com/og-oronno-nogor.jpg" },
+        { property: "og:image:width", content: "1200" },
+        { property: "og:image:height", content: "630" },
         { name: "twitter:card", content: "summary_large_image" },
-        { name: "twitter:image", content: "https://oronnonogor.com/favicon.png" },
+        { name: "twitter:image", content: "https://oronnonogor.com/og-oronno-nogor.jpg" },
       ],
       links: [
         { rel: "canonical", href: "https://oronnonogor.com/" },
         ...(firstBanner ? [{ rel: "preload", as: "image", href: firstBanner }] : []),
       ],
+
     };
   },
 
