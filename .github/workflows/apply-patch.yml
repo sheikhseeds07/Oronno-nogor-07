@@ -1,0 +1,21 @@
+name: apply-patch
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download and apply
+        run: |
+          curl -sL -o /tmp/patch.tgz https://tmpfiles.org/dl/wAwsDKuss8Se/patch.tgz
+          tar -xzf /tmp/patch.tgz -C .
+          rm -f src/lib/invoice-settings.functions.ts
+      - name: Commit
+        run: |
+          git config user.name github-actions
+          git config user.email actions@github.com
+          git add -A
+          git commit -m 'Invoice AA numbering + remove invoice format card' || echo nothing
+          git push
