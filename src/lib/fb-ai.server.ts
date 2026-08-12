@@ -25,7 +25,7 @@ async function loadShopContext(): Promise<{ siteName: string; delivery: Delivery
   const { data } = await supabaseAdmin.from("site_settings").select("settings").limit(1).maybeSingle();
   const s = (data?.settings as Record<string, unknown> | null) || {};
   return {
-    siteName: (s.site_name as string) || "শেখ সিড",
+    siteName: (s.site_name as string) || "অরন্য নগর",
     delivery: {
       inside: Number(s.delivery_charge_inside ?? 60),
       outside: Number(s.delivery_charge_outside ?? 130),

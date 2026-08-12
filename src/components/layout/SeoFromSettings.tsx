@@ -35,7 +35,7 @@ function setLink(rel: string, href?: string) {
 }
 
 /**
- * Applies the SEO values saved in admin settings.
+ * Applies the SEO values saved in admin → সেটিংস.
  * Full meta (title/description/OG) is applied on the homepage only; other
  * pages keep their own title but still get verification + robots.
  */
@@ -74,6 +74,7 @@ export function SeoFromSettings() {
     setMeta("name", "twitter:image", s.seo_og_image);
     setMeta("property", "og:url", url);
   }, [s.seo_title, s.seo_description, s.seo_keywords, s.seo_og_image, s.seo_site_url, s.seo_google_verification, s.seo_robots, path, isHome]);
+
 
   return null;
 }

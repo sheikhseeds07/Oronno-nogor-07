@@ -83,7 +83,7 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
         <div className="p-4 border-b flex items-center gap-2">
           <img src={logo} className="w-9 h-9 rounded-full" alt="" />
           <div>
-            <div className="font-extrabold text-sidebar-foreground">শেখ সিড</div>
+            <div className="font-extrabold text-sidebar-foreground">অরন্য নগর</div>
             <div className="text-[10px] text-muted-foreground">{isAdmin ? "অ্যাডমিন প্যানেল" : "কর্মী প্যানেল"}</div>
           </div>
           <button onClick={() => setOpen(false)} className="lg:hidden ml-auto"><X className="w-5 h-5" /></button>

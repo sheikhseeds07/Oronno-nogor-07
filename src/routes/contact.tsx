@@ -20,10 +20,10 @@ function Contact() {
             <div className="font-bold">WhatsApp</div>
             <div className="text-sm text-muted-foreground">২৪/৭ মেসেজ পাঠান</div>
           </a>
-          <a href="mailto:info@sheikhseeds.site" className="bg-white border rounded-xl p-5 hover:border-brand">
+          <a href="mailto:info@oronnonogor.com" className="bg-white border rounded-xl p-5 hover:border-brand">
             <Mail className="w-8 h-8 text-brand mb-2" />
             <div className="font-bold">ইমেইল</div>
-            <div className="text-sm text-muted-foreground">info@sheikhseeds.site</div>
+            <div className="text-sm text-muted-foreground">info@oronnonogor.com</div>
           </a>
           <div className="bg-white border rounded-xl p-5">
             <MapPin className="w-8 h-8 text-brand mb-2" />

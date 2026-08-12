@@ -16,6 +16,7 @@ import { Route as ContactRouteImport } from './routes/contact'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ShopRouteImport } from './routes/shop'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminAllApiRouteImport } from './routes/admin/all-api'
 import { Route as AdminAttendanceRouteImport } from './routes/admin/attendance'
@@ -28,7 +29,7 @@ import { Route as AdminEmployeesRouteImport } from './routes/admin/employees'
 import { Route as AdminFbCallbackRouteImport } from './routes/admin/fb-callback'
 import { Route as AdminIntegrationsRouteImport } from './routes/admin/integrations'
 import { Route as AdminLandingPagesRouteImport } from './routes/admin/landing-pages'
-import { Route as AdminMessagesRouteImport } from './routes/admin/messages'
+import { Route as AdminOrderImportRouteImport } from './routes/admin/order-import'
 import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
 import { Route as AdminProductsRouteImport } from './routes/admin/products'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
@@ -74,6 +75,11 @@ const ProfileRoute = ProfileRouteImport.update({
 const ShopRoute = ShopRouteImport.update({
   id: '/shop',
   path: '/shop',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -136,9 +142,9 @@ const AdminLandingPagesRoute = AdminLandingPagesRouteImport.update({
   path: '/admin/landing-pages',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminMessagesRoute = AdminMessagesRouteImport.update({
-  id: '/admin/messages',
-  path: '/admin/messages',
+const AdminOrderImportRoute = AdminOrderImportRouteImport.update({
+  id: '/admin/order-import',
+  path: '/admin/order-import',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminOrdersRoute = AdminOrdersRouteImport.update({
@@ -205,6 +211,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/shop': typeof ShopRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/all-api': typeof AdminAllApiRoute
   '/admin/attendance': typeof AdminAttendanceRoute
   '/admin/banners': typeof AdminBannersRoute
@@ -216,7 +223,7 @@ export interface FileRoutesByFullPath {
   '/admin/fb-callback': typeof AdminFbCallbackRoute
   '/admin/integrations': typeof AdminIntegrationsRoute
   '/admin/landing-pages': typeof AdminLandingPagesRoute
-  '/admin/messages': typeof AdminMessagesRoute
+  '/admin/order-import': typeof AdminOrderImportRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -238,6 +245,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/shop': typeof ShopRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/all-api': typeof AdminAllApiRoute
   '/admin/attendance': typeof AdminAttendanceRoute
   '/admin/banners': typeof AdminBannersRoute
@@ -249,7 +257,7 @@ export interface FileRoutesByTo {
   '/admin/fb-callback': typeof AdminFbCallbackRoute
   '/admin/integrations': typeof AdminIntegrationsRoute
   '/admin/landing-pages': typeof AdminLandingPagesRoute
-  '/admin/messages': typeof AdminMessagesRoute
+  '/admin/order-import': typeof AdminOrderImportRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -272,6 +280,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/shop': typeof ShopRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/all-api': typeof AdminAllApiRoute
   '/admin/attendance': typeof AdminAttendanceRoute
   '/admin/banners': typeof AdminBannersRoute
@@ -283,7 +292,7 @@ export interface FileRoutesById {
   '/admin/fb-callback': typeof AdminFbCallbackRoute
   '/admin/integrations': typeof AdminIntegrationsRoute
   '/admin/landing-pages': typeof AdminLandingPagesRoute
-  '/admin/messages': typeof AdminMessagesRoute
+  '/admin/order-import': typeof AdminOrderImportRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -307,6 +316,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/profile'
     | '/shop'
+    | '/sitemap.xml'
     | '/admin/all-api'
     | '/admin/attendance'
     | '/admin/banners'
@@ -318,7 +328,7 @@ export interface FileRouteTypes {
     | '/admin/fb-callback'
     | '/admin/integrations'
     | '/admin/landing-pages'
-    | '/admin/messages'
+    | '/admin/order-import'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/settings'
@@ -340,6 +350,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/profile'
     | '/shop'
+    | '/sitemap.xml'
     | '/admin/all-api'
     | '/admin/attendance'
     | '/admin/banners'
@@ -351,7 +362,7 @@ export interface FileRouteTypes {
     | '/admin/fb-callback'
     | '/admin/integrations'
     | '/admin/landing-pages'
-    | '/admin/messages'
+    | '/admin/order-import'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/settings'
@@ -373,6 +384,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/profile'
     | '/shop'
+    | '/sitemap.xml'
     | '/admin/all-api'
     | '/admin/attendance'
     | '/admin/banners'
@@ -384,7 +396,7 @@ export interface FileRouteTypes {
     | '/admin/fb-callback'
     | '/admin/integrations'
     | '/admin/landing-pages'
-    | '/admin/messages'
+    | '/admin/order-import'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/settings'
@@ -407,6 +419,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ProfileRoute: typeof ProfileRoute
   ShopRoute: typeof ShopRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   AdminAllApiRoute: typeof AdminAllApiRoute
   AdminAttendanceRoute: typeof AdminAttendanceRoute
   AdminBannersRoute: typeof AdminBannersRoute
@@ -418,7 +431,7 @@ export interface RootRouteChildren {
   AdminFbCallbackRoute: typeof AdminFbCallbackRoute
   AdminIntegrationsRoute: typeof AdminIntegrationsRoute
   AdminLandingPagesRoute: typeof AdminLandingPagesRoute
-  AdminMessagesRoute: typeof AdminMessagesRoute
+  AdminOrderImportRoute: typeof AdminOrderImportRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
   AdminProductsRoute: typeof AdminProductsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
@@ -482,6 +495,13 @@ declare module '@tanstack/react-router' {
       path: '/shop'
       fullPath: '/shop'
       preLoaderRoute: typeof ShopRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -568,11 +588,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLandingPagesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/messages': {
-      id: '/admin/messages'
-      path: '/admin/messages'
-      fullPath: '/admin/messages'
-      preLoaderRoute: typeof AdminMessagesRouteImport
+    '/admin/order-import': {
+      id: '/admin/order-import'
+      path: '/admin/order-import'
+      fullPath: '/admin/order-import'
+      preLoaderRoute: typeof AdminOrderImportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/orders': {
@@ -663,6 +683,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ProfileRoute: ProfileRoute,
   ShopRoute: ShopRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   AdminAllApiRoute: AdminAllApiRoute,
   AdminAttendanceRoute: AdminAttendanceRoute,
   AdminBannersRoute: AdminBannersRoute,
@@ -674,7 +695,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminFbCallbackRoute: AdminFbCallbackRoute,
   AdminIntegrationsRoute: AdminIntegrationsRoute,
   AdminLandingPagesRoute: AdminLandingPagesRoute,
-  AdminMessagesRoute: AdminMessagesRoute,
+  AdminOrderImportRoute: AdminOrderImportRoute,
   AdminOrdersRoute: AdminOrdersRoute,
   AdminProductsRoute: AdminProductsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
@@ -691,3 +712,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

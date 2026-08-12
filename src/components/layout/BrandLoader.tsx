@@ -1,6 +1,6 @@
 import logo from "@/assets/logo.jpg";
 
-export function BrandLoader({ label = "শেখ সিড", className = "" }: { label?: string; className?: string }) {
+export function BrandLoader({ label = "অরন্য নগর", className = "" }: { label?: string; className?: string }) {
   return (
     <div className={`flex flex-col items-center justify-center gap-2 py-6 ${className}`}>
       <div className="relative">

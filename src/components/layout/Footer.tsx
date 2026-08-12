@@ -39,9 +39,9 @@ export function Footer() {
   });
   const s = ((row?.settings as Settings) ?? {}) as Settings;
   const phone = s.phone || "+৮৮০ ৯৬৪৪-৫৫৩৩৮৩";
-  const email = s.email || "info@sheikhseeds.site";
+  const email = s.email || "info@oronnonogor.com";
   const address = s.address || "গোপালগঞ্জ সদর, পাবলিক হল রোড";
-  const name = s.site_name || "Sheikh Seeds";
+  const name = s.site_name || "Oronno Nogor";
   const logoSrc = s.logo_url || logo;
 
   return (

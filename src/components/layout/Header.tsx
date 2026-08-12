@@ -57,7 +57,7 @@ export function Header() {
             <div className="relative">
               <img
                 src={logo}
-                alt="Sheikh Seeds"
+                alt="Oronno Nogor"
                 className="w-11 h-11 rounded-full object-cover ring-2 ring-brand/40 shadow-md group-hover:ring-brand transition"
               />
               <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-gradient-to-br from-brand to-brand-dark rounded-full ring-2 ring-white flex items-center justify-center">
@@ -65,7 +65,7 @@ export function Header() {
               </span>
             </div>
             <div className="leading-tight hidden sm:block">
-              <div className="font-extrabold text-brand-dark text-lg tracking-tight">শেখ সিড</div>
+              <div className="font-extrabold text-brand-dark text-lg tracking-tight">অরন্য নগর</div>
               <div className="text-[10px] text-muted-foreground font-medium tracking-wide">PREMIUM SEED HOUSE</div>
             </div>
           </Link>
@@ -154,7 +154,7 @@ export function Header() {
               <div className="flex items-center gap-3">
                 <img src={logo} alt="" width={48} height={48} decoding="async" className="w-12 h-12 rounded-full object-cover ring-2 ring-white/40" />
                 <div>
-                  <div className="font-extrabold">শেখ সিড</div>
+                  <div className="font-extrabold">অরন্য নগর</div>
                   <div className="text-[11px] text-white/80">দেশী ও বিদেশী বীজ</div>
                 </div>
               </div>

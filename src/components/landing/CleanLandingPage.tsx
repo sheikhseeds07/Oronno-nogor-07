@@ -209,7 +209,7 @@ export function CleanLandingPage({ slug }: { slug: string }) {
 
   const topBarText = (page as { top_bar_text?: string }).top_bar_text;
   const cta = page.cta_text || "অর্ডার করুন";
-  const brandName = settings.site_name || "শেখ সিড";
+  const brandName = settings.site_name || "অরন্য নগর";
   const brandLogo = settings.logo_url;
 
   const ctaStyle: React.CSSProperties = {

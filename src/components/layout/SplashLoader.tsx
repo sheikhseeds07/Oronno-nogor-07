@@ -24,11 +24,11 @@ export function SplashLoader() {
           <div className="absolute inset-0 rounded-full bg-brand/20 animate-ping" />
           <img
             src={logo}
-            alt="Sheikh Seeds"
+            alt="Oronno Nogor"
             className="relative w-16 h-16 rounded-full object-cover ring-4 ring-brand/40 shadow-lg"
           />
         </div>
-        <div className="font-extrabold text-brand-dark text-lg tracking-tight">শেখ সিড</div>
+        <div className="font-extrabold text-brand-dark text-lg tracking-tight">অরন্য নগর</div>
       </div>
     </div>
   );

@@ -56,7 +56,7 @@ function ProductPage() {
         priceCurrency: "BDT",
         price: String(price),
         availability: (p.stock ?? 0) > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
-        url: typeof window !== "undefined" ? window.location.href : `https://sheikhseeds.site/product/${p.slug}`,
+        url: typeof window !== "undefined" ? window.location.href : `https://oronnonogor.com/product/${p.slug}`,
       },
     };
     const tag = document.createElement("script");

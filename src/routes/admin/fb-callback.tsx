@@ -6,7 +6,7 @@ export const Route = createFileRoute("/admin/fb-callback")({
   component: FbCallback,
   head: () => ({
     meta: [
-      { title: "Facebook সংযোগ | শেখ সীডস অ্যাডমিন" },
+      { title: "Facebook সংযোগ | অরন্য নগর অ্যাডমিন" },
       { name: "description", content: "ফেসবুক পেইজ সংযোগের ধাপ সম্পন্ন হচ্ছে।" },
       { name: "robots", content: "noindex" },
     ],
@@ -26,8 +26,8 @@ function FbCallback() {
       : { type: "fb-oauth", error: error || "লগইন বাতিল হয়েছে" };
     if (window.opener) {
       const allowedOpeners = [
-        "https://sheikhseeds.site",
-        "https://www.sheikhseeds.site",
+        "https://oronnonogor.com",
+        "https://www.oronnonogor.com",
         "https://warm-db-link.lovable.app",
         "https://id-preview--7827bf31-180a-4633-8399-005e33b3075c.lovable.app",
         "https://7827bf31-180a-4633-8399-005e33b3075c.lovableproject.com",

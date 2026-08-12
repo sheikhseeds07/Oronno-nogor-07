@@ -51,7 +51,7 @@ export const useCart = create<CartState>()(
       count: () => get().items.reduce((s, i) => s + i.quantity, 0),
       subtotal: () => get().items.reduce((s, i) => s + i.price * i.quantity, 0),
     }),
-    { name: "sheikh-seeds-cart", skipHydration: true },
+    { name: "oronno-nogor-cart", skipHydration: true },
   ),
 );
 

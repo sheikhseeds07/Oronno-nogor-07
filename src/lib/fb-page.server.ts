@@ -64,7 +64,7 @@ export function platformFbApp(): { app_id: string; app_secret: string } | null {
 
 /** One stable production callback prevents changing preview domains from breaking Meta OAuth. */
 export function facebookOAuthRedirectUrl(): string {
-  return "https://sheikhseeds.site/admin/fb-callback";
+  return "https://oronnonogor.com/admin/fb-callback";
 }
 
 /**
