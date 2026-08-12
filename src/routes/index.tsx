@@ -8,6 +8,8 @@ import { fallbackBanners, fallbackCategories, fallbackProducts } from "@/lib/fal
 import { getHomeData, type HomeData } from "@/lib/home.functions";
 import { toImg, imgSrcSet } from "@/lib/img";
 
+const PROMO_BANNER_URL = "/__l5e/assets-v1/dcc4e046-2dc8-41c7-8c72-4e81d4ead269/banner-speaker.jpeg";
+const promoBanner = { id: "banner-speaker", title: null as string | null, image_url: PROMO_BANNER_URL, link_url: "#", is_active: true, display_order: 0 };
 const FALLBACK_HOME: HomeData = {
   banners: fallbackBanners as unknown as HomeData["banners"],
   categories: fallbackCategories as unknown as HomeData["categories"],
@@ -24,7 +26,7 @@ const homeQueryOptions = queryOptions({
 
 export const Route = createFileRoute("/")({
   head: () => {
-    const firstBanner = fallbackBanners[0]?.image_url;
+    const firstBanner = PROMO_BANNER_URL;
     return {
       meta: [
         { title: "শেখ সিড — অরিজিনাল বীজ ও গার্ডেন টুলস অনলাইন শপ" },
@@ -84,7 +86,7 @@ function Home() {
   const router = useRouter();
   const { data } = useQuery(homeQueryOptions);
 
-  const banners = (data?.banners?.length ? data.banners : fallbackBanners) as HomeData["banners"];
+  const banners = (data?.banners?.length ? [promoBanner, ...data.banners] : [promoBanner, ...fallbackBanners]) as HomeData["banners"];
   const categories = (data?.categories?.length ? data.categories : fallbackCategories) as HomeData["categories"];
   const featured = ((data?.products?.length ? data.products : (fallbackProducts.filter((p) => p.is_featured).slice(0, 8) as unknown as HomeData["products"])) as unknown) as Product[];
 
