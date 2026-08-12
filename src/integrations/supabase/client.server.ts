@@ -46,9 +46,12 @@ function firstEnv(...names: string[]): string | undefined {
 function createSupabaseAdminClient() {
   // Hosts often only configure the VITE_* URL, so accept those aliases too.
   const SUPABASE_URL = firstEnv('SUPABASE_URL', 'VITE_SUPABASE_URL');
+  // LIVE_DB_SECRET_KEY / SUPABASE_SECRET_KEY win so an explicitly provided project
+  // key can override a platform-injected SUPABASE_SERVICE_ROLE_KEY pointing elsewhere.
   const SUPABASE_SERVICE_ROLE_KEY = firstEnv(
-    'SUPABASE_SERVICE_ROLE_KEY',
+    'LIVE_DB_SECRET_KEY',
     'SUPABASE_SECRET_KEY',
+    'SUPABASE_SERVICE_ROLE_KEY',
     'SERVICE_ROLE_KEY',
   );
 
