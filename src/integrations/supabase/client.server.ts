@@ -43,9 +43,13 @@ function firstEnv(...names: string[]): string | undefined {
   return undefined;
 }
 
+// Production project of the live site. Used when the host injects no URL env var
+// so the server never falls back to a different database than the browser client.
+const LIVE_SUPABASE_URL = 'https://qqubscomvvoymomtxzct.supabase.co';
+
 function createSupabaseAdminClient() {
   // Hosts often only configure the VITE_* URL, so accept those aliases too.
-  const SUPABASE_URL = firstEnv('SUPABASE_URL', 'VITE_SUPABASE_URL');
+  const SUPABASE_URL = firstEnv('SUPABASE_URL', 'VITE_SUPABASE_URL') ?? LIVE_SUPABASE_URL;
   // LIVE_DB_SECRET_KEY / SUPABASE_SECRET_KEY win so an explicitly provided project
   // key can override a platform-injected SUPABASE_SERVICE_ROLE_KEY pointing elsewhere.
   const SUPABASE_SERVICE_ROLE_KEY = firstEnv(
