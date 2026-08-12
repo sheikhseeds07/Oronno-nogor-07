@@ -220,27 +220,6 @@ function Home() {
               )}
             </div>
 
-            {/* Trust strip */}
-            <div className="mt-3 sm:mt-4 grid grid-cols-3 gap-2 sm:gap-3">
-              {[
-                { icon: ShieldCheck, t: "অরিজিনাল বীজ", s: "মান যাচাই করা" },
-                { icon: Truck, t: "সারাদেশে ডেলিভারি", s: "ক্যাশ অন ডেলিভারি" },
-                { icon: Headphones, t: "কৃষি পরামর্শ", s: "বিশেষজ্ঞ সহায়তা" },
-              ].map(({ icon: Icon, t, s }) => (
-                <div
-                  key={t}
-                  className="flex items-center gap-2 sm:gap-3 rounded-xl sm:rounded-2xl bg-card border border-black/5 shadow-sm px-2.5 sm:px-4 py-2.5 sm:py-3.5"
-                >
-                  <span className="shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-brand-light/60 text-brand flex items-center justify-center">
-                    <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-[10px] leading-tight sm:text-sm font-bold text-foreground">{t}</span>
-                    <span className="block text-[9px] leading-tight sm:text-xs text-muted-foreground">{s}</span>
-                  </span>
-                </div>
-              ))}
-            </div>
           </div>
         </section>
       )}
@@ -309,52 +288,61 @@ function Home() {
       </section>
 
       {/* Why us */}
-      <section className="container mx-auto px-3 sm:px-4 py-10 sm:py-14">
-        <div className="text-center mb-8 sm:mb-10">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-light/50 text-brand text-xs font-semibold mb-3">
-            <Sparkles className="w-3.5 h-3.5" />
-            কেন আমরা আলাদা
-          </span>
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-brand-dark tracking-tight">
-            আমাদের বিশেষ সুবিধা
-          </h2>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5 max-w-5xl mx-auto">
-          {[
-            {
-              icon: ShieldCheck,
-              t: "অরিজিনাল বীজ",
-              s: "পরীক্ষিত ও উচ্চ অংকুরোদগম হার নিশ্চিত। প্রতিটি পণ্য গুণগত মান যাচাই করে পাঠানো হয়।",
-              gradient: "from-emerald-500 to-teal-600",
-              light: "bg-emerald-50",
-            },
-            {
-              icon: Truck,
-              t: "দ্রুত ডেলিভারি",
-              s: "সারা বাংলাদেশে নিরাপদ প্যাকেজিং ও দ্রুত পৌঁছে যায়। ক্যাশ অন ডেলিভারি সুবিধা।",
-              gradient: "from-blue-500 to-indigo-600",
-              light: "bg-blue-50",
-            },
-            {
-              icon: Headphones,
-              t: "কৃষি পরামর্শ",
-              s: "অভিজ্ঞ কৃষিবিদদের কাছ থেকে বপন, পরিচর্যা ও রোগবালাই নিয়ে সরাসরি পরামর্শ।",
-              gradient: "from-amber-500 to-orange-600",
-              light: "bg-amber-50",
-            },
-          ].map(({ icon: Icon, t, s, gradient, light }) => (
-            <div
-              key={t}
-              className={`${light} relative rounded-2xl sm:rounded-3xl p-5 sm:p-7 text-center border border-black/5 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300`}
-            >
-              <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-16 h-1 rounded-b-full bg-gradient-to-r ${gradient}`} />
-              <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 bg-gradient-to-br ${gradient} text-white shadow-lg shadow-black/10`}>
-                <Icon className="w-7 h-7 sm:w-8 sm:h-8" />
+      <section className="py-12 sm:py-16 bg-gradient-to-b from-transparent via-brand-light/20 to-transparent">
+        <div className="container mx-auto px-3 sm:px-4">
+          <div className="text-center mb-8 sm:mb-12">
+            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-brand-light/60 text-brand-dark text-[11px] sm:text-xs font-bold tracking-wide ring-1 ring-brand/15">
+              <Sparkles className="w-3.5 h-3.5" />
+              কেন আমরা আলাদা
+            </span>
+            <h2 className="mt-3 text-2xl sm:text-3xl lg:text-4xl font-extrabold text-brand-dark tracking-tight">
+              আমাদের বিশেষ সুবিধা
+            </h2>
+            <p className="mt-2 text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto">
+              ছাদ বাগান থেকে বাণিজ্যিক চাষ — প্রতিটি ধাপে আমরা পাশে আছি।
+            </p>
+            <span className="mt-5 mx-auto block h-1 w-16 rounded-full bg-gradient-to-r from-brand to-brand-dark" />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 max-w-5xl mx-auto">
+            {[
+              {
+                icon: ShieldCheck,
+                t: "অরিজিনাল বীজ",
+                s: "পরীক্ষিত ও উচ্চ অংকুরোদগম হার নিশ্চিত। প্রতিটি পণ্য গুণগত মান যাচাই করে পাঠানো হয়।",
+                n: "০১",
+              },
+              {
+                icon: Truck,
+                t: "দ্রুত ডেলিভারি",
+                s: "সারা বাংলাদেশে নিরাপদ প্যাকেজিং ও দ্রুত পৌঁছে যায়। ক্যাশ অন ডেলিভারি সুবিধা।",
+                n: "০২",
+              },
+              {
+                icon: Headphones,
+                t: "কৃষি পরামর্শ",
+                s: "অভিজ্ঞ কৃষিবিদদের কাছ থেকে বপন, পরিচর্যা ও রোগবালাই নিয়ে সরাসরি পরামর্শ।",
+                n: "০৩",
+              },
+            ].map(({ icon: Icon, t, s, n }) => (
+              <div
+                key={t}
+                className="group relative overflow-hidden rounded-2xl sm:rounded-3xl bg-card border border-border/70 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-brand/30 transition-all duration-300 p-5 sm:p-7"
+              >
+                <span className="pointer-events-none absolute -top-6 -right-3 text-6xl sm:text-7xl font-black text-brand/5 select-none">
+                  {n}
+                </span>
+                <span className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand to-brand-dark scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-500" />
+                <div className="relative">
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center mb-4 bg-brand-light/70 text-brand-dark ring-1 ring-brand/15 group-hover:bg-brand group-hover:text-primary-foreground transition-colors duration-300">
+                    <Icon className="w-6 h-6 sm:w-7 sm:h-7" />
+                  </div>
+                  <div className="font-bold text-base sm:text-lg mb-1.5 text-foreground">{t}</div>
+                  <div className="text-sm text-muted-foreground leading-relaxed">{s}</div>
+                </div>
               </div>
-              <div className="font-bold text-base sm:text-lg mb-2 text-foreground">{t}</div>
-              <div className="text-sm text-muted-foreground leading-relaxed">{s}</div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
     </SiteLayout>
