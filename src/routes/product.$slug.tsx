@@ -31,18 +31,19 @@ function ProductPage() {
     },
   });
 
-  if (isLoading) return <SiteLayout><div className="container mx-auto px-3 py-10"><BrandLoader /></div></SiteLayout>;
-  if (!p) return <SiteLayout><div className="container mx-auto px-3 py-10 text-center">পণ্য পাওয়া যায়নি</div></SiteLayout>;
+  const price = p ? (p.sale_price ?? p.price) : 0;
+  const images: string[] = p?.images?.length ? p.images : ["/placeholder.svg"];
+  const imagesKey = images.join(",");
 
-  const price = p.sale_price ?? p.price;
-  const images: string[] = p.images?.length ? p.images : ["/placeholder.svg"];
-
+  // NOTE: all hooks must run before any early return (React rules of hooks).
   useEffect(() => {
+    if (!p) return;
     trackViewContent({ id: p.id, name: p.name, price });
-  }, [p.id, p.name, price]);
+  }, [p?.id, p?.name, price]);
 
   // Inject Product JSON-LD for SEO
   useEffect(() => {
+    if (!p) return;
     const ld = {
       "@context": "https://schema.org/",
       "@type": "Product",
@@ -64,7 +65,11 @@ function ProductPage() {
     tag.setAttribute("data-product-ld", p.id);
     document.head.appendChild(tag);
     return () => { tag.remove(); };
-  }, [p.id, p.name, p.slug, (p as any).sku, p.stock, p.short_description, p.description, price, images]);
+  }, [p?.id, p?.name, p?.slug, (p as any)?.sku, p?.stock, p?.short_description, p?.description, price, imagesKey]);
+
+  if (isLoading) return <SiteLayout><div className="container mx-auto px-3 py-10"><BrandLoader /></div></SiteLayout>;
+  if (!p) return <SiteLayout><div className="container mx-auto px-3 py-10 text-center">পণ্য পাওয়া যায়নি</div></SiteLayout>;
+
 
   const addToCart = () => {
     add({ id: p.id, name: p.name, slug: p.slug, price, image: images[0], stock: p.stock }, qty);
