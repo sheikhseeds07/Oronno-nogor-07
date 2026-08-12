@@ -1,0 +1,6 @@
+name: sync-home
+on: workflow_dispatch	permissions:
+  contents: write
+jobs:
+  sync:
+    runs_on: ubuntu-latest
