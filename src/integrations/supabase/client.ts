@@ -2,8 +2,10 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const PUBLIC_SUPABASE_URL = 'https://bvuhvzccziuniujeogng.supabase.co';
-const PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_rapcUAgVGYdCuww7Q6GRNg__kFKVc17';
+// Production fallback. Build-time variables still take priority, but a deploy
+// without VITE_* configuration must connect to the same database as the live site.
+const PUBLIC_SUPABASE_URL = 'https://qqubscomvvoymomtxzct.supabase.co';
+const PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxdWJzY29tdnZveW1vbXR4emN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4MDUyNTgsImV4cCI6MjA5NDM4MTI1OH0.NkXEZNQ3xoMEg7dFSAmfInHR1GqawKcpxPW_OmAkYAk';
 
 function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith('sb_publishable_') || value.startsWith('sb_secret_');
