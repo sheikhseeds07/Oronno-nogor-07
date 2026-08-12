@@ -1,26 +1,29 @@
-# Alhamdulillah Connect
+# শেখ সিড — Sheikh Seeds
 
-I want to make an website communication app named Alhamdulillah  where people can communicate each other like whatsapp, so build an website for my app right now.
+বাংলাদেশের অনলাইন বীজ ও গার্ডেন টুলস ই-কমার্স ওয়েবসাইট।
 
-This project was built with [Lovable](https://lovable.dev).
+সাইট: https://oronnonogor.com
 
-**Live app**: https://alhamdulillah-connect.lovable.app
+## Tech
 
-## Build with Lovable
-
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/6402cefc-2377-4280-b79a-6307787783ea).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+- TanStack Start (React 19 + Vite)
+- Tailwind CSS
+- Supabase (database, auth, storage)
+- Cloudflare Workers (deploy)
 
 ## Development
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
-
-```sh
+```bash
 git clone <this-repository-url>
 cd <repository-name>
-npm i
-npm run dev
+bun install
+bun run dev
+```
+
+`.env.example` দেখে `.env` ফাইল তৈরি করুন।
+
+## Build
+
+```bash
+bun run build
 ```
