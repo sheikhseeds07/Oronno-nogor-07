@@ -204,3 +204,60 @@
   100% { transform: var(--fly-end, translate(0,-200px)) scale(0.2); opacity: 0; }
 }
 .fly-to-cart { animation: fly-to-cart 0.7s cubic-bezier(0.5, 0, 0.75, 0) forwards; }
+
+/* ===== Landing page (agriculture theme) ===== */
+.lp-offer {
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,0.10), transparent 60%),
+    linear-gradient(160deg, #14532d 0%, #166534 45%, #0f3d22 100%);
+  box-shadow: 0 18px 40px -22px rgba(6, 78, 59, 0.7), inset 0 0 0 1px rgba(255,255,255,0.08);
+}
+.lp-price-pill {
+  background: linear-gradient(180deg, #fde047, #facc15);
+  box-shadow: 0 0 0 6px rgba(250, 204, 21, 0.18), 0 10px 24px -12px rgba(250, 204, 21, 0.9);
+  animation: lp-pill 2.6s ease-in-out infinite;
+}
+@keyframes lp-pill {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-3px) scale(1.015); }
+}
+.lp-red-cta {
+  background: linear-gradient(180deg, #ef4444, #dc2626);
+  box-shadow: 0 10px 22px -12px rgba(220, 38, 38, 0.85);
+  animation: lp-cta 2.2s ease-in-out infinite;
+  transition: transform 0.15s ease;
+}
+.lp-red-cta:active { transform: scale(0.985); }
+@keyframes lp-cta {
+  0%, 100% { box-shadow: 0 10px 22px -12px rgba(220,38,38,0.85), 0 0 0 0 rgba(220,38,38,0.45); }
+  50% { box-shadow: 0 10px 22px -12px rgba(220,38,38,0.85), 0 0 0 10px rgba(220,38,38,0); }
+}
+.lp-pulse { animation: lp-cta 2.2s ease-in-out infinite; }
+.lp-leaf { animation: lp-float 7s ease-in-out infinite; }
+.lp-leaf-2 { animation-duration: 9s; animation-delay: -3s; }
+@keyframes lp-float {
+  0%, 100% { transform: translateY(0) rotate(-6deg); }
+  50% { transform: translateY(-10px) rotate(8deg); }
+}
+.lp-twinkle { animation: lp-twinkle 2s ease-in-out infinite; }
+@keyframes lp-twinkle { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+.lp-reveal { opacity: 0; transform: translateY(18px); transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
+.lp-reveal-in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .lp-reveal { opacity: 1; transform: none; transition: none; }
+  .lp-price-pill, .lp-red-cta, .lp-pulse, .lp-leaf, .lp-twinkle { animation: none; }
+}
+
+/* Landing promo marquee */
+.lp-marquee { width: 100%; overflow: hidden; }
+.lp-marquee-track { display: flex; width: max-content; animation: lp-marquee 38s linear infinite; }
+.lp-marquee-group { display: inline-flex; align-items: center; white-space: nowrap; }
+@keyframes lp-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+/* Floating main place-order button */
+.lp-float-up { animation: lp-float-up 0.45s ease-out both, lp-cta 2.2s ease-in-out 0.5s infinite; }
+@keyframes lp-float-up { from { opacity: 0; transform: translateY(18px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-marquee-track, .lp-float-up { animation: none; }
+}
