@@ -27,7 +27,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
         <div className="flex items-center justify-between p-4 border-b bg-gradient-to-br from-brand to-brand-dark text-white">
           <div className="flex items-center gap-2">
             <ShoppingBag className="w-5 h-5" />
-            <div className="font-extrabold">আমার কার্ট ({bnDigits(items.length)})</div>
+            <div className="font-extrabold">আমার শপিং কার্ট ({bnDigits(items.length)})</div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-full hover:bg-white/20" aria-label="বন্ধ">
             <X className="w-5 h-5" />
@@ -37,9 +37,9 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
         {items.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
             <ShoppingBag className="w-14 h-14 text-muted-foreground/40 mb-3" />
-            <p className="text-muted-foreground mb-4">কার্ট খালি আছে</p>
+            <p className="text-muted-foreground mb-4">আপনার কার্টে এখনো কোনো পণ্য নেই</p>
             <Link to="/shop" onClick={onClose} className="bg-brand text-white px-6 py-2.5 rounded-full font-semibold">
-              শপিং করুন
+              পণ্য ব্রাউজ করুন
             </Link>
           </div>
         ) : (
