@@ -1,0 +1,189 @@
+// Everything on the clean landing page that used to be hardcoded now lives here.
+// The whole object is stored in landing_pages.planting_steps (jsonb) so no schema
+// change is needed, and every single string / image is editable from admin.
+
+export type SeedRow = { name: string; qty: string };
+export type Feature = { title: string; text?: string; icon?: string };
+export type WhyItem = { title: string; text?: string; icon?: string };
+export type Review = { name: string; rating: number; text: string };
+
+export type LandingTemplate = "combo" | "all";
+
+export type LandingContent = {
+  template: LandingTemplate;
+  promo_messages: string[];
+  header_cta_text: string;
+  offer_badge_text: string;
+  price_prefix: string;
+  discount_suffix: string;
+  hero_note: string;
+  red_cta_text: string;
+  hero_image_2?: string;
+
+  gift_cta_text: string;
+  gift_title_1: string;
+  gift_title_2: string;
+  gift_subtitle: string;
+  gift_image: string;
+  gift_bullets: string[];
+
+  seed_kicker: string;
+  seed_title: string;
+  seed_col_1: string;
+  seed_col_2: string;
+  seed_table: SeedRow[];
+
+  show_countdown: boolean;
+  countdown_hours: number;
+  countdown_title: string;
+
+  features_kicker: string;
+  features_title: string;
+  why_kicker: string;
+  why_title: string;
+  reviews_kicker: string;
+  reviews_title: string;
+
+  package_kicker: string;
+  package_title: string;
+  order_kicker: string;
+  order_title: string;
+  order_note: string;
+  name_label: string;
+  phone_label: string;
+  address_label: string;
+  submit_text: string;
+  cod_note: string;
+  gallery_images: string[];
+
+  show_popup: boolean;
+  popup_title: string;
+  popup_text: string;
+  popup_cta: string;
+  popup_delay: number;
+};
+
+export const DEFAULT_SEEDS: SeedRow[] = [
+  { name: "বিটরুট", qty: "৫ পিস" },
+  { name: "কেরালা শিম", qty: "৫ পিস" },
+  { name: "করলা", qty: "৫ পিস" },
+  { name: "উস্তে", qty: "৫ পিস" },
+  { name: "লাউ", qty: "৫ পিস" },
+  { name: "শষা", qty: "২০+ পিস" },
+  { name: "চিচিঙ্গা", qty: "৫ পিস" },
+  { name: "মিষ্টি কুমড়া", qty: "৫ পিস" },
+  { name: "মরিচ", qty: "২০+ পিস" },
+  { name: "বেগুন", qty: "২০+ পিস" },
+  { name: "ঢেরষ", qty: "৬৫+ বীজ" },
+  { name: "বরবটি", qty: "৪০+ পিস" },
+  { name: "ধুন্দল", qty: "৭+ পিস" },
+  { name: "ঝিঙা", qty: "৭+ পিস" },
+  { name: "চালকুমড়া", qty: "৮+ পিস" },
+  { name: "ধনিয়া", qty: "৬ জিপার" },
+  { name: "পালন শাক", qty: "৬ জিপার" },
+  { name: "পুই শাক", qty: "৬ জিপার" },
+  { name: "কলমি শাক", qty: "৬ জিপার" },
+  { name: "সবুজ শাক", qty: "৬ জিপার" },
+  { name: "লাল শাক", qty: "৬ জিপার" },
+  { name: "ডাটা শাক", qty: "৬ জিপার" },
+  { name: "সুগন্ধি শাক", qty: "৬ জিপার" },
+  { name: "নাফা শাক", qty: "৬ জিপার" },
+];
+
+export const DEFAULT_FEATURES: Feature[] = [
+  { title: "১০০% অরিজিনাল ও পরীক্ষিত বীজ", text: "প্রতিটি প্যাকেট উচ্চ অংকুরোদগম হারের নিশ্চয়তা সহ প্যাক করা হয়।" },
+  { title: "ছাদ বাগান ও টবের জন্য উপযুক্ত", text: "অল্প জায়গাতেই সারা বছর সবজি ফলানোর জন্য বাছাই করা জাত।" },
+  { title: "সব ঋতুর মিক্স কালেকশন", text: "শাক, ফল ও সবজির বৈচিত্র্যময় সংগ্রহ — একবারেই পুরো বাগান।" },
+  { title: "সহজ চাষ পদ্ধতি সহ গাইড", text: "কোন বীজ কখন ও কীভাবে বুনবেন — বাংলায় নির্দেশনা।" },
+];
+
+export const DEFAULT_WHY: WhyItem[] = [
+  { title: "ক্যাশ অন ডেলিভারি", text: "পণ্য হাতে পেয়ে টাকা পরিশোধ করুন।" },
+  { title: "সারা দেশে দ্রুত ডেলিভারি", text: "ঢাকায় ১–২ দিন, ঢাকার বাইরে ২–৩ দিনে পৌঁছে যাবে।" },
+  { title: "মান নিশ্চয়তা", text: "প্যাকেজিং সমস্যা বা ভুল পণ্য হলে রিপ্লেসমেন্ট।" },
+  { title: "সরাসরি কাস্টমার সাপোর্ট", text: "অর্ডার সংক্রান্ত যেকোনো সহায়তায় আমরা আছি।" },
+];
+
+export const DEFAULT_REVIEWS: Review[] = [
+  { name: "রাশেদুল ইসলাম, ঢাকা", rating: 5, text: "প্যাকেজিং খুব ভালো ছিল, প্রায় সব বীজেই চারা এসেছে। ছাদ বাগানের জন্য দুর্দান্ত।" },
+  { name: "সুমাইয়া আক্তার, চট্টগ্রাম", rating: 5, text: "দাম অনুযায়ী এত প্রকার বীজ আশা করিনি। আবার অর্ডার করব ইনশাআল্লাহ।" },
+  { name: "মাহবুব হাসান, রাজশাহী", rating: 4, text: "সময়মতো ডেলিভারি পেয়েছি, ডেলিভারি ম্যানের ব্যবহারও ভালো ছিল।" },
+];
+
+export const DEFAULT_CONTENT: LandingContent = {
+  template: "combo",
+  promo_messages: [
+    "আমাদের বীজ কিনলেই পাবেন গ্যারান্টি কার্ড",
+    "বীজ থেকে চারা তৈরির সম্পূর্ণ গাইডলাইন ফ্রি",
+    "সারা দেশে ক্যাশ অন হোম ডেলিভারি",
+    "১০০% অরিজিনাল ও উচ্চ অংকুরোদগম হারের বীজ",
+    "অর্ডারে সমস্যা হলে সরাসরি কাস্টমার সাপোর্ট",
+  ],
+  header_cta_text: "অর্ডার করুন",
+  offer_badge_text: "BEST OFFER",
+  price_prefix: "মাত্র",
+  discount_suffix: "% ছাড়",
+  hero_note: "সারা দেশে ক্যাশ অন হোম ডেলিভারি",
+  red_cta_text: "অর্ডার করতে ক্লিক করুন",
+  hero_image_2: "",
+
+  gift_cta_text: "১ প্যাকেট বিদেশি বীজ ফ্রী নিন!",
+  gift_title_1: "১ প্যাকেট",
+  gift_title_2: "বিদেশি বীজ ফ্রী",
+  gift_subtitle: "অর্ডারের সাথে বোনাস — সীমিত স্টক পর্যন্ত।",
+  gift_image: "/landing-images/strawberry-combo.jpg",
+  gift_bullets: [
+    "১০০% অরিজিনাল ও ভেজালমুক্ত",
+    "উচ্চ অংকুরোদগম হার",
+    "সারা দেশে দ্রুত ডেলিভারি",
+    "হাতে পেয়ে টাকা পরিশোধ",
+  ],
+
+  seed_kicker: "প্যাকেজ কনটেন্ট",
+  seed_title: "কম্বোতে যে যে বীজ থাকবে",
+  seed_col_1: "বীজের নাম",
+  seed_col_2: "পরিমাণ",
+  seed_table: DEFAULT_SEEDS,
+
+  show_countdown: true,
+  countdown_hours: 3,
+  countdown_title: "অফারটি শেষ হতে আর মাত্র...",
+
+  features_kicker: "প্রোডাক্ট ডিটেইলস",
+  features_title: "কেন এই প্যাকেজটি বিশেষ",
+  why_kicker: "আমাদের নিশ্চয়তা",
+  why_title: "কেন আমাদের ওপর আস্থা রাখবেন",
+  reviews_kicker: "কাস্টমার ফিডব্যাক",
+  reviews_title: "ক্রেতারা যা বলছেন",
+
+  package_kicker: "ধাপ ১",
+  package_title: "প্যাকেজ নির্বাচন করুন",
+  order_kicker: "ধাপ ২",
+  order_title: "ডেলিভারি তথ্য দিন",
+  order_note: "নিশ্চিন্তে অর্ডার করুন। অর্ডার করার পরে আমরা আপনাকে কল দিয়ে বিস্তারিত বলে কনফার্ম করবো।",
+  name_label: "আপনার পুরো নাম *",
+  phone_label: "আপনার ফোন নাম্বার *",
+  address_label: "আপনার সম্পূর্ণ ঠিকানা *",
+  submit_text: "অর্ডার কনফার্ম করুন",
+  cod_note: "পণ্য হাতে পেয়ে টাকা পরিশোধ করুন — ক্যাশ অন ডেলিভারি।",
+  gallery_images: [],
+
+  show_popup: true,
+  popup_title: "গ্যারান্টি কার্ড",
+  popup_text:
+    "আমাদের বীজ কিনলেই ১ প্যাকেট বিদেশি বীজ ফ্রী পাবেন, সাথে গ্যারান্টি কার্ড এবং বীজ থেকে চারা তৈরির সম্পূর্ণ নির্দেশনা।",
+  popup_cta: "এখনই অর্ডার করুন",
+  popup_delay: 1200,
+};
+
+// Merge stored jsonb over the defaults so a partially filled row still renders.
+export function mergeContent(raw: unknown): LandingContent {
+  const c = (raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {}) as Partial<LandingContent>;
+  const out = { ...DEFAULT_CONTENT, ...c } as LandingContent;
+  if (!Array.isArray(out.promo_messages) || !out.promo_messages.length) out.promo_messages = DEFAULT_CONTENT.promo_messages;
+  if (!Array.isArray(out.gift_bullets)) out.gift_bullets = DEFAULT_CONTENT.gift_bullets;
+  if (!Array.isArray(out.seed_table) || !out.seed_table.length) out.seed_table = DEFAULT_CONTENT.seed_table;
+  if (!Array.isArray(out.gallery_images)) out.gallery_images = [];
+  if (out.template !== "all" && out.template !== "combo") out.template = "combo";
+  return out;
+}

@@ -7,56 +7,27 @@ import { placeOrder } from "@/lib/place-order.functions";
 import { useCheckoutAutofill } from "@/lib/useCheckoutAutofill";
 import { taka } from "@/lib/format";
 import { toast } from "sonner";
-import { Check, ShoppingCart, User, Phone, MapPin, Star, Sparkles, Leaf, BarChart3, Sprout, Wallet, Truck, ShieldCheck, Award, Headphones, Home } from "lucide-react";
+import { Check, ShoppingCart, User, Phone, MapPin, Star, Sparkles, Leaf, BarChart3, Sprout, Wallet, Truck, ShieldCheck, Award, Headphones, Home, X } from "lucide-react";
 import { trackInitiateCheckout, trackPurchase } from "@/lib/fbq";
 import { BrandLoader } from "@/components/layout/BrandLoader";
 import { Footer } from "@/components/layout/Footer";
 import { FacebookPixel } from "@/components/layout/FacebookPixel";
 import { trackVisit } from "@/lib/track-visit";
 import { getFbContext } from "@/lib/fb-context";
-import { toImg, imgSrcSet } from "@/lib/img";
+import { toImg, imgSrcSet, imgFallback } from "@/lib/img";
 import brandLogoFile from "@/assets/logo.jpg";
 
-const PROMO_MESSAGES = [
-  "আমাদের বীজ কিনলেই পাবেন গ্যারান্টি কার্ড",
-  "বীজ থেকে চারা তৈরির সম্পূর্ণ গাইডলাইন ফ্রি",
-  "সারা দেশে ক্যাশ অন হোম ডেলিভারি",
-  "১০০% অরিজিনাল ও উচ্চ অংকুরোদগম হারের বীজ",
-  "অর্ডারে সমস্যা হলে সরাসরি কাস্টমার সাপোর্ট",
-];
+import {
+  mergeContent,
+  DEFAULT_FEATURES,
+  DEFAULT_WHY,
+  DEFAULT_REVIEWS,
+  type SeedRow,
+  type Feature,
+  type WhyItem,
+  type Review,
+} from "@/lib/landing-content";
 
-type SeedRow = { name: string; qty: string };
-
-const DEFAULT_SEEDS: SeedRow[] = [
-  { name: "বিটরুট", qty: "৫ পিস" },
-  { name: "কেরালা শিম", qty: "৫ পিস" },
-  { name: "করলা", qty: "৫ পিস" },
-  { name: "উস্তে", qty: "৫ পিস" },
-  { name: "লাউ", qty: "৫ পিস" },
-  { name: "শষা", qty: "২০+ পিস" },
-  { name: "চিচিঙ্গা", qty: "৫ পিস" },
-  { name: "মিষ্টি কুমড়া", qty: "৫ পিস" },
-  { name: "মরিচ", qty: "২০+ পিস" },
-  { name: "বেগুন", qty: "২০+ পিস" },
-  { name: "ঢেরষ", qty: "৬৫+ বীজ" },
-  { name: "বরবটি", qty: "৪০+ পিস" },
-  { name: "ধুন্দল", qty: "৭+ পিস" },
-  { name: "ঝিঙা", qty: "৭+ পিস" },
-  { name: "চালকুমড়া", qty: "৮+ পিস" },
-  { name: "ধনিয়া", qty: "৬ জিপার" },
-  { name: "পালন শাক", qty: "৬ জিপার" },
-  { name: "পুই শাক", qty: "৬ জিপার" },
-  { name: "কলমি শাক", qty: "৬ জিপার" },
-  { name: "সবুজ শাক", qty: "৬ জিপার" },
-  { name: "লাল শাক", qty: "৬ জিপার" },
-  { name: "ডাটা শাক", qty: "৬ জিপার" },
-  { name: "সুগন্ধি শাক", qty: "৬ জিপার" },
-  { name: "নাফা শাক", qty: "৬ জিপার" },
-];
-
-type Feature = { title: string; text?: string; icon?: string };
-type WhyItem = { title: string; text?: string; icon?: string };
-type Review = { name: string; rating: number; text: string };
 
 const DEFAULT_ICONS = [Sprout, Leaf, ShieldCheck, Award, Wallet, Truck, Headphones, BarChart3];
 
@@ -93,25 +64,6 @@ function IconRowList({
   );
 }
 
-const DEFAULT_FEATURES: { title: string; text?: string }[] = [
-  { title: "১০০% অরিজিনাল ও পরীক্ষিত বীজ", text: "প্রতিটি প্যাকেট উচ্চ অংকুরোদগম হারের নিশ্চয়তা সহ প্যাক করা হয়।" },
-  { title: "ছাদ বাগান ও টবের জন্য উপযুক্ত", text: "অল্প জায়গাতেই সারা বছর সবজি ফলানোর জন্য বাছাই করা জাত।" },
-  { title: "সব ঋতুর মিক্স কালেকশন", text: "শাক, ফল ও সবজির বৈচিত্র্যময় সংগ্রহ — একবারেই পুরো বাগান।" },
-  { title: "সহজ চাষ পদ্ধতি সহ গাইড", text: "কোন বীজ কখন ও কীভাবে বুনবেন — বাংলায় নির্দেশনা।" },
-];
-
-const DEFAULT_WHY: { title: string; text?: string }[] = [
-  { title: "ক্যাশ অন ডেলিভারি", text: "পণ্য হাতে পেয়ে টাকা পরিশোধ করুন।" },
-  { title: "সারা দেশে দ্রুত ডেলিভারি", text: "ঢাকায় ১–২ দিন, ঢাকার বাইরে ২–৩ দিনে পৌঁছে যাবে।" },
-  { title: "মান নিশ্চয়তা", text: "প্যাকেজিং সমস্যা বা ভুল পণ্য হলে রিপ্লেসমেন্ট।" },
-  { title: "সরাসরি কাস্টমার সাপোর্ট", text: "অর্ডার সংক্রান্ত যেকোনো সহায়তায় আমরা আছি।" },
-];
-
-const DEFAULT_REVIEWS: Review[] = [
-  { name: "রাশেদুল ইসলাম, ঢাকা", rating: 5, text: "প্যাকেজিং খুব ভালো ছিল, প্রায় সব বীজেই চারা এসেছে। ছাদ বাগানের জন্য দুর্দান্ত।" },
-  { name: "সুমাইয়া আক্তার, চট্টগ্রাম", rating: 5, text: "দাম অনুযায়ী এত প্রকার বীজ আশা করিনি। আবার অর্ডার করব ইনশাআল্লাহ।" },
-  { name: "মাহবুব হাসান, রাজশাহী", rating: 4, text: "সময়মতো ডেলিভারি পেয়েছি, ডেলিভারি ম্যানের ব্যবহারও ভালো ছিল।" },
-];
 
 
 type Addon = {
@@ -277,15 +229,16 @@ export function CleanLandingPage({ slug }: { slug: string }) {
   const discount = regular && regular > price ? Math.round(((regular - price) / regular) * 100) : 0;
   const avgRating =
     reviews.length ? (reviews.reduce((s, r) => s + (Number(r.rating) || 5), 0) / reviews.length).toFixed(1) : "5.0";
-  const seedTable = asArr<{ name: string; qty: string }>((page as { seed_table?: unknown } | null)?.seed_table);
-  const seeds = seedTable.length ? seedTable : DEFAULT_SEEDS;
+  const C = mergeContent((page as { planting_steps?: unknown } | null)?.planting_steps);
+  const seedTable = asArr<SeedRow>((page as { seed_table?: unknown } | null)?.seed_table);
+  const seeds: SeedRow[] = seedTable.length ? seedTable : C.seed_table;
 
-  const RedCta = ({ label = "অর্ডার করতে ক্লিক করুন" }: { label?: string }) => (
+  const RedCta = ({ label }: { label?: string }) => (
     <button
       onClick={scrollToOrder}
       className="lp-red-cta w-full inline-flex items-center justify-center gap-2.5 text-white font-extrabold px-6 py-4 rounded-xl text-[17px] tracking-tight"
     >
-      <ShoppingCart className="w-5 h-5 shrink-0" /> {label}
+      <ShoppingCart className="w-5 h-5 shrink-0" /> {label || C.red_cta_text}
     </button>
   );
 
@@ -304,13 +257,26 @@ export function CleanLandingPage({ slug }: { slug: string }) {
       <FacebookPixel eager />
       <LandingVisitTracker slug={slug} />
 
+      {C.show_popup && (
+        <WelcomePopup
+          themeColor={themeColor}
+          logo={brandLogo}
+          brand={brandName}
+          title={C.popup_title}
+          text={C.popup_text}
+          cta={C.popup_cta}
+          delay={Number(C.popup_delay) || 0}
+          onCta={scrollToOrder}
+        />
+      )}
+
       {/* Editable top promo strip — slow scrolling marquee */}
       <div className="bg-slate-900 text-white text-[12px] sm:text-[13px] py-2 font-medium tracking-wide overflow-hidden">
         <div className="lp-marquee">
           <div className="lp-marquee-track">
             {[0, 1].map((dup) => (
               <span key={dup} className="lp-marquee-group">
-                {(topBarText ? [topBarText] : PROMO_MESSAGES).map((m: string, i: number) => (
+                {(topBarText ? [topBarText] : C.promo_messages).map((m: string, i: number) => (
                   <span key={i} className="inline-flex items-center gap-2 px-6">
                     <Sparkles className="w-3.5 h-3.5 lp-twinkle shrink-0" style={{ color: themeColor }} />
                     {m}
@@ -345,7 +311,7 @@ export function CleanLandingPage({ slug }: { slug: string }) {
             className="shrink-0 text-[13px] font-bold rounded-lg px-4 py-2 text-white transition hover:brightness-95"
             style={ctaStyle}
           >
-            অর্ডার করুন
+            {C.header_cta_text || cta}
           </button>
         </div>
       </header>
@@ -362,23 +328,27 @@ export function CleanLandingPage({ slug }: { slug: string }) {
             <div className="relative mt-5 inline-block">
               <div className="lp-price-pill inline-flex items-center justify-center rounded-full px-8 py-3.5">
                 <span className="text-[27px] sm:text-[32px] font-extrabold text-slate-900 tracking-tight leading-none">
-                  মাত্র {taka(price)}
+                  {C.price_prefix} {taka(price)}
                 </span>
               </div>
-              <span className="absolute -top-3 -right-3 bg-orange-600 text-white text-[10px] font-extrabold tracking-[0.14em] px-2.5 py-1.5 rounded-md shadow-lg">
-                BEST OFFER
-              </span>
+              {C.offer_badge_text && (
+                <span className="absolute -top-3 -right-3 bg-orange-600 text-white text-[10px] font-extrabold tracking-[0.14em] px-2.5 py-1.5 rounded-md shadow-lg">
+                  {C.offer_badge_text}
+                </span>
+              )}
             </div>
             {regular && regular > price && (
               <div className="relative mt-4 flex items-center justify-center gap-2.5 text-white/90">
                 <span className="text-[17px] line-through text-white/60">{taka(regular)}</span>
-                <span className="text-[12px] font-bold px-2.5 py-1 rounded-md bg-white/15">{discount}% ছাড়</span>
+                <span className="text-[12px] font-bold px-2.5 py-1 rounded-md bg-white/15">{discount}{C.discount_suffix}</span>
               </div>
             )}
             <div className="relative mx-auto mt-5 h-[3px] w-16 rounded-full bg-amber-300/80" />
-            <p className="relative mt-4 inline-flex items-center justify-center gap-2 text-[14px] sm:text-[15px] font-medium text-white/90">
-              <Home className="w-4 h-4 shrink-0 text-amber-300" /> সারা দেশে ক্যাশ অন হোম ডেলিভারি
-            </p>
+            {C.hero_note && (
+              <p className="relative mt-4 inline-flex items-center justify-center gap-2 text-[14px] sm:text-[15px] font-medium text-white/90">
+                <Home className="w-4 h-4 shrink-0 text-amber-300" /> {C.hero_note}
+              </p>
+            )}
           </section>
         </Reveal>
 
@@ -396,6 +366,7 @@ export function CleanLandingPage({ slug }: { slug: string }) {
               height={900}
               fetchPriority="high"
               decoding="async"
+              onError={(e) => imgFallback(e, heroImage)}
               className="w-full aspect-square object-cover"
             />
           </div>
@@ -404,41 +375,69 @@ export function CleanLandingPage({ slug }: { slug: string }) {
           )}
         </Reveal>
 
-        {/* Free gift */}
-        <Reveal>
-          <RedCta label="১ প্যাকেট বিদেশি বীজ ফ্রী নিন!" />
-          <div className="mt-4 rounded-2xl bg-white border border-emerald-100 p-4 text-center">
-            <div className="text-[20px] sm:text-[24px] font-extrabold text-emerald-800 leading-snug">
-              ১ প্যাকেট <span className="text-orange-600">বিদেশি বীজ ফ্রী</span>
-            </div>
-            <p className="text-[13px] text-slate-500 mt-1.5">অর্ডারের সাথে বোনাস — সীমিত স্টক পর্যন্ত।</p>
-            <img
-              src="/landing-images/strawberry-combo.jpg"
-              alt="ফ্রী বিদেশি বীজ"
-              width={800}
-              height={800}
-              loading="lazy"
-              decoding="async"
-              className="mt-3 w-full rounded-xl object-cover"
-            />
-            <div className="grid grid-cols-2 gap-2 mt-3 text-left">
-              {["১০০% অরিজিনাল ও ভেজালমুক্ত", "উচ্চ অংকুরোদগম হার", "সারা দেশে দ্রুত ডেলিভারি", "হাতে পেয়ে টাকা পরিশোধ"].map((t) => (
-                <div key={t} className="flex items-start gap-1.5 rounded-lg bg-emerald-50/70 px-2.5 py-2">
-                  <Check className="w-3.5 h-3.5 mt-0.5 shrink-0 text-emerald-600" strokeWidth={3} />
-                  <span className="text-[12px] font-medium text-emerald-900 leading-snug">{t}</span>
-                </div>
+        {/* Extra images */}
+        {C.gallery_images.length > 0 && (
+          <Reveal>
+            <div className="space-y-3">
+              {C.gallery_images.map((g, i) => (
+                <img
+                  key={g + i}
+                  src={toImg(g, { w: 900, q: 80 })}
+                  alt={`${page.title} ${i + 1}`}
+                  loading="lazy"
+                  decoding="async"
+                  onError={(e) => imgFallback(e, g)}
+                  className="w-full rounded-2xl border-[3px] border-white object-cover shadow-[0_6px_24px_-12px_rgba(6,78,59,0.35)]"
+                />
               ))}
             </div>
-          </div>
-        </Reveal>
+          </Reveal>
+        )}
+
+
+
+        {/* Free gift */}
+        {(C.gift_title_1 || C.gift_title_2 || C.gift_image) && (
+          <Reveal>
+            {C.gift_cta_text && <RedCta label={C.gift_cta_text} />}
+            <div className="mt-4 rounded-2xl bg-white border border-emerald-100 p-4 text-center">
+              <div className="text-[20px] sm:text-[24px] font-extrabold text-emerald-800 leading-snug">
+                {C.gift_title_1} <span className="text-orange-600">{C.gift_title_2}</span>
+              </div>
+              {C.gift_subtitle && <p className="text-[13px] text-slate-500 mt-1.5">{C.gift_subtitle}</p>}
+              {C.gift_image && (
+                <img
+                  src={toImg(C.gift_image, { w: 800, q: 80 })}
+                  alt={`${C.gift_title_1} ${C.gift_title_2}`.trim()}
+                  width={800}
+                  height={800}
+                  loading="lazy"
+                  decoding="async"
+                  onError={(e) => imgFallback(e, C.gift_image)}
+                  className="mt-3 w-full rounded-xl object-cover"
+                />
+              )}
+              {C.gift_bullets.length > 0 && (
+                <div className="grid grid-cols-2 gap-2 mt-3 text-left">
+                  {C.gift_bullets.map((t) => (
+                    <div key={t} className="flex items-start gap-1.5 rounded-lg bg-emerald-50/70 px-2.5 py-2">
+                      <Check className="w-3.5 h-3.5 mt-0.5 shrink-0 text-emerald-600" strokeWidth={3} />
+                      <span className="text-[12px] font-medium text-emerald-900 leading-snug">{t}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Reveal>
+        )}
 
         {/* Seed contents table */}
         <Reveal>
-          <SectionHead kicker="প্যাকেজ কনটেন্ট" title="কম্বোতে যে যে বীজ থাকবে" />
+          <SectionHead kicker={C.seed_kicker} title={C.seed_title} />
           <div className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm">
             <div className="grid grid-cols-2 bg-gradient-to-r from-orange-500 to-amber-400 text-white text-[14px] font-extrabold">
-              <div className="px-4 py-3 text-center">বীজের নাম</div>
-              <div className="px-4 py-3 text-center border-l border-white/25">পরিমাণ</div>
+              <div className="px-4 py-3 text-center">{C.seed_col_1}</div>
+              <div className="px-4 py-3 text-center border-l border-white/25">{C.seed_col_2}</div>
             </div>
             {seeds.map((s, i) => (
               <div
@@ -455,14 +454,16 @@ export function CleanLandingPage({ slug }: { slug: string }) {
         <RedCta />
 
         {/* Countdown */}
-        <Reveal>
-          <Countdown themeColor={themeColor} />
-        </Reveal>
+        {C.show_countdown !== false && (
+          <Reveal>
+            <Countdown themeColor={themeColor} hours={C.countdown_hours} title={C.countdown_title} />
+          </Reveal>
+        )}
 
         {/* Features */}
         {features.length > 0 && (
           <Reveal>
-            <SectionHead kicker="প্রোডাক্ট ডিটেইলস" title="কেন এই প্যাকেজটি বিশেষ" />
+            <SectionHead kicker={C.features_kicker} title={C.features_title} />
             <IconRowList items={features} themeColor={themeColor} themeBg10={themeBg10} />
           </Reveal>
         )}
@@ -470,7 +471,7 @@ export function CleanLandingPage({ slug }: { slug: string }) {
         {/* Why choose us */}
         {why.length > 0 && (
           <Reveal>
-            <SectionHead kicker="আমাদের নিশ্চয়তা" title="কেন আমাদের ওপর আস্থা রাখবেন" />
+            <SectionHead kicker={C.why_kicker} title={C.why_title} />
             <IconRowList items={why} themeColor={themeColor} themeBg10={themeBg10} />
             <div className="mt-4">
               <RedCta />
@@ -481,7 +482,7 @@ export function CleanLandingPage({ slug }: { slug: string }) {
         {/* Reviews */}
         {reviews.length > 0 && (
           <Reveal>
-            <SectionHead kicker="কাস্টমার ফিডব্যাক" title="ক্রেতারা যা বলছেন" />
+            <SectionHead kicker={C.reviews_kicker} title={C.reviews_title} />
             <div className="flex items-center justify-center gap-2 mb-3">
               <div className="flex items-center gap-0.5 text-amber-500">
                 {Array.from({ length: 5 }).map((_, k) => (
@@ -510,7 +511,7 @@ export function CleanLandingPage({ slug }: { slug: string }) {
         {/* Package selector */}
         {packages.length > 1 && (
           <Reveal>
-            <SectionHead kicker="ধাপ ১" title="প্যাকেজ নির্বাচন করুন" />
+            <SectionHead kicker={C.package_kicker} title={C.package_title} />
             <div className="space-y-2">
               {packages.map((p, i) => {
                 const active = selectedPkg === i;
@@ -552,28 +553,30 @@ export function CleanLandingPage({ slug }: { slug: string }) {
 
         {/* Checkout */}
         <section id="order" ref={orderSectionRef} className="scroll-mt-20">
-          <SectionHead kicker={packages.length > 1 ? "ধাপ ২" : "অর্ডার"} title="ডেলিভারি তথ্য দিন" />
-          <p className="text-center text-[13px] font-medium text-emerald-800 bg-emerald-50 rounded-xl px-4 py-3 mb-3 leading-relaxed">
-            নিশ্চিন্তে অর্ডার করুন। অর্ডার করার পরে আমরা আপনাকে কল দিয়ে বিস্তারিত বলে কনফার্ম করবো।
-          </p>
+          <SectionHead kicker={packages.length > 1 ? C.order_kicker : "অর্ডার"} title={C.order_title} />
+          {C.order_note && (
+            <p className="text-center text-[13px] font-medium text-emerald-800 bg-emerald-50 rounded-xl px-4 py-3 mb-3 leading-relaxed">
+              {C.order_note}
+            </p>
+          )}
           <div className="rounded-2xl border border-emerald-100 bg-white overflow-hidden">
             <form id="lp-order-form" onSubmit={submit} className="p-4 sm:p-5 space-y-4">
               <div>
-                <label className="text-[13px] font-semibold text-slate-900 block mb-1.5">আপনার পুরো নাম *</label>
+                <label className="text-[13px] font-semibold text-slate-900 block mb-1.5">{C.name_label}</label>
                 <div className="relative">
                   <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="আপনার নাম" className="w-full border border-slate-200 rounded-lg pl-10 pr-3 py-2.5 text-sm bg-slate-50/60 outline-none focus:bg-white focus:border-emerald-500 transition" />
                 </div>
               </div>
               <div>
-                <label className="text-[13px] font-semibold text-slate-900 block mb-1.5">আপনার ফোন নাম্বার *</label>
+                <label className="text-[13px] font-semibold text-slate-900 block mb-1.5">{C.phone_label}</label>
                 <div className="relative">
                   <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input required type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="01XXXXXXXXX" className="w-full border border-slate-200 rounded-lg pl-10 pr-3 py-2.5 text-sm bg-slate-50/60 outline-none focus:bg-white focus:border-emerald-500 transition" />
                 </div>
               </div>
               <div>
-                <label className="text-[13px] font-semibold text-slate-900 block mb-1.5">আপনার সম্পূর্ণ ঠিকানা *</label>
+                <label className="text-[13px] font-semibold text-slate-900 block mb-1.5">{C.address_label}</label>
                 <div className="relative">
                   <MapPin className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
                   <textarea required rows={3} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="গ্রাম/এলাকা, থানা, জেলা" className="w-full border border-slate-200 rounded-lg pl-10 pr-3 py-2.5 text-sm resize-none bg-slate-50/60 outline-none focus:bg-white focus:border-emerald-500 transition" />
@@ -605,11 +608,11 @@ export function CleanLandingPage({ slug }: { slug: string }) {
                 className={`w-full text-white py-4 rounded-xl font-extrabold text-[17px] disabled:opacity-60 transition hover:brightness-95 inline-flex items-center justify-center gap-2 shadow-lg ${formInView ? "lp-float-up" : ""}`}
               >
                 <ShieldCheck className="w-[18px] h-[18px]" />
-                {submitting ? "অর্ডার হচ্ছে..." : `অর্ডার কনফার্ম করুন — ${taka(total)}`}
+                {submitting ? "অর্ডার হচ্ছে..." : `${C.submit_text} — ${taka(total)}`}
               </button>
 
               <p className="text-[12px] text-slate-500 text-center leading-relaxed">
-                পণ্য হাতে পেয়ে টাকা পরিশোধ করুন — ক্যাশ অন ডেলিভারি।
+                {C.cod_note}
               </p>
             </form>
           </div>
@@ -658,7 +661,7 @@ export function CleanLandingPage({ slug }: { slug: string }) {
                 className="w-full bg-amber-400 text-emerald-950 py-3.5 rounded-xl font-extrabold text-[17px] disabled:opacity-60 transition hover:bg-amber-300 inline-flex items-center justify-center gap-2 shadow-lg lp-pulse"
               >
                 <ShieldCheck className="w-[18px] h-[18px]" />
-                {submitting ? "অর্ডার হচ্ছে..." : `অর্ডার কনফার্ম করুন — ${taka(total)}`}
+                {submitting ? "অর্ডার হচ্ছে..." : `${C.submit_text} — ${taka(total)}`}
               </button>
             </div>
           )}
@@ -694,20 +697,21 @@ function Reveal({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Countdown({ themeColor }: { themeColor: string }) {
-  const [left, setLeft] = useState(3 * 3600);
+function Countdown({ themeColor, hours = 3, title }: { themeColor: string; hours?: number; title?: string }) {
+  const secs = Math.max(1, Math.round((Number(hours) || 3) * 3600));
+  const [left, setLeft] = useState(secs);
   useEffect(() => {
     const KEY = "lp-offer-deadline";
     let deadline = Number(localStorage.getItem(KEY) || 0);
     if (!deadline || deadline < Date.now()) {
-      deadline = Date.now() + 3 * 3600 * 1000;
+      deadline = Date.now() + secs * 1000;
       localStorage.setItem(KEY, String(deadline));
     }
     const tick = () => setLeft(Math.max(0, Math.round((deadline - Date.now()) / 1000)));
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [secs]);
   const pad = (n: number) => String(n).padStart(2, "0");
   const parts = [
     { v: pad(Math.floor(left / 3600)), l: "ঘণ্টা" },
@@ -716,7 +720,7 @@ function Countdown({ themeColor }: { themeColor: string }) {
   ];
   return (
     <div className="rounded-2xl border-2 border-dashed border-amber-400 bg-amber-50/70 px-4 py-5 text-center">
-      <div className="text-[15px] font-bold text-slate-800">অফারটি শেষ হতে আর মাত্র...</div>
+      <div className="text-[15px] font-bold text-slate-800">{title || "অফারটি শেষ হতে আর মাত্র..."}</div>
       <div className="mt-3 flex items-start justify-center gap-2">
         {parts.map((p, i) => (
           <div key={p.l} className="flex items-start gap-2">
@@ -744,4 +748,76 @@ function LandingVisitTracker({ slug }: { slug: string }) {
     trackVisit(`/landing/${slug}`);
   }, [slug]);
   return null;
+}
+
+function WelcomePopup({
+  themeColor,
+  logo,
+  brand,
+  title,
+  text,
+  cta,
+  delay,
+  onCta,
+}: {
+  themeColor: string;
+  logo: string;
+  brand: string;
+  title: string;
+  text: string;
+  cta: string;
+  delay: number;
+  onCta: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setOpen(true), delay);
+    return () => clearTimeout(t);
+  }, [delay]);
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <button
+        aria-label="close"
+        onClick={() => setOpen(false)}
+        className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm animate-fade-in"
+      />
+      <div
+        className="relative w-full max-w-sm rounded-3xl border-2 p-6 text-center shadow-2xl animate-scale-in overflow-hidden"
+        style={{
+          borderColor: "#facc15",
+          background: `linear-gradient(160deg, ${themeColor}, color-mix(in oklab, ${themeColor} 55%, #052e16))`,
+        }}
+      >
+        <Leaf className="absolute -left-4 -top-4 w-24 h-24 text-white/10" />
+        <Sprout className="absolute -right-5 -bottom-6 w-28 h-28 text-white/10" />
+        <button
+          onClick={() => setOpen(false)}
+          aria-label="বন্ধ করুন"
+          className="absolute right-3 top-3 text-yellow-300 hover:text-yellow-200"
+        >
+          <X className="w-5 h-5" strokeWidth={3} />
+        </button>
+        <div className="relative flex flex-col items-center gap-3">
+          <span className="grid place-items-center w-16 h-16 rounded-full bg-white/15 ring-2 ring-white/30">
+            <img src={logo} alt={brand} className="w-12 h-12 rounded-full object-cover" />
+          </span>
+          <h3 className="text-[22px] font-extrabold text-white tracking-tight">{title}</h3>
+          <p className="text-[14px] leading-relaxed text-white/85">{text}</p>
+          <button
+            onClick={() => {
+              setOpen(false);
+              onCta();
+            }}
+            className="mt-1 w-full rounded-full bg-white/15 ring-1 ring-white/30 px-6 py-3 font-extrabold text-white text-[16px] transition hover:bg-white/25"
+          >
+            {cta}
+          </button>
+          <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-yellow-300">
+            <ShieldCheck className="w-3.5 h-3.5" /> ১০০% অরিজিনাল বীজের নিশ্চয়তা
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

@@ -6,10 +6,19 @@ import { supabase } from "@/lib/personal-supabase/client";
 import { toast } from "sonner";
 import { Plus, Trash2, ExternalLink, Edit, X, PackagePlus } from "lucide-react";
 import { uploadToBucket, safeFileName } from "@/lib/storage-upload";
+import {
+  mergeContent,
+  DEFAULT_CONTENT,
+  DEFAULT_FEATURES,
+  DEFAULT_WHY,
+  DEFAULT_REVIEWS,
+  type LandingContent,
+  type SeedRow,
+  type Feature,
+  type WhyItem,
+  type Review,
+} from "@/lib/landing-content";
 
-type Feature = { title: string; text?: string };
-type WhyItem = { title: string; text?: string };
-type Review = { name: string; rating: number; text: string };
 type Addon = {
   product_id?: string;
   name: string;
@@ -27,6 +36,7 @@ type LP = {
   top_bar_text?: string | null;
   product_id?: string | null;
   hero_title?: string;
+  hero_subtitle?: string | null;
   hero_image?: string;
   cta_text?: string;
   is_published?: boolean;
@@ -38,6 +48,8 @@ type LP = {
   reviews?: Review[];
   addons?: Addon[];
   theme_color?: string;
+  // every remaining editable text/image of the landing page
+  planting_steps?: LandingContent | null;
 };
 
 export const Route = createFileRoute("/admin/landing-pages")({ component: LandingPagesAdmin });
@@ -48,19 +60,21 @@ const empty: LP = {
   top_bar_text: "",
   cta_text: "অর্ডার করুন",
   main_delivery_fee: 70,
-  features: [],
-  why_choose_us: [],
-  reviews: [],
+  features: DEFAULT_FEATURES,
+  why_choose_us: DEFAULT_WHY,
+  reviews: DEFAULT_REVIEWS,
   addons: [],
   theme_color: "#16a34a",
+  planting_steps: DEFAULT_CONTENT,
 };
+
 
 type Product = { id: string; name: string; price: number; sale_price: number | null; images: string[] | null };
 
 function LandingPagesAdmin() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<LP | null>(null);
-  const [tab, setTab] = useState<"main" | "page" | "products">("main");
+  const [tab, setTab] = useState<"main" | "page" | "content" | "products">("main");
   const [createProductFor, setCreateProductFor] = useState<"main" | number | null>(null);
 
   const { data } = useQuery({
@@ -83,6 +97,25 @@ function LandingPagesAdmin() {
   });
 
   const set = (patch: Partial<LP>) => editing && setEditing({ ...editing, ...patch });
+
+  // Content bag (all the smaller texts/images) — always fully pre-filled
+  const C: LandingContent = mergeContent(editing?.planting_steps);
+  const setC = (patch: Partial<LandingContent>) =>
+    editing && setEditing({ ...editing, planting_steps: { ...C, ...patch } });
+
+  // Open an existing page with every field pre-filled (defaults where empty)
+  const openEdit = (row: unknown) => {
+    const p = row as LP;
+    setEditing({
+      ...empty,
+      ...p,
+      features: p.features?.length ? p.features : DEFAULT_FEATURES,
+      why_choose_us: p.why_choose_us?.length ? p.why_choose_us : DEFAULT_WHY,
+      reviews: p.reviews?.length ? p.reviews : DEFAULT_REVIEWS,
+      planting_steps: mergeContent(p.planting_steps),
+    });
+    setTab("main");
+  };
 
   const save = async () => {
     if (!editing?.title || !editing?.slug) return toast.error("টাইটেল ও slug দিন");
@@ -162,7 +195,7 @@ function LandingPagesAdmin() {
                 <Link to="/landing/$slug" params={{ slug: p.slug }} target="_blank" className="flex-1 text-center p-1.5 hover:bg-muted rounded text-xs">
                   <ExternalLink className="w-3.5 h-3.5 inline" /> দেখুন
                 </Link>
-                <button onClick={() => { setEditing({ ...empty, ...(p as unknown as LP) }); setTab("main"); }} className="flex-1 p-1.5 hover:bg-muted rounded text-xs">
+                <button onClick={() => openEdit(p)} className="flex-1 p-1.5 hover:bg-muted rounded text-xs">
                   <Edit className="w-3.5 h-3.5 inline" /> এডিট
                 </button>
                 <button onClick={() => remove(p.id)} className="p-1.5 hover:bg-destructive/10 text-destructive rounded">
@@ -182,13 +215,14 @@ function LandingPagesAdmin() {
               <button onClick={() => setEditing(null)}><X className="w-5 h-5" /></button>
             </div>
 
-            {/* 3-tab nav */}
+            {/* tab nav — "All product" template has no extra কনটেন্ট tab */}
             <div className="flex gap-1 px-3 pt-3 border-b text-sm">
-              {[
+              {([
                 ["main", "Main"],
                 ["page", "Full page"],
+                ...(C.template === "all" ? [] : [["content", "কনটেন্ট"] as const]),
                 ["products", "Products"],
-              ].map(([k, l]) => (
+              ] as const).map(([k, l]) => (
                 <button key={k} onClick={() => setTab(k as typeof tab)}
                   className={`px-4 py-2 rounded-t-lg font-semibold ${tab === k ? "bg-brand text-white" : "hover:bg-muted"}`}>
                   {l}
@@ -199,6 +233,24 @@ function LandingPagesAdmin() {
             <div className="p-5 space-y-4 overflow-y-auto flex-1">
               {tab === "main" && (
                 <>
+                  <Field label="টেমপ্লেট">
+                    <div className="grid grid-cols-2 gap-2">
+                      {([
+                        ["combo", "Combo", "ফানেল স্টাইল — প্রোমো স্ক্রল, গিফট, কাউন্টডাউন, পপআপ"],
+                        ["all", "All product", "seeds-combo-24 এর মতো ফুল ডিজাইন"],
+                      ] as const).map(([val, label, hint]) => (
+                        <button
+                          key={val}
+                          type="button"
+                          onClick={() => setC({ template: val })}
+                          className={`text-left border rounded-lg p-3 ${C.template === val ? "border-brand bg-brand/5" : "hover:bg-muted"}`}
+                        >
+                          <div className="font-bold text-sm">{label}</div>
+                          <div className="text-[11px] text-muted-foreground mt-0.5">{hint}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </Field>
                   <Field label="Landing page name">
                     <input value={editing.title} onChange={(e) => set({ title: e.target.value })} placeholder="যেমন: প্রিমিয়াম টমেটো বীজ" className="w-full border rounded-lg px-3 py-2" />
                   </Field>
@@ -228,6 +280,11 @@ function LandingPagesAdmin() {
                   <Field label="হেডলাইন">
                     <input value={editing.hero_title ?? ""} onChange={(e) => set({ hero_title: e.target.value })} placeholder="বড় টাইটেল" className="w-full border rounded-lg px-3 py-2" />
                   </Field>
+
+                  <Field label="ইমেজের নিচের ছোট টেক্সট">
+                    <textarea rows={2} value={editing.hero_subtitle ?? ""} onChange={(e) => set({ hero_subtitle: e.target.value })} placeholder="খালি রাখলে দেখাবে না" className="w-full border rounded-lg px-3 py-2" />
+                  </Field>
+
 
                   <Field label="মূল ইমেজ">
                     <input type="file" accept="image/*" onChange={async (e) => {
@@ -301,6 +358,218 @@ function LandingPagesAdmin() {
                   </div>
                 </>
               )}
+
+              {tab === "content" && C.template !== "all" && (
+                <>
+                  <div className="text-xs text-muted-foreground">
+                    পেজের প্রতিটি টেক্সট ও ইমেজ এখান থেকে বদলানো যাবে। খালি রাখলে সেই অংশ পেজে দেখাবে না।
+                  </div>
+
+                  <div className="rounded-lg border p-3 space-y-3">
+                    <label className="flex items-center gap-2 text-sm font-semibold">
+                      <input
+                        type="checkbox"
+                        checked={!!C.show_popup}
+                        onChange={(e) => setC({ show_popup: e.target.checked })}
+                      />
+                      সাইটে ঢোকার সাথে সাথে পপআপ দেখাবে
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="পপআপ টাইটেল">
+                        <input value={C.popup_title} onChange={(e) => setC({ popup_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
+                      </Field>
+                      <Field label="পপআপ বাটন টেক্সট">
+                        <input value={C.popup_cta} onChange={(e) => setC({ popup_cta: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
+                      </Field>
+                    </div>
+                    <Field label="পপআপ টেক্সট">
+                      <textarea
+                        rows={3}
+                        value={C.popup_text}
+                        onChange={(e) => setC({ popup_text: e.target.value })}
+                        className="w-full border rounded-lg px-3 py-2 text-sm"
+                      />
+                    </Field>
+                    <Field label="কত মিলিসেকেন্ড পরে দেখাবে">
+                      <input
+                        type="number"
+                        value={C.popup_delay}
+                        onChange={(e) => setC({ popup_delay: Number(e.target.value) })}
+                        className="w-full border rounded-lg px-3 py-2"
+                      />
+                    </Field>
+                  </div>
+
+
+                  <Field label="উপরের স্ক্রলিং টেক্সট (এক লাইনে একটি)">
+                    <textarea
+                      rows={5}
+                      value={C.promo_messages.join("\n")}
+                      onChange={(e) => setC({ promo_messages: e.target.value.split("\n").filter((x) => x.trim()) })}
+                      className="w-full border rounded-lg px-3 py-2 text-sm"
+                    />
+                  </Field>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="হেডারের বাটন টেক্সট">
+                      <input value={C.header_cta_text} onChange={(e) => setC({ header_cta_text: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
+                    </Field>
+                    <Field label="অফার ব্যাজ (BEST OFFER)">
+                      <input value={C.offer_badge_text} onChange={(e) => setC({ offer_badge_text: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
+                    </Field>
+                    <Field label="দামের আগের শব্দ">
+                      <input value={C.price_prefix} onChange={(e) => setC({ price_prefix: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
+                    </Field>
+                    <Field label="ছাড়ের পরের শব্দ">
+                      <input value={C.discount_suffix} onChange={(e) => setC({ discount_suffix: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
+                    </Field>
+                  </div>
+
+                  <Field label="হিরো কার্ডের নিচের লাইন">
+                    <input value={C.hero_note} onChange={(e) => setC({ hero_note: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
+                  </Field>
+
+                  <Field label="লাল অর্ডার বাটনের টেক্সট">
+                    <input value={C.red_cta_text} onChange={(e) => setC({ red_cta_text: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
+                  </Field>
+
+                  {/* Extra images */}
+                  <div className="pt-3 border-t">
+                    <div className="font-semibold text-sm mb-2">অতিরিক্ত ইমেজ (হিরো ইমেজের নিচে)</div>
+                    <ImageList
+                      items={C.gallery_images}
+                      onChange={(gallery_images) => setC({ gallery_images })}
+                      uploadImage={uploadImage}
+                    />
+                  </div>
+
+                  {/* Free gift block */}
+                  <div className="pt-3 border-t space-y-3">
+                    <div className="font-semibold text-sm">ফ্রি গিফট সেকশন</div>
+                    <Field label="উপরের লাল বাটনের টেক্সট">
+                      <input value={C.gift_cta_text} onChange={(e) => setC({ gift_cta_text: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
+                    </Field>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="টাইটেল (কালো অংশ)">
+                        <input value={C.gift_title_1} onChange={(e) => setC({ gift_title_1: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
+                      </Field>
+                      <Field label="টাইটেল (কমলা অংশ)">
+                        <input value={C.gift_title_2} onChange={(e) => setC({ gift_title_2: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
+                      </Field>
+                    </div>
+                    <Field label="সাব-টেক্সট">
+                      <input value={C.gift_subtitle} onChange={(e) => setC({ gift_subtitle: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
+                    </Field>
+                    <Field label="গিফট ইমেজ">
+                      <input type="file" accept="image/*" onChange={async (e) => {
+                        const f = e.target.files?.[0]; if (!f) return;
+                        const url = await uploadImage(f);
+                        if (url) setC({ gift_image: url });
+                      }} />
+                      <input value={C.gift_image} onChange={(e) => setC({ gift_image: e.target.value })} placeholder="অথবা URL পেস্ট" className="w-full border rounded-lg px-3 py-2 text-sm mt-2" />
+                      {C.gift_image && <img src={C.gift_image} className="mt-2 w-full max-h-48 object-cover rounded" alt="" />}
+                    </Field>
+                    <Field label="গিফট বুলেট পয়েন্ট (এক লাইনে একটি)">
+                      <textarea
+                        rows={4}
+                        value={C.gift_bullets.join("\n")}
+                        onChange={(e) => setC({ gift_bullets: e.target.value.split("\n").filter((x) => x.trim()) })}
+                        className="w-full border rounded-lg px-3 py-2 text-sm"
+                      />
+                    </Field>
+                  </div>
+
+                  {/* Seed table */}
+                  <div className="pt-3 border-t space-y-3">
+                    <div className="font-semibold text-sm">বীজের তালিকা (টেবিল)</div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="ছোট হেডিং">
+                        <input value={C.seed_kicker} onChange={(e) => setC({ seed_kicker: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
+                      </Field>
+                      <Field label="বড় হেডিং">
+                        <input value={C.seed_title} onChange={(e) => setC({ seed_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
+                      </Field>
+                      <Field label="কলাম ১ নাম">
+                        <input value={C.seed_col_1} onChange={(e) => setC({ seed_col_1: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
+                      </Field>
+                      <Field label="কলাম ২ নাম">
+                        <input value={C.seed_col_2} onChange={(e) => setC({ seed_col_2: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
+                      </Field>
+                    </div>
+                    <RepeatList<SeedRow>
+                      items={C.seed_table}
+                      onChange={(seed_table) => setC({ seed_table })}
+                      empty={{ name: "", qty: "" }}
+                      render={(s, upd) => (
+                        <div className="grid grid-cols-2 gap-2 pr-6">
+                          <input placeholder="বীজের নাম" value={s.name} onChange={(e) => upd({ ...s, name: e.target.value })} className="border rounded-lg px-3 py-2 text-sm" />
+                          <input placeholder="পরিমাণ" value={s.qty} onChange={(e) => upd({ ...s, qty: e.target.value })} className="border rounded-lg px-3 py-2 text-sm" />
+                        </div>
+                      )}
+                    />
+                  </div>
+
+                  {/* Countdown */}
+                  <div className="pt-3 border-t space-y-3">
+                    <label className="flex items-center gap-2 font-semibold text-sm">
+                      <input type="checkbox" checked={C.show_countdown !== false} onChange={(e) => setC({ show_countdown: e.target.checked })} />
+                      কাউন্টডাউন টাইমার দেখান
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="টাইমারের টেক্সট">
+                        <input value={C.countdown_title} onChange={(e) => setC({ countdown_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
+                      </Field>
+                      <Field label="কত ঘণ্টা">
+                        <input type="number" min={1} value={C.countdown_hours} onChange={(e) => setC({ countdown_hours: Number(e.target.value) || 1 })} className="w-full border rounded-lg px-3 py-2" />
+                      </Field>
+                    </div>
+                  </div>
+
+                  {/* Section headings */}
+                  <div className="pt-3 border-t space-y-3">
+                    <div className="font-semibold text-sm">সেকশন হেডিং</div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="বৈশিষ্ট্য — ছোট"><input value={C.features_kicker} onChange={(e) => setC({ features_kicker: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="বৈশিষ্ট্য — বড়"><input value={C.features_title} onChange={(e) => setC({ features_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="কেন কিনবেন — ছোট"><input value={C.why_kicker} onChange={(e) => setC({ why_kicker: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="কেন কিনবেন — বড়"><input value={C.why_title} onChange={(e) => setC({ why_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="রিভিউ — ছোট"><input value={C.reviews_kicker} onChange={(e) => setC({ reviews_kicker: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="রিভিউ — বড়"><input value={C.reviews_title} onChange={(e) => setC({ reviews_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="প্যাকেজ — ছোট"><input value={C.package_kicker} onChange={(e) => setC({ package_kicker: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="প্যাকেজ — বড়"><input value={C.package_title} onChange={(e) => setC({ package_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="অর্ডার — ছোট"><input value={C.order_kicker} onChange={(e) => setC({ order_kicker: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="অর্ডার — বড়"><input value={C.order_title} onChange={(e) => setC({ order_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field>
+                    </div>
+                  </div>
+
+                  {/* Order form */}
+                  <div className="pt-3 border-t space-y-3">
+                    <div className="font-semibold text-sm">অর্ডার ফর্ম</div>
+                    <Field label="ফর্মের উপরের নোট">
+                      <textarea rows={2} value={C.order_note} onChange={(e) => setC({ order_note: e.target.value })} className="w-full border rounded-lg px-3 py-2 text-sm" />
+                    </Field>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="নামের লেবেল"><input value={C.name_label} onChange={(e) => setC({ name_label: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="ফোনের লেবেল"><input value={C.phone_label} onChange={(e) => setC({ phone_label: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="ঠিকানার লেবেল"><input value={C.address_label} onChange={(e) => setC({ address_label: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="সাবমিট বাটন"><input value={C.submit_text} onChange={(e) => setC({ submit_text: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field>
+                    </div>
+                    <Field label="ফর্মের নিচের ছোট নোট">
+                      <input value={C.cod_note} onChange={(e) => setC({ cod_note: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
+                    </Field>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setEditing({ ...editing, planting_steps: { ...DEFAULT_CONTENT } })}
+                    className="text-xs underline text-muted-foreground"
+                  >
+                    সব কনটেন্ট ডিফল্টে ফিরিয়ে নিন
+                  </button>
+                </>
+              )}
+
+
 
               {tab === "products" && (
                 <>
@@ -513,6 +782,49 @@ function QuickCreateProduct({
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ImageList({
+  items,
+  onChange,
+  uploadImage,
+}: {
+  items: string[];
+  onChange: (next: string[]) => void;
+  uploadImage: (f: File) => Promise<string | null>;
+}) {
+  return (
+    <div className="space-y-2">
+      {items.map((url, i) => (
+        <div key={url + i} className="flex items-center gap-2 border rounded-lg p-2 bg-muted/30">
+          <img src={url} alt="" className="w-14 h-14 rounded object-cover shrink-0" />
+          <input
+            value={url}
+            onChange={(e) => onChange(items.map((it, j) => (j === i ? e.target.value : it)))}
+            className="flex-1 border rounded-lg px-2 py-1.5 text-xs"
+          />
+          <button type="button" onClick={() => onChange(items.filter((_, j) => j !== i))} className="text-destructive">
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      ))}
+      <label className="w-full border-2 border-dashed rounded-lg py-2 text-sm font-semibold text-brand hover:bg-brand/5 flex items-center justify-center gap-1 cursor-pointer">
+        <Plus className="w-4 h-4" /> ইমেজ আপলোড
+        <input
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={async (e) => {
+            const f = e.target.files?.[0];
+            if (!f) return;
+            const url = await uploadImage(f);
+            if (url) onChange([...items, url]);
+            e.target.value = "";
+          }}
+        />
+      </label>
     </div>
   );
 }
