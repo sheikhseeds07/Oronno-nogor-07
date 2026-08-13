@@ -9,7 +9,7 @@ import { taka } from "@/lib/format";
 import logoUrl from "@/assets/logo.jpg";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { Search, Plus, Globe, ListOrdered, Trash2, CheckCircle2, Phone, MessageCircle, ExternalLink, Send, Printer, Copy, X, Loader2, AlertCircle, ShoppingCart, Check } from "lucide-react";
+import { Search, Plus, Globe, ListOrdered, Trash2, CheckCircle2, Phone, MessageCircle, ExternalLink, Send, Printer, Copy, X, Loader2, AlertCircle, ShoppingCart, Check, ArrowRightLeft } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useServerFn } from "@tanstack/react-start";
 import { fetchCourierHistory } from "@/lib/courier-history.functions";
@@ -20,6 +20,8 @@ import { getOrderStatusCounts } from "@/lib/reports.functions";
 import { acquireOrderLock, heartbeatOrderLock, releaseOrderLock, listOrderLocks } from "@/lib/order-lock.functions";
 import { useAuth } from "@/lib/auth";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+
+
 
 const ordersSearchSchema = z.object({
   tab: z.enum(["search", "new", "web", "list"]).optional(),
@@ -1062,7 +1064,7 @@ function OrdersTable({
           {mode === "list" && !isRtsFilter && (
             <ActionBtn onClick={bulkMoveToRts} icon={CheckCircle2} tone="indigo">RTS এ পাঠান</ActionBtn>
           )}
-          {(isPendingFilter || isRtsFilter) && (
+          {(filter === "pending" || filter === "rts" || (mode === "web" && filter === "web_pending")) && (
             <ActionBtn onClick={bulkDeleteSelected} icon={Trash2} tone="rose">ডিলিট করুন</ActionBtn>
           )}
 
@@ -1349,7 +1351,9 @@ type OrderRow = {
   created_at: string; total: number; status: OrderStatus;
   courier_consignment?: string | null; printed_at?: string | null;
   order_items?: OrderItemRow[];
+  assigned_to?: string | null;
 };
+
 
 /** Show first 3 product thumbnails; collapse the rest into a "+N" pill that
  *  opens a hover/click popover with all remaining items. */
@@ -1888,7 +1892,9 @@ type DetailOrder = {
   thana: string | null; district: string | null; notes: string | null;
   subtotal: number; delivery_fee: number; discount: number; total: number;
   created_at: string; order_items: DetailItem[];
+  assigned_to?: string | null;
 };
+
 
 const COURIERS = ["Steadfast", "Pathao", "RedX", "eCourier", "Paperfly"] as const;
 type Courier = typeof COURIERS[number];
@@ -2106,6 +2112,9 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
   const [items, setItems] = useState<DetailItem[]>([]);
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
+  const [assignedTo, setAssignedTo] = useState<string | null>(null);
+  const [transferring, setTransferring] = useState(false);
+
 
   // Customer history by phone — updates immediately when the mobile number field changes.
   const lookupPhoneDigits = normalizePhone(phoneVal || detail?.customer_phone || "");
@@ -2129,7 +2138,9 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
     setDiscount(Number(detail.discount) || 0);
     setDeliveryCharge(Number(detail.delivery_fee) || 0);
     setItems(detail.order_items ?? []);
+    setAssignedTo(detail.assigned_to ?? null);
   }, [detail]);
+
 
   const debouncedSearch = useDebouncedValue(search, 300);
   const { data: products } = useQuery({
@@ -2286,6 +2297,8 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
       setSaving(false);
     }
   };
+  
+
 
 
   if (lockState === "blocked") {
@@ -2393,7 +2406,9 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
               <textarea rows={3} value={shippingNote} onChange={(e) => setShippingNote(e.target.value)} maxLength={350} className="w-full border rounded-lg px-3 py-2 text-sm" />
               <div className="text-[11px] text-right text-muted-foreground">{shippingNote.length}/350</div>
             </div>
+
           </div>
+
 
           {/* Products: ordered + add */}
           <div className="p-4 grid lg:grid-cols-2 gap-4 border-t">
