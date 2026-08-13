@@ -124,8 +124,14 @@ function useLiveOrders() {
       .subscribe();
 
     // Safety net if realtime is unavailable: light periodic refresh only.
-    // No focus/visibility refetch — switching browser tabs must not reload the page data.
-    const poll = setInterval(() => { if (!document.hidden) invalidate(); }, 15_000);
+    // Safety net if realtime is unavailable: light periodic refresh only.
+    // Switching browser tabs must NOT reload or invalidate queries — that's handled by realtime or explicit actions.
+    const poll = setInterval(() => { 
+      if (!document.hidden) {
+        // Only refresh in background if really needed, but here we prioritize stability.
+        // invalidate(); // Disabled to prevent perceived reloads on tab switch
+      }
+    }, 60_000);
     return () => {
       supabase.removeChannel(channel);
       clearInterval(poll);
@@ -877,17 +883,27 @@ function OrdersTable({
     qc.invalidateQueries({ queryKey: ["admin-orders"] });
   };
 
-
   const bulkDeleteSelected = async () => {
     if (!selectedIds.size) return;
-    if (!confirmWindow(`${selectedIds.size} টি অর্ডার ডিলিট করবেন?`)) return;
+    const ids = Array.from(selectedIds);
+    if (!confirmWindow(`${ids.length} টি অর্ডার ডিলিট করবেন? এই কাজ আর ফিরিয়ে আনা যাবে না।`)) return;
+    
+    // Optimistic remove
+    optimisticRemove(ids);
+
     try {
-      await deleteOrdersFn({ data: { ids: Array.from(selectedIds) } });
-      toast.success("ডিলিট হয়েছে");
-      setSelectedIds(new Set());
+      const res = await deleteOrdersFn({ data: { ids } });
+      toast.success(`${res.deleted} টি অর্ডার ডিলিট হয়েছে`);
+      qc.invalidateQueries({ queryKey: ["order-status-counts"] });
       qc.invalidateQueries({ queryKey: ["admin-orders"] });
-    } catch (e) { toast.error(e instanceof Error ? e.message : "ব্যর্থ"); }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "ব্যর্থ");
+      qc.invalidateQueries({ queryKey: ["admin-orders"] });
+    }
   };
+
+
+
 
   // Bulk actions for incomplete rows (ids prefixed with "inc:").
   const bulkIncompletePromote = async () => {
@@ -1047,6 +1063,11 @@ function OrdersTable({
           {mode === "list" && !isRtsFilter && (
             <ActionBtn onClick={bulkMoveToRts} icon={CheckCircle2} tone="indigo">RTS এ পাঠান</ActionBtn>
           )}
+          {(isPendingFilter || isRtsFilter) && (
+            <ActionBtn onClick={bulkDeleteSelected} icon={Trash2} tone="rose">ডিলিট করুন</ActionBtn>
+          )}
+
+          
           {isRtsFilter && (
             <>
               <ActionBtn onClick={() => bulkSendCourier(1)} icon={Send} tone="emerald">কুরিয়ার ১ এ পাঠান (Steadfast)</ActionBtn>
@@ -1070,7 +1091,7 @@ function OrdersTable({
                 <option value="cancelled">ক্যান্সেলড</option>
                 <option value="web_pending">ওয়েব পেন্ডিং</option>
               </select>
-              <ActionBtn onClick={bulkDeleteSelected} icon={Trash2} tone="rose">ডিলিট</ActionBtn>
+              
             </>
           )}
           {isIncomplete && (

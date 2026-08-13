@@ -21,6 +21,8 @@ export type Database = {
           created_at: string
           id: string
           note: string | null
+          notes: string | null
+          status: string
           user_id: string
         }
         Insert: {
@@ -29,6 +31,8 @@ export type Database = {
           created_at?: string
           id?: string
           note?: string | null
+          notes?: string | null
+          status?: string
           user_id: string
         }
         Update: {
@@ -37,6 +41,8 @@ export type Database = {
           created_at?: string
           id?: string
           note?: string | null
+          notes?: string | null
+          status?: string
           user_id?: string
         }
         Relationships: []
@@ -521,16 +527,16 @@ export type Database = {
       }
       landing_pages: {
         Row: {
-          addons: Json
+          addons: Json | null
           badges: Json
           created_at: string
           cta_text: string | null
-          delivery_inside: number
+          delivery_inside: number | null
           delivery_outside: number
           description: string | null
-          faq: Json
-          features: Json
-          gallery_images: string[]
+          faq: Json | null
+          features: Json | null
+          gallery_images: string[] | null
           guarantee_text: string | null
           hero_image: string | null
           hero_subtitle: string | null
@@ -538,15 +544,15 @@ export type Database = {
           id: string
           is_published: boolean
           main_delivery_fee: number | null
-          planting_steps: Json
+          planting_steps: Json | null
           product_id: string | null
           regular_price: number | null
-          reviews: Json
+          reviews: Json | null
           sale_price: number | null
           seeds_list: Json
-          show_faq: boolean
-          show_features: boolean
-          show_reviews: boolean
+          show_faq: boolean | null
+          show_features: boolean | null
+          show_reviews: boolean | null
           slug: string
           theme_color: string | null
           title: string
@@ -555,16 +561,16 @@ export type Database = {
           why_choose_us: Json
         }
         Insert: {
-          addons?: Json
+          addons?: Json | null
           badges?: Json
           created_at?: string
           cta_text?: string | null
-          delivery_inside?: number
+          delivery_inside?: number | null
           delivery_outside?: number
           description?: string | null
-          faq?: Json
-          features?: Json
-          gallery_images?: string[]
+          faq?: Json | null
+          features?: Json | null
+          gallery_images?: string[] | null
           guarantee_text?: string | null
           hero_image?: string | null
           hero_subtitle?: string | null
@@ -572,15 +578,15 @@ export type Database = {
           id?: string
           is_published?: boolean
           main_delivery_fee?: number | null
-          planting_steps?: Json
+          planting_steps?: Json | null
           product_id?: string | null
           regular_price?: number | null
-          reviews?: Json
+          reviews?: Json | null
           sale_price?: number | null
           seeds_list?: Json
-          show_faq?: boolean
-          show_features?: boolean
-          show_reviews?: boolean
+          show_faq?: boolean | null
+          show_features?: boolean | null
+          show_reviews?: boolean | null
           slug: string
           theme_color?: string | null
           title: string
@@ -589,16 +595,16 @@ export type Database = {
           why_choose_us?: Json
         }
         Update: {
-          addons?: Json
+          addons?: Json | null
           badges?: Json
           created_at?: string
           cta_text?: string | null
-          delivery_inside?: number
+          delivery_inside?: number | null
           delivery_outside?: number
           description?: string | null
-          faq?: Json
-          features?: Json
-          gallery_images?: string[]
+          faq?: Json | null
+          features?: Json | null
+          gallery_images?: string[] | null
           guarantee_text?: string | null
           hero_image?: string | null
           hero_subtitle?: string | null
@@ -606,15 +612,15 @@ export type Database = {
           id?: string
           is_published?: boolean
           main_delivery_fee?: number | null
-          planting_steps?: Json
+          planting_steps?: Json | null
           product_id?: string | null
           regular_price?: number | null
-          reviews?: Json
+          reviews?: Json | null
           sale_price?: number | null
           seeds_list?: Json
-          show_faq?: boolean
-          show_features?: boolean
-          show_reviews?: boolean
+          show_faq?: boolean | null
+          show_features?: boolean | null
+          show_reviews?: boolean | null
           slug?: string
           theme_color?: string | null
           title?: string
@@ -1004,22 +1010,7 @@ export type Database = {
       }
     }
     Views: {
-      top_selling_products: {
-        Row: {
-          order_count: number | null
-          product_id: string | null
-          total_sold: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "order_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
       has_permission: {
@@ -1035,7 +1026,6 @@ export type Database = {
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
-      refresh_top_selling_products: { Args: never; Returns: undefined }
       release_fb_lock: { Args: { _key: string }; Returns: undefined }
       try_fb_lock: {
         Args: { _key: string; _seconds: number }
