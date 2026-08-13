@@ -1,7 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode, type MouseEvent } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { BrandLoader } from "@/components/layout/BrandLoader";
 import { supabase } from "@/lib/personal-supabase/client";
@@ -91,7 +91,54 @@ const TABS: { key: Tab; label: string; icon: typeof Search }[] = [
   { key: "list", label: "অর্ডার লিস্ট", icon: ListOrdered },
 ];
 
+// Keys that must refresh whenever any order data changes anywhere.
+const ORDER_QUERY_KEYS = [
+  "admin-orders",
+  "admin-orders-incomplete",
+  "order-status-counts",
+  "incomplete-count",
+  "order-search",
+  "order-detail",
+] as const;
+
+/** Live-refresh every order related query on any DB change (no page refresh needed). */
+function useLiveOrders() {
+  const qc = useQueryClient();
+  useEffect(() => {
+    let scheduled = false;
+    const invalidate = () => {
+      if (scheduled) return;
+      scheduled = true;
+      setTimeout(() => {
+        scheduled = false;
+        for (const key of ORDER_QUERY_KEYS) {
+          qc.invalidateQueries({ queryKey: [key], refetchType: "all" });
+        }
+      }, 120);
+    };
+    const channel = supabase
+      .channel("admin-orders-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, invalidate)
+      .on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, invalidate)
+      .on("postgres_changes", { event: "*", schema: "public", table: "incomplete_orders" }, invalidate)
+      .subscribe();
+
+    // Safety net if realtime is unavailable: light periodic refresh + on focus.
+    const poll = setInterval(() => { if (!document.hidden) invalidate(); }, 15_000);
+    const onFocus = () => invalidate();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(poll);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
+  }, [qc]);
+}
+
 function Orders() {
+  useLiveOrders();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/admin/orders" });
   const tab: Tab = search.tab ?? "web";
@@ -259,12 +306,14 @@ function SearchPanel({ onOpen }: { onOpen: (id: string) => void }) {
                   {savingId === o.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
                   কনফার্ম
                 </button>
-                <button
-                  onClick={() => onOpen(o.id)}
+                <Link
+                  to="/admin/orders"
+                  search={{ tab: "search", selected: o.id }}
+                  onClick={(e) => { if (!e.metaKey && !e.ctrlKey && e.button === 0) { e.preventDefault(); onOpen(o.id); } }}
                   className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gradient-to-br from-brand to-brand-dark text-white text-xs font-bold shadow-sm hover:shadow-md transition"
                 >
                   Open <ExternalLink className="w-3 h-3" />
-                </button>
+                </Link>
               </div>
             );
           })}
@@ -541,30 +590,7 @@ function OrdersTable({
     return () => { alive = false; clearInterval(t); };
   }, [isShippedFilter, syncStatuses, qc]);
 
-  // Realtime: live-update orders + incomplete_orders.
-  // One channel for the whole table; we just invalidate React Query keys so the
-  // UI re-fetches the slimmed list on any insert/update/delete.
-  useEffect(() => {
-    let scheduled = false;
-    const invalidate = () => {
-      if (scheduled) return;
-      scheduled = true;
-      // Coalesce bursts (e.g. bulk update) into a single invalidation tick.
-      setTimeout(() => {
-        scheduled = false;
-        qc.invalidateQueries({ queryKey: ["admin-orders"] });
-        qc.invalidateQueries({ queryKey: ["admin-orders-incomplete"] });
-        qc.invalidateQueries({ queryKey: ["order-status-counts"] });
-        qc.invalidateQueries({ queryKey: ["incomplete-count"] });
-      }, 120);
-    };
-    const channel = supabase
-      .channel("admin-orders-rt")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, invalidate)
-      .on("postgres_changes", { event: "*", schema: "public", table: "incomplete_orders" }, invalidate)
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [qc]);
+  // Realtime live-updates are handled once in <Orders /> via useLiveOrders().
 
 
 
@@ -1570,10 +1596,16 @@ function OrdersTableRows({
                   {(() => {
                     const lock = lockMap?.get(o.id);
                     const lockedByOther = lock && lock.user_id !== currentUserId;
+                    const linkSearch = { tab: (isWeb ? "web" : "list") as "web" | "list", selected: o.id };
+                    const handleClick = (e: MouseEvent) => {
+                      if (!e.metaKey && !e.ctrlKey && e.button === 0) { e.preventDefault(); onOpen(o.id); }
+                    };
                     if (lockedByOther) {
                       return (
-                        <button
-                          onClick={() => onOpen(o.id)}
+                        <Link
+                          to="/admin/orders"
+                          search={linkSearch}
+                          onClick={handleClick}
                           className="inline-flex flex-col items-end gap-0.5 px-2.5 py-1.5 rounded border border-red-300 bg-red-50 text-red-700 text-xs font-semibold hover:bg-red-100 animate-pulse"
                           title={`${lock.user_name} এই অর্ডারটি ওপেন করেছেন — ক্লিক করলে ওয়ারনিং + টেকওভার অপশন আসবে`}
                         >
@@ -1582,17 +1614,19 @@ function OrdersTableRows({
                             লকড · Open
                           </span>
                           <span className="text-[10px] font-normal text-red-600 max-w-[140px] truncate">{lock.user_name}</span>
-                        </button>
+                        </Link>
                       );
                     }
                     return (
-                      <button
-                        onClick={() => onOpen(o.id)}
+                      <Link
+                        to="/admin/orders"
+                        search={linkSearch}
+                        onClick={handleClick}
                         className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded border border-blue-200 bg-blue-50 text-blue-700 text-xs font-semibold hover:bg-blue-100"
-                        title="অর্ডার ওপেন"
+                        title="অর্ডার ওপেন (রাইট ক্লিক / নতুন ট্যাবে খুলুন)"
                       >
                         Open <ExternalLink className="w-3 h-3" />
-                      </button>
+                      </Link>
                     );
                   })()}
                 </td>
