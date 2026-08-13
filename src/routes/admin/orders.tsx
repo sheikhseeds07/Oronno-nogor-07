@@ -124,14 +124,11 @@ function useLiveOrders() {
       .subscribe();
 
     // Safety net if realtime is unavailable: light periodic refresh only.
-    // Safety net if realtime is unavailable: light periodic refresh only.
     // Switching browser tabs must NOT reload or invalidate queries — that's handled by realtime or explicit actions.
     const poll = setInterval(() => { 
-      if (!document.hidden) {
-        // Only refresh in background if really needed, but here we prioritize stability.
-        // invalidate(); // Disabled to prevent perceived reloads on tab switch
-      }
-    }, 60_000);
+      // Only refresh if explicitly needed and not in background to avoid visual reloads on tab switch
+      // invalidate(); 
+    }, 120_000); // Increased interval to 2 minutes
     return () => {
       supabase.removeChannel(channel);
       clearInterval(poll);
@@ -581,15 +578,17 @@ function OrdersTable({
   // only persist within a single status view.
   useEffect(() => { setSelectedIds(new Set()); }, [filter, mode]);
 
-  // Auto-sync courier statuses every 60s when on shipped filter
+  // Auto-sync courier statuses periodically
   useEffect(() => {
     if (!isShippedFilter) return;
     let alive = true;
     const run = async () => {
+      // Avoid syncing if tab is not active to prevent unexpected reloads when returning
+      if (document.hidden) return;
       try { await syncStatuses({}); if (alive) qc.invalidateQueries({ queryKey: ["admin-orders"] }); } catch { /* skip */ }
     };
     run();
-    const t = setInterval(run, 60_000);
+    const t = setInterval(run, 180_000); // Increased to 3 minutes
     return () => { alive = false; clearInterval(t); };
   }, [isShippedFilter, syncStatuses, qc]);
 
