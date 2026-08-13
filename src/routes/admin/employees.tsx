@@ -5,10 +5,10 @@ import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { toast } from "sonner";
-import { Plus, Trash2, KeyRound, UserCog, Eye } from "lucide-react";
+import { Plus, Trash2, KeyRound, UserCog, Eye, ShieldCheck } from "lucide-react";
 import {
   createEmployee, updateEmployeePermissions, deleteEmployee,
-  resetEmployeePassword, listEmployeesFull,
+  resetEmployeePassword, listEmployeesFull, updateEmployeeRole,
   type EmployeePermissions,
 } from "@/lib/employee-admin.functions";
 
@@ -42,13 +42,14 @@ function Employees() {
   const listFn = useServerFn(listEmployeesFull);
   const createFn = useServerFn(createEmployee);
   const updatePermsFn = useServerFn(updateEmployeePermissions);
+  const updateRoleFn = useServerFn(updateEmployeeRole);
   const deleteFn = useServerFn(deleteEmployee);
   const resetPwdFn = useServerFn(resetEmployeePassword);
 
   const [showForm, setShowForm] = useState(false);
-  const [editingPerms, setEditingPerms] = useState<{ user_id: string; perms: EmployeePermissions } | null>(null);
+  const [editingPerms, setEditingPerms] = useState<{ user_id: string; perms: EmployeePermissions; role: string } | null>(null);
   const [form, setForm] = useState({
-    name: "", phone: "", email: "", password: "", position: "",
+    name: "", phone: "", email: "", password: "", position: "", role: "employee",
     permissions: { ...emptyPerms, orders: true, web_orders: true } as EmployeePermissions,
   });
 
@@ -59,7 +60,7 @@ function Employees() {
 
   const reset = () => {
     setForm({
-      name: "", phone: "", email: "", password: "", position: "",
+      name: "", phone: "", email: "", password: "", position: "", role: "employee",
       permissions: { ...emptyPerms, orders: true, web_orders: true },
     });
     setShowForm(false);
@@ -91,7 +92,8 @@ function Employees() {
     if (!editingPerms) return;
     try {
       await updatePermsFn({ data: { user_id: editingPerms.user_id, permissions: editingPerms.perms } });
-      toast.success("পার্মিশন আপডেট");
+      await updateRoleFn({ data: { user_id: editingPerms.user_id, role: editingPerms.role as any } });
+      toast.success("পার্মিশন ও রোল আপডেট হয়েছে");
       setEditingPerms(null);
       qc.invalidateQueries({ queryKey: ["admin-employees-full"] });
     } catch (e) { toast.error(e instanceof Error ? e.message : "ব্যর্থ"); }
@@ -126,6 +128,18 @@ function Employees() {
             <input placeholder="পাসওয়ার্ড (কমপক্ষে ৬)" type="text" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="border rounded-lg px-3 py-2 sm:col-span-2" />
           </div>
           <div className="mt-4">
+            <div className="text-sm font-semibold mb-2">ইউজার রোল (CEO/Employee):</div>
+            <select 
+              value={form.role} 
+              onChange={(e) => setForm({ ...form, role: e.target.value })}
+              className="border rounded-lg px-3 py-2 w-full max-w-xs"
+            >
+              <option value="employee">সাধারণ এমপ্লয়ি (Employee)</option>
+              <option value="admin">অ্যাডমিন (Admin)</option>
+              <option value="super_admin">CEO (Super Admin)</option>
+            </select>
+          </div>
+          <div className="mt-4">
             <div className="text-sm font-semibold mb-2">পার্মিশন (যা যা চালাতে পারবে):</div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {PERM_LABELS.map((p) => (
@@ -155,21 +169,29 @@ function Employees() {
               <th className="p-3 text-left">পদবী</th>
               <th className="p-3 text-left">ফোন</th>
               <th className="p-3 text-left">ইমেইল</th>
+              <th className="p-3 text-left">রোল</th>
               <th className="p-3 text-left">পার্মিশন</th>
               <th className="p-3 text-right">একশন</th>
             </tr>
           </thead>
           <tbody>
             {isFetching && <tr><td colSpan={6} className="p-2"><BrandLoader /></td></tr>}
-            {data?.map((e) => {
+            {data?.map((e: any) => {
               const perms = (e.permissions ?? null) as (EmployeePermissions & { user_id: string }) | null;
               const activeCount = perms ? PERM_LABELS.filter((p) => perms[p.key]).length : 0;
+              const roleLabel = e.role === "super_admin" ? "CEO" : e.role === "admin" ? "অ্যাডমিন" : "এমপ্লয়ি";
+              const roleColor = e.role === "super_admin" ? "bg-purple-100 text-purple-700" : e.role === "admin" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700";
               return (
                 <tr key={e.id} className="border-t">
                   <td className="p-3 font-semibold">{e.name}</td>
                   <td className="p-3">{e.position}</td>
                   <td className="p-3">{e.phone}</td>
                   <td className="p-3">{e.email}</td>
+                  <td className="p-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${roleColor}`}>
+                      {roleLabel}
+                    </span>
+                  </td>
                   <td className="p-3"><span className="text-xs bg-muted rounded-full px-2 py-0.5">{activeCount} active</span></td>
                   <td className="p-3 text-right space-x-1">
                     {e.user_id && (
@@ -178,7 +200,7 @@ function Employees() {
                       </Link>
                     )}
                     {e.user_id && perms && (
-                      <button onClick={() => setEditingPerms({ user_id: e.user_id!, perms })} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border hover:bg-muted">
+                      <button onClick={() => setEditingPerms({ user_id: e.user_id!, perms, role: e.role })} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border hover:bg-muted">
                         <UserCog className="w-3 h-3" /> পার্মিশন
                       </button>
                     )}
@@ -202,8 +224,21 @@ function Employees() {
       {editingPerms && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl max-w-2xl w-full p-5">
-            <h3 className="font-bold text-lg mb-3">পার্মিশন আপডেট</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+            <h3 className="font-bold text-lg mb-3">রোল ও পার্মিশন আপডেট</h3>
+            <div className="mb-4">
+              <div className="text-sm font-semibold mb-2">ইউজার রোল:</div>
+              <select 
+                value={editingPerms.role} 
+                onChange={(e) => setEditingPerms({ ...editingPerms, role: e.target.value })}
+                className="border rounded-lg px-3 py-2 w-full max-w-xs"
+              >
+                <option value="employee">সাধারণ এমপ্লয়ি (Employee)</option>
+                <option value="admin">অ্যাডমিন (Admin)</option>
+                <option value="super_admin">CEO (Super Admin)</option>
+              </select>
+            </div>
+            <div className="mb-4">
+              <div className="text-sm font-semibold mb-2">মডিউল পার্মিশন:</div>
               {PERM_LABELS.map((p) => (
                 <label key={p.key} className="flex items-center gap-2 text-sm border rounded-lg px-2 py-1.5 cursor-pointer">
                   <input

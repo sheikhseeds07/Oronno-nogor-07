@@ -28,6 +28,7 @@ const CreateSchema = z.object({
   email: z.string().email().max(255),
   password: z.string().min(6).max(128),
   position: z.string().max(100).optional().default(""),
+  role: z.enum(["super_admin", "admin", "employee"]).default("employee"),
   permissions: PermSchema,
 });
 
@@ -64,10 +65,10 @@ export const createEmployee = createServerFn({ method: "POST" })
       { onConflict: "id" },
     );
 
-    // Role: employee
+    // Role
     await supabaseAdmin.from("user_roles").upsert(
-      { user_id: uid, role: "employee" } as never,
-      { onConflict: "user_id,role" } as never,
+      { user_id: uid, role: data.role } as any,
+      { onConflict: "user_id,role" } as any,
     );
 
     // Permissions
@@ -127,6 +128,21 @@ export const resetEmployeePassword = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const updateEmployeeRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ user_id: z.string().uuid(), role: z.enum(["super_admin", "admin", "employee"]) }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    // Remove old roles and set new one
+    await supabaseAdmin.from("user_roles").delete().eq("user_id", data.user_id);
+    const { error } = await supabaseAdmin.from("user_roles").insert({
+      user_id: data.user_id,
+      role: data.role
+    } as any);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const listEmployeesFull = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -135,13 +151,22 @@ export const listEmployeesFull = createServerFn({ method: "GET" })
       .from("employees")
       .select("*")
       .order("created_at", { ascending: false });
+    
     const ids = (emps ?? []).map((e) => e.user_id).filter(Boolean) as string[];
-    const { data: perms } = ids.length
-      ? await supabaseAdmin.from("employee_permissions").select("*").in("user_id", ids)
-      : { data: [] as Array<{ user_id: string }> };
-    const permMap = new Map((perms ?? []).map((p) => [p.user_id, p as unknown as EmployeePermissions & { user_id: string }]));
+    
+    const [{ data: perms }, { data: roles }] = ids.length
+      ? await Promise.all([
+          supabaseAdmin.from("employee_permissions").select("*").in("user_id", ids),
+          supabaseAdmin.from("user_roles").select("*").in("user_id", ids)
+        ])
+      : [{ data: [] }, { data: [] }];
+
+    const permMap = new Map((perms ?? []).map((p) => [p.user_id, p as any]));
+    const roleMap = new Map((roles ?? []).map((r) => [r.user_id, r.role]));
+
     return (emps ?? []).map((e) => ({
       ...e,
+      role: e.user_id ? roleMap.get(e.user_id) ?? "employee" : "employee",
       permissions: (e.user_id ? permMap.get(e.user_id) ?? null : null) as (EmployeePermissions & { user_id: string }) | null,
     }));
   });
