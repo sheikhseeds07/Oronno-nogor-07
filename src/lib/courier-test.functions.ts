@@ -24,31 +24,49 @@ async function callSteadfast(path: string, cfg: Record<string, string>, body?: u
     body: body ? JSON.stringify(body) : undefined,
   });
   const text = await res.text();
+  
   let json: unknown = null;
   try { json = JSON.parse(text); } catch { /* keep */ }
   return { ok: res.ok, status: res.status, body: text.slice(0, 400), json };
 }
 
+// Two Steadfast accounts are supported: 1 => all_api_steadfast, 2 => all_api_steadfast_2
+export const STEADFAST_ROW_NAME = { 1: "all_api_steadfast", 2: "all_api_steadfast_2" } as const;
+const AccountSchema = z.union([z.literal(1), z.literal(2)]).optional();
+
+async function loadSteadfastCfg(account: 1 | 2 = 1): Promise<Record<string, string>> {
+  const name = STEADFAST_ROW_NAME[account];
+  const names = account === 1 ? [name, "courier_steadfast"] : [name];
+  const { data: rows } = await supabaseAdmin
+    .from("integrations")
+    .select("name,config,is_active")
+    .in("name", names);
+  const row = (rows ?? []).find((r) => r.name === name && r.is_active)
+    ?? (rows ?? []).find((r) => r.is_active)
+    ?? (rows ?? [])[0];
+  return (row?.config as Record<string, string>) || {};
+}
+
 // Bulk-send selected orders to Steadfast
 export const sendOrdersToSteadfast = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ orderIds: z.array(z.string().uuid()).min(1).max(50) }))
+  .inputValidator(z.object({ orderIds: z.array(z.string().uuid()).min(1).max(50), account: AccountSchema }))
   .handler(async ({ data, context }) => {
     await assertCanManageOrders(context.userId);
-    const { data: rows } = await supabaseAdmin
-      .from("integrations")
-      .select("name,config,is_active")
-      .in("name", ["all_api_steadfast", "courier_steadfast"]);
-    const row = (rows ?? []).find((r) => r.name === "all_api_steadfast" && r.is_active) ?? (rows ?? []).find((r) => r.is_active) ?? (rows ?? [])[0];
-    const cfg = (row?.config as Record<string, string>) || {};
-    if (!cfg.api_key || !cfg.secret_key) return { results: [], error: "Steadfast API key/secret সেভ করা নেই" };
+    const account = (data.account ?? 1) as 1 | 2;
+    const cfg = await loadSteadfastCfg(account);
+    if (!cfg.api_key || !cfg.secret_key) return { results: [], error: `Steadfast ${account} এর API key/secret সেভ করা নেই` };
+
 
     const { data: orders } = await supabaseAdmin
       .from("orders")
       .select("id,invoice_no,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment")
       .in("id", data.orderIds);
 
-    // Product names for the courier "note" (item description) — one query for all orders
+    // Product names for the courier "note" (item description) — one query for all orders.
+    // Steadfast rejects long notes (HTTP 500), so names are shortened and the note is capped.
+    const shortName = (n: string) =>
+      (n || "").split(/[|–—(]/)[0].replace(/\s+/g, " ").trim().slice(0, 28);
     const { data: itemRows } = await supabaseAdmin
       .from("order_items")
       .select("order_id,product_name,quantity")
@@ -56,9 +74,19 @@ export const sendOrdersToSteadfast = createServerFn({ method: "POST" })
     const itemsByOrder = new Map<string, string[]>();
     for (const it of itemRows ?? []) {
       const list = itemsByOrder.get(it.order_id) ?? [];
-      list.push(`${it.product_name} x${it.quantity}`);
+      list.push(`${shortName(it.product_name)} x${it.quantity}`);
       itemsByOrder.set(it.order_id, list);
     }
+    const buildNote = (id: string) => {
+      let note = "";
+      for (const part of itemsByOrder.get(id) ?? []) {
+        const next = note ? `${note}, ${part}` : part;
+        if (next.length > 110) break;
+        note = next;
+      }
+      return note.slice(0, 110);
+    };
+
 
 
     // Deep search for a key in nested objects — handles any response shape
@@ -90,31 +118,36 @@ export const sendOrdersToSteadfast = createServerFn({ method: "POST" })
       try {
         const chk = await callSteadfast(`status_by_invoice/${encodeURIComponent(invoice)}`, cfg);
         const existing = deepFind(chk.json, ["consignment_id", "tracking_code"]);
-        if (chk.ok && existing) {
-          // Save tracking but DO NOT auto-change status; keep current status
+        const dstatus = deepFind(chk.json, ["delivery_status", "status_text"]);
+        const known = dstatus && !/not[_\s-]?found|invalid|unknown/i.test(dstatus);
+        if (chk.ok && (existing || known)) {
+          // Save tracking/status but DO NOT auto-change order status
           await supabaseAdmin.from("orders").update({
-            courier_consignment: existing, courier_status: "in_review",
+            courier_consignment: existing || invoice,
+            courier_status: dstatus || "in_review",
           }).eq("id", o.id);
           results.push({ id: o.id, ok: false, already: true, consignment: existing, message: "ইতিমধ্যে এন্ট্রি হয়েছে (Already entry)" });
           continue;
         }
       } catch { /* proceed to create */ }
 
-      const payload = {
+      const basePayload = {
         invoice,
-        recipient_name: o.customer_name,
+        recipient_name: (o.customer_name || "").slice(0, 100),
         recipient_phone: (o.customer_phone || "").replace(/\D/g, "").slice(-11),
-        recipient_address: [o.customer_address, o.thana, o.district].filter(Boolean).join(", "),
+        recipient_address: [o.customer_address, o.thana, o.district].filter(Boolean).join(", ").slice(0, 240),
         cod_amount: Number(o.total) || 0,
-        note: (itemsByOrder.get(o.id) ?? []).join(", ").slice(0, 240),
       };
       let r: Awaited<ReturnType<typeof callSteadfast>>;
       try {
-        r = await callSteadfast("create_order", cfg, payload);
+        r = await callSteadfast("create_order", cfg, { ...basePayload, note: buildNote(o.id) });
+        // Steadfast can 500 on unusual note text — retry once without the note
+        if (!r.ok) r = await callSteadfast("create_order", cfg, basePayload);
       } catch (e) {
         results.push({ id: o.id, ok: false, message: e instanceof Error ? e.message : "Steadfast network error" });
         continue;
       }
+
       let consignment = deepFind(r.json, ["consignment_id", "tracking_code"]);
 
       // If extraction failed but Steadfast may have created it, look it up by invoice
@@ -170,15 +203,11 @@ export const testCourierConnection = createServerFn({ method: "POST" })
 // Fetch Steadfast current balance — reads saved config from integrations table.
 export const fetchSteadfastBalance = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator(z.object({ account: AccountSchema }).optional())
+  .handler(async ({ data, context }) => {
     await assertCanManageOrders(context.userId);
-  const { data: row } = await supabaseAdmin
-    .from("integrations")
-    .select("config,is_active")
-    .eq("name", "all_api_steadfast")
-    .maybeSingle();
-  if (!row) return { ok: false, balance: null as number | null, message: "Steadfast সেভ করা নেই" };
-  const cfg = (row.config as Record<string, string>) || {};
+  const cfg = await loadSteadfastCfg((data?.account ?? 1) as 1 | 2);
+  if (!cfg.api_key || !cfg.secret_key) return { ok: false, balance: null as number | null, message: "Steadfast সেভ করা নেই" };
   try {
     const r = await callSteadfast("get_balance", cfg);
     if (!r.ok) return { ok: false, balance: null, message: `ব্যর্থ (HTTP ${r.status}) — ${r.body}` };
@@ -193,6 +222,7 @@ export const fetchSteadfastBalance = createServerFn({ method: "POST" })
   }
 });
 
+
 // Map Steadfast delivery status -> local order status
 function mapSteadfastStatus(s: string): "delivered" | "partial" | "cancelled" | "hold" | "shipped" | null {
   const v = (s || "").toLowerCase();
@@ -204,16 +234,17 @@ function mapSteadfastStatus(s: string): "delivered" | "partial" | "cancelled" | 
   return null;
 }
 
-// Sync courier status for shipped orders
+// Sync courier status for shipped orders (checks both Steadfast accounts)
 export const syncSteadfastStatuses = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertCanManageOrders(context.userId);
-  const { data: row } = await supabaseAdmin
-    .from("integrations").select("config,is_active")
-    .eq("name", "all_api_steadfast").maybeSingle();
-  const cfg = (row?.config as Record<string, string>) || {};
-  if (!cfg.api_key || !cfg.secret_key) return { updated: 0, error: "Steadfast not configured" };
+  const cfgs: Record<string, string>[] = [];
+  for (const acc of [1, 2] as const) {
+    const c = await loadSteadfastCfg(acc);
+    if (c.api_key && c.secret_key) cfgs.push(c);
+  }
+  if (!cfgs.length) return { updated: 0, error: "Steadfast not configured" };
 
   const { data: orders } = await supabaseAdmin
     .from("orders")
@@ -225,20 +256,24 @@ export const syncSteadfastStatuses = createServerFn({ method: "POST" })
   let updated = 0;
   for (const o of orders ?? []) {
     if (!o.courier_consignment) continue;
-    try {
-      const r = await callSteadfast(`status_by_cid/${encodeURIComponent(o.courier_consignment)}`, cfg);
-      const j = (r.json as Record<string, unknown>) || {};
-      const delivery = String((j.delivery_status as string) || "");
-      const mapped = mapSteadfastStatus(delivery);
-      if (mapped && mapped !== o.status) {
-        await supabaseAdmin.from("orders").update({
-          status: mapped, courier_status: delivery,
-        }).eq("id", o.id);
-        updated++;
-      } else if (delivery) {
-        await supabaseAdmin.from("orders").update({ courier_status: delivery }).eq("id", o.id);
-      }
-    } catch { /* skip */ }
+    let delivery = "";
+    for (const cfg of cfgs) {
+      try {
+        const r = await callSteadfast(`status_by_cid/${encodeURIComponent(o.courier_consignment)}`, cfg);
+        const j = (r.json as Record<string, unknown>) || {};
+        const d = String((j.delivery_status as string) || "");
+        if (d) { delivery = d; break; }
+      } catch { /* try next account */ }
+    }
+    if (!delivery) continue;
+    const mapped = mapSteadfastStatus(delivery);
+    if (mapped && mapped !== o.status) {
+      await supabaseAdmin.from("orders").update({ status: mapped, courier_status: delivery }).eq("id", o.id);
+      updated++;
+    } else {
+      await supabaseAdmin.from("orders").update({ courier_status: delivery }).eq("id", o.id);
+    }
   }
   return { updated, error: null };
+
 });

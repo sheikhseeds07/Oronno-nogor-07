@@ -123,18 +123,15 @@ function useLiveOrders() {
       .on("postgres_changes", { event: "*", schema: "public", table: "incomplete_orders" }, invalidate)
       .subscribe();
 
-    // Safety net if realtime is unavailable: light periodic refresh + on focus.
+    // Safety net if realtime is unavailable: light periodic refresh only.
+    // No focus/visibility refetch — switching browser tabs must not reload the page data.
     const poll = setInterval(() => { if (!document.hidden) invalidate(); }, 15_000);
-    const onFocus = () => invalidate();
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onFocus);
     return () => {
       supabase.removeChannel(channel);
       clearInterval(poll);
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onFocus);
     };
   }, [qc]);
+
 }
 
 function Orders() {
@@ -721,7 +718,7 @@ function OrdersTable({
     });
   };
 
-  const bulkSendCourier = async () => {
+  const bulkSendCourier = async (account: 1 | 2 = 1) => {
     if (!selectedIds.size) return;
     const picked = rows.filter((o) => selectedIds.has(o.id));
     const initial: SendProgress[] = picked.map((o) => ({
@@ -736,7 +733,8 @@ function OrdersTable({
     // Send one-by-one for animation
     for (const item of initial) {
       try {
-        const res = await sendBulk({ data: { orderIds: [item.id] } });
+        const res = await sendBulk({ data: { orderIds: [item.id], account } });
+
         const r = res.results?.[0];
         setSendModal((prev) => prev && prev.map((p) =>
           p.id === item.id
@@ -1051,7 +1049,9 @@ function OrdersTable({
           )}
           {isRtsFilter && (
             <>
-              <ActionBtn onClick={bulkSendCourier} icon={Send} tone="emerald">কুরিয়ারে পাঠান (Steadfast)</ActionBtn>
+              <ActionBtn onClick={() => bulkSendCourier(1)} icon={Send} tone="emerald">কুরিয়ার ১ এ পাঠান (Steadfast)</ActionBtn>
+              <ActionBtn onClick={() => bulkSendCourier(2)} icon={Send} tone="emerald">কুরিয়ার ২ এ পাঠান (Steadfast)</ActionBtn>
+
               <ActionBtn onClick={bulkPrintInvoice} icon={Printer} tone="blue">ইনভয়েস প্রিন্ট</ActionBtn>
               <ActionBtn onClick={bulkDuplicateCheck} icon={Copy} tone="purple">ডুবলিকেট চেক</ActionBtn>
               <ActionBtn onClick={bulkMoveToShipped} icon={CheckCircle2} tone="violet" title="কুরিয়ারে পাঠানোর পর Shipped এ মুভ করুন">Shipped এ মুভ</ActionBtn>

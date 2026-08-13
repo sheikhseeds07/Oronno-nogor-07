@@ -29,6 +29,137 @@ const emptySms: SmsCfg = {
   api_key: "",
 };
 
+const SF_ROW_NAME: Record<1 | 2, string> = { 1: "all_api_steadfast", 2: "all_api_steadfast_2" };
+
+// One self-contained Steadfast account card (Courier 1 / Courier 2)
+function SteadfastCard({ account }: { account: 1 | 2 }) {
+  const rowName = SF_ROW_NAME[account];
+  const [cfg, setCfg] = useState<SteadfastCfg>(emptySteadfast);
+  const [active, setActive] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testMsg, setTestMsg] = useState<string | null>(null);
+  const [testOk, setTestOk] = useState<boolean | null>(null);
+  const [balance, setBalance] = useState<number | null>(null);
+  const [balLoading, setBalLoading] = useState(false);
+
+  const testFn = useServerFn(testCourierConnection);
+  const balanceFn = useServerFn(fetchSteadfastBalance);
+
+  useEffect(() => {
+    (async () => {
+      let { data: row } = await supabase.from("integrations").select("*").eq("name", rowName).maybeSingle();
+      if (!row && account === 1) {
+        const legacy = await supabase.from("integrations").select("*").eq("name", "courier_steadfast").maybeSingle();
+        row = legacy.data;
+      }
+      if (row) {
+        setActive(row.is_active);
+        setCfg({ ...emptySteadfast, ...((row.config as Partial<SteadfastCfg>) || {}) });
+      }
+      setLoading(false);
+    })();
+  }, [rowName, account]);
+
+  const trimmed = { api_key: cfg.api_key.trim(), secret_key: cfg.secret_key.trim(), base_url: cfg.base_url.trim() };
+
+  const save = async () => {
+    setSaving(true);
+    const { error } = await supabase
+      .from("integrations")
+      .upsert({ name: rowName, is_active: active, config: trimmed, updated_at: new Date().toISOString() }, { onConflict: "name" });
+    setSaving(false);
+    if (error) toast.error(error.message); else toast.success(`Steadfast ${account} সেভ হয়েছে`);
+  };
+
+  const test = async () => {
+    setTesting(true); setTestMsg(null); setTestOk(null);
+    try {
+      const r = await testFn({ data: { courier: "steadfast", config: trimmed } });
+      setTestOk(r.success); setTestMsg(r.message);
+      if (r.success) toast.success(r.message); else toast.error(r.message);
+    } catch (e) {
+      const m = e instanceof Error ? e.message : "Test failed";
+      setTestOk(false); setTestMsg(m); toast.error(m);
+    } finally { setTesting(false); }
+  };
+
+  const checkBalance = async () => {
+    setBalLoading(true);
+    try {
+      await save();
+      const r = await balanceFn({ data: { account } });
+      if (r.ok) { setBalance(r.balance); toast.success(`ব্যালেন্স: ৳${r.balance ?? "?"}`); }
+      else { setBalance(null); toast.error(r.message); }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    } finally { setBalLoading(false); }
+  };
+
+  if (loading) return <div className="rounded-xl border bg-white p-5 shadow-sm"><BrandLoader /></div>;
+
+  return (
+    <div className="rounded-xl border bg-white p-5 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Truck className="w-5 h-5 text-brand" />
+          <h2 className="font-bold text-lg">Steadfast Courier {account}</h2>
+          {active ? <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-50 px-2 py-0.5 rounded-full"><CheckCircle2 className="w-3 h-3" /> Active</span> : <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full"><XCircle className="w-3 h-3" /> Inactive</span>}
+        </div>
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="w-4 h-4" />
+          Enable
+        </label>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs font-medium text-muted-foreground">API Key</label>
+          <input value={cfg.api_key} onChange={(e) => setCfg({ ...cfg, api_key: e.target.value })} placeholder="ci3w6..." className="w-full mt-1 rounded-lg border px-3 py-2 text-sm font-mono" />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-muted-foreground">Secret Key</label>
+          <input type="password" value={cfg.secret_key} onChange={(e) => setCfg({ ...cfg, secret_key: e.target.value })} placeholder="j8rcp..." className="w-full mt-1 rounded-lg border px-3 py-2 text-sm font-mono" />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-xs font-medium text-muted-foreground">Base URL</label>
+          <input value={cfg.base_url} onChange={(e) => setCfg({ ...cfg, base_url: e.target.value })} className="w-full mt-1 rounded-lg border px-3 py-2 text-sm font-mono" />
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border bg-muted/40 px-3 py-2.5">
+        <div className="flex items-center gap-2">
+          <Wallet className="w-4 h-4 text-brand" />
+          <span className="text-sm font-semibold">বর্তমান ব্যালেন্স:</span>
+          <span className="text-sm font-bold text-brand-dark">{balance !== null ? `৳ ${balance.toLocaleString()}` : "—"}</span>
+        </div>
+        <button onClick={checkBalance} disabled={balLoading} className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold disabled:opacity-50 bg-white">
+          {balLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+          চেক করুন
+        </button>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="text-xs">
+          {testMsg ? (
+            testOk ? <span className="inline-flex items-center gap-1 text-green-700 bg-green-50 px-2 py-1 rounded-md"><CheckCircle2 className="w-3.5 h-3.5" /> {testMsg}</span>
+                   : <span className="inline-flex items-center gap-1 text-red-700 bg-red-50 px-2 py-1 rounded-md"><XCircle className="w-3.5 h-3.5" /> {testMsg}</span>
+          ) : <span className="text-muted-foreground">কানেকশন টেস্ট করা হয়নি</span>}
+        </div>
+        <div className="flex gap-2">
+          <button onClick={test} disabled={testing} className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold disabled:opacity-50">
+            {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plug className="w-4 h-4" />}
+            {testing ? "টেস্ট হচ্ছে..." : "Test Connection"}
+          </button>
+          <button onClick={save} disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+            <Save className="w-4 h-4" /> {saving ? "সেভ হচ্ছে..." : "সেভ করুন"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AllApi() {
   // ----- Facebook -----
   const [fb, setFb] = useState<FbConfig>(emptyFb);
@@ -42,19 +173,10 @@ function AllApi() {
   const [hResult, setHResult] = useState<string | null>(null);
   const [hOk, setHOk] = useState<boolean | null>(null);
 
-  // ----- Steadfast -----
-  const [sf, setSf] = useState<SteadfastCfg>(emptySteadfast);
-  const [sfActive, setSfActive] = useState(false);
-  const [sfTesting, setSfTesting] = useState(false);
-  const [sfTestMsg, setSfTestMsg] = useState<string | null>(null);
-  const [sfTestOk, setSfTestOk] = useState<boolean | null>(null);
-  const [sfBalance, setSfBalance] = useState<number | null>(null);
-  const [sfBalLoading, setSfBalLoading] = useState(false);
-
   const [loading, setLoading] = useState(true);
   const [savingFb, setSavingFb] = useState(false);
   const [savingH, setSavingH] = useState(false);
-  const [savingSf, setSavingSf] = useState(false);
+
 
   // ----- SMS (Hoorin) -----
   const [sms, setSms] = useState<SmsCfg>(emptySms);
@@ -66,16 +188,14 @@ function AllApi() {
   const [smsOk, setSmsOk] = useState<boolean | null>(null);
 
   const historyFn = useServerFn(fetchCourierHistory);
-  const testFn = useServerFn(testCourierConnection);
-  const balanceFn = useServerFn(fetchSteadfastBalance);
   const sendOtpFn = useServerFn(sendPhoneOtp);
   useEffect(() => {
     (async () => {
-      const [{ data: ss }, { data: hRow }, { data: sRow }, { data: smsRow }, { data: fbRow }] = await Promise.all([
+      const [{ data: ss }, { data: hRow }, { data: smsRow }, { data: fbRow }] = await Promise.all([
         supabase.from("site_settings").select("*").limit(1).maybeSingle(),
         supabase.from("integrations").select("*").eq("name", "all_api_hoorin").maybeSingle(),
-        supabase.from("integrations").select("*").eq("name", "all_api_steadfast").maybeSingle(),
         supabase.from("integrations").select("*").eq("name", "sms_hoorin").maybeSingle(),
+
         supabase.from("integrations").select("*").eq("name", "facebook_capi").maybeSingle(),
       ]);
       if (ss) {
@@ -95,18 +215,8 @@ function AllApi() {
       if (hRow) {
         setHoorinActive(hRow.is_active);
         setHoorin({ ...emptyHoorin, ...((hRow.config as Partial<HoorinCfg>) || {}) });
-      } else {
-        // Migrate from legacy courier_steadfast row if present
-        const { data: legacy } = await supabase.from("integrations").select("*").eq("name", "courier_steadfast").maybeSingle();
-        if (legacy) {
-          setSfActive(legacy.is_active);
-          setSf({ ...emptySteadfast, ...((legacy.config as Partial<SteadfastCfg>) || {}) });
-        }
       }
-      if (sRow) {
-        setSfActive(sRow.is_active);
-        setSf({ ...emptySteadfast, ...((sRow.config as Partial<SteadfastCfg>) || {}) });
-      }
+
       if (smsRow) {
         setSmsActive(smsRow.is_active);
         setSms({ ...emptySms, ...((smsRow.config as Partial<SmsCfg>) || {}) });
@@ -195,42 +305,8 @@ function AllApi() {
     } finally { setHTesting(false); }
   };
 
-  const trimmedSf = { api_key: sf.api_key.trim(), secret_key: sf.secret_key.trim(), base_url: sf.base_url.trim() };
 
-  const saveSf = async () => {
-    setSavingSf(true);
-    const { error } = await supabase
-      .from("integrations")
-      .upsert({ name: "all_api_steadfast", is_active: sfActive, config: trimmedSf, updated_at: new Date().toISOString() }, { onConflict: "name" });
-    setSavingSf(false);
-    if (error) toast.error(error.message); else toast.success("Steadfast সেভ হয়েছে");
-  };
 
-  const testSf = async () => {
-    setSfTesting(true); setSfTestMsg(null); setSfTestOk(null);
-    try {
-      const r = await testFn({ data: { courier: "steadfast", config: trimmedSf } });
-      setSfTestOk(r.success); setSfTestMsg(r.message);
-      r.success ? toast.success(r.message) : toast.error(r.message);
-    } catch (e) {
-      const m = e instanceof Error ? e.message : "Test failed";
-      setSfTestOk(false); setSfTestMsg(m); toast.error(m);
-    } finally { setSfTesting(false); }
-  };
-
-  const checkBalance = async () => {
-    setSfBalLoading(true);
-    try {
-      // Save first so server reads latest config
-      await saveSf();
-      const r = await balanceFn();
-      if (r.ok) { setSfBalance(r.balance); toast.success(`ব্যালেন্স: ৳${r.balance ?? "?"}`); }
-      else { setSfBalance(null); toast.error(r.message); }
-    } catch (e) {
-      const m = e instanceof Error ? e.message : "Failed";
-      toast.error(m);
-    } finally { setSfBalLoading(false); }
-  };
 
   return (
     <AdminLayout>
@@ -239,65 +315,10 @@ function AllApi() {
 
       {loading ? <BrandLoader /> : (
         <div className="grid gap-5 max-w-3xl">
-          {/* Steadfast */}
-          <div className="rounded-xl border bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Truck className="w-5 h-5 text-brand" />
-                <h2 className="font-bold text-lg">Steadfast Courier</h2>
-                {sfActive ? <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-50 px-2 py-0.5 rounded-full"><CheckCircle2 className="w-3 h-3" /> Active</span> : <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full"><XCircle className="w-3 h-3" /> Inactive</span>}
-              </div>
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="checkbox" checked={sfActive} onChange={(e) => setSfActive(e.target.checked)} className="w-4 h-4" />
-                Enable
-              </label>
-            </div>
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">API Key</label>
-                <input value={sf.api_key} onChange={(e) => setSf({ ...sf, api_key: e.target.value })} placeholder="ci3w6..." className="w-full mt-1 rounded-lg border px-3 py-2 text-sm font-mono" />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Secret Key</label>
-                <input type="password" value={sf.secret_key} onChange={(e) => setSf({ ...sf, secret_key: e.target.value })} placeholder="j8rcp..." className="w-full mt-1 rounded-lg border px-3 py-2 text-sm font-mono" />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="text-xs font-medium text-muted-foreground">Base URL</label>
-                <input value={sf.base_url} onChange={(e) => setSf({ ...sf, base_url: e.target.value })} className="w-full mt-1 rounded-lg border px-3 py-2 text-sm font-mono" />
-              </div>
-            </div>
+          {/* Steadfast — two accounts */}
+          <SteadfastCard account={1} />
+          <SteadfastCard account={2} />
 
-            {/* Balance card */}
-            <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border bg-muted/40 px-3 py-2.5">
-              <div className="flex items-center gap-2">
-                <Wallet className="w-4 h-4 text-brand" />
-                <span className="text-sm font-semibold">বর্তমান ব্যালেন্স:</span>
-                <span className="text-sm font-bold text-brand-dark">{sfBalance !== null ? `৳ ${sfBalance.toLocaleString()}` : "—"}</span>
-              </div>
-              <button onClick={checkBalance} disabled={sfBalLoading} className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold disabled:opacity-50 bg-white">
-                {sfBalLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                চেক করুন
-              </button>
-            </div>
-
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <div className="text-xs">
-                {sfTestMsg ? (
-                  sfTestOk ? <span className="inline-flex items-center gap-1 text-green-700 bg-green-50 px-2 py-1 rounded-md"><CheckCircle2 className="w-3.5 h-3.5" /> {sfTestMsg}</span>
-                          : <span className="inline-flex items-center gap-1 text-red-700 bg-red-50 px-2 py-1 rounded-md"><XCircle className="w-3.5 h-3.5" /> {sfTestMsg}</span>
-                ) : <span className="text-muted-foreground">কানেকশন টেস্ট করা হয়নি</span>}
-              </div>
-              <div className="flex gap-2">
-                <button onClick={testSf} disabled={sfTesting} className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold disabled:opacity-50">
-                  {sfTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plug className="w-4 h-4" />}
-                  {sfTesting ? "টেস্ট হচ্ছে..." : "Test Connection"}
-                </button>
-                <button onClick={saveSf} disabled={savingSf} className="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
-                  <Save className="w-4 h-4" /> {savingSf ? "সেভ হচ্ছে..." : "সেভ করুন"}
-                </button>
-              </div>
-            </div>
-          </div>
 
           {/* Hoorin */}
           <div className="rounded-xl border bg-white p-5 shadow-sm">
