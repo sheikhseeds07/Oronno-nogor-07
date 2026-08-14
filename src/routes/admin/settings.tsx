@@ -13,6 +13,9 @@ type Settings = {
   delivery_charge_inside?: number;
   delivery_charge_outside?: number;
   free_delivery_above?: number;
+  // কন্টাক্ট
+  contact_page_message_url?: string;
+  contact_phone?: string;
   // SEO
   seo_title?: string;
   seo_description?: string;
@@ -35,7 +38,6 @@ const SEO_DEFAULTS = {
   seo_google_verification: "",
   seo_robots: "index, follow",
 };
-
 
 function Field({
   label,
@@ -79,7 +81,6 @@ function SettingsPage() {
     }
   };
 
-
   const { data } = useQuery({
     queryKey: ["site-settings-admin"],
     queryFn: async () => (await supabase.from("site_settings").select("*").maybeSingle()).data,
@@ -88,9 +89,10 @@ function SettingsPage() {
   useEffect(() => {
     if (data) {
       const cur = (data.settings as Settings) ?? {};
-      // SEO ঘর ফাঁকা থাকলে ডিফল্ট ভ্যালু বসে যাবে (পরে ইচ্ছেমতো বদলানো যাবে)
       setS({
         ...cur,
+        contact_phone: cur.contact_phone || "+8809644553383",
+        contact_page_message_url: cur.contact_page_message_url || "",
         seo_title: cur.seo_title || SEO_DEFAULTS.seo_title,
         seo_description: cur.seo_description || SEO_DEFAULTS.seo_description,
         seo_keywords: cur.seo_keywords || SEO_DEFAULTS.seo_keywords,
@@ -109,6 +111,8 @@ function SettingsPage() {
       delivery_charge_inside: s.delivery_charge_inside ?? 60,
       delivery_charge_outside: s.delivery_charge_outside ?? 130,
       free_delivery_above: s.free_delivery_above ?? 1000,
+      contact_phone: s.contact_phone ?? "+8809644553383",
+      contact_page_message_url: s.contact_page_message_url ?? "",
     };
     if (id) {
       const { error } = await supabase.from("site_settings").update({ settings: payload as never }).eq("id", id);
@@ -139,6 +143,34 @@ function SettingsPage() {
             <input type="number" value={s.free_delivery_above ?? 1000} onChange={(e) => setS({ ...s, free_delivery_above: +e.target.value })} className={inputCls} />
           </Field>
         </div>
+      </div>
+
+      <div className="bg-white border rounded-xl p-5 max-w-3xl space-y-4 mb-5">
+        <div>
+          <h2 className="font-bold text-lg">ফ্লোটিং কন্টাক্ট বাটন</h2>
+          <p className="text-xs text-muted-foreground">সাইটের নিচের বাম পাশে থাকা আইকনে ক্লিক করলে “Page Message” ও “Call” অপশন দেখাবে।</p>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <Field label="Page Message Link" hint="Facebook Page Messenger link দিন, যেমন: https://m.me/yourpage">
+            <input
+              type="url"
+              value={s.contact_page_message_url ?? ""}
+              onChange={(e) => setS({ ...s, contact_page_message_url: e.target.value })}
+              placeholder="https://m.me/yourpage"
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Call Number" hint="দেশের কোডসহ দিলে ভালো, যেমন: +8801XXXXXXXXX">
+            <input
+              type="tel"
+              value={s.contact_phone ?? "+8809644553383"}
+              onChange={(e) => setS({ ...s, contact_phone: e.target.value })}
+              placeholder="+8801XXXXXXXXX"
+              className={inputCls}
+            />
+          </Field>
+        </div>
+        <button onClick={save} className="bg-brand text-white px-6 py-2.5 rounded-lg font-semibold">কন্টাক্ট সেটিংস সংরক্ষণ করুন</button>
       </div>
 
       <div className="bg-white border rounded-xl p-5 max-w-3xl space-y-4">
@@ -224,7 +256,6 @@ function SettingsPage() {
           <p className="text-[#1a0dab] text-base leading-snug">{s.seo_title}</p>
           <p className="text-xs text-slate-600 line-clamp-2">{s.seo_description}</p>
         </div>
-
 
         <button onClick={save} className="bg-brand text-white px-6 py-2.5 rounded-lg font-semibold">সংরক্ষণ করুন</button>
       </div>
