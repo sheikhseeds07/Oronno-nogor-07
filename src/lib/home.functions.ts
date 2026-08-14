@@ -34,16 +34,21 @@ export type HomeData = {
 
 /**
  * Fetches all data needed for the home page in parallel on the server.
- * Uses the precomputed `top_selling_products` materialized view so we
- * never scan thousands of order rows per visit.
+ * Home categories are always controlled by the admin: only visible root
+ * categories are returned. Subcategories never appear as separate home items.
  */
 export const getHomeData = createServerFn({ method: "GET" }).handler(async (): Promise<HomeData> => {
   const cols = "id,slug,name,price,sale_price,images,stock,is_featured";
 
-  // Fire all read-only queries in parallel.
   const [bannersRes, categoriesRes, topSellersRes] = await Promise.all([
     supabase.from("banners").select("id,title,image_url,link_url").eq("is_active", true).order("display_order").limit(8),
-    supabase.from("categories").select("id,slug,name,image_url").order("display_order"),
+    supabase
+      .from("categories")
+      .select("id,slug,name,image_url")
+      .is("parent_id", null)
+      .eq("is_hidden_from_home", false)
+      .order("display_order")
+      .order("created_at"),
     supabase.from("top_selling_products" as never).select("product_id").limit(24),
   ]);
 
@@ -67,7 +72,6 @@ export const getHomeData = createServerFn({ method: "GET" }).handler(async (): P
       .map(({ categories: _c, ...rest }) => rest as HomeProduct);
   }
 
-  // Fallback: latest active non-landing products
   if (!products.length) {
     const { data: lps } = await supabase.from("landing_pages").select("product_id");
     const excludeIds = new Set(((lps ?? []) as Array<{ product_id: string | null }>).map((r) => r.product_id).filter(Boolean) as string[]);
