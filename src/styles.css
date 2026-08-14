@@ -261,3 +261,22 @@
 @media (prefers-reduced-motion: reduce) {
   .lp-marquee-track, .lp-float-up { animation: none; }
 }
+
+/* Home category strip: move root categories from left to right. */
+div[style*="homeCategoryMarquee"] {
+  animation-direction: reverse !important;
+}
+
+/* Category title first, category image directly underneath. */
+div[style*="homeCategoryMarquee"] > button {
+  display: flex;
+  flex-direction: column;
+}
+div[style*="homeCategoryMarquee"] > button > div:first-child {
+  order: 2;
+  margin-bottom: 0;
+}
+div[style*="homeCategoryMarquee"] > button > div:nth-child(2) {
+  order: 1;
+  margin-bottom: 0.625rem;
+}
