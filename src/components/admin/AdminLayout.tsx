@@ -6,7 +6,7 @@ import logo from "@/assets/logo.jpg";
 import {
   LayoutDashboard, Package, ShoppingBag, Users, FolderTree, Image as ImageIcon,
   Tag, Settings, Globe, UserCog, LogOut, Menu, X, Layers, Clock, FileSpreadsheet,
-  PanelLeftClose, PanelLeftOpen, Trash2
+  PanelLeftClose, PanelLeftOpen
 } from "lucide-react";
 import { NewOrderNotifier } from "@/components/admin/NewOrderNotifier";
 import { AdminOrderStability } from "@/components/admin/AdminOrderStability";
@@ -42,8 +42,6 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const inOrdersArea = loc.pathname === "/admin/orders" || loc.pathname === "/admin/deleted-orders";
-  const deletedOrdersActive = loc.pathname === "/admin/deleted-orders";
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -153,33 +151,7 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
 
           <div className="font-bold whitespace-nowrap">{isAdmin ? "অ্যাডমিন প্যানেল" : "কর্মী প্যানেল"}</div>
           <div className="ml-auto text-sm text-muted-foreground hidden sm:block truncate max-w-[200px]">{user?.email ?? ""}</div>
-          {(headerExtra || inOrdersArea) && (
-            <div className="w-full basis-full flex items-center gap-2 overflow-x-auto pt-2">
-              {headerExtra && <div className="min-w-[500px] flex-1">{headerExtra}</div>}
-              {deletedOrdersActive && (
-                <Link
-                  to="/admin/orders"
-                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border border-slate-200 bg-white text-slate-700 hover:border-brand/40 hover:text-brand transition"
-                >
-                  <Globe className="w-3.5 h-3.5" />
-                  ওয়েব অর্ডার
-                </Link>
-              )}
-              {inOrdersArea && (
-                <Link
-                  to={"/admin/deleted-orders" as any}
-                  className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition ${
-                    deletedOrdersActive
-                      ? "bg-gradient-to-br from-rose-500 to-rose-700 text-white shadow-md"
-                      : "border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
-                  }`}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  ডিলিটেড অর্ডার
-                </Link>
-              )}
-            </div>
-          )}
+          {headerExtra && <div className="w-full basis-full flex items-center gap-2 overflow-x-auto pt-2">{headerExtra}</div>}
         </header>
         <div className="p-4 lg:p-6">{children}</div>
       </div>
