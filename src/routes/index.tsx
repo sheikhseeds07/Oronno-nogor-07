@@ -68,8 +68,10 @@ const FALLBACK_HOME: HomeData = {
 const homeQueryOptions = queryOptions({
   queryKey: ["home-data-v1"],
   queryFn: getHomeData,
+  enabled: typeof window !== "undefined",
   staleTime: 5 * 60_000,
   retry: 1,
+  refetchOnMount: "always",
 });
 
 export const Route = createFileRoute("/")({
