@@ -5,9 +5,10 @@ import { useEffect, useState } from "react";
 import logo from "@/assets/logo.jpg";
 import { hydrateCartStore, useCart } from "@/lib/cart-store";
 import { bnDigits } from "@/lib/format";
-
-import { fallbackCategories } from "@/lib/fallback-shop";
+import { supabase } from "@/lib/personal-supabase/client";
 import { CartDrawer } from "@/components/shop/CartDrawer";
+
+type NavCategory = { id: string; name: string; slug: string };
 
 export function Header() {
   const count = useCart((s) => s.count());
@@ -25,9 +26,18 @@ export function Header() {
     return () => clearTimeout(t);
   }, [bumpKey]);
 
-  const { data: categories } = useQuery({
+  const { data: categories = [] } = useQuery({
     queryKey: ["nav-categories"],
-    queryFn: async () => fallbackCategories,
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("categories") as any)
+        .select("id,name,slug")
+        .is("parent_id", null)
+        .eq("is_hidden_from_home", false)
+        .order("display_order")
+        .order("created_at");
+      if (error) throw error;
+      return (data ?? []) as NavCategory[];
+    },
   });
 
   const submit = (e: React.FormEvent) => {
@@ -47,7 +57,7 @@ export function Header() {
     void hydrateCartStore();
   }, []);
 
-  const cats = categories ?? fallbackCategories;
+  const cats = categories;
 
   return (
     <>
@@ -108,19 +118,12 @@ export function Header() {
           </button>
         </div>
 
-        {/* Category quick strip */}
         <div className="hidden md:block border-t border-brand-light/30 bg-gradient-to-r from-brand-light/10 via-white to-brand-light/10">
           <div className="container mx-auto px-3 py-2 flex items-center gap-1 overflow-x-auto">
-            <Link
-              to="/"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-brand-dark hover:bg-brand-light/40 rounded-full transition shrink-0"
-            >
+            <Link to="/" className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-brand-dark hover:bg-brand-light/40 rounded-full transition shrink-0">
               <Home className="w-3.5 h-3.5" /> হোম
             </Link>
-            <Link
-              to="/shop"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-brand-dark hover:bg-brand-light/40 rounded-full transition shrink-0"
-            >
+            <Link to="/shop" className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-brand-dark hover:bg-brand-light/40 rounded-full transition shrink-0">
               <Grid3x3 className="w-3.5 h-3.5" /> সকল পণ্য
             </Link>
             <span className="w-px h-4 bg-brand-light/60 mx-1" />
@@ -135,17 +138,13 @@ export function Header() {
               </Link>
             ))}
             <span className="ml-auto" />
-            <Link
-              to="/contact"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-brand-dark hover:bg-brand-light/40 rounded-full transition shrink-0"
-            >
+            <Link to="/contact" className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-brand-dark hover:bg-brand-light/40 rounded-full transition shrink-0">
               <Phone className="w-3.5 h-3.5" /> যোগাযোগ
             </Link>
           </div>
         </div>
       </header>
 
-      {/* Drawer */}
       {drawer && (
         <div className="fixed inset-0 z-50 flex">
           <div className="flex-1 bg-black/50 animate-fade-in" onClick={() => setDrawer(false)} />
@@ -192,9 +191,7 @@ export function Header() {
         </div>
       )}
 
-      {cartOpen && (
-        <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
-      )}
+      {cartOpen && <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />}
     </>
   );
 }
