@@ -246,7 +246,7 @@ function Home() {
           }}
         >
           <div className="flex gap-4 sm:gap-6 w-max animate-marquee py-2">
-            {[...categories, ...categories, ...categories].map((c, idx) => (
+            {categories.length > 0 ? (categories.length < 6 ? [...categories, ...categories, ...categories, ...categories, ...categories, ...categories] : [...categories, ...categories, ...categories]).map((c, idx) => (
               <Link
                 key={`${c.id}-${idx}`}
                 to="/category/$slug"
