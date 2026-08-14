@@ -121,7 +121,7 @@ function Home() {
   const { data } = useQuery(homeQueryOptions);
 
   const banners = (data?.banners?.length ? data.banners : HERO_BANNERS) as HomeData["banners"];
-  const categories = (data?.categories?.length ? data.categories : fallbackCategories) as HomeData["categories"];
+  const categories = (data?.categories ?? []) as HomeData["categories"];
   const featured = ((data?.products?.length ? data.products : (fallbackProducts.filter((p) => p.is_featured).slice(0, 8) as unknown as HomeData["products"])) as unknown) as Product[];
 
   useEffect(() => {
