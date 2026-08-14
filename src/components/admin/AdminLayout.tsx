@@ -6,9 +6,10 @@ import logo from "@/assets/logo.jpg";
 import {
   LayoutDashboard, Package, ShoppingBag, Users, FolderTree, Image as ImageIcon,
   Tag, Settings, Globe, UserCog, LogOut, Menu, X, Layers, Clock, FileSpreadsheet,
-  PanelLeftClose, PanelLeftOpen
+  PanelLeftClose, PanelLeftOpen, Trash2
 } from "lucide-react";
 import { NewOrderNotifier } from "@/components/admin/NewOrderNotifier";
+import { AdminOrderStability } from "@/components/admin/AdminOrderStability";
 
 type NavItem = {
   to: string;
@@ -41,6 +42,8 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const inOrdersArea = loc.pathname === "/admin/orders" || loc.pathname === "/admin/deleted-orders";
+  const deletedOrdersActive = loc.pathname === "/admin/deleted-orders";
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -67,7 +70,7 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
 
   const visibleNav = NAV.filter((n) => {
     if (isAdmin) return true;
-    if (n.exact && n.to === "/admin") return false; 
+    if (n.exact && n.to === "/admin") return false;
     if (n.perm === "always") return true;
     return n.perm ? permissions[n.perm] : false;
   });
@@ -129,14 +132,15 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
       </aside>
 
       <NewOrderNotifier />
+      <AdminOrderStability />
       <div className="flex-1 min-w-0 transition-all duration-300 ease-in-out">
         <header className="sticky top-0 z-30 bg-white border-b px-4 py-3 flex items-center gap-3 flex-wrap">
           <button onClick={() => setOpen(true)} className="lg:hidden">
             <Menu className="w-6 h-6" />
           </button>
-          
-          <button 
-            onClick={() => setCollapsed(!collapsed)} 
+
+          <button
+            onClick={() => setCollapsed(!collapsed)}
             className="hidden lg:flex items-center justify-center w-8 h-8 rounded-md border bg-gray-50 hover:bg-gray-100 transition-colors"
             title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
@@ -149,7 +153,33 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
 
           <div className="font-bold whitespace-nowrap">{isAdmin ? "অ্যাডমিন প্যানেল" : "কর্মী প্যানেল"}</div>
           <div className="ml-auto text-sm text-muted-foreground hidden sm:block truncate max-w-[200px]">{user?.email ?? ""}</div>
-          {headerExtra && <div className="w-full basis-full flex items-center gap-2 overflow-x-auto pt-2">{headerExtra}</div>}
+          {(headerExtra || inOrdersArea) && (
+            <div className="w-full basis-full flex items-center gap-2 overflow-x-auto pt-2">
+              {headerExtra && <div className="min-w-[500px] flex-1">{headerExtra}</div>}
+              {deletedOrdersActive && (
+                <Link
+                  to="/admin/orders"
+                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border border-slate-200 bg-white text-slate-700 hover:border-brand/40 hover:text-brand transition"
+                >
+                  <Globe className="w-3.5 h-3.5" />
+                  ওয়েব অর্ডার
+                </Link>
+              )}
+              {inOrdersArea && (
+                <Link
+                  to={"/admin/deleted-orders" as any}
+                  className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition ${
+                    deletedOrdersActive
+                      ? "bg-gradient-to-br from-rose-500 to-rose-700 text-white shadow-md"
+                      : "border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                  }`}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  ডিলিটেড অর্ডার
+                </Link>
+              )}
+            </div>
+          )}
         </header>
         <div className="p-4 lg:p-6">{children}</div>
       </div>
