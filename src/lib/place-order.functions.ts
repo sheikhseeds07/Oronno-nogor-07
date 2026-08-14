@@ -4,12 +4,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 import { sendPurchaseEvent } from "@/lib/facebook-capi.server";
 
-const normPhone = (p: string) => {
-  const clean = p.replace(/[\s-]/g, "");
-  if (clean.startsWith("+8801")) return `0${clean.slice(4)}`;
-  if (clean.startsWith("8801")) return `0${clean.slice(3)}`;
-  return clean;
-};
+const PHONE_RE = /^01[3-9][0-9]{8}$/;
 
 const ItemSchema = z.object({
   id: z.string().min(1).max(64),
@@ -20,7 +15,7 @@ const ItemSchema = z.object({
 
 const InputSchema = z.object({
   customer_name: z.string().min(1).max(255),
-  customer_phone: z.string().min(3).max(32),
+  customer_phone: z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number. Use 01XXXXXXXXX."),
   customer_address: z.string().min(1).max(1000),
   district: z.string().max(100).optional().nullable(),
   thana: z.string().max(100).optional().nullable(),
@@ -28,7 +23,7 @@ const InputSchema = z.object({
   delivery_fee: z.number().min(0).max(10000).default(50),
   items: z.array(ItemSchema).min(1).max(100),
   created_by: z.string().uuid().optional().nullable(),
-  // Browser-side context for Facebook Conversions API:
+  checkout_session_id: z.string().uuid().optional().nullable(),
   fbp: z.string().max(200).optional().nullable(),
   fbc: z.string().max(500).optional().nullable(),
   source_url: z.string().max(2000).optional().nullable(),
@@ -37,12 +32,8 @@ const InputSchema = z.object({
 export const placeOrder = createServerFn({ method: "POST" })
   .inputValidator((input) => InputSchema.parse(input))
   .handler(async ({ data }) => {
-    const customerPhone = normPhone(data.customer_phone);
+    const customerPhone = data.customer_phone;
 
-    // SECURITY: never trust client-supplied prices. For items whose `id` is a
-    // real product UUID, override the price with the lower of (price, sale_price)
-    // from the DB. Non-UUID items (custom landing-page add-ons) keep their
-    // client price — but admin should review before fulfilment.
     const uuidIds = data.items.map((i) => i.id).filter((s) => /^[0-9a-f-]{36}$/i.test(s));
     const { data: dbProducts } = uuidIds.length
       ? await supabaseAdmin.from("products").select("id,price,sale_price").in("id", uuidIds)
@@ -95,29 +86,51 @@ export const placeOrder = createServerFn({ method: "POST" })
       subtotal: i.price * i.quantity,
     }));
 
-    // Insert items + cleanup incomplete row + log conversion in parallel
-    const [itemsRes, delRes] = await Promise.all([
-      supabaseAdmin.from("order_items").insert(rows),
-      supabaseAdmin.from("incomplete_orders").delete().eq("phone", customerPhone).select("id"),
-    ]);
-
+    const itemsRes = await supabaseAdmin.from("order_items").insert(rows);
     if (itemsRes.error) {
       await supabaseAdmin.from("orders").delete().eq("id", order.id);
       throw new Error(itemsRes.error.message);
     }
 
-    // If there was an incomplete row for this phone, log it as "converted"
-    if ((delRes.data ?? []).length > 0) {
+    let converted = false;
+    try {
+      if (data.checkout_session_id) {
+        const { data: deleted, error } = await supabaseAdmin
+          .from("incomplete_orders")
+          .delete()
+          .eq("checkout_session_id", data.checkout_session_id)
+          .select("id");
+        if (error) throw error;
+        converted = (deleted ?? []).length > 0;
+      } else {
+        const { data: latest, error: findError } = await supabaseAdmin
+          .from("incomplete_orders")
+          .select("id")
+          .eq("phone", customerPhone)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (findError) throw findError;
+        if (latest) {
+          const { error: deleteError } = await supabaseAdmin
+            .from("incomplete_orders")
+            .delete()
+            .eq("id", latest.id);
+          if (deleteError) throw deleteError;
+          converted = true;
+        }
+      }
+    } catch (e) {
+      console.error("[placeOrder] incomplete draft cleanup failed:", e);
+    }
+
+    if (converted) {
       await supabaseAdmin.from("incomplete_events").insert({ phone: customerPhone, event: "converted" });
     }
 
-    // Fire Facebook CAPI Purchase server-side (fire-and-forget — never block checkout).
     try {
       const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
       const userAgent = getRequestHeader("user-agent") ?? null;
-      // IMPORTANT: must await — Cloudflare Workers terminate background
-      // promises after the response is sent, so fire-and-forget drops the
-      // CAPI call. sendPurchaseEvent swallows its own errors.
       await sendPurchaseEvent({
         orderId: order.id,
         value: total,
