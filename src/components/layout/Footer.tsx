@@ -31,15 +31,6 @@ function TikTokIcon({ className = "w-5 h-5" }: { className?: string }) {
   );
 }
 
-const FB_FALLBACK = "https://www.facebook.com/share/14p1iVqUFoG/";
-function normalizeUrl(raw?: string, fallback = "") {
-  const v = (raw || "").trim();
-  if (!v) return fallback;
-  if (/^https?:\/\//i.test(v)) return v;
-  if (/^(mailto:|tel:)/i.test(v)) return v;
-  return `https://${v.replace(/^\/+/, "")}`;
-}
-
 export function Footer() {
   const { data: row } = useQuery({
     queryKey: ["site-settings-public"],
@@ -75,16 +66,16 @@ export function Footer() {
         </div>
 
         <div className="flex items-center justify-center gap-3 mb-6">
-          <a href={normalizeUrl(s.facebook, FB_FALLBACK)} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center hover:scale-110 transition">
+          <a href="https://www.facebook.com/share/14p1iVqUFoG/" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center hover:scale-110 transition">
             <FacebookIcon className="w-5 h-5" />
           </a>
           {s.youtube && (
-            <a href={normalizeUrl(s.youtube)} target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center hover:scale-110 transition">
+            <a href={s.youtube} target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center hover:scale-110 transition">
               <YoutubeIcon className="w-5 h-5" />
             </a>
           )}
           {s.tiktok && (
-            <a href={normalizeUrl(s.tiktok)} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="w-10 h-10 rounded-full bg-black flex items-center justify-center hover:scale-110 transition">
+            <a href={s.tiktok} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="w-10 h-10 rounded-full bg-black flex items-center justify-center hover:scale-110 transition">
               <TikTokIcon />
             </a>
           )}
