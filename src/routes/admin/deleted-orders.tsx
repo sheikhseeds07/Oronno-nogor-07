@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { taka } from "@/lib/format";
 import {
+  bulkPermanentlyDeleteArchivedOrders,
+  bulkRestoreDeletedOrders,
   listDeletedOrders,
   permanentlyDeleteArchivedOrder,
   restoreDeletedOrder,
@@ -73,9 +75,15 @@ function DeletedOrdersPage() {
   const listFn = useServerFn(listDeletedOrders);
   const restoreFn = useServerFn(restoreDeletedOrder);
   const permanentFn = useServerFn(permanentlyDeleteArchivedOrder);
+  const bulkRestoreFn = useServerFn(bulkRestoreDeletedOrders);
+  const bulkPermanentFn = useServerFn(bulkPermanentlyDeleteArchivedOrders);
+
   const [search, setSearch] = useState("");
   const [restoreTargets, setRestoreTargets] = useState<Record<string, RestoreStatus>>({});
+  const [bulkStatus, setBulkStatus] = useState<RestoreStatus>("pending");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["deleted-orders"],
@@ -99,11 +107,33 @@ function DeletedOrdersPage() {
     });
   }, [allRows, term]);
 
-  const removeFromArchiveCache = (id: string) => {
+  const allVisibleSelected = rows.length > 0 && rows.every((row) => selectedIds.has(row.id));
+
+  const toggleOne = (id: string) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAllVisible = () => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (allVisibleSelected) rows.forEach((row) => next.delete(row.id));
+      else rows.forEach((row) => next.add(row.id));
+      return next;
+    });
+  };
+
+  const removeManyFromArchiveCache = (ids: string[]) => {
+    const removed = new Set(ids);
     qc.setQueryData(["deleted-orders"], (old: any) => {
       if (!old?.rows) return old;
-      return { ...old, rows: old.rows.filter((row: DeletedOrderRow) => row.id !== id) };
+      return { ...old, rows: old.rows.filter((row: DeletedOrderRow) => !removed.has(row.id)) };
     });
+    setSelectedIds((current) => new Set(Array.from(current).filter((id) => !removed.has(id))));
   };
 
   const restore = async (row: DeletedOrderRow) => {
@@ -111,7 +141,7 @@ function DeletedOrdersPage() {
     setBusyId(row.id);
     try {
       await restoreFn({ data: { id: row.id, status } });
-      removeFromArchiveCache(row.id);
+      removeManyFromArchiveCache([row.id]);
       qc.invalidateQueries({ queryKey: ["admin-orders"] });
       qc.invalidateQueries({ queryKey: ["order-status-counts"] });
       toast.success(`অর্ডার ${STATUS_OPTIONS.find((s) => s.value === status)?.label ?? status} স্ট্যাটাসে ফেরত গেছে`);
@@ -128,12 +158,45 @@ function DeletedOrdersPage() {
     setBusyId(row.id);
     try {
       await permanentFn({ data: { id: row.id } });
-      removeFromArchiveCache(row.id);
+      removeManyFromArchiveCache([row.id]);
       toast.success("অর্ডার স্থায়ীভাবে ডিলিট হয়েছে");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "পার্মানেন্ট ডিলিট ব্যর্থ");
     } finally {
       setBusyId(null);
+    }
+  };
+
+  const bulkRestore = async () => {
+    const ids = Array.from(selectedIds);
+    if (!ids.length) return;
+    setBulkBusy(true);
+    try {
+      const result = await bulkRestoreFn({ data: { ids, status: bulkStatus } });
+      removeManyFromArchiveCache(ids);
+      qc.invalidateQueries({ queryKey: ["admin-orders"] });
+      qc.invalidateQueries({ queryKey: ["order-status-counts"] });
+      toast.success(`${result.restored} টি অর্ডার ${STATUS_OPTIONS.find((s) => s.value === bulkStatus)?.label ?? bulkStatus} স্ট্যাটাসে রিস্টোর হয়েছে`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "একসাথে রিস্টোর করা যায়নি");
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const bulkPermanentDelete = async () => {
+    const ids = Array.from(selectedIds);
+    if (!ids.length) return;
+    if (!window.confirm(`${ids.length} টি অর্ডার স্থায়ীভাবে ডিলিট করবেন? এরপর এগুলো আর ফেরত আনা যাবে না।`)) return;
+    setBulkBusy(true);
+    try {
+      const result = await bulkPermanentFn({ data: { ids } });
+      removeManyFromArchiveCache(ids);
+      toast.success(`${result.deleted} টি অর্ডার স্থায়ীভাবে ডিলিট হয়েছে`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "একসাথে ডিলিট করা যায়নি");
+    } finally {
+      setBulkBusy(false);
     }
   };
 
@@ -150,16 +213,16 @@ function DeletedOrdersPage() {
               >
                 <ArrowLeft className="h-4 w-4" />
               </Link>
-              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900">ডিলিটেড অর্ডার</h1>
+              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900">ট্র্যাশ / ডিলিটেড অর্ডার</h1>
             </div>
             <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
-              সাধারণ Delete করলে অর্ডার এখানে নিরাপদে থাকবে। এখান থেকে যেকোনো স্ট্যাটাসে ফেরত নেওয়া যাবে।
+              সাধারণ Delete করলে অর্ডার এখানে নিরাপদে থাকবে। একসাথে সিলেক্ট করে রিস্টোর বা পার্মানেন্ট ডিলিট করা যাবে।
             </p>
           </div>
           <button
             type="button"
             onClick={() => refetch()}
-            disabled={isFetching}
+            disabled={isFetching || bulkBusy}
             className="inline-flex items-center gap-1.5 rounded-lg border bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:border-brand/30 disabled:opacity-50"
           >
             {isFetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Undo2 className="h-3.5 w-3.5" />}
@@ -176,6 +239,53 @@ function DeletedOrdersPage() {
             className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm shadow-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
           />
         </div>
+
+        {rows.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
+            <label className="inline-flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+              <input type="checkbox" checked={allVisibleSelected} onChange={toggleAllVisible} disabled={bulkBusy} />
+              সব সিলেক্ট
+            </label>
+            <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-600">
+              {selectedIds.size} টি সিলেক্টেড
+            </span>
+
+            {selectedIds.size > 0 && (
+              <>
+                <select
+                  value={bulkStatus}
+                  onChange={(event) => setBulkStatus(event.target.value as RestoreStatus)}
+                  disabled={bulkBusy}
+                  className="ml-auto min-w-[160px] rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+                >
+                  {STATUS_OPTIONS.map((status) => (
+                    <option key={status.value} value={status.value}>{status.label}-এ রিস্টোর</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={bulkRestore}
+                  disabled={bulkBusy}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-brand to-brand-dark px-3 py-2 text-xs font-bold text-white shadow-sm disabled:opacity-50"
+                >
+                  {bulkBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Undo2 className="h-3.5 w-3.5" />}
+                  রিস্টোর সিলেক্টেড
+                </button>
+                {data?.canPermanentDelete && (
+                  <button
+                    type="button"
+                    onClick={bulkPermanentDelete}
+                    disabled={bulkBusy}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    ডিলিট সিলেক্টেড
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         {isLoading && !data ? (
           <div className="rounded-xl border bg-white p-10 text-center text-sm text-muted-foreground">
@@ -194,25 +304,35 @@ function DeletedOrdersPage() {
             {rows.map((row) => {
               const items = Array.isArray(row.items) ? row.items : [];
               const selectedStatus = restoreTargets[row.id] ?? preferredStatus(row.original_status);
-              const busy = busyId === row.id;
+              const busy = busyId === row.id || bulkBusy;
               const invoice = (row.invoice_no ?? row.id.slice(0, 8)).toUpperCase();
 
               return (
-                <div key={row.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div key={row.id} className={`rounded-2xl border bg-white p-4 shadow-sm transition ${selectedIds.has(row.id) ? "border-brand ring-2 ring-brand/10" : "border-slate-200"}`}>
                   <div className="flex items-start justify-between gap-3 flex-wrap">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono text-sm font-extrabold text-slate-800">#{invoice}</span>
-                        <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700">
-                          আগে: {STATUS_OPTIONS.find((s) => s.value === row.original_status)?.label ?? row.original_status}
-                        </span>
-                      </div>
-                      <div className="mt-1 text-sm font-bold text-slate-800">{row.customer_name}</div>
-                      <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
-                        <Phone className="h-3 w-3" /> {row.customer_phone}
-                      </div>
-                      <div className="mt-1 text-[11px] text-slate-400">
-                        অর্ডার: {format(new Date(row.original_created_at), "dd MMM yyyy, hh:mm a")} · ডিলিট: {format(new Date(row.deleted_at), "dd MMM yyyy, hh:mm a")}
+                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(row.id)}
+                        onChange={() => toggleOne(row.id)}
+                        disabled={bulkBusy}
+                        className="mt-1"
+                        aria-label={`#${invoice} সিলেক্ট করুন`}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono text-sm font-extrabold text-slate-800">#{invoice}</span>
+                          <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700">
+                            আগে: {STATUS_OPTIONS.find((s) => s.value === row.original_status)?.label ?? row.original_status}
+                          </span>
+                        </div>
+                        <div className="mt-1 text-sm font-bold text-slate-800">{row.customer_name}</div>
+                        <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
+                          <Phone className="h-3 w-3" /> {row.customer_phone}
+                        </div>
+                        <div className="mt-1 text-[11px] text-slate-400">
+                          অর্ডার: {format(new Date(row.original_created_at), "dd MMM yyyy, hh:mm a")} · ডিলিট: {format(new Date(row.deleted_at), "dd MMM yyyy, hh:mm a")}
+                        </div>
                       </div>
                     </div>
                     <div className="text-right">
@@ -251,7 +371,7 @@ function DeletedOrdersPage() {
                       disabled={busy}
                       className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-brand to-brand-dark px-3 py-2 text-xs font-bold text-white shadow-sm disabled:opacity-50"
                     >
-                      {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Undo2 className="h-3.5 w-3.5" />}
+                      {busyId === row.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Undo2 className="h-3.5 w-3.5" />}
                       রিস্টোর
                     </button>
                     {data?.canPermanentDelete && (
