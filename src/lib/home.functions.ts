@@ -128,15 +128,14 @@ async function getHomeDataFallback(): Promise<HomeData> {
 }
 
 /**
- * Uses one database RPC for the whole home payload. This intentionally calls
- * Supabase directly from the browser, avoiding the mismatched TanStack server
- * function serializer that previously broke the whole page during hydration.
+ * Uses one database RPC for the whole home payload. Keep the method call bound
+ * to the Supabase client because rpc() reads the client's REST transport.
  */
 export async function getHomeData(): Promise<HomeData> {
-  const getHomeDataRpc = supabase.rpc as unknown as (
-    functionName: "get_home_data_v1",
-  ) => Promise<{ data: unknown; error: { message: string } | null }>;
-  const { data, error } = await getHomeDataRpc("get_home_data_v1");
+  const { data, error } = (await supabase.rpc("get_home_data_v1" as never)) as {
+    data: unknown;
+    error: { message: string } | null;
+  };
 
   if (!error && data && typeof data === "object") {
     const payload = data as Partial<HomeData>;
