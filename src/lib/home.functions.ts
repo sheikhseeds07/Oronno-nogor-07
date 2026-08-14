@@ -39,16 +39,16 @@ export type HomeData = {
  */
 export const getHomeData = createServerFn({ method: "GET" }).handler(async (): Promise<HomeData> => {
   const cols = "id,slug,name,price,sale_price,images,stock,is_featured";
+  const categoriesQuery = (supabase.from("categories") as any)
+    .select("id,slug,name,image_url")
+    .is("parent_id", null)
+    .eq("is_hidden_from_home", false)
+    .order("display_order")
+    .order("created_at");
 
   const [bannersRes, categoriesRes, topSellersRes] = await Promise.all([
     supabase.from("banners").select("id,title,image_url,link_url").eq("is_active", true).order("display_order").limit(8),
-    supabase
-      .from("categories")
-      .select("id,slug,name,image_url")
-      .is("parent_id", null)
-      .eq("is_hidden_from_home", false)
-      .order("display_order")
-      .order("created_at"),
+    categoriesQuery,
     supabase.from("top_selling_products" as never).select("product_id").limit(24),
   ]);
 
