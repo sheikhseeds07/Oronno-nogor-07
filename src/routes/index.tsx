@@ -4,19 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { ProductCard, type Product } from "@/components/shop/ProductCard";
 import { ShieldCheck, Truck, Headphones, ArrowRight, Sparkles } from "lucide-react";
-import { fallbackCategories, fallbackProducts } from "@/lib/fallback-shop";
 import { getHomeData, type HomeData } from "@/lib/home.functions";
 import { toImg, imgSrcSet } from "@/lib/img";
-import { supabase } from "@/lib/personal-supabase/client";
 
 type HeroCopy = { eyebrow: string; heading: string; sub: string; cta: string };
-type HomeSubcategory = {
-  id: string;
-  slug: string;
-  name: string;
-  image_url: string | null;
-  parent_id: string | null;
-};
 
 const HERO_COPY: Record<string, HeroCopy> = {
   "hero-seeds": {
@@ -48,15 +39,15 @@ const HERO_BANNERS = [
 const PROMO_BANNER_URL = "/banner-seeds.jpg";
 const FALLBACK_HOME: HomeData = {
   banners: HERO_BANNERS,
-  categories: fallbackCategories as unknown as HomeData["categories"],
-  products: fallbackProducts.filter((p) => p.is_featured).slice(0, 8) as unknown as HomeData["products"],
+  categories: [],
+  products: [],
 };
 
 const homeQueryOptions = queryOptions({
   queryKey: ["home-data"],
   queryFn: () => getHomeData(),
   staleTime: 5 * 60_000,
-  initialData: { ...FALLBACK_HOME, categories: [] },
+  initialData: FALLBACK_HOME,
   initialDataUpdatedAt: 0,
 });
 
@@ -126,9 +117,7 @@ function Home() {
 
   const banners = (data?.banners?.length ? data.banners : HERO_BANNERS) as HomeData["banners"];
   const categories = (data?.categories ?? []) as HomeData["categories"];
-  const featured = ((data?.products?.length
-    ? data.products
-    : (fallbackProducts.filter((p) => p.is_featured).slice(0, 8) as unknown as HomeData["products"])) as unknown) as Product[];
+  const popularProducts = ((data?.products ?? []) as unknown) as Product[];
 
   useEffect(() => {
     const idle = (cb: () => void) => {
@@ -145,40 +134,12 @@ function Home() {
 
   const [slide, setSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const [activeRootId, setActiveRootId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!banners?.length || isPaused) return;
     const t = setInterval(() => setSlide((s) => (s + 1) % banners.length), 4000);
     return () => clearInterval(t);
   }, [banners, isPaused]);
-
-  useEffect(() => {
-    if (!categories.length) {
-      setActiveRootId(null);
-      return;
-    }
-    if (!activeRootId || !categories.some((category) => category.id === activeRootId)) {
-      setActiveRootId(categories[0].id);
-    }
-  }, [categories, activeRootId]);
-
-  const activeCategory = categories.find((category) => category.id === activeRootId) ?? null;
-
-  const { data: subcategories = [] } = useQuery({
-    queryKey: ["home-subcategories", activeRootId],
-    enabled: Boolean(activeRootId),
-    staleTime: 5 * 60_000,
-    queryFn: async () => {
-      const { data: childData, error } = await (supabase.from("categories") as any)
-        .select("id,slug,name,image_url,parent_id")
-        .eq("parent_id", activeRootId)
-        .order("display_order")
-        .order("created_at");
-      if (error) throw error;
-      return (childData ?? []) as HomeSubcategory[];
-    },
-  });
 
   const marqueeCategories = useMemo(() => {
     if (!categories.length) return [] as HomeData["categories"];
@@ -195,7 +156,6 @@ function Home() {
         }
       `}</style>
 
-      {/* Hero banner */}
       {banners && banners.length > 0 && (
         <section className="bg-background">
           <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
@@ -274,7 +234,6 @@ function Home() {
         </section>
       )}
 
-      {/* Popular Categories */}
       <section className="py-10 sm:py-14 bg-gradient-to-b from-brand-light/25 via-transparent to-transparent">
         <div className="container mx-auto px-3 sm:px-4">
           <SectionTitle title="পপুলার ক্যাটেগরি" />
@@ -292,40 +251,35 @@ function Home() {
                   animation: categories.length > 1 ? "homeCategoryMarquee 30s linear infinite" : "none",
                 }}
               >
-                {marqueeCategories.map((category, index) => {
-                  const isActive = activeRootId === category.id;
-                  return (
-                    <button
-                      key={`${category.id}-${index}`}
-                      type="button"
-                      onClick={() => setActiveRootId(category.id)}
-                      className={`group shrink-0 w-[124px] sm:w-[148px] rounded-2xl sm:rounded-3xl border bg-white/95 p-2.5 sm:p-3 text-center shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${
-                        isActive ? "border-brand shadow-lg ring-2 ring-brand/15" : "border-border/70"
-                      }`}
-                    >
-                      <div className="aspect-square rounded-2xl overflow-hidden bg-brand-light/30 mb-2.5 ring-1 ring-black/5">
-                        {category.image_url ? (
-                          <img
-                            src={toImg(category.image_url, { w: 296, q: 75 })}
-                            srcSet={imgSrcSet(category.image_url, [148, 220, 296])}
-                            sizes="(max-width: 640px) 124px, 148px"
-                            alt={category.name}
-                            width={148}
-                            height={148}
-                            loading="lazy"
-                            decoding="async"
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-3xl">🌱</div>
-                        )}
-                      </div>
-                      <div className={`text-xs sm:text-sm font-bold line-clamp-2 px-1 ${isActive ? "text-brand-dark" : "text-foreground"}`}>
-                        {category.name}
-                      </div>
-                    </button>
-                  );
-                })}
+                {marqueeCategories.map((category, index) => (
+                  <Link
+                    key={`${category.id}-${index}`}
+                    to="/category/$slug"
+                    params={{ slug: category.slug }}
+                    className="group shrink-0 w-[124px] sm:w-[148px] rounded-2xl sm:rounded-3xl border border-border/70 bg-white/95 p-2.5 sm:p-3 text-center shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-brand/30 hover:shadow-lg"
+                  >
+                    <div className="aspect-square rounded-2xl overflow-hidden bg-brand-light/30 mb-2.5 ring-1 ring-black/5">
+                      {category.image_url ? (
+                        <img
+                          src={toImg(category.image_url, { w: 296, q: 75 })}
+                          srcSet={imgSrcSet(category.image_url, [148, 220, 296])}
+                          sizes="(max-width: 640px) 124px, 148px"
+                          alt={category.name}
+                          width={148}
+                          height={148}
+                          loading="lazy"
+                          decoding="async"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-3xl">🌱</div>
+                      )}
+                    </div>
+                    <div className="text-xs sm:text-sm font-bold line-clamp-2 px-1 text-foreground group-hover:text-brand-dark transition-colors">
+                      {category.name}
+                    </div>
+                  </Link>
+                ))}
               </div>
             </div>
           ) : (
@@ -336,90 +290,25 @@ function Home() {
             </div>
           )}
         </div>
-
-        <div className="container mx-auto px-3 sm:px-4 mt-6 sm:mt-8">
-          <div className="rounded-[28px] border border-brand/10 bg-white/95 shadow-sm p-4 sm:p-6 lg:p-7">
-            {activeCategory ? (
-              <>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-5">
-                  <div>
-                    <h3 className="text-lg sm:text-xl font-extrabold text-brand-dark">
-                      {activeCategory.name}
-                    </h3>
-                    <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                      সাব-ক্যাটাগরি দেখতে উপরের মূল ক্যাটাগরি নির্বাচন করুন।
-                    </p>
-                  </div>
-                  <Link
-                    to="/category/$slug"
-                    params={{ slug: activeCategory.slug }}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-brand text-white px-4 py-2 text-sm font-semibold hover:bg-brand-dark transition-colors self-start"
-                  >
-                    সকল {activeCategory.name} দেখুন
-                    <ArrowRight className="w-4 h-4" />
-                  </Link>
-                </div>
-
-                {subcategories.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-                    {subcategories.map((subcategory) => (
-                      <Link
-                        key={subcategory.id}
-                        to="/category/$slug"
-                        params={{ slug: subcategory.slug }}
-                        className="group rounded-2xl border border-border/70 bg-background p-2.5 sm:p-3 text-center hover:border-brand/25 hover:shadow-md transition-all"
-                      >
-                        <div className="aspect-square rounded-2xl overflow-hidden bg-brand-light/25 mb-2.5 ring-1 ring-black/5">
-                          {subcategory.image_url ? (
-                            <img
-                              src={toImg(subcategory.image_url, { w: 240, q: 75 })}
-                              srcSet={imgSrcSet(subcategory.image_url, [120, 180, 240])}
-                              sizes="(max-width: 640px) 50vw, 180px"
-                              alt={subcategory.name}
-                              width={180}
-                              height={180}
-                              loading="lazy"
-                              decoding="async"
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-3xl">🌱</div>
-                          )}
-                        </div>
-                        <div className="text-xs sm:text-sm font-semibold text-foreground group-hover:text-brand transition-colors line-clamp-2 px-1">
-                          {subcategory.name}
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-dashed bg-brand-light/15 p-5 sm:p-6 text-center text-sm text-muted-foreground">
-                    এই মূল ক্যাটাগরির জন্য এখনো কোনো সাব-ক্যাটাগরি যোগ করা হয়নি।
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="rounded-2xl border border-dashed bg-brand-light/15 p-5 sm:p-6 text-center text-sm text-muted-foreground">
-                ক্যাটাগরি লোড হচ্ছে...
-              </div>
-            )}
-          </div>
-        </div>
       </section>
 
-      {/* Popular Products */}
       <section className="container mx-auto px-3 sm:px-4 py-8 sm:py-12">
         <SectionTitle
           title="পপুলার পণ্য"
-          subtitle="গ্রাহকদের সবচেয়ে বেশি পছন্দ হওয়া বীজ ও গার্ডেন টুলস"
+          subtitle="সবচেয়ে বেশি বিক্রি হওয়া পণ্য আগে দেখানো হচ্ছে"
           action={{ label: "সকল পণ্য দেখুন", to: "/shop" }}
         />
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
-          {featured?.map((p) => <ProductCard key={p.id} p={p} />)}
-        </div>
+        {popularProducts.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
+            {popularProducts.map((product) => <ProductCard key={product.id} p={product} />)}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed bg-white p-8 text-center text-sm text-muted-foreground">
+            এখনো কোনো পণ্য যোগ করা হয়নি।
+          </div>
+        )}
       </section>
 
-      {/* Why us */}
       <section className="py-12 sm:py-16 bg-gradient-to-b from-transparent via-brand-light/20 to-transparent">
         <div className="container mx-auto px-3 sm:px-4">
           <div className="text-center mb-8 sm:mb-12">
