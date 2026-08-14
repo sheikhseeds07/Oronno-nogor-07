@@ -43,7 +43,7 @@ export const getHomeData = createServerFn({ method: "GET" }).handler(async (): P
   // Fire all read-only queries in parallel.
   const [bannersRes, categoriesRes, topSellersRes] = await Promise.all([
     supabase.from("banners").select("id,title,image_url,link_url").eq("is_active", true).order("display_order").limit(8),
-    supabase.from("categories").select("id,slug,name,image_url").order("display_order").limit(3),
+    supabase.from("categories").select("id,slug,name,image_url").order("display_order"),
     supabase.from("top_selling_products" as never).select("product_id").limit(24),
   ]);
 
