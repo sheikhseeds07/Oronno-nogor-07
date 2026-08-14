@@ -4,14 +4,7 @@ import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 import { assertCanManageOrders } from "@/lib/_admin-guard.server";
 
-
-const PHONE_RE = /^(?:\+?88)?01[0-9]{9}$/;
-const normPhone = (p: string) => {
-  const clean = p.replace(/[\s-]/g, "");
-  if (clean.startsWith("+8801")) return `0${clean.slice(4)}`;
-  if (clean.startsWith("8801")) return `0${clean.slice(3)}`;
-  return clean;
-};
+const PHONE_RE = /^01[3-9][0-9]{8}$/;
 
 const ItemSchema = z.object({
   id: z.string().min(1).max(64),
@@ -21,7 +14,8 @@ const ItemSchema = z.object({
 });
 
 const UpsertSchema = z.object({
-  phone: z.string().min(11).max(20).refine((value) => PHONE_RE.test(normPhone(value)), "Invalid phone number"),
+  checkout_session_id: z.string().uuid(),
+  phone: z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number"),
   customer_name: z.string().max(255).optional().nullable(),
   customer_address: z.string().max(1000).optional().nullable(),
   delivery_zone: z.string().max(50).optional().nullable(),
@@ -33,15 +27,16 @@ const UpsertSchema = z.object({
 });
 
 // Order statuses that mean "this phone already has an active order in progress".
-// If any of these exist, we do NOT keep an incomplete row for the same phone.
 const ACTIVE_STATUSES = ["web_pending", "pending", "hold", "rts"] as const;
 
 export const upsertIncompleteOrder = createServerFn({ method: "POST" })
   .inputValidator((input) => UpsertSchema.parse(input))
   .handler(async ({ data }) => {
-    const phone = normPhone(data.phone);
+    const phone = data.phone;
+    const checkoutSessionId = data.checkout_session_id;
 
-    // Dedup: if this phone already has an active order, do not create/keep an incomplete row
+    // Keep the previous behavior of skipping a draft when this phone already has
+    // an active order, but only remove the draft belonging to this checkout.
     const { data: active } = await supabaseAdmin
       .from("orders")
       .select("id")
@@ -51,35 +46,60 @@ export const upsertIncompleteOrder = createServerFn({ method: "POST" })
       .maybeSingle();
 
     if (active) {
-      await supabaseAdmin.from("incomplete_orders").delete().eq("phone", phone);
+      await supabaseAdmin
+        .from("incomplete_orders")
+        .delete()
+        .eq("checkout_session_id", checkoutSessionId);
       return { ok: true, skipped: "active_order_exists" as const };
     }
 
-    // Was there already an incomplete row? (decides if this is a NEW create or an update)
+    const row = {
+      checkout_session_id: checkoutSessionId,
+      phone,
+      customer_name: data.customer_name ?? null,
+      customer_address: data.customer_address ?? null,
+      delivery_zone: data.delivery_zone ?? null,
+      delivery_fee: data.delivery_fee,
+      items: data.items,
+      subtotal: data.subtotal,
+      total: data.total,
+      note: data.note ?? null,
+      updated_at: new Date().toISOString(),
+    };
+
+    // Check by stable checkout id, not phone. Changing phone now updates the same row.
     const { data: existing } = await supabaseAdmin
       .from("incomplete_orders")
       .select("id")
-      .eq("phone", phone)
+      .eq("checkout_session_id", checkoutSessionId)
       .limit(1)
       .maybeSingle();
 
+    if (!existing) {
+      // Backward compatibility: if a legacy phone-keyed draft exists, adopt it
+      // into this checkout session instead of creating a second row.
+      const { data: legacy } = await supabaseAdmin
+        .from("incomplete_orders")
+        .select("id")
+        .eq("phone", phone)
+        .is("checkout_session_id", null)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (legacy) {
+        const { error } = await supabaseAdmin
+          .from("incomplete_orders")
+          .update(row)
+          .eq("id", legacy.id);
+        if (error) throw new Error(error.message);
+        return { ok: true };
+      }
+    }
+
     const { error } = await supabaseAdmin
       .from("incomplete_orders")
-      .upsert(
-        {
-          phone,
-          customer_name: data.customer_name ?? null,
-          customer_address: data.customer_address ?? null,
-          delivery_zone: data.delivery_zone ?? null,
-          delivery_fee: data.delivery_fee,
-          items: data.items,
-          subtotal: data.subtotal,
-          total: data.total,
-          note: data.note ?? null,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "phone" },
-      );
+      .upsert(row, { onConflict: "checkout_session_id" });
     if (error) throw new Error(error.message);
 
     if (!existing) {
@@ -89,10 +109,9 @@ export const upsertIncompleteOrder = createServerFn({ method: "POST" })
   });
 
 export const lookupCustomerByPhone = createServerFn({ method: "POST" })
-  .inputValidator((input) => z.object({ phone: z.string().min(11).max(20) }).parse(input))
+  .inputValidator((input) => z.object({ phone: z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number") }).parse(input))
   .handler(async ({ data }) => {
-    const phone = normPhone(data.phone);
-    if (!PHONE_RE.test(phone)) return null;
+    const phone = data.phone;
     // Most recent completed (non-web_pending) order
     const { data: ord } = await supabaseAdmin
       .from("orders")
@@ -116,10 +135,9 @@ export const lookupCustomerByPhone = createServerFn({ method: "POST" })
 
 export const deleteIncompleteByPhone = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ phone: z.string().min(11).max(20) }).parse(input))
+  .inputValidator((input) => z.object({ phone: z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number") }).parse(input))
   .handler(async ({ data, context }) => {
     await assertCanManageOrders(context.userId);
-    const phone = normPhone(data.phone);
-    await supabaseAdmin.from("incomplete_orders").delete().eq("phone", phone);
+    await supabaseAdmin.from("incomplete_orders").delete().eq("phone", data.phone);
     return { ok: true };
   });
