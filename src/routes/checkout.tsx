@@ -7,14 +7,15 @@ import { taka } from "@/lib/format";
 import { supabase } from "@/lib/personal-supabase/client";
 import { toImg } from "@/lib/img";
 import { placeOrder } from "@/lib/place-order.functions";
-import { useCheckoutAutofill } from "@/lib/useCheckoutAutofill";
+import { clearCheckoutSessionId, useCheckoutAutofill } from "@/lib/useCheckoutAutofill";
 import { toast } from "sonner";
 import { trackInitiateCheckout, trackPurchase } from "@/lib/fbq";
 import { getFbContext } from "@/lib/fb-context";
 
 export const Route = createFileRoute("/checkout")({ component: Checkout });
 
-const PHONE_RE = /^(?:\+?88)?01[0-9]{9}$/;
+const PHONE_RE = /^01[3-9][0-9]{8}$/;
+const PHONE_ERROR = "সঠিক ১১ ডিজিটের বাংলাদেশি মোবাইল নাম্বার দিন (01XXXXXXXXX)";
 const ZONES = [
   { id: "all", label: "সারাদেশে হোম ডেলিভারি", fee: 50 },
 ];
@@ -32,11 +33,8 @@ function Checkout() {
 
   const delivery = ZONES.find((z) => z.id === form.zone)?.fee ?? 50;
   const total = subtotal + delivery;
+  const phoneValid = PHONE_RE.test(form.phone);
 
-  const phoneNorm = form.phone.replace(/[\s-]/g, "");
-  const phoneValid = PHONE_RE.test(phoneNorm);
-
-  // Fire InitiateCheckout once when the page loads with items
   const firedICRef = useRef(false);
   useEffect(() => {
     if (firedICRef.current || items.length === 0) return;
@@ -45,12 +43,10 @@ function Checkout() {
       items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity })),
       subtotal + delivery,
     );
-    // run once on mount; ignore later updates intentionally
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-fill + incomplete-order save (shared hook)
-  useCheckoutAutofill({
+  const { checkoutSessionId } = useCheckoutAutofill({
     form,
     setForm: (updater) => setForm((f) => updater(f) as typeof f),
     items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity })),
@@ -64,24 +60,27 @@ function Checkout() {
     e.preventDefault();
     if (items.length === 0) return toast.error("কার্ট খালি");
     if (!form.name.trim()) return toast.error("নাম দিন");
-    if (!phoneValid) { setPhoneErr("সঠিক ১১ ডিজিটের নাম্বার দিন"); return toast.error("ফোন নাম্বার সঠিক নয়"); }
+    if (!phoneValid) {
+      setPhoneErr(PHONE_ERROR);
+      return toast.error("ফোন নাম্বার সঠিক নয়");
+    }
     if (!form.address.trim()) return toast.error("ঠিকানা দিন");
 
     setSubmitting(true);
     try {
-      // Use cached session (sync, no network) instead of auth.getUser()
       const { data: { session } } = await supabase.auth.getSession();
       const fbCtx = getFbContext();
       const result = await runPlaceOrder({
         data: {
           customer_name: form.name.trim(),
-          customer_phone: phoneNorm,
+          customer_phone: form.phone,
           customer_address: form.address.trim(),
           district: null,
           thana: null,
           notes: form.note?.trim() || null,
           delivery_fee: delivery,
           created_by: session?.user?.id ?? null,
+          checkout_session_id: checkoutSessionId || null,
           items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity })),
           ...fbCtx,
         },
@@ -93,6 +92,7 @@ function Checkout() {
           result.id,
         );
       }
+      clearCheckoutSessionId(checkoutSessionId);
       clear();
       toast.success("অর্ডার সফল হয়েছে!");
       navigate({ to: "/order/$id", params: { id: result.id } });
@@ -126,13 +126,7 @@ function Checkout() {
 
             <div>
               <label className="block text-sm font-semibold mb-1.5">আপনার নাম <span className="text-destructive">*</span></label>
-              <input
-                required
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full border rounded-lg px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand/40"
-                placeholder="পূর্ণ নাম লিখুন"
-              />
+              <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full border rounded-lg px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand/40" placeholder="পূর্ণ নাম লিখুন" />
             </div>
 
             <div>
@@ -145,9 +139,11 @@ function Checkout() {
                 onChange={(e) => {
                   const v = e.target.value;
                   setForm({ ...form, phone: v });
-                  setPhoneErr("");
+                  setPhoneErr(v && !PHONE_RE.test(v) ? PHONE_ERROR : "");
                 }}
+                onBlur={() => setPhoneErr(form.phone && !phoneValid ? PHONE_ERROR : "")}
                 placeholder="01XXXXXXXXX"
+                aria-invalid={Boolean(form.phone && !phoneValid)}
                 className={`w-full border rounded-lg px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand/40 ${phoneErr ? "border-destructive" : ""}`}
               />
               {phoneErr && <p className="text-xs text-destructive mt-1">{phoneErr}</p>}
@@ -155,26 +151,14 @@ function Checkout() {
 
             <div>
               <label className="block text-sm font-semibold mb-1.5">সম্পূর্ণ ঠিকানা <span className="text-destructive">*</span></label>
-              <textarea
-                required
-                rows={3}
-                value={form.address}
-                onChange={(e) => setForm({ ...form, address: e.target.value })}
-                className="w-full border rounded-lg px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand/40 resize-none"
-                placeholder="বাসা/হোল্ডিং, রোড, এলাকা, থানা, জেলা"
-              />
+              <textarea required rows={3} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="w-full border rounded-lg px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand/40 resize-none" placeholder="বাসা/হোল্ডিং, রোড, এলাকা, থানা, জেলা" />
             </div>
 
             <div>
               <label className="block text-sm font-semibold mb-2">ডেলিভারি এরিয়া <span className="text-destructive">*</span></label>
               <div className="grid grid-cols-1 gap-2.5">
                 {ZONES.map((z) => (
-                  <button
-                    type="button"
-                    key={z.id}
-                    onClick={() => setForm({ ...form, zone: z.id })}
-                    className={`border-2 rounded-lg p-3 text-left transition ${form.zone === z.id ? "border-brand bg-brand-light" : "border-gray-200 hover:border-gray-300"}`}
-                  >
+                  <button type="button" key={z.id} onClick={() => setForm({ ...form, zone: z.id })} className={`border-2 rounded-lg p-3 text-left transition ${form.zone === z.id ? "border-brand bg-brand-light" : "border-gray-200 hover:border-gray-300"}`}>
                     <div className="font-semibold text-sm">{z.label}</div>
                     <div className="text-xs text-muted-foreground mt-0.5">ডেলিভারি চার্জ {taka(z.fee)}</div>
                   </button>
@@ -184,13 +168,7 @@ function Checkout() {
 
             <div>
               <label className="block text-sm font-semibold mb-1.5">নোট (ঐচ্ছিক)</label>
-              <textarea
-                rows={2}
-                value={form.note}
-                onChange={(e) => setForm({ ...form, note: e.target.value })}
-                className="w-full border rounded-lg px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand/40 resize-none"
-                placeholder="বিশেষ নির্দেশনা থাকলে লিখুন"
-              />
+              <textarea rows={2} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} className="w-full border rounded-lg px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand/40 resize-none" placeholder="বিশেষ নির্দেশনা থাকলে লিখুন" />
             </div>
           </div>
 
@@ -216,19 +194,11 @@ function Checkout() {
               <div className="flex justify-between text-sm"><span>ডেলিভারি চার্জ</span><span>{taka(delivery)}</span></div>
               <div className="flex justify-between font-bold text-xl pt-2 border-t mt-1.5"><span>মোট</span><span className="text-brand-dark">{taka(total)}</span></div>
             </div>
-            <div className="mt-3 bg-brand-light rounded-lg p-2.5 text-xs text-center">
-              <strong>ক্যাশ অন ডেলিভারি</strong> — পণ্য পেয়ে টাকা পরিশোধ করুন
-            </div>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="mt-3 w-full bg-brand text-white py-3.5 rounded-lg font-bold text-base hover:bg-brand-dark disabled:opacity-50 transition"
-            >
+            <div className="mt-3 bg-brand-light rounded-lg p-2.5 text-xs text-center"><strong>ক্যাশ অন ডেলিভারি</strong> — পণ্য পেয়ে টাকা পরিশোধ করুন</div>
+            <button type="submit" disabled={submitting || !phoneValid} className="mt-3 w-full bg-brand text-white py-3.5 rounded-lg font-bold text-base hover:bg-brand-dark disabled:opacity-50 transition">
               {submitting ? "অর্ডার হচ্ছে..." : `অর্ডার কনফার্ম করুন (${taka(total)})`}
             </button>
-            <p className="text-xs text-center text-muted-foreground mt-2">
-              অর্ডার করে আপনি আমাদের <Link to="/" className="underline">শর্তাবলী</Link> মেনে নিচ্ছেন
-            </p>
+            <p className="text-xs text-center text-muted-foreground mt-2">অর্ডার করে আপনি আমাদের <Link to="/" className="underline">শর্তাবলী</Link> মেনে নিচ্ছেন</p>
           </div>
         </form>
       </div>
