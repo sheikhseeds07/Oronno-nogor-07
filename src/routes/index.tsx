@@ -1,5 +1,4 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { ProductCard, type Product } from "@/components/shop/ProductCard";
@@ -65,22 +64,20 @@ const FALLBACK_HOME: HomeData = {
   products: [],
 };
 
-const homeQueryOptions = queryOptions({
-  queryKey: ["home-data"],
-  queryFn: () => getHomeData(),
-  staleTime: 5 * 60_000,
-  refetchOnMount: true,
-});
-
 export const Route = createFileRoute("/")({
   loader: async ({ context }) => {
-    const home = await context.queryClient.ensureQueryData(homeQueryOptions);
+    const home = await getHomeData();
 
     // Avoid a second categories request from the Header during first render.
+    context.queryClient.setQueryData(["home-data"], home);
     context.queryClient.setQueryData(
       ["nav-categories"],
       home.categories.map(({ id, name, slug }) => ({ id, name, slug })),
     );
+
+    // Loader data is serialized by TanStack Start and embedded in the first
+    // document, so the home UI never needs a hydration-time RPC to render.
+    return { home };
   },
   head: () => {
     const firstBanner = PROMO_BANNER_URL;
@@ -156,11 +153,11 @@ function SectionTitle({
 
 function Home() {
   const router = useRouter();
-  const { data = FALLBACK_HOME } = useQuery(homeQueryOptions);
+  const { home = FALLBACK_HOME } = Route.useLoaderData();
 
-  const banners = (data.banners.length ? data.banners : HERO_BANNERS) as HomeData["banners"];
-  const categories = data.categories;
-  const popularProducts = data.products as unknown as Product[];
+  const banners = (home.banners.length ? home.banners : HERO_BANNERS) as HomeData["banners"];
+  const categories = home.categories;
+  const popularProducts = home.products as unknown as Product[];
 
   useEffect(() => {
     const idle = (cb: () => void) => {
