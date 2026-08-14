@@ -66,11 +66,9 @@ export function Footer() {
         </div>
 
         <div className="flex items-center justify-center gap-3 mb-6">
-          {s.facebook && (
-            <a href={s.facebook} target="_blank" rel="noreferrer" aria-label="Facebook" className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center hover:scale-110 transition">
-              <FacebookIcon className="w-5 h-5" />
-            </a>
-          )}
+          <a href={s.facebook || "https://www.facebook.com/share/14p1iVqUFoG/"} target="_blank" rel="noreferrer" aria-label="Facebook" className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center hover:scale-110 transition">
+            <FacebookIcon className="w-5 h-5" />
+          </a>
           {s.youtube && (
             <a href={s.youtube} target="_blank" rel="noreferrer" aria-label="YouTube" className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center hover:scale-110 transition">
               <YoutubeIcon className="w-5 h-5" />
