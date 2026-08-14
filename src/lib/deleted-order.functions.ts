@@ -21,7 +21,13 @@ const RestoreSchema = z.object({
   status: z.enum(ORDER_STATUSES),
 });
 
+const BulkRestoreSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(500),
+  status: z.enum(ORDER_STATUSES),
+});
+
 const IdSchema = z.object({ id: z.string().uuid() });
+const IdsSchema = z.object({ ids: z.array(z.string().uuid()).min(1).max(500) });
 
 async function getOrderAccess(userId: string) {
   const { data: roles, error: rolesError } = await supabaseAdmin
@@ -75,6 +81,19 @@ export const restoreDeletedOrder = createServerFn({ method: "POST" })
     return { ok: true, id: data.id, status: data.status };
   });
 
+export const bulkRestoreDeletedOrders = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => BulkRestoreSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    await getOrderAccess(context.userId);
+    const { data: restored, error } = await (supabaseAdmin as any).rpc("restore_deleted_orders", {
+      p_ids: data.ids,
+      p_status: data.status,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true, restored: Number(restored ?? 0), status: data.status };
+  });
+
 export const permanentlyDeleteArchivedOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => IdSchema.parse(input))
@@ -88,4 +107,18 @@ export const permanentlyDeleteArchivedOrder = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     if (!removed) throw new Error("ডিলিটেড অর্ডার পাওয়া যায়নি");
     return { ok: true, id: data.id };
+  });
+
+export const bulkPermanentlyDeleteArchivedOrders = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => IdsSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const access = await getOrderAccess(context.userId);
+    if (!access.canPermanentDelete) throw new Error("শুধু অ্যাডমিন পার্মানেন্ট ডিলিট করতে পারবেন");
+
+    const { data: removed, error } = await (supabaseAdmin as any).rpc("permanently_delete_archived_orders", {
+      p_ids: data.ids,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true, deleted: Number(removed ?? 0) };
   });
