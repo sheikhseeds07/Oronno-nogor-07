@@ -26,16 +26,16 @@ function belongsToList(mode: string, filter: string, status: string) {
 
 /**
  * Keep the currently visible Orders table stable while realtime changes arrive.
- * UPDATE/DELETE events patch/remove existing cached rows in place instead of
- * triggering a background refetch that collapses the table and changes scroll.
- * INSERT is intentionally ignored: NewOrderNotifier alerts staff, while their
- * current working list/scroll stays untouched until they change tab/status.
+ * Existing rows are patched/removed in-place instead of starting a background
+ * refetch that replaces the table with a loader and changes the scroll position.
+ * INSERT is intentionally ignored: NewOrderNotifier still alerts staff, but the
+ * list they're actively working on remains untouched until they change view.
  */
 export function AdminOrderStability() {
   const qc = useQueryClient();
 
   useEffect(() => {
-    const applyChange = (payload: any) => {
+    const applyOrderChange = (payload: any) => {
       const id = payload?.new?.id ?? payload?.old?.id;
       if (!id) return;
 
@@ -57,16 +57,55 @@ export function AdminOrderStability() {
           }
 
           return current.map((row) =>
-            row?.id === id ? { ...row, status, updated_at: payload?.new?.updated_at ?? row.updated_at } : row,
+            row?.id === id
+              ? { ...row, status, updated_at: payload?.new?.updated_at ?? row.updated_at }
+              : row,
           );
         });
       }
     };
 
+    const applyIncompleteChange = (payload: any) => {
+      const rawId = payload?.new?.id ?? payload?.old?.id;
+      if (!rawId) return;
+      const id = `inc:${rawId}`;
+
+      qc.setQueryData(["admin-orders-incomplete"], (current: any[] | undefined) => {
+        if (!current) return current;
+        if (payload.eventType === "DELETE") {
+          return current.filter((row) => row?.id !== id);
+        }
+
+        const row = payload?.new;
+        if (!row) return current;
+        return current.map((existing) => {
+          if (existing?.id !== id) return existing;
+          return {
+            ...existing,
+            customer_name: row.customer_name || "—",
+            customer_phone: row.phone,
+            customer_address: row.customer_address ?? null,
+            district: row.delivery_zone ?? null,
+            created_at: row.updated_at ?? row.created_at ?? existing.created_at,
+            total: Number(row.total ?? 0),
+            order_items: (row.items ?? []).map((item: any, index: number) => ({
+              id: `${rawId}-${index}`,
+              product_name: item.name,
+              quantity: Number(item.quantity ?? 1),
+              price: Number(item.price ?? 0),
+              product_id: item.product_id ?? null,
+            })),
+          };
+        });
+      });
+    };
+
     const channel = supabase
       .channel("admin-orders-stable-cache")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders" }, applyChange)
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "orders" }, applyChange)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders" }, applyOrderChange)
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "orders" }, applyOrderChange)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "incomplete_orders" }, applyIncompleteChange)
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "incomplete_orders" }, applyIncompleteChange)
       .subscribe();
 
     return () => {
