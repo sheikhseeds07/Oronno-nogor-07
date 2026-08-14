@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { ProductCard, type Product } from "@/components/shop/ProductCard";
 import { supabase } from "@/lib/personal-supabase/client";
-import { fallbackCategories } from "@/lib/fallback-shop";
 
 export const Route = createFileRoute("/shop")({
   validateSearch: (s: Record<string, unknown>): { q?: string; cat?: string } => ({
@@ -13,53 +12,63 @@ export const Route = createFileRoute("/shop")({
   component: Shop,
 });
 
+type ShopCategory = {
+  id: string;
+  name: string;
+  slug: string;
+  parent_id: string | null;
+};
+
 function Shop() {
   const { q, cat } = useSearch({ from: "/shop" });
 
-  const { data: categories = fallbackCategories } = useQuery({
+  const { data: categories = [] } = useQuery({
     queryKey: ["shop-categories"],
-    initialData: fallbackCategories,
     queryFn: async () => {
-      const { data, error } = await supabase.from("categories").select("*").eq("is_hidden_from_home", false).order("display_order");
-      if (error?.message?.includes("is_hidden_from_home")) {
-        const fallback = await supabase.from("categories").select("*").order("display_order");
-        return fallback.data?.length ? fallback.data : fallbackCategories;
-      }
-      return data?.length ? data : fallbackCategories;
+      const { data, error } = await (supabase.from("categories") as any)
+        .select("id,name,slug,parent_id")
+        .is("parent_id", null)
+        .eq("is_hidden_from_home", false)
+        .order("display_order")
+        .order("created_at");
+      if (error) throw error;
+      return (data ?? []) as ShopCategory[];
     },
   });
 
   const { data: products = [] } = useQuery({
     queryKey: ["shop-products", q, cat],
     queryFn: async () => {
-      // Left join so active products WITHOUT a category still appear in the shop.
-      const run = async (withHidden: boolean) => {
-        let query = supabase
-          .from("products")
-          .select(withHidden ? "*, categories!left(slug, is_hidden_from_home)" : "*, categories!left(slug)")
-          .eq("is_active", true);
-        if (cat) query = query.eq("categories.slug", cat);
-        if (q) query = query.ilike("name", `%${q}%`);
-        return query.order("created_at", { ascending: false });
-      };
-      let { data, error } = await run(true);
-      if (error?.message?.includes("is_hidden_from_home")) {
-        ({ data } = await run(false));
-        return (data ?? []) as unknown as Product[];
+      let categoryIds: string[] | null = null;
+      if (cat) {
+        const { data: selected, error: selectedError } = await (supabase.from("categories") as any)
+          .select("id")
+          .eq("slug", cat)
+          .maybeSingle();
+        if (selectedError) throw selectedError;
+        if (!selected?.id) return [];
+
+        const { data: children, error: childError } = await (supabase.from("categories") as any)
+          .select("id")
+          .eq("parent_id", selected.id);
+        if (childError) throw childError;
+        categoryIds = [selected.id, ...((children ?? []) as Array<{ id: string }>).map((c) => c.id)];
       }
-      const rows = (data ?? []) as unknown as (Product & { categories?: { is_hidden_from_home?: boolean } | null })[];
-      return rows.filter((p) => !p.categories?.is_hidden_from_home) as Product[];
+
+      let query = supabase.from("products").select("*").eq("is_active", true);
+      if (categoryIds) query = query.in("category_id", categoryIds);
+      if (q) query = query.ilike("name", `%${q}%`);
+      const { data, error } = await query.order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as Product[];
     },
   });
-
-
 
   const activeCat = categories.find((c) => c.slug === cat);
 
   return (
     <SiteLayout>
       <div className="container mx-auto px-3 py-5">
-        {/* Sleek category pill bar */}
         <div className="bg-white border rounded-2xl p-2 mb-5 shadow-sm">
           <div className="flex gap-1.5 overflow-x-auto">
             <Link
