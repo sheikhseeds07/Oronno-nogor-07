@@ -19,10 +19,7 @@ function NotFoundComponent() {
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-brand">৪০৪</h1>
         <h2 className="mt-4 text-xl font-semibold">পেজটি খুঁজে পাওয়া যায়নি</h2>
-        <Link
-          to="/"
-          className="mt-6 inline-flex rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark"
-        >
+        <Link to="/" className="mt-6 inline-flex rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark">
           হোমে ফিরে যান
         </Link>
       </div>
@@ -39,10 +36,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <h1 className="text-xl font-semibold">পেজ লোড হয়নি</h1>
         <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
         <button
-          onClick={() => {
-            router.invalidate();
-            reset();
-          }}
+          onClick={() => { router.invalidate(); reset(); }}
           className="mt-6 rounded-md bg-brand px-4 py-2 text-sm text-white hover:bg-brand-dark"
         >
           আবার চেষ্টা করুন
@@ -58,17 +52,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "অরন্য নগর (Oronno Nogor) — অরিজিনাল বীজ, গার্ডেন টুলস ও সার" },
-      {
-        name: "description",
-        content:
-          "অরন্য নগর — ছাদ বাগানির বিশ্বস্ত সঙ্গী। ১০০% অরিজিনাল বীজ, গার্ডেন টুলস, সার ও কীটনাশক। সারাদেশে হোম ডেলিভারি — ক্যাশ অন ডেলিভারি।",
-      },
+      { name: "description", content: "অরন্য নগর — ছাদ বাগানির বিশ্বস্ত সঙ্গী। ১০০% অরিজিনাল বীজ, গার্ডেন টুলস, সার ও কীটনাশক। সারাদেশে হোম ডেলিভারি — ক্যাশ অন ডেলিভারি।" },
       { property: "og:site_name", content: "অরন্য নগর" },
       { property: "og:title", content: "অরন্য নগর (Oronno Nogor)" },
-      {
-        property: "og:description",
-        content: "ছাদ বাগানির বিশ্বস্ত সঙ্গী — অরিজিনাল বীজ, গার্ডেন টুলস ও সার",
-      },
+      { property: "og:description", content: "ছাদ বাগানির বিশ্বস্ত সঙ্গী — অরিজিনাল বীজ, গার্ডেন টুলস ও সার" },
       { property: "og:type", content: "website" },
       { property: "og:locale", content: "bn_BD" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -86,15 +73,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "manifest", href: "/site.webmanifest" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap",
-      },
-      {
-        rel: "preconnect",
-        href: "https://bvuhvzccziuniujeogng.supabase.co",
-        crossOrigin: "anonymous",
-      },
+      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" },
+      { rel: "preconnect", href: "https://bvuhvzccziuniujeogng.supabase.co", crossOrigin: "anonymous" },
+      { rel: "preconnect", href: "https://yqhtenonavuzxzemaiyk.supabase.co", crossOrigin: "anonymous" },
       { rel: "dns-prefetch", href: "https://connect.facebook.net" },
     ],
     scripts: [
@@ -131,15 +112,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           publisher: { "@id": "https://oronnonogor.com/#organization" },
           potentialAction: {
             "@type": "SearchAction",
-            target: {
-              "@type": "EntryPoint",
-              urlTemplate: "https://oronnonogor.com/shop?q={search_term_string}",
-            },
+            target: { "@type": "EntryPoint", urlTemplate: "https://oronnonogor.com/shop?q={search_term_string}" },
             "query-input": "required name=search_term_string",
           },
         }),
       },
     ],
+
   }),
 
   shellComponent: RootShell,
@@ -151,9 +130,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
     <html lang="bn">
-      <head>
-        <HeadContent />
-      </head>
+      <head><HeadContent /></head>
       <body>
         {children}
         <Scripts />
@@ -178,9 +155,7 @@ function AuthCacheSync() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
       router.invalidate();
       queryClient.invalidateQueries();
     });

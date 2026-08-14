@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { ProductCard, type Product } from "@/components/shop/ProductCard";
@@ -30,79 +31,36 @@ const HERO_COPY: Record<string, HeroCopy> = {
 };
 
 const HERO_BANNERS = [
-  {
-    id: "hero-seeds",
-    title: "প্রিমিয়াম বীজ — সবজি, ফল ও ফুল",
-    image_url: "/banner-seeds.jpg",
-    link_url: "/shop",
-    is_active: true,
-    display_order: 1,
-  },
-  {
-    id: "hero-tools",
-    title: "কৃষি ও গার্ডেন টুলস",
-    image_url: "/banner-tools.jpg",
-    link_url: "/shop",
-    is_active: true,
-    display_order: 2,
-  },
-  {
-    id: "hero-fertilizer",
-    title: "সার ও কীটনাশক",
-    image_url: "/banner-fertilizer.jpg",
-    link_url: "/shop",
-    is_active: true,
-    display_order: 3,
-  },
+  { id: "hero-seeds", title: "প্রিমিয়াম বীজ — সবজি, ফল ও ফুল", image_url: "/banner-seeds.jpg", link_url: "/shop", is_active: true, display_order: 1 },
+  { id: "hero-tools", title: "কৃষি ও গার্ডেন টুলস", image_url: "/banner-tools.jpg", link_url: "/shop", is_active: true, display_order: 2 },
+  { id: "hero-fertilizer", title: "সার ও কীটনাশক", image_url: "/banner-fertilizer.jpg", link_url: "/shop", is_active: true, display_order: 3 },
 ] as unknown as HomeData["banners"];
 
 const PROMO_BANNER_URL = "/banner-seeds.jpg";
 const FALLBACK_HOME: HomeData = {
   banners: HERO_BANNERS,
   categories: [],
-  subcategories: [],
   products: [],
 };
 
+const homeQueryOptions = queryOptions({
+  queryKey: ["home-data"],
+  queryFn: () => getHomeData(),
+  staleTime: 5 * 60_000,
+  initialData: FALLBACK_HOME,
+  initialDataUpdatedAt: 0,
+});
+
 export const Route = createFileRoute("/")({
-  loader: async ({ context }) => {
-    const home = await getHomeData();
-
-    // Avoid a second categories request from the Header during first render.
-    context.queryClient.setQueryData(["home-data"], home);
-    context.queryClient.setQueryData(
-      ["nav-categories"],
-      home.categories.map(({ id, name, slug }) => ({ id, name, slug })),
-    );
-
-    // Loader data is serialized by TanStack Start and embedded in the first
-    // document, so the home UI never needs a hydration-time RPC to render.
-    return { home };
-  },
   head: () => {
     const firstBanner = PROMO_BANNER_URL;
     return {
       meta: [
         { title: "অরন্য নগর (Oronno Nogor) — অরিজিনাল বীজ, গার্ডেন টুলস ও সার" },
-        {
-          name: "description",
-          content:
-            "অরন্য নগর — ছাদ বাগানির বিশ্বস্ত সঙ্গী। ১০০% অরিজিনাল সবজি, ফল ও ফুলের বীজ, গার্ডেন টুলস, সার ও কীটনাশক অনলাইনে অর্ডার করুন। সারাদেশে হোম ডেলিভারি ও ক্যাশ অন ডেলিভারি।",
-        },
-        {
-          name: "keywords",
-          content:
-            "অরন্য নগর, oronno nogor, oronnonogor, বীজ, সবজির বীজ, ফুলের বীজ, গার্ডেন টুলস, সার, কীটনাশক, ছাদ বাগান",
-        },
-        {
-          property: "og:title",
-          content: "অরন্য নগর (Oronno Nogor) — অরিজিনাল বীজ, গার্ডেন টুলস ও সার",
-        },
-        {
-          property: "og:description",
-          content:
-            "ছাদ বাগানির বিশ্বস্ত সঙ্গী — ১০০% অরিজিনাল বীজ, গার্ডেন টুলস ও সার। সারাদেশে ক্যাশ অন ডেলিভারি।",
-        },
+        { name: "description", content: "অরন্য নগর — ছাদ বাগানির বিশ্বস্ত সঙ্গী। ১০০% অরিজিনাল সবজি, ফল ও ফুলের বীজ, গার্ডেন টুলস, সার ও কীটনাশক অনলাইনে অর্ডার করুন। সারাদেশে হোম ডেলিভারি ও ক্যাশ অন ডেলিভারি।" },
+        { name: "keywords", content: "অরন্য নগর, oronno nogor, oronnonogor, বীজ, সবজির বীজ, ফুলের বীজ, গার্ডেন টুলস, সার, কীটনাশক, ছাদ বাগান" },
+        { property: "og:title", content: "অরন্য নগর (Oronno Nogor) — অরিজিনাল বীজ, গার্ডেন টুলস ও সার" },
+        { property: "og:description", content: "ছাদ বাগানির বিশ্বস্ত সঙ্গী — ১০০% অরিজিনাল বীজ, গার্ডেন টুলস ও সার। সারাদেশে ক্যাশ অন ডেলিভারি।" },
         { property: "og:url", content: "https://oronnonogor.com/" },
         { property: "og:image", content: "https://oronnonogor.com/og-oronno-nogor.jpg" },
         { property: "og:image:width", content: "1200" },
@@ -135,7 +93,9 @@ function SectionTitle({
           {title}
         </h2>
         {subtitle && (
-          <p className="mt-1.5 text-sm sm:text-base text-muted-foreground max-w-xl">{subtitle}</p>
+          <p className="mt-1.5 text-sm sm:text-base text-muted-foreground max-w-xl">
+            {subtitle}
+          </p>
         )}
       </div>
       {action && (
@@ -153,16 +113,15 @@ function SectionTitle({
 
 function Home() {
   const router = useRouter();
-  const { home = FALLBACK_HOME } = Route.useLoaderData();
+  const { data } = useQuery(homeQueryOptions);
 
-  const banners = (home.banners.length ? home.banners : HERO_BANNERS) as HomeData["banners"];
-  const categories = home.categories;
-  const popularProducts = home.products as unknown as Product[];
+  const banners = (data?.banners?.length ? data.banners : HERO_BANNERS) as HomeData["banners"];
+  const categories = (data?.categories ?? []) as HomeData["categories"];
+  const popularProducts = ((data?.products ?? []) as unknown) as Product[];
 
   useEffect(() => {
     const idle = (cb: () => void) => {
-      const ric = (window as unknown as { requestIdleCallback?: (cb: () => void) => void })
-        .requestIdleCallback;
+      const ric = (window as unknown as { requestIdleCallback?: (cb: () => void) => void }).requestIdleCallback;
       if (ric) ric(cb);
       else setTimeout(cb, 800);
     };
@@ -222,9 +181,7 @@ function Home() {
                       className="w-full h-full object-cover"
                       loading={i === 0 ? "eager" : "lazy"}
                       decoding={i === 0 ? "sync" : "async"}
-                      {...(i === 0
-                        ? ({ fetchPriority: "high" } as React.ImgHTMLAttributes<HTMLImageElement>)
-                        : {})}
+                      {...(i === 0 ? ({ fetchPriority: "high" } as React.ImgHTMLAttributes<HTMLImageElement>) : {})}
                     />
                     <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/45 to-transparent" />
                     <div className="absolute inset-0 flex flex-col justify-center">
@@ -291,8 +248,7 @@ function Home() {
               <div
                 className="flex w-max gap-3 sm:gap-4 py-2"
                 style={{
-                  animation:
-                    categories.length > 1 ? "homeCategoryMarquee 30s linear infinite" : "none",
+                  animation: categories.length > 1 ? "homeCategoryMarquee 30s linear infinite" : "none",
                 }}
               >
                 {marqueeCategories.map((category, index) => (
@@ -316,9 +272,7 @@ function Home() {
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-3xl">
-                          🌱
-                        </div>
+                        <div className="w-full h-full flex items-center justify-center text-3xl">🌱</div>
                       )}
                     </div>
                     <div className="text-xs sm:text-sm font-bold line-clamp-2 px-1 text-foreground group-hover:text-brand-dark transition-colors">
@@ -346,9 +300,7 @@ function Home() {
         />
         {popularProducts.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
-            {popularProducts.map((product) => (
-              <ProductCard key={product.id} p={product} />
-            ))}
+            {popularProducts.map((product) => <ProductCard key={product.id} p={product} />)}
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed bg-white p-8 text-center text-sm text-muted-foreground">
