@@ -45,15 +45,22 @@ export const markOrdersPrinted = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/**
+ * Soft-delete for admin UX: move the complete order, items and status history
+ * into deleted_orders, then remove it from the active orders table.
+ * Deleted Orders can restore it later.
+ */
 export const deleteOrders = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => IdsSchema.parse(input))
   .handler(async ({ data, context }) => {
     await assertCanManageOrders(context.userId);
-    await supabaseAdmin.from("order_items").delete().in("order_id", data.ids);
-    const { error } = await supabaseAdmin.from("orders").delete().in("id", data.ids);
+    const { data: archived, error } = await (supabaseAdmin as any).rpc("archive_orders", {
+      p_ids: data.ids,
+      p_deleted_by: context.userId,
+    });
     if (error) throw new Error(error.message);
-    return { ok: true, deleted: data.ids.length };
+    return { ok: true, deleted: Number(archived ?? 0) };
   });
 
 export const cancelOrders = createServerFn({ method: "POST" })
