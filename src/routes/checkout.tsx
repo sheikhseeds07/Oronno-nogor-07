@@ -7,14 +7,15 @@ import { taka } from "@/lib/format";
 import { supabase } from "@/lib/personal-supabase/client";
 import { toImg } from "@/lib/img";
 import { placeOrder } from "@/lib/place-order.functions";
-import { useCheckoutAutofill } from "@/lib/useCheckoutAutofill";
+import { clearCheckoutSessionId, useCheckoutAutofill } from "@/lib/useCheckoutAutofill";
 import { toast } from "sonner";
 import { trackInitiateCheckout, trackPurchase } from "@/lib/fbq";
 import { getFbContext } from "@/lib/fb-context";
 
 export const Route = createFileRoute("/checkout")({ component: Checkout });
 
-const PHONE_RE = /^(?:\+?88)?01[0-9]{9}$/;
+const PHONE_RE = /^01[3-9][0-9]{8}$/;
+const PHONE_ERROR = "সঠিক ১১ ডিজিটের বাংলাদেশি মোবাইল নাম্বার দিন (01XXXXXXXXX)";
 const ZONES = [
   { id: "all", label: "সারাদেশে হোম ডেলিভারি", fee: 50 },
 ];
@@ -32,9 +33,7 @@ function Checkout() {
 
   const delivery = ZONES.find((z) => z.id === form.zone)?.fee ?? 50;
   const total = subtotal + delivery;
-
-  const phoneNorm = form.phone.replace(/[\s-]/g, "");
-  const phoneValid = PHONE_RE.test(phoneNorm);
+  const phoneValid = PHONE_RE.test(form.phone);
 
   // Fire InitiateCheckout once when the page loads with items
   const firedICRef = useRef(false);
@@ -50,7 +49,7 @@ function Checkout() {
   }, []);
 
   // Auto-fill + incomplete-order save (shared hook)
-  useCheckoutAutofill({
+  const { checkoutSessionId } = useCheckoutAutofill({
     form,
     setForm: (updater) => setForm((f) => updater(f) as typeof f),
     items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity })),
@@ -64,7 +63,10 @@ function Checkout() {
     e.preventDefault();
     if (items.length === 0) return toast.error("কার্ট খালি");
     if (!form.name.trim()) return toast.error("নাম দিন");
-    if (!phoneValid) { setPhoneErr("সঠিক ১১ ডিজিটের নাম্বার দিন"); return toast.error("ফোন নাম্বার সঠিক নয়"); }
+    if (!phoneValid) {
+      setPhoneErr(PHONE_ERROR);
+      return toast.error("ফোন নাম্বার সঠিক নয়");
+    }
     if (!form.address.trim()) return toast.error("ঠিকানা দিন");
 
     setSubmitting(true);
@@ -75,13 +77,14 @@ function Checkout() {
       const result = await runPlaceOrder({
         data: {
           customer_name: form.name.trim(),
-          customer_phone: phoneNorm,
+          customer_phone: form.phone,
           customer_address: form.address.trim(),
           district: null,
           thana: null,
           notes: form.note?.trim() || null,
           delivery_fee: delivery,
           created_by: session?.user?.id ?? null,
+          checkout_session_id: checkoutSessionId || null,
           items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity })),
           ...fbCtx,
         },
@@ -93,6 +96,7 @@ function Checkout() {
           result.id,
         );
       }
+      clearCheckoutSessionId(checkoutSessionId);
       clear();
       toast.success("অর্ডার সফল হয়েছে!");
       navigate({ to: "/order/$id", params: { id: result.id } });
@@ -145,9 +149,11 @@ function Checkout() {
                 onChange={(e) => {
                   const v = e.target.value;
                   setForm({ ...form, phone: v });
-                  setPhoneErr("");
+                  setPhoneErr(v && !PHONE_RE.test(v) ? PHONE_ERROR : "");
                 }}
+                onBlur={() => setPhoneErr(form.phone && !phoneValid ? PHONE_ERROR : "")}
                 placeholder="01XXXXXXXXX"
+                aria-invalid={Boolean(form.phone && !phoneValid)}
                 className={`w-full border rounded-lg px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand/40 ${phoneErr ? "border-destructive" : ""}`}
               />
               {phoneErr && <p className="text-xs text-destructive mt-1">{phoneErr}</p>}
@@ -221,7 +227,7 @@ function Checkout() {
             </div>
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || !phoneValid}
               className="mt-3 w-full bg-brand text-white py-3.5 rounded-lg font-bold text-base hover:bg-brand-dark disabled:opacity-50 transition"
             >
               {submitting ? "অর্ডার হচ্ছে..." : `অর্ডার কনফার্ম করুন (${taka(total)})`}
