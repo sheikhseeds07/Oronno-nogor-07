@@ -15,6 +15,10 @@ export type HomeCategory = {
   image_url: string | null;
 };
 
+export type HomeSubcategory = HomeCategory & {
+  parent_id: string;
+};
+
 export type HomeProduct = {
   id: string;
   slug: string;
@@ -29,31 +33,20 @@ export type HomeProduct = {
 export type HomeData = {
   banners: HomeBanner[];
   categories: HomeCategory[];
+  subcategories: HomeSubcategory[];
   products: HomeProduct[];
 };
 
-type ProductWithCategory = HomeProduct & {
-  categories?: { is_hidden_from_home?: boolean } | null;
-};
-
-const PRODUCT_COLS = "id,slug,name,price,sale_price,images,stock,is_featured";
-
-function visibleProducts(rows: ProductWithCategory[]) {
-  return rows
-    .filter((product) => !product.categories?.is_hidden_from_home)
-    .map(({ categories: _category, ...product }) => product as HomeProduct);
-}
-
 /**
- * Fetch all home-page data. Categories are admin-controlled root categories.
- * Popular products are ranked by real sold quantity first; recent active
- * products only fill any remaining slots after the best sellers.
+ * Fetches all data needed for the home page in parallel on the server.
+ * Home categories are always controlled by the admin: only visible root
+ * categories are returned. Subcategories never appear as separate home items.
  */
-export const getHomeData = createServerFn({ method: "GET" }).handler(async (): Promise<HomeData> => {
-  const categoriesQuery = (supabase.from("categories") as any)
-    .select("id,slug,name,image_url")
-    .is("parent_id", null)
-    .eq("is_hidden_from_home", false)
+async function getHomeDataFallback(): Promise<HomeData> {
+  const cols = "id,slug,name,price,sale_price,images,stock,is_featured";
+  const categoriesQuery = supabase
+    .from("categories")
+    .select("id,slug,name,image_url,parent_id,is_hidden_from_home")
     .order("display_order")
     .order("created_at");
 
@@ -65,48 +58,100 @@ export const getHomeData = createServerFn({ method: "GET" }).handler(async (): P
       .order("display_order")
       .limit(8),
     categoriesQuery,
-    (supabase.from("top_selling_products" as never) as any)
-      .select("product_id,units_sold,order_count")
-      .order("units_sold", { ascending: false })
-      .order("order_count", { ascending: false })
+    supabase
+      .from("top_selling_products" as never)
+      .select("product_id")
       .limit(24),
   ]);
 
   const banners = (bannersRes.data ?? []) as HomeBanner[];
-  const categories = (categoriesRes.data ?? []) as HomeCategory[];
+  const allCategories = (categoriesRes.data ?? []) as Array<
+    HomeCategory & {
+      parent_id: string | null;
+      is_hidden_from_home: boolean;
+    }
+  >;
+  const categories = allCategories
+    .filter((category) => category.parent_id === null && !category.is_hidden_from_home)
+    .map(({ parent_id: _parentId, is_hidden_from_home: _hidden, ...category }) => category);
+  const rootIds = new Set(categories.map((category) => category.id));
+  const subcategories = allCategories
+    .filter((category): category is typeof category & { parent_id: string } =>
+      Boolean(category.parent_id && rootIds.has(category.parent_id)),
+    )
+    .map(({ is_hidden_from_home: _hidden, ...category }) => category);
   const topIds = ((topSellersRes.data ?? []) as Array<{ product_id: string }>)
-    .map((row) => row.product_id)
+    .map((r) => r.product_id)
     .filter(Boolean);
 
   let products: HomeProduct[] = [];
 
   if (topIds.length) {
-    const { data: topProductRows } = await supabase
+    const { data } = await supabase
       .from("products")
-      .select(`${PRODUCT_COLS}, categories!left(is_hidden_from_home)`)
+      .select(`${cols}, categories!left(is_hidden_from_home)`)
       .eq("is_active", true)
       .in("id", topIds);
-
-    const order = new Map(topIds.map((id, index) => [id, index]));
-    products = visibleProducts((topProductRows ?? []) as ProductWithCategory[])
-      .sort((a, b) => (order.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(b.id) ?? Number.MAX_SAFE_INTEGER))
-      .slice(0, 12);
+    const order = new Map(topIds.map((id, i) => [id, i]));
+    products = (
+      (data ?? []) as Array<HomeProduct & { categories?: { is_hidden_from_home?: boolean } | null }>
+    )
+      .filter((p) => !p.categories?.is_hidden_from_home)
+      .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
+      .slice(0, 12)
+      .map(({ categories: _c, ...rest }) => rest as HomeProduct);
   }
 
-  if (products.length < 12) {
-    const { data: recentRows } = await supabase
+  if (!products.length) {
+    const { data: lps } = await supabase.from("landing_pages").select("product_id");
+    const excludeIds = new Set(
+      ((lps ?? []) as Array<{ product_id: string | null }>)
+        .map((r) => r.product_id)
+        .filter(Boolean) as string[],
+    );
+    let q = supabase
       .from("products")
-      .select(`${PRODUCT_COLS}, categories!left(is_hidden_from_home)`)
+      .select(`${cols}, categories!left(is_hidden_from_home)`)
       .eq("is_active", true)
       .order("created_at", { ascending: false })
-      .limit(40);
-
-    const alreadyIncluded = new Set(products.map((product) => product.id));
-    const fillers = visibleProducts((recentRows ?? []) as ProductWithCategory[])
-      .filter((product) => !alreadyIncluded.has(product.id));
-
-    products = [...products, ...fillers].slice(0, 12);
+      .limit(24);
+    if (excludeIds.size) q = q.not("id", "in", `(${Array.from(excludeIds).join(",")})`);
+    const { data } = await q;
+    products = (
+      (data ?? []) as Array<HomeProduct & { categories?: { is_hidden_from_home?: boolean } | null }>
+    )
+      .filter((p) => !p.categories?.is_hidden_from_home)
+      .slice(0, 12)
+      .map(({ categories: _c, ...rest }) => rest as HomeProduct);
   }
 
-  return { banners, categories, products };
-});
+  return { banners, categories, subcategories, products };
+}
+
+/**
+ * Uses one database RPC for the whole initial home payload. The route loader
+ * executes this during SSR, so visible admin categories arrive in the first
+ * HTML instead of waiting for browser-side requests after hydration.
+ */
+export const getHomeData = createServerFn({ method: "GET" }).handler(
+  async (): Promise<HomeData> => {
+    const getHomeDataRpc = supabase.rpc as unknown as (
+      functionName: "get_home_data_v1",
+    ) => Promise<{ data: unknown; error: { message: string } | null }>;
+    const { data, error } = await getHomeDataRpc("get_home_data_v1");
+
+    if (!error && data && typeof data === "object") {
+      const payload = data as Partial<HomeData>;
+      return {
+        banners: Array.isArray(payload.banners) ? payload.banners : [],
+        categories: Array.isArray(payload.categories) ? payload.categories : [],
+        subcategories: Array.isArray(payload.subcategories) ? payload.subcategories : [],
+        products: Array.isArray(payload.products) ? payload.products : [],
+      };
+    }
+
+    // Keep production resilient while a deployment and its migration propagate.
+    console.error("get_home_data_v1 failed; using direct queries", error);
+    return getHomeDataFallback();
+  },
+);
