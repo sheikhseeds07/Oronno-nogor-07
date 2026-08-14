@@ -32,13 +32,24 @@ export type HomeData = {
   products: HomeProduct[];
 };
 
+type ProductWithCategory = HomeProduct & {
+  categories?: { is_hidden_from_home?: boolean } | null;
+};
+
+const PRODUCT_COLS = "id,slug,name,price,sale_price,images,stock,is_featured";
+
+function visibleProducts(rows: ProductWithCategory[]) {
+  return rows
+    .filter((product) => !product.categories?.is_hidden_from_home)
+    .map(({ categories: _category, ...product }) => product as HomeProduct);
+}
+
 /**
- * Fetches all data needed for the home page in parallel on the server.
- * Home categories are always controlled by the admin: only visible root
- * categories are returned. Subcategories never appear as separate home items.
+ * Fetch all home-page data. Categories are admin-controlled root categories.
+ * Popular products are ranked by real sold quantity first; recent active
+ * products only fill any remaining slots after the best sellers.
  */
 export const getHomeData = createServerFn({ method: "GET" }).handler(async (): Promise<HomeData> => {
-  const cols = "id,slug,name,price,sale_price,images,stock,is_featured";
   const categoriesQuery = (supabase.from("categories") as any)
     .select("id,slug,name,image_url")
     .is("parent_id", null)
@@ -47,46 +58,54 @@ export const getHomeData = createServerFn({ method: "GET" }).handler(async (): P
     .order("created_at");
 
   const [bannersRes, categoriesRes, topSellersRes] = await Promise.all([
-    supabase.from("banners").select("id,title,image_url,link_url").eq("is_active", true).order("display_order").limit(8),
+    supabase
+      .from("banners")
+      .select("id,title,image_url,link_url")
+      .eq("is_active", true)
+      .order("display_order")
+      .limit(8),
     categoriesQuery,
-    supabase.from("top_selling_products" as never).select("product_id").limit(24),
+    (supabase.from("top_selling_products" as never) as any)
+      .select("product_id,units_sold,order_count")
+      .order("units_sold", { ascending: false })
+      .order("order_count", { ascending: false })
+      .limit(24),
   ]);
 
   const banners = (bannersRes.data ?? []) as HomeBanner[];
   const categories = (categoriesRes.data ?? []) as HomeCategory[];
-  const topIds = ((topSellersRes.data ?? []) as Array<{ product_id: string }>).map((r) => r.product_id).filter(Boolean);
+  const topIds = ((topSellersRes.data ?? []) as Array<{ product_id: string }>)
+    .map((row) => row.product_id)
+    .filter(Boolean);
 
   let products: HomeProduct[] = [];
 
   if (topIds.length) {
-    const { data } = await supabase
+    const { data: topProductRows } = await supabase
       .from("products")
-      .select(`${cols}, categories!left(is_hidden_from_home)`)
+      .select(`${PRODUCT_COLS}, categories!left(is_hidden_from_home)`)
       .eq("is_active", true)
       .in("id", topIds);
-    const order = new Map(topIds.map((id, i) => [id, i]));
-    products = ((data ?? []) as Array<HomeProduct & { categories?: { is_hidden_from_home?: boolean } | null }>)
-      .filter((p) => !p.categories?.is_hidden_from_home)
-      .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
-      .slice(0, 12)
-      .map(({ categories: _c, ...rest }) => rest as HomeProduct);
+
+    const order = new Map(topIds.map((id, index) => [id, index]));
+    products = visibleProducts((topProductRows ?? []) as ProductWithCategory[])
+      .sort((a, b) => (order.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(b.id) ?? Number.MAX_SAFE_INTEGER))
+      .slice(0, 12);
   }
 
-  if (!products.length) {
-    const { data: lps } = await supabase.from("landing_pages").select("product_id");
-    const excludeIds = new Set(((lps ?? []) as Array<{ product_id: string | null }>).map((r) => r.product_id).filter(Boolean) as string[]);
-    let q = supabase
+  if (products.length < 12) {
+    const { data: recentRows } = await supabase
       .from("products")
-      .select(`${cols}, categories!left(is_hidden_from_home)`)
+      .select(`${PRODUCT_COLS}, categories!left(is_hidden_from_home)`)
       .eq("is_active", true)
       .order("created_at", { ascending: false })
-      .limit(24);
-    if (excludeIds.size) q = q.not("id", "in", `(${Array.from(excludeIds).join(",")})`);
-    const { data } = await q;
-    products = ((data ?? []) as Array<HomeProduct & { categories?: { is_hidden_from_home?: boolean } | null }>)
-      .filter((p) => !p.categories?.is_hidden_from_home)
-      .slice(0, 12)
-      .map(({ categories: _c, ...rest }) => rest as HomeProduct);
+      .limit(40);
+
+    const alreadyIncluded = new Set(products.map((product) => product.id));
+    const fillers = visibleProducts((recentRows ?? []) as ProductWithCategory[])
+      .filter((product) => !alreadyIncluded.has(product.id));
+
+    products = [...products, ...fillers].slice(0, 12);
   }
 
   return { banners, categories, products };
