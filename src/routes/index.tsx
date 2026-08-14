@@ -50,7 +50,7 @@ const homeQueryOptions = queryOptions({
   queryKey: ["home-data"],
   queryFn: () => getHomeData(),
   staleTime: 5 * 60_000,
-  initialData: FALLBACK_HOME,
+  initialData: { ...FALLBACK_HOME, categories: [] },
   initialDataUpdatedAt: 0,
 });
 
