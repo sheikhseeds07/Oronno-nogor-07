@@ -1,10 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
+import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 import { assertCanManageOrders, assertIsAdmin } from "@/lib/_admin-guard.server";
 import { ensureOrderInvoiceNo } from "@/lib/invoice-no.server";
-
 
 async function callSteadfast(path: string, cfg: Record<string, string>, body?: unknown) {
   const base = (cfg.base_url || "https://portal.packzy.com/api/v1").trim();
@@ -24,7 +24,7 @@ async function callSteadfast(path: string, cfg: Record<string, string>, body?: u
     body: body ? JSON.stringify(body) : undefined,
   });
   const text = await res.text();
-  
+
   let json: unknown = null;
   try { json = JSON.parse(text); } catch { /* keep */ }
   return { ok: res.ok, status: res.status, body: text.slice(0, 400), json };
@@ -50,13 +50,12 @@ async function loadSteadfastCfg(account: 1 | 2 = 1): Promise<Record<string, stri
 // Bulk-send selected orders to Steadfast
 export const sendOrdersToSteadfast = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ orderIds: z.array(z.string().uuid()).min(1).max(50), account: AccountSchema }))
+  .validator(zodValidator(z.object({ orderIds: z.array(z.string().uuid()).min(1).max(50), account: AccountSchema })))
   .handler(async ({ data, context }) => {
     await assertCanManageOrders(context.userId);
     const account = (data.account ?? 1) as 1 | 2;
     const cfg = await loadSteadfastCfg(account);
     if (!cfg.api_key || !cfg.secret_key) return { results: [], error: `Steadfast ${account} এর API key/secret সেভ করা নেই` };
-
 
     const { data: orders } = await supabaseAdmin
       .from("orders")
@@ -86,8 +85,6 @@ export const sendOrdersToSteadfast = createServerFn({ method: "POST" })
       }
       return note.slice(0, 110);
     };
-
-
 
     // Deep search for a key in nested objects — handles any response shape
     const deepFind = (obj: unknown, keys: string[]): string | undefined => {
@@ -171,15 +168,14 @@ export const sendOrdersToSteadfast = createServerFn({ method: "POST" })
     return { results, error: null };
   });
 
-
 export const testCourierConnection = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
+  .validator(zodValidator(
     z.object({
       courier: z.enum(["steadfast"]),
       config: z.record(z.string(), z.string()),
     }),
-  )
+  ))
   .handler(async ({ data, context }) => {
     await assertIsAdmin(context.userId);
     try {
@@ -203,25 +199,24 @@ export const testCourierConnection = createServerFn({ method: "POST" })
 // Fetch Steadfast current balance — reads saved config from integrations table.
 export const fetchSteadfastBalance = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ account: AccountSchema }).optional())
+  .validator(zodValidator(z.object({ account: AccountSchema }).optional()))
   .handler(async ({ data, context }) => {
     await assertCanManageOrders(context.userId);
-  const cfg = await loadSteadfastCfg((data?.account ?? 1) as 1 | 2);
-  if (!cfg.api_key || !cfg.secret_key) return { ok: false, balance: null as number | null, message: "Steadfast সেভ করা নেই" };
-  try {
-    const r = await callSteadfast("get_balance", cfg);
-    if (!r.ok) return { ok: false, balance: null, message: `ব্যর্থ (HTTP ${r.status}) — ${r.body}` };
-    const j = (r.json as Record<string, unknown>) || {};
-    const bal =
-      typeof j.current_balance === "number" ? j.current_balance :
-      typeof j.balance === "number" ? j.balance :
-      Number(j.current_balance ?? j.balance ?? NaN);
-    return { ok: true, balance: Number.isFinite(bal) ? bal : null, message: "OK" };
-  } catch (e) {
-    return { ok: false, balance: null, message: e instanceof Error ? e.message : "Network error" };
-  }
-});
-
+    const cfg = await loadSteadfastCfg((data?.account ?? 1) as 1 | 2);
+    if (!cfg.api_key || !cfg.secret_key) return { ok: false, balance: null as number | null, message: "Steadfast সেভ করা নেই" };
+    try {
+      const r = await callSteadfast("get_balance", cfg);
+      if (!r.ok) return { ok: false, balance: null, message: `ব্যর্থ (HTTP ${r.status}) — ${r.body}` };
+      const j = (r.json as Record<string, unknown>) || {};
+      const bal =
+        typeof j.current_balance === "number" ? j.current_balance :
+          typeof j.balance === "number" ? j.balance :
+            Number(j.current_balance ?? j.balance ?? NaN);
+      return { ok: true, balance: Number.isFinite(bal) ? bal : null, message: "OK" };
+    } catch (e) {
+      return { ok: false, balance: null, message: e instanceof Error ? e.message : "Network error" };
+    }
+  });
 
 // Map Steadfast delivery status -> local order status
 function mapSteadfastStatus(s: string): "delivered" | "partial" | "cancelled" | "hold" | "shipped" | null {
@@ -239,41 +234,40 @@ export const syncSteadfastStatuses = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertCanManageOrders(context.userId);
-  const cfgs: Record<string, string>[] = [];
-  for (const acc of [1, 2] as const) {
-    const c = await loadSteadfastCfg(acc);
-    if (c.api_key && c.secret_key) cfgs.push(c);
-  }
-  if (!cfgs.length) return { updated: 0, error: "Steadfast not configured" };
-
-  const { data: orders } = await supabaseAdmin
-    .from("orders")
-    .select("id,courier_consignment,status")
-    .eq("status", "shipped")
-    .not("courier_consignment", "is", null)
-    .limit(100);
-
-  let updated = 0;
-  for (const o of orders ?? []) {
-    if (!o.courier_consignment) continue;
-    let delivery = "";
-    for (const cfg of cfgs) {
-      try {
-        const r = await callSteadfast(`status_by_cid/${encodeURIComponent(o.courier_consignment)}`, cfg);
-        const j = (r.json as Record<string, unknown>) || {};
-        const d = String((j.delivery_status as string) || "");
-        if (d) { delivery = d; break; }
-      } catch { /* try next account */ }
+    const cfgs: Record<string, string>[] = [];
+    for (const acc of [1, 2] as const) {
+      const c = await loadSteadfastCfg(acc);
+      if (c.api_key && c.secret_key) cfgs.push(c);
     }
-    if (!delivery) continue;
-    const mapped = mapSteadfastStatus(delivery);
-    if (mapped && mapped !== o.status) {
-      await supabaseAdmin.from("orders").update({ status: mapped, courier_status: delivery }).eq("id", o.id);
-      updated++;
-    } else {
-      await supabaseAdmin.from("orders").update({ courier_status: delivery }).eq("id", o.id);
-    }
-  }
-  return { updated, error: null };
+    if (!cfgs.length) return { updated: 0, error: "Steadfast not configured" };
 
-});
+    const { data: orders } = await supabaseAdmin
+      .from("orders")
+      .select("id,courier_consignment,status")
+      .eq("status", "shipped")
+      .not("courier_consignment", "is", null)
+      .limit(100);
+
+    let updated = 0;
+    for (const o of orders ?? []) {
+      if (!o.courier_consignment) continue;
+      let delivery = "";
+      for (const cfg of cfgs) {
+        try {
+          const r = await callSteadfast(`status_by_cid/${encodeURIComponent(o.courier_consignment)}`, cfg);
+          const j = (r.json as Record<string, unknown>) || {};
+          const d = String((j.delivery_status as string) || "");
+          if (d) { delivery = d; break; }
+        } catch { /* try next account */ }
+      }
+      if (!delivery) continue;
+      const mapped = mapSteadfastStatus(delivery);
+      if (mapped && mapped !== o.status) {
+        await supabaseAdmin.from("orders").update({ status: mapped, courier_status: delivery }).eq("id", o.id);
+        updated++;
+      } else {
+        await supabaseAdmin.from("orders").update({ courier_status: delivery }).eq("id", o.id);
+      }
+    }
+    return { updated, error: null };
+  });
