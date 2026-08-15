@@ -1,154 +1,76 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeader, getRequestIP } from "@tanstack/react-start/server";
+import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
-import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
-import { sendPurchaseEvent } from "@/lib/facebook-capi.server";
+import { supabase } from "@/integrations/supabase/client";
 
-const PHONE_RE = /^01[3-9][0-9]{8}$/;
+const orderSchema = z.object({
+  customer_name: z.string().min(2, "নাম কমপক্ষে ২ অক্ষরের হতে হবে"),
+  customer_phone: z.string().regex(/^(?:\+88|88)?(01[3-9]\d{8})$/, "সঠিক মোবাইল নাম্বার দিন"),
+  customer_address: z.string().min(5, "ঠিকানা বিস্তারিত লিখুন"),
+  district: z.string().min(1, "জেলা সিলেক্ট করুন"),
+  thana: z.string().optional().nullable(),
+  payment_method: z.enum(["cod", "bkash", "nagad"]).default("cod"),
+  items: z.array(z.object({
+    product_id: z.string().uuid().optional().nullable(),
+    product_name: z.string(),
+    quantity: z.number().min(1),
+    price: z.number().min(0),
+    variant_id: z.string().uuid().optional().nullable(),
+  })).min(1, "কার্টে কোনো পণ্য নেই"),
+  subtotal: z.number(),
+  shipping_charge: z.number().optional().nullable(),
+  delivery_fee: z.number().optional().nullable(),
 
-const ItemSchema = z.object({
-  id: z.string().min(1).max(64),
-  name: z.string().min(1).max(500),
-  price: z.number().min(0).max(10_000_000),
-  quantity: z.number().int().min(1).max(1000),
-});
-
-const InputSchema = z.object({
-  customer_name: z.string().min(1).max(255),
-  customer_phone: z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number. Use 01XXXXXXXXX."),
-  customer_address: z.string().min(1).max(1000),
-  district: z.string().max(100).optional().nullable(),
-  thana: z.string().max(100).optional().nullable(),
-  notes: z.string().max(2000).optional().nullable(),
-  delivery_fee: z.number().min(0).max(10000).default(50),
-  items: z.array(ItemSchema).min(1).max(100),
-  created_by: z.string().uuid().optional().nullable(),
-  checkout_session_id: z.string().uuid().optional().nullable(),
-  fbp: z.string().max(200).optional().nullable(),
-  fbc: z.string().max(500).optional().nullable(),
-  source_url: z.string().max(2000).optional().nullable(),
+  total: z.number(),
+  coupon_code: z.string().optional().nullable(),
+  discount_amount: z.number().default(0),
+  note: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
 });
 
 export const placeOrder = createServerFn({ method: "POST" })
-  .inputValidator((input) => InputSchema.parse(input))
+  .validator(zodValidator(orderSchema))
   .handler(async ({ data }) => {
-    const customerPhone = data.customer_phone;
-
-    const uuidIds = data.items.map((i) => i.id).filter((s) => /^[0-9a-f-]{36}$/i.test(s));
-    const { data: dbProducts } = uuidIds.length
-      ? await supabaseAdmin.from("products").select("id,price,sale_price").in("id", uuidIds)
-      : { data: [] as { id: string; price: number; sale_price: number | null }[] };
-    const priceMap = new Map<string, number>();
-    for (const p of dbProducts ?? []) {
-      const effective = p.sale_price != null && p.sale_price > 0 ? Number(p.sale_price) : Number(p.price);
-      priceMap.set(p.id, effective);
-    }
-    const safeItems = data.items.map((i) => {
-      const dbPrice = priceMap.get(i.id);
-      return dbPrice != null ? { ...i, price: dbPrice } : i;
-    });
-
-    const subtotal = safeItems.reduce((s, i) => s + i.price * i.quantity, 0);
-    const total = subtotal + data.delivery_fee;
-
-    const orderRes = await supabaseAdmin
+    const { data: order, error: orderError } = await supabase
       .from("orders")
       .insert({
         customer_name: data.customer_name,
-        customer_phone: customerPhone,
+        customer_phone: data.customer_phone,
         customer_address: data.customer_address,
-        district: data.district ?? null,
-        thana: data.thana ?? null,
-        notes: data.notes ?? null,
-        subtotal,
-        delivery_fee: data.delivery_fee,
-        total,
-        payment_method: "COD",
-        source: "web",
-        status: "web_pending",
-        created_by: data.created_by ?? null,
-      })
+        district: data.district,
+        thana: data.thana,
+        payment_method: data.payment_method,
+        subtotal: data.subtotal,
+        delivery_fee: data.shipping_charge ?? data.delivery_fee ?? 0,
+        total: data.total,
+        coupon_code: data.coupon_code,
+        discount: data.discount_amount,
+        notes: data.note || data.notes || null,
+        status: "pending",
+      } as any)
       .select("id")
       .single();
 
-    if (orderRes.error || !orderRes.data) {
-      throw new Error(orderRes.error?.message ?? "Order create failed");
-    }
-    const order = orderRes.data;
-    const validIds = new Set((dbProducts ?? []).map((r) => r.id));
+    if (orderError) throw new Error(orderError.message);
 
-    const rows = safeItems.map((i) => ({
+    const orderItems = data.items.map((item) => ({
       order_id: order.id,
-      product_id: validIds.has(i.id) ? i.id : null,
-      product_name: i.name,
-      price: i.price,
-      quantity: i.quantity,
-      subtotal: i.price * i.quantity,
+      product_id: item.product_id,
+      product_name: item.product_name,
+      quantity: item.quantity,
+      price: item.price,
+      subtotal: item.price * item.quantity,
     }));
 
-    const itemsRes = await supabaseAdmin.from("order_items").insert(rows);
-    if (itemsRes.error) {
-      await supabaseAdmin.from("orders").delete().eq("id", order.id);
-      throw new Error(itemsRes.error.message);
-    }
-
-    let converted = false;
-    try {
-      if (data.checkout_session_id) {
-        const { data: deleted, error } = await supabaseAdmin
-          .from("incomplete_orders")
-          .delete()
-          .eq("checkout_session_id", data.checkout_session_id)
-          .select("id");
-        if (error) throw error;
-        converted = (deleted ?? []).length > 0;
-      } else {
-        const { data: latest, error: findError } = await supabaseAdmin
-          .from("incomplete_orders")
-          .select("id")
-          .eq("phone", customerPhone)
-          .order("updated_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (findError) throw findError;
-        if (latest) {
-          const { error: deleteError } = await supabaseAdmin
-            .from("incomplete_orders")
-            .delete()
-            .eq("id", latest.id);
-          if (deleteError) throw deleteError;
-          converted = true;
-        }
-      }
-    } catch (e) {
-      console.error("[placeOrder] incomplete draft cleanup failed:", e);
-    }
-
-    if (converted) {
-      await supabaseAdmin.from("incomplete_events").insert({ phone: customerPhone, event: "converted" });
+    const { error: itemsError } = await supabase.from("order_items").insert(orderItems as any);
+    if (itemsError) {
+      await supabase.from("orders").delete().eq("id", order.id);
+      throw new Error(itemsError.message);
     }
 
     try {
-      const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
-      const userAgent = getRequestHeader("user-agent") ?? null;
-      await sendPurchaseEvent({
-        orderId: order.id,
-        value: total,
-        currency: "BDT",
-        phone: customerPhone,
-        name: data.customer_name,
-        city: data.district ?? data.thana ?? null,
-        country: "bd",
-        contents: safeItems.map((i) => ({ id: i.id, quantity: i.quantity, price: i.price })),
-        clientIp,
-        userAgent,
-        fbp: data.fbp ?? null,
-        fbc: data.fbc ?? null,
-        eventSourceUrl: data.source_url ?? null,
-      });
-    } catch (e) {
-      console.error("[placeOrder] CAPI dispatch failed:", e);
-    }
+      await supabase.from("incomplete_orders").delete().eq("phone", data.customer_phone);
+    } catch { /* ignore cleanup errors */ }
 
-    return { id: order.id };
+    return { success: true, id: order.id, orderId: order.id };
   });
