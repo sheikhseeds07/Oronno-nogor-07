@@ -1,5 +1,5 @@
 /* High-conversion landing-page checkout styling. Scoped to #order / #lp-order-form. */
-#order { scroll-margin-top: 84px; }
+#order { scroll-margin-top: 84px; margin-top: -10px; }
 #order #lp-order-form { position:relative; border:1px solid rgba(21,128,61,.14); border-radius:22px; background:linear-gradient(180deg,#fff 0%,#fbfffc 100%); box-shadow:0 16px 45px -28px rgba(6,78,59,.42); }
 #order #lp-order-form label { color:#17351f; font-weight:700; }
 #order #lp-order-form input:not([type="checkbox"]), #order #lp-order-form textarea { width:100%; min-height:52px; border:1.5px solid #dbe7df; border-radius:13px; background:#f9fcfa; color:#17231b; font-size:15px; box-shadow:inset 0 1px 2px rgba(15,23,42,.025); transition:border-color 160ms ease,box-shadow 160ms ease,background 160ms ease,transform 160ms ease; }
@@ -8,17 +8,21 @@
 #order #lp-order-form input::placeholder, #order #lp-order-form textarea::placeholder { color:#9aa9a0; }
 #order #lp-order-form .divide-y { border-color:#dfeae2; border-radius:16px; background:#fff; box-shadow:0 8px 24px -20px rgba(6,78,59,.45); }
 #order #lp-order-form .divide-y > div:last-child { background:linear-gradient(90deg,#ecfdf3,#f5fff8); border-top:1px solid #d8efdf; }
-
-/* The landing page already has a fixed/floating order CTA at the bottom.
-   Hide only the duplicate submit CTA inside the checkout card; keep the
-   actual form and submit functionality untouched for the floating CTA. */
+#order #lp-order-form > .border-2.rounded-2xl.p-3 { padding:.65rem; margin-top:-4px; }
+#order #lp-order-form > .border-2.rounded-2xl.p-3 .space-y-2 { gap:.4rem; }
+#order #lp-order-form > .border-2.rounded-2xl.p-3 .space-y-2 > button { padding:.55rem; }
 #order #lp-order-form button[type="submit"] { display:none !important; }
-
 #order #lp-order-form button[type="button"] { transition:transform 150ms ease,box-shadow 150ms ease,border-color 150ms ease; }
 #order #lp-order-form button[type="button"]:active { transform:scale(.99); }
 #order #lp-order-form .border-2.rounded-2xl { border-color:rgba(21,128,61,.16); box-shadow:0 7px 22px -20px rgba(6,78,59,.55); }
+.container.mx-auto.px-4.max-w-2xl.py-6 { padding-top:1rem; padding-bottom:1rem; }
+.container.mx-auto.px-4.max-w-2xl.py-6 > .relative.overflow-hidden.rounded-2xl { border-width:1px; box-shadow:0 10px 28px -22px rgba(6,78,59,.45); }
+.container.mx-auto.px-4.max-w-2xl.py-6 > .relative.overflow-hidden.rounded-2xl > .flex > div { padding:1rem; }
+.container.mx-auto.px-4.max-w-2xl.py-6 > .relative.overflow-hidden.rounded-2xl p { line-height:1.55; }
 @media (max-width:640px) {
+  #order { margin-top: -14px; }
   #order #lp-order-form { border-radius:20px; box-shadow:0 14px 36px -26px rgba(6,78,59,.42); }
   #order #lp-order-form input:not([type="checkbox"]), #order #lp-order-form textarea { min-height:54px; font-size:16px; }
   #order #lp-order-form textarea { min-height:96px; }
+  .container.mx-auto.px-4.max-w-2xl.py-6 > .relative.overflow-hidden.rounded-2xl > .flex > div { padding:.85rem; }
 }
