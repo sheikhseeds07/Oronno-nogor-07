@@ -95,7 +95,6 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
       <NewOrderNotifier />
       <AdminOrderStability />
       <div className="flex-1 min-w-0 transition-all duration-300 ease-in-out">
-        {loc.pathname === "/admin/all-api" && <div className="p-4 lg:p-6 pb-0"><PresswayyCard /></div>}
         <header className="sticky top-0 z-30 bg-white border-b px-4 py-3 flex items-center gap-3 flex-wrap">
           <button onClick={() => setOpen(true)} className="lg:hidden"><Menu className="w-6 h-6" /></button>
           <button onClick={() => setCollapsed(!collapsed)} className="hidden lg:flex items-center justify-center w-8 h-8 rounded-md border bg-gray-50 hover:bg-gray-100 transition-colors" title={collapsed ? "সাইডবার খুলুন" : "সাইডবার বন্ধ করুন"}>{collapsed ? <PanelLeftOpen className="w-5 h-5 text-gray-600" /> : <PanelLeftClose className="w-5 h-5 text-gray-600" />}</button>
@@ -103,7 +102,10 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
           <div className="ml-auto text-sm text-muted-foreground hidden sm:block truncate max-w-[200px]">{user?.email ?? ""}</div>
           {headerExtra && <div className="w-full basis-full flex items-center gap-2 overflow-x-auto pt-2">{headerExtra}</div>}
         </header>
-        <div className="p-4 lg:p-6">{children}</div>
+        <div className="p-4 lg:p-6">
+          {children}
+          {loc.pathname === "/admin/all-api" && <div className="mt-6"><PresswayyCard /></div>}
+        </div>
       </div>
     </div>
   );
