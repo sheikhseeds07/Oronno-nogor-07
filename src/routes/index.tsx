@@ -27,13 +27,13 @@ const FALLBACK_HOME: HomeData = { banners: HERO_BANNERS, categories: [], subcate
 const homeQueryOptions = queryOptions({
   queryKey: ["home-data-v1"],
   queryFn: getHomeData,
-  enabled: typeof window !== "undefined",
   staleTime: 5 * 60_000,
   retry: 1,
-  refetchOnMount: "always",
+  refetchOnMount: false,
 });
 
 export const Route = createFileRoute("/")({
+  loader: ({ context }) => context.queryClient.ensureQueryData(homeQueryOptions),
   head: () => {
     const firstBanner = PROMO_BANNER_URL;
     return {
