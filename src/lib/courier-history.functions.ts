@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
@@ -18,7 +19,7 @@ const COURIER_ORDER = ["Steadfast", "Pathao", "RedX", "Paperfly", "Carrybee", "e
 // Config is stored in `integrations` row with name = "all_api_hoorin".
 export const fetchCourierHistory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ phone: z.string().min(6).max(20) }))
+  .validator(zodValidator(z.object({ phone: z.string().min(6).max(20) })))
   .handler(async ({ data, context }) => {
     await assertCanManageOrders(context.userId);
     const { data: row } = await supabaseAdmin
