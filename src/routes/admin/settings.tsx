@@ -5,18 +5,18 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { supabase } from "@/lib/personal-supabase/client";
 import { uploadToBucket, safeFileName } from "@/lib/storage-upload";
 import { toast } from "sonner";
+import { ShieldCheck, Smartphone, Globe2, Clock3 } from "lucide-react";
 
 export const Route = createFileRoute("/admin/settings")({ component: SettingsPage });
 
 type Settings = {
-  // ডেলিভারি
   delivery_charge_inside?: number;
   delivery_charge_outside?: number;
   free_delivery_above?: number;
-  // কন্টাক্ট
   contact_page_message_url?: string;
   contact_phone?: string;
-  // SEO
+  order_repeat_phone_minutes?: number;
+  order_repeat_ip_minutes?: number;
   seo_title?: string;
   seo_description?: string;
   seo_keywords?: string;
@@ -29,32 +29,16 @@ type Settings = {
 
 const SEO_DEFAULTS = {
   seo_title: "অরন্য নগর (Oronno Nogor) — অরিজিনাল বীজ, গার্ডেন টুলস ও সার",
-  seo_description:
-    "অরন্য নগর — ছাদ বাগানির বিশ্বস্ত সঙ্গী। ১০০% অরিজিনাল সবজি, ফল ও ফুলের বীজ, গার্ডেন টুলস, সার ও কীটনাশক অনলাইনে অর্ডার করুন। সারাদেশে হোম ডেলিভারি ও ক্যাশ অন ডেলিভারি।",
-  seo_keywords:
-    "অরন্য নগর, অরন্যনগর, oronno nogor, oronnonogor, বীজ, সবজির বীজ, ফুলের বীজ, ফলের বীজ, গার্ডেন টুলস, সার, কীটনাশক, ছাদ বাগান, ছাদ বাগানের দোকান, seeds bd, garden tools bd, online nursery bangladesh",
+  seo_description: "অরন্য নগর — ছাদ বাগানির বিশ্বস্ত সঙ্গী। ১০০% অরিজিনাল সবজি, ফল ও ফুলের বীজ, গার্ডেন টুলস, সার ও কীটনাশক অনলাইনে অর্ডার করুন। সারাদেশে হোম ডেলিভারি ও ক্যাশ অন ডেলিভারি।",
+  seo_keywords: "অরন্য নগর, অরন্যনগর, oronno nogor, oronnonogor, বীজ, সবজির বীজ, ফুলের বীজ, ফলের বীজ, গার্ডেন টুলস, সার, কীটনাশক, ছাদ বাগান, ছাদ বাগানের দোকান, seeds bd, garden tools bd, online nursery bangladesh",
   seo_og_image: "https://oronnonogor.com/og-oronno-nogor.jpg",
   seo_site_url: "https://oronnonogor.com",
   seo_google_verification: "",
   seo_robots: "index, follow",
 };
 
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <label className="text-sm font-medium">{label}</label>
-      {children}
-      {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
-    </div>
-  );
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return <div><label className="text-sm font-medium">{label}</label>{children}{hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}</div>;
 }
 
 const inputCls = "w-full border rounded-lg px-3 py-2 mt-1";
@@ -93,6 +77,8 @@ function SettingsPage() {
         ...cur,
         contact_phone: cur.contact_phone || "+8809644553383",
         contact_page_message_url: cur.contact_page_message_url || "",
+        order_repeat_phone_minutes: Number(cur.order_repeat_phone_minutes ?? 0),
+        order_repeat_ip_minutes: Number(cur.order_repeat_ip_minutes ?? 0),
         seo_title: cur.seo_title || SEO_DEFAULTS.seo_title,
         seo_description: cur.seo_description || SEO_DEFAULTS.seo_description,
         seo_keywords: cur.seo_keywords || SEO_DEFAULTS.seo_keywords,
@@ -113,6 +99,8 @@ function SettingsPage() {
       free_delivery_above: s.free_delivery_above ?? 1000,
       contact_phone: s.contact_phone ?? "+8809644553383",
       contact_page_message_url: s.contact_page_message_url ?? "",
+      order_repeat_phone_minutes: Math.max(0, Math.floor(Number(s.order_repeat_phone_minutes ?? 0))),
+      order_repeat_ip_minutes: Math.max(0, Math.floor(Number(s.order_repeat_ip_minutes ?? 0))),
     };
     if (id) {
       const { error } = await supabase.from("site_settings").update({ settings: payload as never }).eq("id", id);
@@ -121,10 +109,13 @@ function SettingsPage() {
       const { error } = await supabase.from("site_settings").insert({ settings: payload as never });
       if (error) return toast.error(error.message);
     }
-    toast.success("সংরক্ষণ হয়েছে");
+    setS(payload);
+    toast.success("সেটিংস সংরক্ষণ হয়েছে");
     qc.invalidateQueries({ queryKey: ["site-settings-admin"] });
     qc.invalidateQueries({ queryKey: ["site-settings-public"] });
   };
+
+  const preset = (value: number) => setS((prev) => ({ ...prev, order_repeat_phone_minutes: value, order_repeat_ip_minutes: value }));
 
   return (
     <AdminLayout>
@@ -133,130 +124,72 @@ function SettingsPage() {
       <div className="bg-white border rounded-xl p-5 max-w-3xl space-y-4 mb-5">
         <h2 className="font-bold text-lg">ডেলিভারি চার্জ</h2>
         <div className="grid sm:grid-cols-3 gap-3">
-          <Field label="ঢাকার ভেতরে চার্জ (৳)">
-            <input type="number" value={s.delivery_charge_inside ?? 60} onChange={(e) => setS({ ...s, delivery_charge_inside: +e.target.value })} className={inputCls} />
-          </Field>
-          <Field label="ঢাকার বাইরে চার্জ (৳)">
-            <input type="number" value={s.delivery_charge_outside ?? 130} onChange={(e) => setS({ ...s, delivery_charge_outside: +e.target.value })} className={inputCls} />
-          </Field>
-          <Field label="ফ্রি ডেলিভারি (৳ এর বেশি)">
-            <input type="number" value={s.free_delivery_above ?? 1000} onChange={(e) => setS({ ...s, free_delivery_above: +e.target.value })} className={inputCls} />
-          </Field>
+          <Field label="ঢাকার ভেতরে চার্জ (৳)"><input type="number" value={s.delivery_charge_inside ?? 60} onChange={(e) => setS({ ...s, delivery_charge_inside: +e.target.value })} className={inputCls} /></Field>
+          <Field label="ঢাকার বাইরে চার্জ (৳)"><input type="number" value={s.delivery_charge_outside ?? 130} onChange={(e) => setS({ ...s, delivery_charge_outside: +e.target.value })} className={inputCls} /></Field>
+          <Field label="ফ্রি ডেলিভারি (৳ এর বেশি)"><input type="number" value={s.free_delivery_above ?? 1000} onChange={(e) => setS({ ...s, free_delivery_above: +e.target.value })} className={inputCls} /></Field>
         </div>
       </div>
 
-      <div className="bg-white border rounded-xl p-5 max-w-3xl space-y-4 mb-5">
-        <div>
-          <h2 className="font-bold text-lg">ফ্লোটিং কন্টাক্ট বাটন</h2>
-          <p className="text-xs text-muted-foreground">সাইটের নিচের বাম পাশে থাকা আইকনে ক্লিক করলে “Page Message” ও “Call” অপশন দেখাবে।</p>
+      <div className="relative overflow-hidden bg-white border border-emerald-100 rounded-2xl p-5 max-w-3xl space-y-5 mb-5 shadow-sm">
+        <div className="absolute -right-16 -top-16 h-36 w-36 rounded-full bg-emerald-50 pointer-events-none" />
+        <div className="relative flex items-start gap-3">
+          <div className="h-11 w-11 shrink-0 rounded-xl bg-emerald-50 text-emerald-700 grid place-items-center"><ShieldCheck className="h-6 w-6" /></div>
+          <div>
+            <h2 className="font-bold text-lg">অর্ডার রিপিট লিমিট</h2>
+            <p className="text-xs text-muted-foreground mt-1">একই ফোন নম্বর বা IP থেকে নির্ধারিত সময়ের আগে পুনরায় অর্ডার নিয়ন্ত্রণ করুন। <b>০ মিনিট = লিমিট বন্ধ</b></p>
+          </div>
         </div>
+
+        <div className="grid sm:grid-cols-2 gap-4 relative">
+          <div className="rounded-xl border bg-slate-50/70 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+            <div className="flex items-center gap-2 mb-2"><Smartphone className="h-4 w-4 text-emerald-700" /><span className="font-semibold text-sm">ফোন নম্বর লিমিট</span></div>
+            <input type="number" min={0} step={1} value={s.order_repeat_phone_minutes ?? 0} onChange={(e) => setS({ ...s, order_repeat_phone_minutes: Math.max(0, Math.floor(Number(e.target.value) || 0)) })} className={inputCls + " bg-white"} placeholder="যেমন ৬০" />
+            <p className="text-xs text-muted-foreground mt-2">এই ফোন থেকে একটি অর্ডারের পর কত মিনিট অপেক্ষা করতে হবে।</p>
+          </div>
+          <div className="rounded-xl border bg-slate-50/70 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+            <div className="flex items-center gap-2 mb-2"><Globe2 className="h-4 w-4 text-emerald-700" /><span className="font-semibold text-sm">IP লিমিট</span></div>
+            <input type="number" min={0} step={1} value={s.order_repeat_ip_minutes ?? 0} onChange={(e) => setS({ ...s, order_repeat_ip_minutes: Math.max(0, Math.floor(Number(e.target.value) || 0)) })} className={inputCls + " bg-white"} placeholder="যেমন ৬০" />
+            <p className="text-xs text-muted-foreground mt-2">একই IP থেকে একটি অর্ডারের পর কত মিনিট অপেক্ষা করতে হবে।</p>
+          </div>
+        </div>
+
+        <div className="relative flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1"><Clock3 className="h-3.5 w-3.5" /> দ্রুত সেট করুন:</span>
+          {[15, 30, 60, 120, 360, 1440].map((m) => <button key={m} type="button" onClick={() => preset(m)} className="rounded-full border bg-white px-3 py-1.5 text-xs font-semibold transition hover:border-emerald-400 hover:bg-emerald-50 active:scale-95">{m < 60 ? `${m} মিনিট` : m === 60 ? "১ ঘণ্টা" : m === 120 ? "২ ঘণ্টা" : m === 360 ? "৬ ঘণ্টা" : "২৪ ঘণ্টা"}</button>)}
+          <button type="button" onClick={() => preset(0)} className="rounded-full border border-red-100 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100 active:scale-95">বন্ধ</button>
+        </div>
+
+        <div className="relative flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50/60 p-3 text-xs text-amber-900">
+          <span className="text-base leading-none">💡</span>
+          <p><b>উদাহরণ:</b> ৬০ মিনিট দিলে একই ফোন <b>অথবা</b> একই IP থেকে ৬০ মিনিটের মধ্যে নতুন অর্ডার আটকে দেওয়া হবে। সময় শেষ হলে আবার অর্ডার করা যাবে।</p>
+        </div>
+
+        <button onClick={save} className="relative inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl font-semibold shadow-sm transition-all duration-200 hover:-translate-y-0.5 active:scale-[.98]">সিকিউরিটি সেটিংস সংরক্ষণ করুন</button>
+      </div>
+
+      <div className="bg-white border rounded-xl p-5 max-w-3xl space-y-4 mb-5">
+        <div><h2 className="font-bold text-lg">ফ্লোটিং কন্টাক্ট বাটন</h2><p className="text-xs text-muted-foreground">সাইটের নিচের বাম পাশে থাকা আইকনে ক্লিক করলে “Page Message” ও “Call” অপশন দেখাবে।</p></div>
         <div className="grid sm:grid-cols-2 gap-3">
-          <Field label="Page Message Link" hint="Facebook Page Messenger link দিন, যেমন: https://m.me/yourpage">
-            <input
-              type="url"
-              value={s.contact_page_message_url ?? ""}
-              onChange={(e) => setS({ ...s, contact_page_message_url: e.target.value })}
-              placeholder="https://m.me/yourpage"
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Call Number" hint="দেশের কোডসহ দিলে ভালো, যেমন: +8801XXXXXXXXX">
-            <input
-              type="tel"
-              value={s.contact_phone ?? "+8809644553383"}
-              onChange={(e) => setS({ ...s, contact_phone: e.target.value })}
-              placeholder="+8801XXXXXXXXX"
-              className={inputCls}
-            />
-          </Field>
+          <Field label="Page Message Link" hint="Facebook Page Messenger link দিন, যেমন: https://m.me/yourpage"><input type="url" value={s.contact_page_message_url ?? ""} onChange={(e) => setS({ ...s, contact_page_message_url: e.target.value })} placeholder="https://m.me/yourpage" className={inputCls} /></Field>
+          <Field label="Call Number" hint="দেশের কোডসহ দিলে ভালো, যেমন: +8801XXXXXXXXX"><input type="tel" value={s.contact_phone ?? "+8809644553383"} onChange={(e) => setS({ ...s, contact_phone: e.target.value })} placeholder="+8801XXXXXXXXX" className={inputCls} /></Field>
         </div>
         <button onClick={save} className="bg-brand text-white px-6 py-2.5 rounded-lg font-semibold">কন্টাক্ট সেটিংস সংরক্ষণ করুন</button>
       </div>
 
       <div className="bg-white border rounded-xl p-5 max-w-3xl space-y-4">
-        <div>
-          <h2 className="font-bold text-lg">SEO সেটিংস</h2>
-          <p className="text-xs text-muted-foreground">Google ও Facebook-এ সাইট কেমন দেখাবে তা এখান থেকে নিয়ন্ত্রণ করুন।</p>
-        </div>
-
-        <Field label="Meta Title (৬০ অক্ষরের ভেতরে ভালো)" hint={`বর্তমান: ${(s.seo_title ?? "").length} অক্ষর`}>
-          <input value={s.seo_title ?? ""} onChange={(e) => setS({ ...s, seo_title: e.target.value })} className={inputCls} />
-        </Field>
-
-        <Field label="Meta Description (১৬০ অক্ষরের ভেতরে ভালো)" hint={`বর্তমান: ${(s.seo_description ?? "").length} অক্ষর`}>
-          <textarea rows={3} value={s.seo_description ?? ""} onChange={(e) => setS({ ...s, seo_description: e.target.value })} className={inputCls} />
-        </Field>
-
-        <Field label="Keywords (কমা দিয়ে আলাদা)">
-          <textarea rows={2} value={s.seo_keywords ?? ""} onChange={(e) => setS({ ...s, seo_keywords: e.target.value })} className={inputCls} />
-        </Field>
-
+        <div><h2 className="font-bold text-lg">SEO সেটিংস</h2><p className="text-xs text-muted-foreground">Google ও Facebook-এ সাইট কেমন দেখাবে তা এখান থেকে নিয়ন্ত্রণ করুন।</p></div>
+        <Field label="Meta Title (৬০ অক্ষরের ভেতরে ভালো)" hint={`বর্তমান: ${(s.seo_title ?? "").length} অক্ষর`}><input value={s.seo_title ?? ""} onChange={(e) => setS({ ...s, seo_title: e.target.value })} className={inputCls} /></Field>
+        <Field label="Meta Description (১৬০ অক্ষরের ভেতরে ভালো)" hint={`বর্তমান: ${(s.seo_description ?? "").length} অক্ষর`}><textarea rows={3} value={s.seo_description ?? ""} onChange={(e) => setS({ ...s, seo_description: e.target.value })} className={inputCls} /></Field>
+        <Field label="Keywords (কমা দিয়ে আলাদা)"><textarea rows={2} value={s.seo_keywords ?? ""} onChange={(e) => setS({ ...s, seo_keywords: e.target.value })} className={inputCls} /></Field>
         <div className="grid sm:grid-cols-2 gap-3">
-          <Field label="সাইট URL (canonical)" hint="যেমন: https://oronnonogor.com">
-            <input value={s.seo_site_url ?? ""} onChange={(e) => setS({ ...s, seo_site_url: e.target.value })} className={inputCls} />
-          </Field>
-          <Field label="Google Site Verification code" hint="Search Console-এর meta ট্যাগের content অংশটুকু">
-            <input value={s.seo_google_verification ?? ""} onChange={(e) => setS({ ...s, seo_google_verification: e.target.value })} className={inputCls} />
-          </Field>
-          <Field label="Robots" hint="সাধারণত: index, follow">
-            <select value={s.seo_robots ?? "index, follow"} onChange={(e) => setS({ ...s, seo_robots: e.target.value })} className={inputCls}>
-              <option value="index, follow">index, follow (Google-এ দেখাবে)</option>
-              <option value="noindex, nofollow">noindex, nofollow (লুকানো থাকবে)</option>
-            </select>
-          </Field>
+          <Field label="সাইট URL (canonical)" hint="যেমন: https://oronnonogor.com"><input value={s.seo_site_url ?? ""} onChange={(e) => setS({ ...s, seo_site_url: e.target.value })} className={inputCls} /></Field>
+          <Field label="Google Site Verification code" hint="Search Console-এর meta ট্যাগের content অংশটুকু"><input value={s.seo_google_verification ?? ""} onChange={(e) => setS({ ...s, seo_google_verification: e.target.value })} className={inputCls} /></Field>
+          <Field label="Robots" hint="সাধারণত: index, follow"><select value={s.seo_robots ?? "index, follow"} onChange={(e) => setS({ ...s, seo_robots: e.target.value })} className={inputCls}><option value="index, follow">index, follow (Google-এ দেখাবে)</option><option value="noindex, nofollow">noindex, nofollow (লুকানো থাকবে)</option></select></Field>
         </div>
-
-        <Field label="Share Image (Google/Facebook-এ যে ছবি দেখাবে)" hint="১২০০x৬৩০ px ছবি সবচেয়ে ভালো। ছবি আপলোড করুন অথবা URL বসান।">
-          <div className="mt-1 flex flex-col sm:flex-row gap-3 sm:items-start">
-            <div className="w-full sm:w-64 shrink-0">
-              {s.seo_og_image ? (
-                <img src={s.seo_og_image} alt="Share image preview" className="w-full aspect-[1200/630] object-cover rounded-lg border bg-slate-100" />
-              ) : (
-                <div className="w-full aspect-[1200/630] rounded-lg border border-dashed grid place-items-center text-xs text-muted-foreground bg-slate-50">
-                  কোনো ছবি নেই
-                </div>
-              )}
-            </div>
-            <div className="flex-1 space-y-2">
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                onChange={(e) => pickImage(e.target.files?.[0])}
-                className="block w-full text-sm border rounded-lg px-3 py-2"
-              />
-              {uploading && <p className="text-xs text-emerald-700">আপলোড হচ্ছে…</p>}
-              <input
-                value={s.seo_og_image ?? ""}
-                onChange={(e) => setS({ ...s, seo_og_image: e.target.value })}
-                placeholder="https://oronnonogor.com/og-oronno-nogor.jpg"
-                className="w-full border rounded-lg px-3 py-2 text-sm"
-              />
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setS({ ...s, seo_og_image: "https://oronnonogor.com/og-oronno-nogor.jpg" })}
-                  className="text-xs border rounded-lg px-3 py-1.5 hover:bg-slate-50"
-                >
-                  অরন্য নগর ডিফল্ট ছবি
-                </button>
-                {s.seo_og_image && (
-                  <button type="button" onClick={() => setS({ ...s, seo_og_image: "" })} className="text-xs border rounded-lg px-3 py-1.5 text-red-600 hover:bg-red-50">
-                    ছবি সরান
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
+        <Field label="Share Image (Google/Facebook-এ যে ছবি দেখাবে)" hint="১২০০x৬৩০ px ছবি সবচেয়ে ভালো। ছবি আপলোড করুন অথবা URL বসান.">
+          <div className="mt-1 flex flex-col sm:flex-row gap-3 sm:items-start"><div className="w-full sm:w-64 shrink-0">{s.seo_og_image ? <img src={s.seo_og_image} alt="Share image preview" className="w-full aspect-[1200/630] object-cover rounded-lg border bg-slate-100" /> : <div className="w-full aspect-[1200/630] rounded-lg border border-dashed grid place-items-center text-xs text-muted-foreground bg-slate-50">কোনো ছবি নেই</div>}</div><div className="flex-1 space-y-2"><input ref={fileRef} type="file" accept="image/*" onChange={(e) => pickImage(e.target.files?.[0])} className="block w-full text-sm border rounded-lg px-3 py-2" />{uploading && <p className="text-xs text-emerald-700">আপলোড হচ্ছে…</p>}<input value={s.seo_og_image ?? ""} onChange={(e) => setS({ ...s, seo_og_image: e.target.value })} placeholder="https://oronnonogor.com/og-oronno-nogor.jpg" className="w-full border rounded-lg px-3 py-2 text-sm" /><div className="flex gap-2"><button type="button" onClick={() => setS({ ...s, seo_og_image: "https://oronnonogor.com/og-oronno-nogor.jpg" })} className="text-xs border rounded-lg px-3 py-1.5 hover:bg-slate-50">অরন্য নগর ডিফল্ট ছবি</button>{s.seo_og_image && <button type="button" onClick={() => setS({ ...s, seo_og_image: "" })} className="text-xs border rounded-lg px-3 py-1.5 text-red-600 hover:bg-red-50">ছবি সরান</button>}</div></div></div>
         </Field>
-
-        <div className="border rounded-lg p-3 bg-slate-50">
-          <p className="text-xs font-medium mb-2">Google প্রিভিউ</p>
-          <p className="text-[13px] text-emerald-700">{s.seo_site_url}</p>
-          <p className="text-[#1a0dab] text-base leading-snug">{s.seo_title}</p>
-          <p className="text-xs text-slate-600 line-clamp-2">{s.seo_description}</p>
-        </div>
-
+        <div className="border rounded-lg p-3 bg-slate-50"><p className="text-xs font-medium mb-2">Google প্রিভিউ</p><p className="text-[13px] text-emerald-700">{s.seo_site_url}</p><p className="text-[#1a0dab] text-base leading-snug">{s.seo_title}</p><p className="text-xs text-slate-600 line-clamp-2">{s.seo_description}</p></div>
         <button onClick={save} className="bg-brand text-white px-6 py-2.5 rounded-lg font-semibold">সংরক্ষণ করুন</button>
       </div>
     </AdminLayout>
