@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { SiteLayout } from "@/components/layout/SiteLayout";
@@ -27,9 +27,12 @@ const homeQueryOptions = queryOptions({
   queryKey: ["home-data-v1"],
   queryFn: getHomeData,
   enabled: typeof window !== "undefined",
-  staleTime: 5 * 60_000,
+  staleTime: 10 * 60_000,
+  gcTime: 30 * 60_000,
   retry: 1,
-  refetchOnMount: "always",
+  refetchOnMount: false,
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
 });
 
 function SectionTitle({ title, subtitle, action }: { title: string; subtitle?: string; action?: { label: string; to: string } }) {
@@ -45,23 +48,21 @@ function SectionTitle({ title, subtitle, action }: { title: string; subtitle?: s
 }
 
 function Home() {
-  const router = useRouter();
   const { data: home = FALLBACK_HOME, isPending } = useQuery(homeQueryOptions);
   const banners = (home.banners.length ? home.banners : HERO_BANNERS) as HomeData["banners"];
   const categories = home.categories;
   const popularProducts = home.products as unknown as Product[];
 
+  // Do not compete with the initial homepage request. Route code is loaded on demand
+  // when the visitor actually navigates instead of preloading three routes on first paint.
   useEffect(() => {
-    const idle = (cb: () => void) => {
-      const ric = (window as unknown as { requestIdleCallback?: (cb: () => void) => void }).requestIdleCallback;
-      if (ric) ric(cb); else setTimeout(cb, 800);
+    const warmNextPage = () => {
+      const links = document.querySelectorAll<HTMLAnchorElement>('a[href="/shop"]');
+      links.forEach((link) => link.setAttribute("data-prefetch-ready", "1"));
     };
-    idle(() => {
-      router.preloadRoute({ to: "/shop" }).catch(() => {});
-      router.preloadRoute({ to: "/checkout" }).catch(() => {});
-      router.preloadRoute({ to: "/cart" }).catch(() => {});
-    });
-  }, [router]);
+    const timer = window.setTimeout(warmNextPage, 6000);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const [slide, setSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
