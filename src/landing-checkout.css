@@ -10,23 +10,21 @@
 #order #lp-order-form .divide-y { border-color:#dfeae2; border-radius:16px; background:#fff; box-shadow:0 8px 24px -20px rgba(6,78,59,.45); }
 #order #lp-order-form .divide-y > div:last-child { background:linear-gradient(90deg,#ecfdf3,#f5fff8); border-top:1px solid #d8efdf; }
 
-/* Product selection + checkout: move product selection further upward. */
-#order #lp-order-form > .border-2.rounded-2xl.p-3 { padding:.55rem; margin-top:-36px; margin-bottom:0 !important; }
+/* Product selection: place it above checkout with a visible 1px gap. */
+#order #lp-order-form > .border-2.rounded-2xl.p-3 { padding:.55rem; margin-top:-20px; margin-bottom:1px !important; transform:translateY(-1px); }
 #order #lp-order-form > .border-2.rounded-2xl.p-3 .space-y-2 { gap:.3rem; }
 #order #lp-order-form > .border-2.rounded-2xl.p-3 .space-y-2 > button { padding:.45rem; }
-#order #lp-order-form > .border-2.rounded-2xl.p-3 + * { margin-top:0 !important; }
+#order #lp-order-form > .border-2.rounded-2xl.p-3 + * { margin-top:1px !important; }
 #order #lp-order-form button[type="submit"] { display:none !important; }
 #order #lp-order-form button[type="button"] { transition:transform 150ms ease,box-shadow 150ms ease,border-color 150ms ease; }
 #order #lp-order-form button[type="button"]:active { transform:scale(.99); }
 #order #lp-order-form .border-2.rounded-2xl { border-color:rgba(21,128,61,.16); box-shadow:0 7px 22px -20px rgba(6,78,59,.55); }
 
-/* Compact step-2/reassurance text: keep it in the small space instead of leaving a blank divider. */
 #order .lp-checkout-reassurance { display:block !important; margin:2px 0 5px !important; padding:5px 10px !important; border-radius:10px; background:linear-gradient(90deg,rgba(22,163,74,.06),rgba(250,204,21,.08),rgba(59,130,246,.05)); border:1px solid rgba(21,128,61,.10); line-height:1.25; }
 #order .lp-checkout-reassurance + .border-2.rounded-2xl,
 #order .lp-checkout-reassurance + .rounded-2xl { margin-top:0 !important; }
 #order #lp-order-form > p:last-child { display:block !important; }
 
-/* Premium customer review carousel: exactly one review visible at a time. */
 .container.mx-auto.px-4.max-w-2xl.py-6 { padding-top:.65rem; padding-bottom:.65rem; }
 .container.mx-auto.px-4.max-w-2xl.py-6 > .relative.overflow-hidden.rounded-2xl { border-width:1px; box-shadow:0 8px 22px -20px rgba(6,78,59,.45); }
 .container.mx-auto.px-4.max-w-2xl.py-6 > .relative.overflow-hidden.rounded-2xl > .flex > div { padding:.7rem .85rem; }
@@ -42,7 +40,8 @@
   #order #lp-order-form { border-radius:20px; box-shadow:0 14px 36px -26px rgba(6,78,59,.42); }
   #order #lp-order-form input:not([type="checkbox"]), #order #lp-order-form textarea { min-height:54px; font-size:16px; }
   #order #lp-order-form textarea { min-height:96px; }
-  #order #lp-order-form > .border-2.rounded-2xl.p-3 { padding:.5rem; margin-top:-43px; margin-bottom:0 !important; }
+  #order #lp-order-form > .border-2.rounded-2xl.p-3 { padding:.5rem; margin-top:-25px; margin-bottom:1px !important; transform:translateY(-1px); }
+  #order #lp-order-form > .border-2.rounded-2xl.p-3 + * { margin-top:1px !important; }
   #order .lp-checkout-reassurance { margin:2px 0 4px !important; padding:4px 8px !important; }
   .container.mx-auto.px-4.max-w-2xl.py-6 { padding-top:.45rem; padding-bottom:.45rem; }
   .container.mx-auto.px-4.max-w-2xl.py-6 > .relative.overflow-hidden.rounded-2xl > .flex > div { padding:.6rem .75rem; }
