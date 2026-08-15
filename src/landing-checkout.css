@@ -11,7 +11,7 @@
 #order #lp-order-form .divide-y > div:last-child { background:linear-gradient(90deg,#ecfdf3,#f5fff8); border-top:1px solid #d8efdf; }
 
 /* Product selection + checkout: move product selection slightly upward. */
-#order #lp-order-form > .border-2.rounded-2xl.p-3 { padding:.55rem; margin-top:-12px; margin-bottom:0 !important; }
+#order #lp-order-form > .border-2.rounded-2xl.p-3 { padding:.55rem; margin-top:-16px; margin-bottom:0 !important; }
 #order #lp-order-form > .border-2.rounded-2xl.p-3 .space-y-2 { gap:.3rem; }
 #order #lp-order-form > .border-2.rounded-2xl.p-3 .space-y-2 > button { padding:.45rem; }
 #order #lp-order-form > .border-2.rounded-2xl.p-3 + * { margin-top:0 !important; }
@@ -42,7 +42,7 @@
   #order #lp-order-form { border-radius:20px; box-shadow:0 14px 36px -26px rgba(6,78,59,.42); }
   #order #lp-order-form input:not([type="checkbox"]), #order #lp-order-form textarea { min-height:54px; font-size:16px; }
   #order #lp-order-form textarea { min-height:96px; }
-  #order #lp-order-form > .border-2.rounded-2xl.p-3 { padding:.5rem; margin-top:-14px; margin-bottom:0 !important; }
+  #order #lp-order-form > .border-2.rounded-2xl.p-3 { padding:.5rem; margin-top:-18px; margin-bottom:0 !important; }
   #order .lp-checkout-reassurance { margin:2px 0 4px !important; padding:4px 8px !important; }
   .container.mx-auto.px-4.max-w-2xl.py-6 { padding-top:.45rem; padding-bottom:.45rem; }
   .container.mx-auto.px-4.max-w-2xl.py-6 > .relative.overflow-hidden.rounded-2xl > .flex > div { padding:.6rem .75rem; }
