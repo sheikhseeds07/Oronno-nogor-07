@@ -1,24 +1,48 @@
 import { createServerFn } from "@tanstack/react-start";
+import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
+import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 import { assertCanManageOrders } from "@/lib/_admin-guard.server";
+import { allocateInvoiceNo, allocateInvoiceNos, ensureInvoicesForOrders } from "./invoice-no.server";
 
-/** Reserves invoice numbers (AA1, AA2, ...) for orders about to be created. */
-export const reserveInvoiceNos = createServerFn({ method: "POST" })
+
+export const getNextInvoiceNo = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ count: z.number().int().min(1).max(200).default(1) }).parse(input))
-  .handler(async ({ data, context }) => {
+  .handler(async ({ context }) => {
     await assertCanManageOrders(context.userId);
-    const { allocateInvoiceNos } = await import("@/lib/invoice-no.server");
-    return { invoices: await allocateInvoiceNos(data.count) };
+    const invoice = await allocateInvoiceNo();
+    return { invoice_no: invoice };
   });
 
-/** Gives every listed order a valid invoice number before its status changes. */
+export const assignOrderInvoiceNo = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(zodValidator(z.object({ orderId: z.string().uuid() })))
+  .handler(async ({ data, context }) => {
+    await assertCanManageOrders(context.userId);
+    const { data: order } = await supabaseAdmin.from("orders").select("invoice_no").eq("id", data.orderId).single();
+    if (order?.invoice_no) return { invoice_no: order.invoice_no };
+
+    const invoice = await allocateInvoiceNo();
+    await supabaseAdmin.from("orders").update({ invoice_no: invoice }).eq("id", data.orderId);
+    return { invoice_no: invoice };
+  });
+
 export const ensureOrderInvoices = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ ids: z.array(z.string().uuid()).min(1).max(500) }).parse(input))
+  .validator(zodValidator(z.object({ ids: z.array(z.string().uuid()) })))
   .handler(async ({ data, context }) => {
     await assertCanManageOrders(context.userId);
-    const { ensureInvoicesForOrders } = await import("@/lib/invoice-no.server");
-    return { invoices: await ensureInvoicesForOrders(data.ids) };
+    return await ensureInvoicesForOrders(data.ids);
   });
+
+export const reserveInvoiceNos = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator(zodValidator(z.object({ count: z.number().min(1).max(500) })))
+  .handler(async ({ data, context }) => {
+    await assertCanManageOrders(context.userId);
+    const invoices = await allocateInvoiceNos(data.count);
+    return { invoices };
+  });
+
+
