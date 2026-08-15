@@ -8,9 +8,12 @@
 #order #lp-order-form input::placeholder, #order #lp-order-form textarea::placeholder { color:#9aa9a0; }
 #order #lp-order-form .divide-y { border-color:#dfeae2; border-radius:16px; background:#fff; box-shadow:0 8px 24px -20px rgba(6,78,59,.45); }
 #order #lp-order-form .divide-y > div:last-child { background:linear-gradient(90deg,#ecfdf3,#f5fff8); border-top:1px solid #d8efdf; }
-#order #lp-order-form button[type="submit"] { min-height:56px; border-radius:14px; font-size:18px; letter-spacing:-.01em; box-shadow:0 12px 24px -14px rgba(21,128,61,.75); transition:transform 160ms ease,box-shadow 160ms ease,filter 160ms ease; }
-#order #lp-order-form button[type="submit"]:not(:disabled):hover { filter:brightness(1.03); transform:translateY(-1px); box-shadow:0 16px 28px -15px rgba(21,128,61,.82); }
-#order #lp-order-form button[type="submit"]:not(:disabled):active { transform:translateY(0); }
+
+/* The landing page already has a fixed/floating order CTA at the bottom.
+   Hide only the duplicate submit CTA inside the checkout card; keep the
+   actual form and submit functionality untouched for the floating CTA. */
+#order #lp-order-form button[type="submit"] { display:none !important; }
+
 #order #lp-order-form button[type="button"] { transition:transform 150ms ease,box-shadow 150ms ease,border-color 150ms ease; }
 #order #lp-order-form button[type="button"]:active { transform:scale(.99); }
 #order #lp-order-form .border-2.rounded-2xl { border-color:rgba(21,128,61,.16); box-shadow:0 7px 22px -20px rgba(6,78,59,.55); }
@@ -18,5 +21,4 @@
   #order #lp-order-form { border-radius:20px; box-shadow:0 14px 36px -26px rgba(6,78,59,.42); }
   #order #lp-order-form input:not([type="checkbox"]), #order #lp-order-form textarea { min-height:54px; font-size:16px; }
   #order #lp-order-form textarea { min-height:96px; }
-  #order #lp-order-form button[type="submit"] { min-height:58px; font-size:18px; }
 }
