@@ -6,7 +6,6 @@ export type SeedRow = { name: string; qty: string };
 export type Feature = { title: string; text?: string; icon?: string };
 export type WhyItem = { title: string; text?: string; icon?: string };
 export type Review = { name: string; rating: number; text: string };
-
 export type LandingTemplate = "combo" | "all";
 
 export type LandingContent = {
@@ -116,9 +115,6 @@ export const DEFAULT_CONTENT: LandingContent = {
   why_title: "কেন আমাদের ওপর আস্থা রাখবেন",
   reviews_kicker: "কাস্টমার ফিডব্যাক",
   reviews_title: "ক্রেতারা যা বলছেন",
-
-  // These checkout labels/notes intentionally start empty. They remain editable
-  // from admin, but are no longer injected into new landing pages by default.
   package_kicker: "",
   package_title: "",
   order_kicker: "",
@@ -137,8 +133,14 @@ export const DEFAULT_CONTENT: LandingContent = {
   popup_delay: 1200,
 };
 
-// Merge stored jsonb over the defaults so a partially filled row still renders.
 export function mergeContent(raw: unknown): LandingContent {
   const value = (raw && typeof raw === "object" ? raw : {}) as Partial<LandingContent>;
-  return { ...DEFAULT_CONTENT, ...value, seed_table: Array.isArray(value.seed_table) && value.seed_table.length ? value.seed_table : DEFAULT_CONTENT.seed_table };
+  const out = { ...DEFAULT_CONTENT, ...value, seed_table: Array.isArray(value.seed_table) && value.seed_table.length ? value.seed_table : DEFAULT_CONTENT.seed_table } as LandingContent;
+  // Permanently suppress these legacy checkout labels, including old saved values.
+  out.package_kicker = "";
+  out.package_title = "";
+  out.order_kicker = "";
+  out.order_title = "";
+  out.order_note = "";
+  return out;
 }
