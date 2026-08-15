@@ -1,11 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
+import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
+
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 
 const InputSchema = z.object({ from: z.string(), to: z.string() });
 
 export const getVisitorStats = createServerFn({ method: "POST" })
-  .inputValidator((input) => InputSchema.parse(input))
+  .validator(zodValidator(InputSchema))
+
   .handler(async ({ data }) => {
     const [{ count: totalVisits }, { count: totalAll }, sessionsRes] = await Promise.all([
       supabaseAdmin.from("site_visits").select("*", { count: "exact", head: true })
