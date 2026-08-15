@@ -607,7 +607,7 @@ function OrdersTable({
       const list = (filter === "all" ? statuses : [filter]).filter((s) => s !== "incomplete");
       const { data: ords } = await supabase
         .from("orders")
-        .select("id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment,printed_at,created_at,order_items(id,product_name,quantity,price,product_id)")
+        .select("id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment,printed_at,created_at,updated_at,order_items(id,product_name,quantity,price,product_id)")
         .in("status", list as Exclude<OrderStatus, "incomplete">[])
         .order("created_at", { ascending: false })
         .limit(500);
@@ -640,6 +640,7 @@ function OrdersTable({
         thana: null,
         district: r.delivery_zone ?? null,
         created_at: r.updated_at ?? r.created_at,
+        updated_at: r.updated_at ?? r.created_at,
         total: Number(r.total ?? 0),
         status: "incomplete",
         courier_consignment: null,
@@ -1348,7 +1349,7 @@ type OrderRow = {
   id: string; invoice_no: string | null; customer_name: string;
   customer_phone: string; customer_address?: string | null;
   thana?: string | null; district?: string | null;
-  created_at: string; total: number; status: OrderStatus;
+  created_at: string; updated_at?: string | null; total: number; status: OrderStatus;
   courier_consignment?: string | null; printed_at?: string | null;
   order_items?: OrderItemRow[];
   assigned_to?: string | null;
@@ -1527,6 +1528,35 @@ function CourierSuccessCell({ phone }: { phone: string }) {
   );
 }
 
+function RelativeUpdatedTime({ value }: { value?: string | null }) {
+  const [, refresh] = useState(0);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => refresh((v) => v + 1), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  if (!value) return null;
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return null;
+
+  const seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+  let label = 'এইমাত্র';
+  if (seconds >= 86400) label = `${Math.floor(seconds / 86400)} দিন`;
+  else if (seconds >= 3600) label = `${Math.floor(seconds / 3600)} ঘণ্টা`;
+  else if (seconds >= 60) label = `${Math.floor(seconds / 60)} মিনিট`;
+  else if (seconds > 0) label = `${seconds} সেকেন্ড`;
+
+  return (
+    <div
+      className="text-[10px] text-slate-400 mt-0.5"
+      title={`শেষ আপডেট: ${format(new Date(value), "dd MMM yyyy, hh:mm a")}`}
+    >
+      শেষ আপডেট: {label}{label === 'এইমাত্র' ? '' : ' আগে'}
+    </div>
+  );
+}
+
 function OrdersTableRows({
   orders, loading, mode, onOpen, empty,
   selectedIds, onToggleOne, onToggleAll, allChecked,
@@ -1604,6 +1634,7 @@ function OrdersTableRows({
                     <div className="text-xs text-muted-foreground line-clamp-2">
                       {[o.customer_address, o.thana, o.district].filter(Boolean).join(", ")}
                     </div>
+                    <RelativeUpdatedTime value={o.updated_at ?? o.created_at} />
                   </div>
                 </td>
                 {/* Order Items: first 3 images + popover for the rest */}
