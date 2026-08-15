@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { createHash } from "crypto";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
@@ -26,7 +27,7 @@ async function getSmsConfig(): Promise<{ url_template: string; api_key: string }
 }
 
 export const sendPhoneOtp = createServerFn({ method: "POST" })
-  .inputValidator((input) => z.object({ phone: z.string().min(6).max(20) }).parse(input))
+  .validator(zodValidator(z.object({ phone: z.string().min(6).max(20) })))
   .handler(async ({ data }) => {
     const phone = normalize(data.phone);
     const code = String(Math.floor(1000 + Math.random() * 9000));
@@ -64,7 +65,7 @@ export const sendPhoneOtp = createServerFn({ method: "POST" })
   });
 
 export const verifyPhoneOtp = createServerFn({ method: "POST" })
-  .inputValidator((input) => z.object({ phone: z.string().min(6).max(20), code: z.string().length(4) }).parse(input))
+  .validator(zodValidator(z.object({ phone: z.string().min(6).max(20), code: z.string().length(4) })))
   .handler(async ({ data }) => {
     const phone = normalize(data.phone);
     const hash = hashCode(data.code);
