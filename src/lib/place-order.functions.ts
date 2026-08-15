@@ -17,11 +17,16 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   const { data: siteSettings, error: settingsError } = await supabaseAdmin.from("site_settings").select("settings").maybeSingle();
   if (settingsError) throw new Error(settingsError.message);
   const settings = (siteSettings?.settings ?? {}) as Record<string, unknown>;
-  const phoneRepeatMinutes = Math.max(0, Math.min(10080, Number(settings.order_phone_repeat_minutes ?? 0)));
-  const ipRepeatMinutes = Math.max(0, Math.min(10080, Number(settings.order_ip_repeat_minutes ?? 0)));
+  // Keep these keys identical to the Admin Settings UI. Also accept the older
+  // names so existing installations do not silently lose their configured limit.
+  const phoneRepeatMinutes = Math.max(0, Math.min(10080, Number(settings.order_repeat_phone_minutes ?? settings.order_phone_repeat_minutes ?? 0)));
+  const ipRepeatMinutes = Math.max(0, Math.min(10080, Number(settings.order_repeat_ip_minutes ?? settings.order_ip_repeat_minutes ?? 0)));
   if (phoneRepeatMinutes > 0 || ipRepeatMinutes > 0) {
     const { data: rate, error: rateError } = await supabaseAdmin.rpc("check_and_touch_order_rate_limit", { p_phone: customerPhone, p_ip: clientIp, p_phone_minutes: phoneRepeatMinutes, p_ip_minutes: ipRepeatMinutes });
-    if (rateError) throw new Error("অর্ডার রেট-লিমিট যাচাই করা যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।");
+    if (rateError) {
+      console.error("[placeOrder] order repeat limit check failed:", rateError);
+      throw new Error("অর্ডার সিকিউরিটি যাচাই করা যায়নি। অনুগ্রহ করে কিছুক্ষণ পরে আবার চেষ্টা করুন।");
+    }
     if (rate && rate.allowed === false) {
       const wait = Number(rate.wait_minutes ?? 1);
       throw new Error(`আপনার কাছ থেকে একটি অর্ডার ইতোমধ্যে নেওয়া হয়েছে। অনুগ্রহ করে ${wait} মিনিট পরে আবার চেষ্টা করুন।`);
