@@ -1,0 +1,92 @@
+﻿<?php
+
+namespace Presswayy\Sync;
+
+use Illuminate\Support\ServiceProvider;
+use Presswayy\Sync\Adapters\GenericAdapter;
+use Presswayy\Sync\Console\ConnectCommand;
+use Presswayy\Sync\Console\SyncCommand;
+use Presswayy\Sync\Contracts\StoreAdapter;
+use Presswayy\Sync\Jobs\DeliverEvent;
+
+class PresswayyServiceProvider extends ServiceProvider
+{
+public function register()
+{
+$this->mergeConfigFrom(__DIR__ . '/../config/presswayy.php', 'presswayy');
+
+$this->app->singleton(Client::class, function () {
+return new Client();
+});
+
+// Resolve the adapter by name. Custom adapters can override this binding
+// in the app's own service provider.
+$this->app->singleton(StoreAdapter::class, function () {
+$name = config('presswayy.adapter', 'generic');
+switch ($name) {
+// Named adapters (active_ecommerce, bagisto, …) plug in here.
+case 'generic':
+default:
+return new GenericAdapter();
+}
+});
+}
+
+public function boot()
+{
+$this->publishes([
+__DIR__ . '/../config/presswayy.php' => $this->configPath('presswayy.php'),
+], 'presswayy');
+
+$this->loadRoutesFrom(__DIR__ . '/../routes/presswayy.php');
+
+if ($this->app->runningInConsole()) {
+$this->commands([ConnectCommand::class, SyncCommand::class]);
+}
+
+$this->registerModelObservers();
+}
+
+/**
+* Push model changes to the dashboard via queued jobs. Uses Eloquent static
+* events so no per-app observer wiring is needed.
+*/
+private function registerModelObservers()
+{
+if (!Client::isConfigured()) {
+return;
+}
+$adapter = $this->app->make(StoreAdapter::class);
+$models = $adapter->observedModels();
+
+if (!empty($models['product'])) {
+$product = $models['product'];
+$product::saved(function ($m) {
+DeliverEvent::dispatch('product.upsert', get_class($m), $m->getKey());
+});
+$product::deleted(function ($m) {
+DeliverEvent::dispatch('product.delete', get_class($m), $m->getKey());
+});
+}
+if (!empty($models['order'])) {
+$order = $models['order'];
+$order::saved(function ($m) {
+DeliverEvent::dispatch('order.upsert', get_class($m), $m->getKey());
+});
+}
+if (!empty($models['customer'])) {
+$customer = $models['customer'];
+$customer::saved(function ($m) {
+DeliverEvent::dispatch('customer.upsert', get_class($m), $m->getKey());
+});
+}
+}
+
+private function configPath($file)
+{
+if (function_exists('config_path')) {
+return config_path($file);
+}
+return $this->app->basePath('config' . DIRECTORY_SEPARATOR . $file);
+}
+}

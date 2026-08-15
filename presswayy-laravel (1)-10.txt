@@ -1,0 +1,86 @@
+﻿<?php
+
+namespace Presswayy\Sync\Jobs;
+
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Presswayy\Sync\Client;
+use Presswayy\Sync\Contracts\StoreAdapter;
+
+/**
+* Async, retrying delivery of a single change to the dashboard. Holds only the
+* model class + id, re-fetches + maps at run time, and lets the queue retry on
+* failure (up to $tries with backoff).
+*/
+class DeliverEvent implements ShouldQueue
+{
+use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+public $tries = 5;
+
+public $topic;
+public $modelClass;
+public $modelId;
+
+public function __construct($topic, $modelClass, $modelId)
+{
+$this->topic = $topic;
+$this->modelClass = $modelClass;
+$this->modelId = $modelId;
+$queue = config('presswayy.queue');
+if ($queue) {
+$this->onQueue($queue);
+}
+}
+
+public function backoff()
+{
+return [30, 60, 120, 300];
+}
+
+public function handle(Client $client, StoreAdapter $adapter)
+{
+$payload = $this->build($adapter);
+if ($payload === null) {
+return; // entity vanished / our own order — nothing to send
+}
+$result = $client->send($this->topic, $payload, true);
+if (empty($result['ok'])) {
+throw new \RuntimeException('Presswayy delivery failed: HTTP ' . (isset($result['status']) ? $result['status'] : '0'));
+}
+}
+
+private function build(StoreAdapter $adapter)
+{
+switch ($this->topic) {
+case 'product.upsert':
+$m = $this->find();
+return $m ? ['product' => $adapter->product($m)] : null;
+case 'product.delete':
+return ['id' => $this->modelId];
+case 'order.upsert':
+$m = $this->find();
+if (!$m) {
+return null;
+}
+$order = $adapter->order($m);
+if (isset($order['created_via']) && $order['created_via'] === 'presswayy-ai') {
+return null; // never echo an order we created from the dashboard
+}
+return ['order' => $order];
+case 'customer.upsert':
+$m = $this->find();
+return $m ? ['customer' => $adapter->customer($m)] : null;
+}
+return null;
+}
+
+private function find()
+{
+$class = $this->modelClass;
+return $class::find($this->modelId);
+}
+}

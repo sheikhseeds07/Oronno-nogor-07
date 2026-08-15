@@ -1,0 +1,34 @@
+﻿<?php
+
+namespace Presswayy\Sync\Console;
+
+use Illuminate\Console\Command;
+use Presswayy\Sync\Client;
+use Presswayy\Sync\Jobs\BulkSyncPage;
+
+class ConnectCommand extends Command
+{
+protected $signature = 'presswayy:connect';
+protected $description = 'Register this store with Presswayy and queue the first full sync';
+
+public function handle(Client $client)
+{
+if (!Client::isConfigured()) {
+$this->error('Set PRESSWAYY_KEY in your .env first (Integrations -> Custom Store in the dashboard).');
+return 1;
+}
+$this->info('Registering with ' . Client::apiBase() . ' ...');
+$result = $client->register();
+
+if (!empty($result['ok']) && !empty($result['body']['connected'])) {
+$this->info('Connected to Presswayy.');
+BulkSyncPage::dispatch(1);
+$this->info('Initial catalog sync queued. Make sure a queue worker is running.');
+return 0;
+}
+
+$status = isset($result['status']) ? $result['status'] : '0';
+$this->error('Connect failed (HTTP ' . $status . '). Re-check your connection key.');
+return 1;
+}
+}

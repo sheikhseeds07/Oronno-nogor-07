@@ -1,0 +1,16 @@
+﻿<?php
+
+use Illuminate\Support\Facades\Route;
+use Presswayy\Sync\Http\InboundController;
+use Presswayy\Sync\Http\VerifySignature;
+
+$base = trim((string) config('presswayy.inbound_base', '/presswayy/v1'), '/');
+
+Route::prefix($base)
+->middleware(VerifySignature::class)
+->group(function () {
+Route::post('order', [InboundController::class, 'order']);
+Route::post('inventory', [InboundController::class, 'inventory']);
+Route::post('resync', [InboundController::class, 'resync']);
+Route::post('ping', [InboundController::class, 'ping']);
+});

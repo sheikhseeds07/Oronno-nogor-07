@@ -1,0 +1,21 @@
+﻿<?php
+
+namespace Presswayy\Sync\Http;
+
+use Closure;
+use Illuminate\Http\Request;
+use Presswayy\Sync\Client;
+
+/** Verifies the dashboard's HMAC signature over the raw request body. */
+class VerifySignature
+{
+public function handle(Request $request, Closure $next)
+{
+$raw = $request->getContent();
+$sig = $request->header('X-Presswayy-Signature');
+if (!Client::verify($raw, $sig)) {
+abort(401, 'Invalid signature');
+}
+return $next($request);
+}
+}

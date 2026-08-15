@@ -1,0 +1,38 @@
+﻿Presswayy Laravel Sync
+Two-way sync of your Laravel store's products, inventory, orders and customers with the Presswayy AI dashboard. One connection key, HMAC-signed both ways.
+- Your store → Presswayy: model changes are pushed as signed webhooks via Laravel queues (with retries).
+- Presswayy → your store: the dashboard calls this package's routes to create AI-chat orders and adjust stock.
+Install
+composer require presswayy/laravel-sync
+php artisan vendor:publish --tag=presswayy
+Add your connection key (Dashboard → Integrations → Custom Store) to .env:
+PRESSWAYY_KEY=<id>.<secret>
+PRESSWAYY_ADAPTER=generic
+Configure (generic adapter — no code)
+Point config/presswayy.php at your models and columns:
+'product' => [
+    'model'   => \App\Models\Product::class,
+    'columns' => [
+        'id' => 'id', 'name' => 'name', 'sku' => 'sku',
+        'regular_price' => 'unit_price', 'sale_price' => 'discount_price',
+        'stock_quantity' => 'current_stock', 'status' => 'published',
+    ],
+],
+'order' => [
+    'model' => \App\Models\Order::class,
+    'columns' => ['id' => 'id', 'status' => 'status', 'total' => 'grand_total',
+                  'phone' => 'phone', 'email' => 'email', 'address_1' => 'address'],
+    'line_items_relation' => 'items',
+    'line_item_columns'   => ['product_id' => 'product_id', 'quantity' => 'quantity', 'total' => 'price'],
+],
+Connect
+php artisan presswayy:connect   # registers + queues the first full sync
+php artisan queue:work          # run a worker so pushes deliver
+That's it. Product/order/customer saves now sync automatically. Stock updates from the dashboard write back to your store out of the box.
+Order write-back (custom adapter)
+Creating an order touches app-specific logic, so the generic adapter leaves createOrder() to you. Implement Presswayy\Sync\Contracts\StoreAdapter (extend GenericAdapter and override createOrder), then bind it:
+// AppServiceProvider::register()
+$this->app->singleton(\Presswayy\Sync\Contracts\StoreAdapter::class, \App\Presswayy\MyAdapter::class);
+In createOrder(array $payload) build your order from $payload['line_items'] (each {product_id, variation_id?, quantity}) and $payload['customer'], flag it as Presswayy-created (so the sync doesn't echo it back — set the column named in order.columns.created_via), and return ['order_id' => .., 'order_number' => ..].
+Anything not Laravel?
+Everything above is a thin wrapper over a plain HMAC REST API — see the full contract in your dashboard under Integrations → Custom Store → Developer docs.
