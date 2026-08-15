@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
@@ -14,7 +15,7 @@ const ItemSchema = z.object({
 });
 
 const UpsertSchema = z.object({
-  checkout_session_id: z.string().uuid(),
+  checkout_session_id: z.string().uuid().optional().nullable(),
   phone: z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number"),
   customer_name: z.string().max(255).optional().nullable(),
   customer_address: z.string().max(1000).optional().nullable(),
@@ -29,26 +30,26 @@ const UpsertSchema = z.object({
 const ACTIVE_STATUSES = ["web_pending", "pending", "hold", "rts"] as const;
 
 export const upsertIncompleteOrder = createServerFn({ method: "POST" })
-  .inputValidator((input) => UpsertSchema.parse(input))
+  .validator(zodValidator(UpsertSchema))
   .handler(async ({ data }) => {
     const phone = data.phone;
-    const checkoutSessionId = data.checkout_session_id;
-
+    
     const { data: active } = await supabaseAdmin
       .from("orders")
       .select("id")
       .eq("customer_phone", phone)
-      .in("status", ACTIVE_STATUSES)
+      .in("status", ACTIVE_STATUSES as any)
       .limit(1)
       .maybeSingle();
 
     if (active) {
-      await supabaseAdmin.from("incomplete_orders").delete().eq("checkout_session_id", checkoutSessionId);
+      if (data.phone) {
+        await supabaseAdmin.from("incomplete_orders").delete().eq("phone", data.phone);
+      }
       return { ok: true, skipped: "active_order_exists" as const };
     }
 
-    const row = {
-      checkout_session_id: checkoutSessionId,
+    const row: any = {
       phone,
       customer_name: data.customer_name ?? null,
       customer_address: data.customer_address ?? null,
@@ -64,40 +65,24 @@ export const upsertIncompleteOrder = createServerFn({ method: "POST" })
     const { data: existing } = await supabaseAdmin
       .from("incomplete_orders")
       .select("id")
-      .eq("checkout_session_id", checkoutSessionId)
+      .eq("phone", phone)
       .limit(1)
       .maybeSingle();
 
-    if (!existing) {
-      const { data: legacy } = await supabaseAdmin
-        .from("incomplete_orders")
-        .select("id")
-        .eq("phone", phone)
-        .is("checkout_session_id", null)
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (legacy) {
-        const { error } = await supabaseAdmin.from("incomplete_orders").update(row).eq("id", legacy.id);
-        if (error) throw new Error(error.message);
-        return { ok: true };
-      }
-    }
-
-    const { error } = await supabaseAdmin
-      .from("incomplete_orders")
-      .upsert(row, { onConflict: "checkout_session_id" });
-    if (error) throw new Error(error.message);
-
-    if (!existing) {
+    if (existing) {
+      const { error } = await supabaseAdmin.from("incomplete_orders").update(row).eq("id", existing.id);
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await supabaseAdmin.from("incomplete_orders").insert(row);
+      if (error) throw new Error(error.message);
       await supabaseAdmin.from("incomplete_events").insert({ phone, event: "created" });
     }
+    
     return { ok: true };
   });
 
 export const lookupCustomerByPhone = createServerFn({ method: "POST" })
-  .inputValidator((input) => z.object({ phone: z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number") }).parse(input))
+  .validator(zodValidator(z.object({ phone: z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number") })))
   .handler(async ({ data }) => {
     const phone = data.phone;
     const { data: ord } = await supabaseAdmin
@@ -121,7 +106,7 @@ export const lookupCustomerByPhone = createServerFn({ method: "POST" })
 
 export const deleteIncompleteByPhone = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ phone: z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number") }).parse(input))
+  .validator(zodValidator(z.object({ phone: z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number") })))
   .handler(async ({ data, context }) => {
     await assertCanManageOrders(context.userId);
     await supabaseAdmin.from("incomplete_orders").delete().eq("phone", data.phone);
