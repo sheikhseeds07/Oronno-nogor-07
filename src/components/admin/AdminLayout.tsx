@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { NewOrderNotifier } from "@/components/admin/NewOrderNotifier";
 import { AdminOrderStability } from "@/components/admin/AdminOrderStability";
+import { PresswayyCard } from "@/components/admin/PresswayyCard";
 
 type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }>; exact?: boolean; perm?: keyof Permissions | "always" };
 
@@ -93,6 +94,7 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
 
       <NewOrderNotifier />
       <AdminOrderStability />
+      {loc.pathname === "/admin/all-api" && <PresswayyCard />}
       <div className="flex-1 min-w-0 transition-all duration-300 ease-in-out">
         <header className="sticky top-0 z-30 bg-white border-b px-4 py-3 flex items-center gap-3 flex-wrap">
           <button onClick={() => setOpen(true)} className="lg:hidden"><Menu className="w-6 h-6" /></button>
