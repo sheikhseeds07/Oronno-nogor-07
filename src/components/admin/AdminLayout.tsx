@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { NewOrderNotifier } from "@/components/admin/NewOrderNotifier";
 import { AdminOrderStability } from "@/components/admin/AdminOrderStability";
+import { AdminLanguageProvider, AdminLanguageSurface, useAdminLanguage } from "@/components/admin/AdminLanguage";
 
 type NavItem = { to: string; label: string; labelEn: string; icon: React.ComponentType<{ className?: string }>; exact?: boolean; perm?: keyof Permissions | "always" };
 
@@ -29,28 +30,16 @@ const NAV: NavItem[] = [
   { to: "/admin/settings", label: "সেটিংস", labelEn: "Settings", icon: Settings, perm: "settings" },
 ];
 
-export function AdminLayout({ children, headerExtra }: { children: React.ReactNode; headerExtra?: React.ReactNode }) {
+function AdminLayoutContent({ children, headerExtra }: { children: React.ReactNode; headerExtra?: React.ReactNode }) {
   const { user, isStaff, isAdmin, permissions, loading, initialized, role } = useAuth();
+  const { language, setLanguage } = useAdminLanguage();
   const navigate = useNavigate();
   const loc = useLocation();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const [language, setLanguage] = useState<"bn" | "en">("bn");
 
-  useEffect(() => {
-    setMounted(true);
-    const saved = window.localStorage.getItem("admin-language");
-    if (saved === "en" || saved === "bn") setLanguage(saved);
-  }, []);
-
-  const toggleLanguage = () => {
-    setLanguage((current) => {
-      const next = current === "bn" ? "en" : "bn";
-      window.localStorage.setItem("admin-language", next);
-      return next;
-    });
-  };
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (!initialized) return;
@@ -111,12 +100,16 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
           <button onClick={() => setOpen(true)} className="lg:hidden"><Menu className="w-6 h-6" /></button>
           <button onClick={() => setCollapsed(!collapsed)} className="hidden lg:flex items-center justify-center w-8 h-8 rounded-md border bg-gray-50 hover:bg-gray-100 transition-colors" title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}>{collapsed ? <PanelLeftOpen className="w-5 h-5 text-gray-600" /> : <PanelLeftClose className="w-5 h-5 text-gray-600" />}</button>
           <div className="font-bold whitespace-nowrap">{isAdmin ? (language === "en" ? "Admin Panel" : "অ্যাডমিন প্যানেল") : (language === "en" ? "Staff Panel" : "কর্মী প্যানেল")}</div>
-          <button type="button" onClick={toggleLanguage} title={language === "bn" ? "Switch to English" : "বাংলায় পরিবর্তন করুন"} aria-label={language === "bn" ? "Switch to English" : "Switch to Bangla"} className="ml-1 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-bold text-slate-700 shadow-sm transition-all hover:bg-white hover:shadow active:scale-95"><Languages className="h-3.5 w-3.5" /><span>{language === "bn" ? "EN" : "বাংলা"}</span></button>
+          <button type="button" onClick={() => setLanguage(language === "bn" ? "en" : "bn")} title={language === "bn" ? "Switch to English" : "বাংলায় পরিবর্তন করুন"} aria-label={language === "bn" ? "Switch to English" : "Switch to Bangla"} className="ml-1 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-bold text-slate-700 shadow-sm transition-all hover:bg-white hover:shadow active:scale-95"><Languages className="h-3.5 w-3.5" /><span>{language === "bn" ? "EN" : "বাংলা"}</span></button>
           <div className="ml-auto text-sm text-muted-foreground hidden sm:block truncate max-w-[200px]">{user?.email ?? ""}</div>
           {headerExtra && <div className="w-full basis-full flex items-center gap-2 overflow-x-auto pt-2">{headerExtra}</div>}
         </header>
-        <div className="p-4 lg:p-6">{children}</div>
+        <div className="p-4 lg:p-6"><AdminLanguageSurface>{children}</AdminLanguageSurface></div>
       </div>
     </div>
   );
+}
+
+export function AdminLayout({ children, headerExtra }: { children: React.ReactNode; headerExtra?: React.ReactNode }) {
+  return <AdminLanguageProvider><AdminLayoutContent headerExtra={headerExtra}>{children}</AdminLayoutContent></AdminLanguageProvider>;
 }
