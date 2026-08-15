@@ -30,10 +30,23 @@ function LandingPopupBehavior({ enabled, hideReviews }: { enabled: boolean; hide
 
     const removeReviews = () => {
       if (!hideReviews) return;
-      const sections = document.querySelectorAll("section");
-      for (const section of sections) {
-        const heading = section.querySelector("h2");
-        if (heading?.textContent?.trim() === "কাস্টমার রিভিউ") {
+
+      // The seedcombo page has existed in multiple landing templates, so do
+      // not rely on one exact heading. Remove the whole review section when
+      // any of its known review labels/content is rendered.
+      const reviewMarkers = [
+        "কাস্টমার রিভিউ",
+        "কাস্টমার ফিডব্যাক",
+        "ক্রেতারা যা বলছেন",
+        "সন্তুষ্ট কাস্টমারদের মতামত",
+        "রাশেদুল ইসলাম",
+        "সুমাইয়া আক্তার",
+        "মাহবুব হাসান",
+      ];
+
+      for (const section of document.querySelectorAll("section")) {
+        const text = section.textContent?.trim() || "";
+        if (reviewMarkers.some((marker) => text.includes(marker))) {
           section.remove();
         }
       }
@@ -51,6 +64,10 @@ function LandingPopupBehavior({ enabled, hideReviews }: { enabled: boolean; hide
       removeReviews();
     };
 
+    attach();
+    const observer = new MutationObserver(attach);
+    observer.observe(document.body, { childList: true, subtree: true });
+
     const handleDocumentClick = (event: MouseEvent) => {
       if (!event.isTrusted || !activePopup || !document.body.contains(activePopup)) return;
 
@@ -60,8 +77,6 @@ function LandingPopupBehavior({ enabled, hideReviews }: { enabled: boolean; hide
       const clickedButton = target.closest("button");
       if (!clickedButton) return;
 
-      // The popup's primary CTA should only dismiss the popup. Do not allow
-      // its existing click handler to scroll the page to the checkout form.
       const isCloseButton = clickedButton.matches(
         'button[aria-label="বন্ধ করুন"], button[aria-label="close"]',
       );
@@ -72,9 +87,6 @@ function LandingPopupBehavior({ enabled, hideReviews }: { enabled: boolean; hide
       closePopup();
     };
 
-    attach();
-    const observer = new MutationObserver(attach);
-    observer.observe(document.body, { childList: true, subtree: true });
     document.addEventListener("click", handleDocumentClick, true);
 
     return () => {
