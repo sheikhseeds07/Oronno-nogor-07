@@ -126,8 +126,9 @@ function Dashboard() {
   const dailySales = asArray(sales?.daily);
   const lowStock = asArray(meta?.lowStock);
   const employeeRows = asArray(empReport);
-  const chartData = dailySales.map((d) => ({ day: format(new Date(d.date), "dd MMM"), revenue: d.revenue, orders: d.orders }));
-  const funnelData = asArray(funnel).map((d) => ({ ...d, day: format(new Date(d.date), "dd MMM") }));
+  const chartData = (dailySales as any[]).map((d) => ({ day: format(new Date(d.date), "dd MMM"), revenue: Number(d.revenue), orders: Number(d.orders) }));
+  const funnelData = (asArray(funnel) as any[]).map((d) => ({ ...d, day: format(new Date(d.date), "dd MMM") }));
+
 
   return (
     <AdminLayout>
@@ -241,17 +242,19 @@ function Dashboard() {
               {employeeRows.length === 0 && (
                 <tr><td colSpan={7} className="text-center py-6 text-muted-foreground">{empReportFailed ? "কর্মী রিপোর্ট লোড হয়নি, আবার চেষ্টা করুন" : "এই সময়ে কোনো কর্মীর কাজ নেই"}</td></tr>
               )}
-              {employeeRows.map((r) => (
-                <tr key={r.userId} className="border-b">
+              {(employeeRows as any[]).map((r) => (
+                <tr key={r.userId as string} className="border-b">
+
                   <td className="p-2 font-semibold">
-                    <Link to="/admin/employees/$userId" params={{ userId: r.userId }} className="hover:text-brand">{r.name}</Link>
+                    <Link to="/admin/employees/$userId" params={{ userId: String(r.userId) }} className="hover:text-brand">{String(r.name)}</Link>
                   </td>
-                  <td className="p-2 text-right">{bnDigits(r.total)}</td>
-                  <td className="p-2 text-right">{bnDigits(r.confirmed)}</td>
-                  <td className="p-2 text-right text-emerald-700 font-semibold">{bnDigits(r.delivered)}</td>
-                  <td className="p-2 text-right text-rose-600">{bnDigits(r.cancelled)}</td>
-                  <td className="p-2 text-right">{taka(r.revenue)}</td>
-                  <td className="p-2 text-right text-emerald-700">{taka(r.deliveredRevenue)}</td>
+                  <td className="p-2 text-right">{bnDigits(Number(r.total))}</td>
+                  <td className="p-2 text-right">{bnDigits(Number(r.confirmed))}</td>
+                  <td className="p-2 text-right text-emerald-700 font-semibold">{bnDigits(Number(r.delivered))}</td>
+                  <td className="p-2 text-right text-rose-600">{bnDigits(Number(r.cancelled))}</td>
+                  <td className="p-2 text-right">{taka(Number(r.revenue))}</td>
+                  <td className="p-2 text-right text-emerald-700">{taka(Number(r.deliveredRevenue))}</td>
+
                 </tr>
               ))}
             </tbody>
