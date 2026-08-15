@@ -16,11 +16,27 @@
 #order #lp-order-form button[type="button"] { transition:transform 150ms ease,box-shadow 150ms ease,border-color 150ms ease; }
 #order #lp-order-form button[type="button"]:active { transform:scale(.99); }
 #order #lp-order-form .border-2.rounded-2xl { border-color:rgba(21,128,61,.16); box-shadow:0 7px 22px -20px rgba(6,78,59,.55); }
-/* Compact customer review carousel: one review visible at a time, auto-slides in the existing component. */
+
+/* Premium customer review carousel: exactly one review visible at a time. */
 .container.mx-auto.px-4.max-w-2xl.py-6 { padding-top:.65rem; padding-bottom:.65rem; }
 .container.mx-auto.px-4.max-w-2xl.py-6 > .relative.overflow-hidden.rounded-2xl { border-width:1px; box-shadow:0 8px 22px -20px rgba(6,78,59,.45); }
 .container.mx-auto.px-4.max-w-2xl.py-6 > .relative.overflow-hidden.rounded-2xl > .flex > div { padding:.7rem .85rem; }
 .container.mx-auto.px-4.max-w-2xl.py-6 > .relative.overflow-hidden.rounded-2xl p { line-height:1.4; margin:0; }
+
+/* The review list is the only sm:grid-cols-2 gap-3 block on this landing page. */
+.container.mx-auto.px-4.max-w-2xl.py-6 .grid.sm\:grid-cols-2.gap-3 { position:relative; display:block; min-height:158px; overflow:hidden; }
+.container.mx-auto.px-4.max-w-2xl.py-6 .grid.sm\:grid-cols-2.gap-3 > div { position:absolute; inset:0; width:100%; opacity:0; visibility:hidden; transform:translateY(16px) scale(.985); animation:lpReviewPremium 18s cubic-bezier(.22,.61,.36,1) infinite; will-change:opacity,transform; }
+.container.mx-auto.px-4.max-w-2xl.py-6 .grid.sm\:grid-cols-2.gap-3 > div:nth-child(1) { animation-delay:0s; }
+.container.mx-auto.px-4.max-w-2xl.py-6 .grid.sm\:grid-cols-2.gap-3 > div:nth-child(2) { animation-delay:6s; }
+.container.mx-auto.px-4.max-w-2xl.py-6 .grid.sm\:grid-cols-2.gap-3 > div:nth-child(3) { animation-delay:12s; }
+@keyframes lpReviewPremium {
+  0% { opacity:0; visibility:hidden; transform:translateY(16px) scale(.985); }
+  5% { opacity:1; visibility:visible; transform:translateY(0) scale(1); }
+  28% { opacity:1; visibility:visible; transform:translateY(0) scale(1); }
+  36% { opacity:0; visibility:hidden; transform:translateY(-12px) scale(.99); }
+  100% { opacity:0; visibility:hidden; transform:translateY(-12px) scale(.99); }
+}
+
 @media (max-width:640px) {
   #order { margin-top:-28px; }
   #order #lp-order-form { border-radius:20px; box-shadow:0 14px 36px -26px rgba(6,78,59,.42); }
@@ -29,4 +45,10 @@
   #order #lp-order-form > .border-2.rounded-2xl.p-3 { padding:.5rem; margin-top:-10px; margin-bottom:-8px; }
   .container.mx-auto.px-4.max-w-2xl.py-6 { padding-top:.45rem; padding-bottom:.45rem; }
   .container.mx-auto.px-4.max-w-2xl.py-6 > .relative.overflow-hidden.rounded-2xl > .flex > div { padding:.6rem .75rem; }
+  .container.mx-auto.px-4.max-w-2xl.py-6 .grid.sm\:grid-cols-2.gap-3 { min-height:150px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .container.mx-auto.px-4.max-w-2xl.py-6 .grid.sm\:grid-cols-2.gap-3 > div { animation:none; opacity:0; visibility:hidden; }
+  .container.mx-auto.px-4.max-w-2xl.py-6 .grid.sm\:grid-cols-2.gap-3 > div:first-child { opacity:1; visibility:visible; transform:none; }
 }
