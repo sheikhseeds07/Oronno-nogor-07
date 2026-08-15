@@ -47,11 +47,20 @@ function Employees() {
   const resetPwdFn = useServerFn(resetEmployeePassword);
 
   const [showForm, setShowForm] = useState(false);
-  const [editingPerms, setEditingPerms] = useState<{ user_id: string; perms: EmployeePermissions; role: string } | null>(null);
-  const [form, setForm] = useState({
+  const [editingPerms, setEditingPerms] = useState<{ user_id: string; perms: EmployeePermissions; role: "super_admin" | "admin" | "employee" } | null>(null);
+  const [form, setForm] = useState<{
+    name: string;
+    phone: string;
+    email: string;
+    password: string;
+    position: string;
+    role: "super_admin" | "admin" | "employee";
+    permissions: EmployeePermissions;
+  }>({
     name: "", phone: "", email: "", password: "", position: "", role: "employee",
     permissions: { ...emptyPerms, orders: true, web_orders: true } as EmployeePermissions,
   });
+
 
   const { data, isFetching } = useQuery({
     queryKey: ["admin-employees-full"],
@@ -131,7 +140,7 @@ function Employees() {
             <div className="text-sm font-semibold mb-2">ইউজার রোল (CEO/Employee):</div>
             <select 
               value={form.role} 
-              onChange={(e) => setForm({ ...form, role: e.target.value })}
+              onChange={(e) => setForm({ ...form, role: e.target.value as any })}
               className="border rounded-lg px-3 py-2 w-full max-w-xs"
             >
               <option value="employee">সাধারণ এমপ্লয়ি (Employee)</option>
@@ -229,7 +238,7 @@ function Employees() {
               <div className="text-sm font-semibold mb-2">ইউজার রোল:</div>
               <select 
                 value={editingPerms.role} 
-                onChange={(e) => setEditingPerms({ ...editingPerms, role: e.target.value })}
+                onChange={(e) => setEditingPerms({ ...editingPerms, role: e.target.value as any })}
                 className="border rounded-lg px-3 py-2 w-full max-w-xs"
               >
                 <option value="employee">সাধারণ এমপ্লয়ি (Employee)</option>
