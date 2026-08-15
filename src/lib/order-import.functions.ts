@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
+import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
+
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 import { assertCanManageOrders } from "@/lib/_admin-guard.server";
@@ -22,7 +24,8 @@ const OrderSchema = z.object({
 
 export const importOrdersFromFile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ orders: z.array(OrderSchema).min(1).max(500) }).parse(input))
+  .validator(zodValidator(z.object({ orders: z.array(OrderSchema).min(1).max(500) })))
+
   .handler(async ({ data, context }) => {
     await assertCanManageOrders(context.userId);
 
