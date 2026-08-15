@@ -1019,7 +1019,7 @@ function OrdersTable({
           >
             সব
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${filter === "all" ? "bg-white/25" : "bg-slate-100 text-slate-600"}`}>
-              {Object.values(counts ?? {}).reduce((s, n) => s + n, 0)}
+              {Object.values(counts ?? {}).reduce((s: number, n: any) => s + (Number(n) || 0), 0)}
             </span>
           </button>
         )}
