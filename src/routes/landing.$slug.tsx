@@ -38,8 +38,24 @@ function LandingPopupBehavior({ enabled }: { enabled: boolean }) {
     };
 
     const handleDocumentClick = (event: MouseEvent) => {
-      if (!event.isTrusted) return;
-      if (activePopup && document.body.contains(activePopup)) closePopup();
+      if (!event.isTrusted || !activePopup || !document.body.contains(activePopup)) return;
+
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target || !activePopup.contains(target)) return;
+
+      const clickedButton = target.closest("button");
+      if (!clickedButton) return;
+
+      // The popup's primary CTA should only dismiss the popup. Do not allow
+      // its existing click handler to scroll the page to the checkout form.
+      const isCloseButton = clickedButton.matches(
+        'button[aria-label="বন্ধ করুন"], button[aria-label="close"]',
+      );
+      if (isCloseButton) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      closePopup();
     };
 
     attach();
@@ -70,10 +86,12 @@ function LandingPage() {
       (await supabase.from("landing_pages").select("planting_steps").eq("slug", slug).maybeSingle()).data ?? null,
   });
 
+  const popupBehaviorEnabled = slug === "seedcombo" || slug === "seeds-combo-24";
+
   if (isLegacySlug) {
     return (
       <>
-        <LandingPopupBehavior enabled={slug === "seedcombo"} />
+        <LandingPopupBehavior enabled={popupBehaviorEnabled} />
         <LegacyLandingPage slug={slug} />
       </>
     );
@@ -84,7 +102,7 @@ function LandingPage() {
   if (template === "all") {
     return (
       <>
-        <LandingPopupBehavior enabled={slug === "seedcombo"} />
+        <LandingPopupBehavior enabled={popupBehaviorEnabled} />
         <LegacyLandingPage slug={slug} />
       </>
     );
@@ -92,7 +110,7 @@ function LandingPage() {
 
   return (
     <>
-      <LandingPopupBehavior enabled={slug === "seedcombo"} />
+      <LandingPopupBehavior enabled={popupBehaviorEnabled} />
       <CleanLandingPage slug={slug} />
     </>
   );
