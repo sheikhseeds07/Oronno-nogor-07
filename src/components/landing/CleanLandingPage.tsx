@@ -202,12 +202,21 @@ export function CleanLandingPage({ slug }: { slug: string }) {
           customer_name: form.name,
           customer_phone: form.phone.replace(/[\s-]/g, ""),
           customer_address: form.address,
+          district: "",
           delivery_fee: deliveryFee,
-          items,
+          subtotal: selected.price,
+          total: total,
+          items: items.map(i => ({
+            product_id: String(i.id),
+            product_name: i.name,
+            price: i.price,
+            quantity: i.quantity
+          })),
           notes: form.note || null,
           ...fbCtx,
         },
       });
+
       trackPurchase(items.map((i) => ({ id: String(i.id), name: i.name, price: i.price, quantity: i.quantity })), total, order.id);
       toast.success("অর্ডার সফল!");
       navigate({ to: "/order/$id", params: { id: order.id } });
