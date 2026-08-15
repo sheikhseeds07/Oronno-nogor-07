@@ -10,6 +10,11 @@ const InputSchema = z.object({
   customer_name: z.string().min(1).max(255), customer_phone: z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number. Use 01XXXXXXXXX."), customer_address: z.string().min(1).max(1000), district: z.string().max(100).optional().nullable(), thana: z.string().max(100).optional().nullable(), notes: z.string().max(2000).optional().nullable(), delivery_fee: z.number().min(0).max(10000).default(50), items: z.array(ItemSchema).min(1).max(100), created_by: z.string().uuid().optional().nullable(), checkout_session_id: z.string().uuid().optional().nullable(), fbp: z.string().max(200).optional().nullable(), fbc: z.string().max(500).optional().nullable(), source_url: z.string().max(2000).optional().nullable(),
 });
 
+function isRateLimitError(message: string) {
+  const text = message.toLowerCase();
+  return text.includes("rate") || text.includes("repeat") || text.includes("order_rate") || text.includes("cooldown") || text.includes("wait") || text.includes("already");
+}
+
 export const placeOrder = createServerFn({ method: "POST" }).inputValidator((input) => InputSchema.parse(input)).handler(async ({ data }) => {
   const customerPhone = data.customer_phone;
   const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
@@ -17,19 +22,18 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   const { data: siteSettings, error: settingsError } = await supabaseAdmin.from("site_settings").select("settings").maybeSingle();
   if (settingsError) throw new Error(settingsError.message);
   const settings = (siteSettings?.settings ?? {}) as Record<string, unknown>;
-  // Keep these keys identical to the Admin Settings UI. Also accept the older
-  // names so existing installations do not silently lose their configured limit.
   const phoneRepeatMinutes = Math.max(0, Math.min(10080, Number(settings.order_repeat_phone_minutes ?? settings.order_phone_repeat_minutes ?? 0)));
   const ipRepeatMinutes = Math.max(0, Math.min(10080, Number(settings.order_repeat_ip_minutes ?? settings.order_ip_repeat_minutes ?? 0)));
+
   if (phoneRepeatMinutes > 0 || ipRepeatMinutes > 0) {
     const { data: rate, error: rateError } = await supabaseAdmin.rpc("check_and_touch_order_rate_limit", { p_phone: customerPhone, p_ip: clientIp, p_phone_minutes: phoneRepeatMinutes, p_ip_minutes: ipRepeatMinutes });
     if (rateError) {
       console.error("[placeOrder] order repeat limit check failed:", rateError);
-      throw new Error("অর্ডার সিকিউরিটি যাচাই করা যায়নি। অনুগ্রহ করে কিছুক্ষণ পরে আবার চেষ্টা করুন।");
+      throw new Error("ORDER_RATE_CHECK_FAILED");
     }
     if (rate && rate.allowed === false) {
-      const wait = Number(rate.wait_minutes ?? 1);
-      throw new Error(`আপনার কাছ থেকে একটি অর্ডার ইতোমধ্যে নেওয়া হয়েছে। অনুগ্রহ করে ${wait} মিনিট পরে আবার চেষ্টা করুন।`);
+      const wait = Math.max(1, Number(rate.wait_minutes ?? 1));
+      throw new Error(`ORDER_RATE_LIMIT:${wait}`);
     }
   }
 
