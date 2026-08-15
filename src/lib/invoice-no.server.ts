@@ -1,12 +1,13 @@
 // Server-only helper: allocates invoice numbers using the admin-configurable
-// prefix (All API → Invoice ফরম্যাট) e.g. AA1, AA2, AA3...
+// prefix (All API → Invoice ফরম্যাট) e.g. AA110, AA111, AA112...
 // Invoice numbers are guaranteed unique: every candidate is checked against
 // existing orders before the counter is persisted.
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 
 const NAME = "invoice_settings";
 
-const PREFIX = "AA"; // fixed invoice prefix: AA1, AA2, AA3...
+const PREFIX = "AA"; // fixed invoice prefix: AA110, AA111, AA112...
+const START_NUMBER = 110; // next invoice numbering starts at AA110
 
 export async function getInvoiceConfig(): Promise<{ prefix: string; next: number }> {
   const { data } = await supabaseAdmin
@@ -15,7 +16,8 @@ export async function getInvoiceConfig(): Promise<{ prefix: string; next: number
     .eq("name", NAME)
     .maybeSingle();
   const cfg = (data?.config as { next?: number } | undefined) ?? {};
-  return { prefix: PREFIX, next: Math.max(1, Number(cfg.next ?? 1)) };
+  // Never go below AA110. If the site already has a higher counter, preserve it.
+  return { prefix: PREFIX, next: Math.max(START_NUMBER, Number(cfg.next ?? START_NUMBER)) };
 }
 
 async function saveNext(prefix: string, next: number) {
@@ -28,7 +30,7 @@ async function saveNext(prefix: string, next: number) {
 /** True when the invoice already follows the configured format (e.g. AA123). */
 export function isValidInvoice(invoice: string | null, prefix: string): boolean {
   if (!invoice) return false;
-  return new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\d+$`).test(invoice);
+  return new RegExp(`^${prefix.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}\\\\d+$`).test(invoice);
 }
 
 /**
