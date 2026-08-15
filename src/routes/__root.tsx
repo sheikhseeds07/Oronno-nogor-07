@@ -20,9 +20,7 @@ function NotFoundComponent() {
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-brand">৪০৪</h1>
         <h2 className="mt-4 text-xl font-semibold">পেজটি খুঁজে পাওয়া যায়নি</h2>
-        <Link to="/" className="mt-6 inline-flex rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark">
-          হোমে ফিরে যান
-        </Link>
+        <Link to="/" className="mt-6 inline-flex rounded-md bg-brand px-4 py-2 text-sm text-white hover:bg-brand-dark">হোমে ফিরে যান</Link>
       </div>
     </div>
   );
@@ -36,12 +34,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold">পেজ লোড হয়নি</h1>
         <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
-        <button
-          onClick={() => { router.invalidate(); reset(); }}
-          className="mt-6 rounded-md bg-brand px-4 py-2 text-sm text-white hover:bg-brand-dark"
-        >
-          আবার চেষ্টা করুন
-        </button>
+        <button onClick={() => { router.invalidate(); reset(); }} className="mt-6 rounded-md bg-brand px-4 py-2 text-sm text-white hover:bg-brand-dark">আবার চেষ্টা করুন</button>
       </div>
     </div>
   );
@@ -90,8 +83,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           name: "অরন্য নগর",
           alternateName: ["Oronno Nogor", "oronnonogor", "অরন্যনগর", "Oronno Nogor BD"],
           slogan: "ছাদ বাগানির বিশ্বস্ত সঙ্গী",
-          description:
-            "অরন্য নগর একটি অনলাইন গার্ডেন শপ — অরিজিনাল সবজি, ফল ও ফুলের বীজ, গার্ডেন টুলস, সার ও কীটনাশক সারাদেশে ডেলিভারি করে।",
+          description: "অরন্য নগর একটি অনলাইন গার্ডেন শপ — অরিজিনাল সবজি, ফল ও ফুলের বীজ, গার্ডেন টুলস, সার ও কীটনাশক সারাদেশে ডেলিভারি করে।",
           url: "https://oronnonogor.com",
           logo: "https://oronnonogor.com/logo.jpg",
           image: "https://oronnonogor.com/og-oronno-nogor.jpg",
@@ -120,9 +112,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         }),
       },
     ],
-
   }),
-
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -133,10 +123,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
   return (
     <html lang="bn">
       <head><HeadContent /></head>
-      <body>
-        {children}
-        <Scripts />
-      </body>
+      <body>{children}<Scripts /></body>
     </html>
   );
 }
@@ -157,7 +144,12 @@ function AuthCacheSync() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      // Mobile tab resume can trigger TOKEN_REFRESHED. It is only session
+      // maintenance and must not remount/refetch the current admin page.
+      if (event === "TOKEN_REFRESHED") return;
+
+      // Keep real authentication changes working normally.
       router.invalidate();
       queryClient.invalidateQueries();
     });
