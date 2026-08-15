@@ -19,31 +19,26 @@ export type LandingContent = {
   hero_note: string;
   red_cta_text: string;
   hero_image_2?: string;
-
   gift_cta_text: string;
   gift_title_1: string;
   gift_title_2: string;
   gift_subtitle: string;
   gift_image: string;
   gift_bullets: string[];
-
   seed_kicker: string;
   seed_title: string;
   seed_col_1: string;
   seed_col_2: string;
   seed_table: SeedRow[];
-
   show_countdown: boolean;
   countdown_hours: number;
   countdown_title: string;
-
   features_kicker: string;
   features_title: string;
   why_kicker: string;
   why_title: string;
   reviews_kicker: string;
   reviews_title: string;
-
   package_kicker: string;
   package_title: string;
   order_kicker: string;
@@ -55,7 +50,6 @@ export type LandingContent = {
   submit_text: string;
   cod_note: string;
   gallery_images: string[];
-
   show_popup: boolean;
   popup_title: string;
   popup_text: string;
@@ -64,30 +58,12 @@ export type LandingContent = {
 };
 
 export const DEFAULT_SEEDS: SeedRow[] = [
-  { name: "বিটরুট", qty: "৫ পিস" },
-  { name: "কেরালা শিম", qty: "৫ পিস" },
-  { name: "করলা", qty: "৫ পিস" },
-  { name: "উস্তে", qty: "৫ পিস" },
-  { name: "লাউ", qty: "৫ পিস" },
-  { name: "শষা", qty: "২০+ পিস" },
-  { name: "চিচিঙ্গা", qty: "৫ পিস" },
-  { name: "মিষ্টি কুমড়া", qty: "৫ পিস" },
-  { name: "মরিচ", qty: "২০+ পিস" },
-  { name: "বেগুন", qty: "২০+ পিস" },
-  { name: "ঢেরষ", qty: "৬৫+ বীজ" },
-  { name: "বরবটি", qty: "৪০+ পিস" },
-  { name: "ধুন্দল", qty: "৭+ পিস" },
-  { name: "ঝিঙা", qty: "৭+ পিস" },
-  { name: "চালকুমড়া", qty: "৮+ পিস" },
-  { name: "ধনিয়া", qty: "৬ জিপার" },
-  { name: "পালন শাক", qty: "৬ জিপার" },
-  { name: "পুই শাক", qty: "৬ জিপার" },
-  { name: "কলমি শাক", qty: "৬ জিপার" },
-  { name: "সবুজ শাক", qty: "৬ জিপার" },
-  { name: "লাল শাক", qty: "৬ জিপার" },
-  { name: "ডাটা শাক", qty: "৬ জিপার" },
-  { name: "সুগন্ধি শাক", qty: "৬ জিপার" },
-  { name: "নাফা শাক", qty: "৬ জিপার" },
+  { name: "বিটরুট", qty: "৫ পিস" }, { name: "কেরালা শিম", qty: "৫ পিস" }, { name: "করলা", qty: "৫ পিস" }, { name: "উস্তে", qty: "৫ পিস" },
+  { name: "লাউ", qty: "৫ পিস" }, { name: "শষা", qty: "২০+ পিস" }, { name: "চিচিঙ্গা", qty: "৫ পিস" }, { name: "মিষ্টি কুমড়া", qty: "৫ পিস" },
+  { name: "মরিচ", qty: "২০+ পিস" }, { name: "বেগুন", qty: "২০+ পিস" }, { name: "ঢেরষ", qty: "৬৫+ বীজ" }, { name: "বরবটি", qty: "৪০+ পিস" },
+  { name: "ধুন্দল", qty: "৭+ পিস" }, { name: "ঝিঙা", qty: "৭+ পিস" }, { name: "চালকুমড়া", qty: "৮+ পিস" }, { name: "ধনিয়া", qty: "৬ জিপার" },
+  { name: "পালন শাক", qty: "৬ জিপার" }, { name: "পুই শাক", qty: "৬ জিপার" }, { name: "কলমি শাক", qty: "৬ জিপার" }, { name: "সবুজ শাক", qty: "৬ জিপার" },
+  { name: "লাল শাক", qty: "৬ জিপার" }, { name: "ডাটা শাক", qty: "৬ জিপার" }, { name: "সুগন্ধি শাক", qty: "৬ জিপার" }, { name: "নাফা শাক", qty: "৬ জিপার" },
 ];
 
 export const DEFAULT_FEATURES: Feature[] = [
@@ -112,13 +88,7 @@ export const DEFAULT_REVIEWS: Review[] = [
 
 export const DEFAULT_CONTENT: LandingContent = {
   template: "combo",
-  promo_messages: [
-    "আমাদের বীজ কিনলেই পাবেন গ্যারান্টি কার্ড",
-    "বীজ থেকে চারা তৈরির সম্পূর্ণ গাইডলাইন ফ্রি",
-    "সারা দেশে ক্যাশ অন হোম ডেলিভারি",
-    "১০০% অরিজিনাল ও উচ্চ অংকুরোদগম হারের বীজ",
-    "অর্ডারে সমস্যা হলে সরাসরি কাস্টমার সাপোর্ট",
-  ],
+  promo_messages: ["আমাদের বীজ কিনলেই পাবেন গ্যারান্টি কার্ড", "বীজ থেকে চারা তৈরির সম্পূর্ণ গাইডলাইন ফ্রি", "সারা দেশে ক্যাশ অন হোম ডেলিভারি", "১০০% অরিজিনাল ও উচ্চ অংকুরোদগম হারের বীজ", "অর্ডারে সমস্যা হলে সরাসরি কাস্টমার সাপোর্ট"],
   header_cta_text: "অর্ডার করুন",
   offer_badge_text: "BEST OFFER",
   price_prefix: "মাত্র",
@@ -126,29 +96,20 @@ export const DEFAULT_CONTENT: LandingContent = {
   hero_note: "সারা দেশে ক্যাশ অন হোম ডেলিভারি",
   red_cta_text: "অর্ডার করতে ক্লিক করুন",
   hero_image_2: "",
-
   gift_cta_text: "১ প্যাকেট বিদেশি বীজ ফ্রী নিন!",
   gift_title_1: "১ প্যাকেট",
   gift_title_2: "বিদেশি বীজ ফ্রী",
   gift_subtitle: "অর্ডারের সাথে বোনাস — সীমিত স্টক পর্যন্ত।",
   gift_image: "/landing-images/strawberry-combo.jpg",
-  gift_bullets: [
-    "১০০% অরিজিনাল ও ভেজালমুক্ত",
-    "উচ্চ অংকুরোদগম হার",
-    "সারা দেশে দ্রুত ডেলিভারি",
-    "হাতে পেয়ে টাকা পরিশোধ",
-  ],
-
+  gift_bullets: ["১০০% অরিজিনাল ও ভেজালমুক্ত", "উচ্চ অংকুরোদগম হার", "সারা দেশে দ্রুত ডেলিভারি", "হাতে পেয়ে টাকা পরিশোধ"],
   seed_kicker: "প্যাকেজ কনটেন্ট",
   seed_title: "কম্বোতে যে যে বীজ থাকবে",
   seed_col_1: "বীজের নাম",
   seed_col_2: "পরিমাণ",
   seed_table: DEFAULT_SEEDS,
-
   show_countdown: true,
   countdown_hours: 3,
   countdown_title: "অফারটি শেষ হতে আর মাত্র...",
-
   features_kicker: "প্রোডাক্ট ডিটেইলস",
   features_title: "কেন এই প্যাকেজটি বিশেষ",
   why_kicker: "আমাদের নিশ্চয়তা",
@@ -156,34 +117,28 @@ export const DEFAULT_CONTENT: LandingContent = {
   reviews_kicker: "কাস্টমার ফিডব্যাক",
   reviews_title: "ক্রেতারা যা বলছেন",
 
-  package_kicker: "ধাপ ১",
-  package_title: "প্যাকেজ নির্বাচন করুন",
-  order_kicker: "ধাপ ২",
-  order_title: "ডেলিভারি তথ্য দিন",
-  order_note: "নিশ্চিন্তে অর্ডার করুন। অর্ডার করার পরে আমরা আপনাকে কল দিয়ে বিস্তারিত বলে কনফার্ম করবো।",
+  // These checkout labels/notes intentionally start empty. They remain editable
+  // from admin, but are no longer injected into new landing pages by default.
+  package_kicker: "",
+  package_title: "",
+  order_kicker: "",
+  order_title: "",
+  order_note: "",
   name_label: "আপনার পুরো নাম *",
   phone_label: "আপনার ফোন নাম্বার *",
   address_label: "আপনার সম্পূর্ণ ঠিকানা *",
   submit_text: "অর্ডার কনফার্ম করুন",
   cod_note: "পণ্য হাতে পেয়ে টাকা পরিশোধ করুন — ক্যাশ অন ডেলিভারি।",
   gallery_images: [],
-
   show_popup: true,
   popup_title: "গ্যারান্টি কার্ড",
-  popup_text:
-    "আমাদের বীজ কিনলেই ১ প্যাকেট বিদেশি বীজ ফ্রী পাবেন, সাথে গ্যারান্টি কার্ড এবং বীজ থেকে চারা তৈরির সম্পূর্ণ নির্দেশনা।",
+  popup_text: "আমাদের বীজ কিনলেই ১ প্যাকেট বিদেশি বীজ ফ্রী পাবেন, সাথে গ্যারান্টি কার্ড এবং বীজ থেকে চারা তৈরির সম্পূর্ণ নির্দেশনা।",
   popup_cta: "এখনই অর্ডার করুন",
   popup_delay: 1200,
 };
 
 // Merge stored jsonb over the defaults so a partially filled row still renders.
 export function mergeContent(raw: unknown): LandingContent {
-  const c = (raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {}) as Partial<LandingContent>;
-  const out = { ...DEFAULT_CONTENT, ...c } as LandingContent;
-  if (!Array.isArray(out.promo_messages) || !out.promo_messages.length) out.promo_messages = DEFAULT_CONTENT.promo_messages;
-  if (!Array.isArray(out.gift_bullets)) out.gift_bullets = DEFAULT_CONTENT.gift_bullets;
-  if (!Array.isArray(out.seed_table) || !out.seed_table.length) out.seed_table = DEFAULT_CONTENT.seed_table;
-  if (!Array.isArray(out.gallery_images)) out.gallery_images = [];
-  if (out.template !== "all" && out.template !== "combo") out.template = "combo";
-  return out;
+  const value = (raw && typeof raw === "object" ? raw : {}) as Partial<LandingContent>;
+  return { ...DEFAULT_CONTENT, ...value, seed_table: Array.isArray(value.seed_table) && value.seed_table.length ? value.seed_table : DEFAULT_CONTENT.seed_table };
 }
