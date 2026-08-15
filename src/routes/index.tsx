@@ -22,15 +22,34 @@ const HERO_BANNERS = [
 ] as unknown as HomeData["banners"];
 
 const FALLBACK_HOME: HomeData = { banners: HERO_BANNERS, categories: [], subcategories: [], products: [] };
+const HOME_CACHE_KEY = "oronno-home-data-v1";
+
+function getCachedHomeData(): HomeData {
+  if (typeof window === "undefined") return FALLBACK_HOME;
+  try {
+    const raw = window.localStorage.getItem(HOME_CACHE_KEY);
+    if (!raw) return FALLBACK_HOME;
+    const parsed = JSON.parse(raw) as Partial<HomeData>;
+    return {
+      banners: Array.isArray(parsed.banners) && parsed.banners.length ? parsed.banners : HERO_BANNERS,
+      categories: Array.isArray(parsed.categories) ? parsed.categories : [],
+      subcategories: Array.isArray(parsed.subcategories) ? parsed.subcategories : [],
+      products: Array.isArray(parsed.products) ? parsed.products : [],
+    };
+  } catch {
+    return FALLBACK_HOME;
+  }
+}
 
 const homeQueryOptions = queryOptions({
   queryKey: ["home-data-v1"],
   queryFn: getHomeData,
   enabled: typeof window !== "undefined",
+  placeholderData: getCachedHomeData,
   staleTime: 10 * 60_000,
   gcTime: 30 * 60_000,
   retry: 1,
-  refetchOnMount: false,
+  refetchOnMount: true,
   refetchOnWindowFocus: false,
   refetchOnReconnect: false,
 });
@@ -48,10 +67,19 @@ function SectionTitle({ title, subtitle, action }: { title: string; subtitle?: s
 }
 
 function Home() {
-  const { data: home = FALLBACK_HOME, isPending } = useQuery(homeQueryOptions);
+  const { data: home = FALLBACK_HOME, isPlaceholderData } = useQuery(homeQueryOptions);
   const banners = (home.banners.length ? home.banners : HERO_BANNERS) as HomeData["banners"];
   const categories = home.categories;
   const popularProducts = home.products as unknown as Product[];
+
+  useEffect(() => {
+    if (isPlaceholderData) return;
+    try {
+      window.localStorage.setItem(HOME_CACHE_KEY, JSON.stringify(home));
+    } catch {
+      // Ignore storage quota/private-mode errors; live Supabase data still works.
+    }
+  }, [home, isPlaceholderData]);
 
   const [slide, setSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -95,7 +123,7 @@ function Home() {
       <section className="py-4 sm:py-14 bg-gradient-to-b from-brand-light/25 via-transparent to-transparent">
         <div className="container mx-auto px-3 sm:px-4"><SectionTitle title="পপুলার ক্যাটেগরি" /></div>
         <div className="px-3 sm:px-4">
-          {isPending ? <div className="container mx-auto"><div className="rounded-3xl border border-dashed bg-white/90 p-4 sm:p-8 text-center text-sm text-muted-foreground">ক্যাটাগরি লোড হচ্ছে...</div></div> : categories.length > 0 ? (
+          {categories.length > 0 ? (
             <div className="relative overflow-hidden max-w-7xl mx-auto">
               <div className="pointer-events-none absolute inset-y-0 left-0 w-8 sm:w-14 bg-gradient-to-r from-background via-background/90 to-transparent z-10" />
               <div className="pointer-events-none absolute inset-y-0 right-0 w-8 sm:w-14 bg-gradient-to-l from-background via-background/90 to-transparent z-10" />
