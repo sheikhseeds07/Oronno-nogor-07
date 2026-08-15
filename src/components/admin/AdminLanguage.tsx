@@ -2,108 +2,26 @@ import { useEffect, useMemo, useRef } from "react";
 import { createContext, useContext, useState, type ReactNode } from "react";
 
 type AdminLanguage = "bn" | "en";
-
-type AdminLanguageContextValue = {
-  language: AdminLanguage;
-  setLanguage: (language: AdminLanguage) => void;
-};
-
+type AdminLanguageContextValue = { language: AdminLanguage; setLanguage: (language: AdminLanguage) => void };
 const AdminLanguageContext = createContext<AdminLanguageContextValue | null>(null);
 
 const EXACT: Record<string, string> = {
-  "অপেক্ষা করুন...": "Please wait...",
-  "প্রবেশাধিকার নেই": "Access Denied",
-  "এই পেজটি দেখার অনুমতি আপনার নেই।": "You do not have permission to view this page.",
-  "হোমে যান": "Go Home",
-  "অ্যাডমিন প্যানেল": "Admin Panel",
-  "কর্মী প্যানেল": "Staff Panel",
-  "হাজিরা": "Attendance",
-  "লগআউট": "Logout",
-  "অর্ডার": "Orders",
-  "ফাইল আপলোড করে অর্ডার": "Import Orders",
-  "প্রোডাক্ট": "Products",
-  "ক্যাটাগরি": "Categories",
-  "কাস্টমার": "Customers",
-  "ব্যানার": "Banners",
-  "কুপন": "Coupons",
-  "ল্যান্ডিং পেজ": "Landing Pages",
-  "কর্মচারী": "Employees",
-  "সেটিংস": "Settings",
-  "ড্যাশবোর্ড": "Dashboard",
-  "সার্চ": "Search",
-  "খুঁজুন": "Search",
-  "সেভ করুন": "Save",
-  "সংরক্ষণ করুন": "Save",
-  "আপডেট করুন": "Update",
-  "এডিট": "Edit",
-  "মুছে ফেলুন": "Delete",
-  "ডিলিট": "Delete",
-  "বাতিল": "Cancel",
-  "বন্ধ করুন": "Close",
-  "যোগ করুন": "Add",
-  "নতুন": "New",
-  "অর্ডার লিস্ট": "Order List",
-  "অর্ডার বিস্তারিত": "Order Details",
-  "অর্ডার নম্বর": "Order Number",
-  "কাস্টমারের নাম": "Customer Name",
-  "ফোন নম্বর": "Phone Number",
-  "ঠিকানা": "Address",
-  "স্ট্যাটাস": "Status",
-  "তারিখ": "Date",
-  "সময়": "Time",
-  "মোট": "Total",
-  "সাবটোটাল": "Subtotal",
-  "ডেলিভারি চার্জ": "Delivery Charge",
-  "পেমেন্ট": "Payment",
-  "পেমেন্ট স্ট্যাটাস": "Payment Status",
-  "অর্ডার কনফার্ম": "Confirm Order",
-  "কনফার্ম": "Confirm",
-  "ক্যান্সেল": "Cancel",
-  "পেন্ডিং": "Pending",
-  "ইনকমপ্লিট": "Incomplete",
-  "ওয়েব পেন্ডিং": "Web Pending",
-  "ডেলিভার্ড": "Delivered",
-  "শিপড": "Shipped",
-  "রিটার্নড": "Returned",
-  "রিটার্ন পেন্ডিং": "Return Pending",
-  "ক্যাটাগরি লোড হচ্ছে...": "Loading categories...",
-  "লোড হচ্ছে...": "Loading...",
-  "ডাটা লোড হচ্ছে...": "Loading data...",
-  "কোনো ডাটা পাওয়া যায়নি": "No data found",
-  "কোনো অর্ডার পাওয়া যায়নি": "No orders found",
-  "কোনো প্রোডাক্ট পাওয়া যায়নি": "No products found",
-  "কোনো কাস্টমার পাওয়া যায়নি": "No customers found",
-  "সবগুলো": "All",
-  "সকল": "All",
-  "ফিল্টার": "Filter",
-  "রিসেট": "Reset",
-  "পরবর্তী": "Next",
-  "আগের": "Previous",
-  "পৃষ্ঠা": "Page",
-  "প্রতি পৃষ্ঠায়": "Per page",
-  "দেখুন": "View",
-  "বিস্তারিত দেখুন": "View details",
-  "ডাউনলোড": "Download",
-  "প্রিন্ট": "Print",
-  "এক্সপোর্ট": "Export",
-  "রিফ্রেশ": "Refresh",
-  "কপি": "Copy",
-  "সফল": "Success",
-  "সফলভাবে সংরক্ষণ করা হয়েছে": "Saved successfully",
-  "সফলভাবে আপডেট করা হয়েছে": "Updated successfully",
-  "সফলভাবে মুছে ফেলা হয়েছে": "Deleted successfully",
-  "ত্রুটি": "Error",
-  "কিছু ভুল হয়েছে": "Something went wrong",
-  "নিশ্চিত করুন": "Confirm",
-  "আপনি কি নিশ্চিত?": "Are you sure?",
+  "অপেক্ষা করুন...": "Please wait...", "প্রবেশাধিকার নেই": "Access Denied", "এই পেজটি দেখার অনুমতি আপনার নেই।": "You do not have permission to view this page.", "হোমে যান": "Go Home",
+  "অ্যাডমিন প্যানেল": "Admin Panel", "কর্মী প্যানেল": "Staff Panel", "হাজিরা": "Attendance", "লগআউট": "Logout", "ড্যাশবোর্ড": "Dashboard",
+  "অর্ডার": "Orders", "ফাইল আপলোড করে অর্ডার": "Import Orders", "প্রোডাক্ট": "Products", "ক্যাটাগরি": "Categories", "কাস্টমার": "Customers", "ব্যানার": "Banners", "কুপন": "Coupons", "ল্যান্ডিং পেজ": "Landing Pages", "কর্মচারী": "Employees", "সেটিংস": "Settings", "All API": "All API",
+  "সার্চ": "Search", "খুঁজুন": "Search", "সেভ করুন": "Save", "সংরক্ষণ করুন": "Save", "আপডেট করুন": "Update", "এডিট": "Edit", "মুছে ফেলুন": "Delete", "ডিলিট": "Delete", "বাতিল": "Cancel", "বন্ধ করুন": "Close", "যোগ করুন": "Add", "নতুন": "New",
+  "সার্চ করুন": "Search", "সার্চ অর্ডার": "Search Orders", "নতুন অর্ডার": "New Orders", "ওয়েব অর্ডার": "Web Orders", "ওয়েব অর্ডার": "Web Orders", "অর্ডার লিস্ট": "Order List", "অর্ডার বিস্তারিত": "Order Details", "অর্ডার নম্বর": "Order Number", "অর্ডার আইডি": "Order ID",
+  "কাস্টমারের নাম": "Customer Name", "ফোন নম্বর": "Phone Number", "ঠিকানা": "Address", "স্ট্যাটাস": "Status", "তারিখ": "Date", "সময়": "Time", "মোট": "Total", "সাবটোটাল": "Subtotal", "ডেলিভারি চার্জ": "Delivery Charge", "পেমেন্ট": "Payment", "পেমেন্ট স্ট্যাটাস": "Payment Status",
+  "অর্ডার কনফার্ম": "Confirm Order", "কনফার্ম": "Confirm", "কনফার্ম করুন": "Confirm", "ক্যান্সেল": "Cancel", "পেন্ডিং": "Pending", "ইনকমপ্লিট": "Incomplete", "ওয়েব পেন্ডিং": "Web Pending", "ওয়েব পেন্ডিং": "Web Pending", "ডেলিভার্ড": "Delivered", "শিপড": "Shipped", "রিটার্নড": "Returned", "রিটার্ন পেন্ডিং": "Return Pending", "পার্শিয়াল": "Partial", "হোল্ড": "Hold", "আরটিএস": "RTS",
+  "ক্যাটাগরি লোড হচ্ছে...": "Loading categories...", "লোড হচ্ছে...": "Loading...", "ডাটা লোড হচ্ছে...": "Loading data...", "ডেটা লোড হচ্ছে...": "Loading data...", "কোনো ডাটা পাওয়া যায়নি": "No data found", "কোনো অর্ডার পাওয়া যায়নি": "No orders found", "কোনো প্রোডাক্ট পাওয়া যায়নি": "No products found", "কোনো কাস্টমার পাওয়া যায়নি": "No customers found",
+  "সবগুলো": "All", "সকল": "All", "সব": "All", "ফিল্টার": "Filter", "রিসেট": "Reset", "পরবর্তী": "Next", "আগের": "Previous", "পৃষ্ঠা": "Page", "প্রতি পৃষ্ঠায়": "Per page", "দেখুন": "View", "বিস্তারিত দেখুন": "View details", "ডাউনলোড": "Download", "প্রিন্ট": "Print", "এক্সপোর্ট": "Export", "রিফ্রেশ": "Refresh", "কপি": "Copy",
+  "সফল": "Success", "সফলভাবে সংরক্ষণ করা হয়েছে": "Saved successfully", "সফলভাবে আপডেট করা হয়েছে": "Updated successfully", "সফলভাবে মুছে ফেলা হয়েছে": "Deleted successfully", "ত্রুটি": "Error", "কিছু ভুল হয়েছে": "Something went wrong", "নিশ্চিত করুন": "Confirm", "আপনি কি নিশ্চিত?": "Are you sure?", "কোনো তথ্য পাওয়া যায়নি": "No information found",
+  "অ্যাকশন": "Actions", "অ্যাকশনসমূহ": "Actions", "অবস্থা": "Status", "নাম": "Name", "ইমেইল": "Email", "পরিমাণ": "Quantity", "মূল্য": "Price", "ছবি": "Image", "বিবরণ": "Description", "ক্যাটাগরি নির্বাচন করুন": "Select category", "পণ্য যোগ করুন": "Add product", "নতুন পণ্য": "New product", "নতুন ক্যাটাগরি": "New category", "ক্যাটাগরি যোগ করুন": "Add category",
 };
 
 const PATTERNS: Array<[RegExp, (match: RegExpMatchArray) => string]> = [
-  [/^(\d+) টি অর্ডার$/, ([, n]) => `${n} orders`],
-  [/^(\d+) টি প্রোডাক্ট$/, ([, n]) => `${n} products`],
-  [/^(\d+) টি কাস্টমার$/, ([, n]) => `${n} customers`],
-  [/^পৃষ্ঠা (\d+)$/, ([, n]) => `Page ${n}`],
-  [/^মোট (\d+) টি$/, ([, n]) => `Total ${n}`],
+  [/^(\d+) টি অর্ডার$/, ([, n]) => `${n} orders`], [/^(\d+) টি প্রোডাক্ট$/, ([, n]) => `${n} products`], [/^(\d+) টি কাস্টমার$/, ([, n]) => `${n} customers`],
+  [/^পৃষ্ঠা (\d+)$/, ([, n]) => `Page ${n}`], [/^মোট (\d+) টি$/, ([, n]) => `Total ${n}`],
 ];
 
 function translateText(value: string, language: AdminLanguage) {
@@ -111,39 +29,29 @@ function translateText(value: string, language: AdminLanguage) {
   const trimmed = value.trim();
   if (!trimmed) return value;
   if (EXACT[trimmed]) return value.replace(trimmed, EXACT[trimmed]);
-  for (const [pattern, replacer] of PATTERNS) {
-    const match = trimmed.match(pattern);
-    if (match) return value.replace(trimmed, replacer(match));
-  }
+  for (const [pattern, replacer] of PATTERNS) { const match = trimmed.match(pattern); if (match) return value.replace(trimmed, replacer(match)); }
   return value;
 }
 
 function useAdminTextTranslation(root: HTMLElement | null, language: AdminLanguage) {
   const originals = useRef(new WeakMap<Text, string>());
   const lastTranslated = useRef(new WeakMap<Text, string>());
-
   useEffect(() => {
     if (!root) return;
-
     const scan = () => {
       const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-      const nodes: Text[] = [];
-      let node: Node | null;
+      const nodes: Text[] = []; let node: Node | null;
       while ((node = walker.nextNode())) nodes.push(node as Text);
-
       for (const textNode of nodes) {
         const raw = textNode.nodeValue ?? "";
         const previous = lastTranslated.current.get(textNode);
-        if (!originals.current.has(textNode) || (previous !== undefined && raw !== previous)) {
-          originals.current.set(textNode, raw);
-        }
+        if (!originals.current.has(textNode) || (previous !== undefined && raw !== previous)) originals.current.set(textNode, raw);
         const source = originals.current.get(textNode) ?? raw;
         const translated = translateText(source, language);
         if (raw !== translated) textNode.nodeValue = translated;
         lastTranslated.current.set(textNode, translated);
       }
     };
-
     scan();
     const observer = new MutationObserver(scan);
     observer.observe(root, { childList: true, subtree: true, characterData: true });
@@ -157,14 +65,7 @@ export function AdminLanguageProvider({ children, initialLanguage = "bn" }: { ch
     const saved = window.localStorage.getItem("admin-language");
     return saved === "en" || saved === "bn" ? saved : initialLanguage;
   });
-  const value = useMemo(() => ({
-    language,
-    setLanguage: (next: AdminLanguage) => {
-      setLanguageState(next);
-      if (typeof window !== "undefined") window.localStorage.setItem("admin-language", next);
-    },
-  }), [language]);
-
+  const value = useMemo(() => ({ language, setLanguage: (next: AdminLanguage) => { setLanguageState(next); if (typeof window !== "undefined") window.localStorage.setItem("admin-language", next); } }), [language]);
   return <AdminLanguageContext.Provider value={value}>{children}</AdminLanguageContext.Provider>;
 }
 
