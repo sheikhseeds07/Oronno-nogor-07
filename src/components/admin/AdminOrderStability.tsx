@@ -27,6 +27,8 @@ function belongsToList(mode: string, filter: string, status: string) {
   return false;
 }
 
+const SCROLL_STORAGE_KEY = "admin-orders-scroll-y";
+
 /**
  * Keep the currently visible Orders table stable while realtime changes arrive.
  * Existing rows are patched/removed in-place instead of starting a background
@@ -44,31 +46,58 @@ export function AdminOrderStability() {
   const savedScrollY = useRef(0);
   const restoreTimer = useRef<number | null>(null);
 
-  // Remember the admin's exact scroll position. Order actions, route-search
-  // updates and browser tab visibility changes must never throw the operator
-  // back to the top of a long order list.
+  // Save only the last known visible position. While the browser tab is hidden,
+  // some mobile browsers can emit a scroll=0 event during tab suspension; that
+  // must never overwrite the operator's real working position.
   useEffect(() => {
-    const capture = () => { savedScrollY.current = window.scrollY; };
+    if (location.pathname !== "/admin/orders") return;
+
+    const readStored = () => {
+      try {
+        const raw = sessionStorage.getItem(SCROLL_STORAGE_KEY);
+        if (raw !== null) {
+          const y = Number(raw);
+          if (Number.isFinite(y) && y >= 0) savedScrollY.current = y;
+        }
+      } catch {
+        // sessionStorage may be unavailable in some privacy modes.
+      }
+    };
+
+    const capture = () => {
+      if (document.hidden) return;
+      const y = window.scrollY;
+      savedScrollY.current = y;
+      try { sessionStorage.setItem(SCROLL_STORAGE_KEY, String(y)); } catch { /* ignore */ }
+    };
+
     const restore = () => {
-      if (location.pathname !== "/admin/orders") return;
-      if (restoreTimer.current !== null) window.cancelAnimationFrame(restoreTimer.current);
+      readStored();
+      if (restoreTimer.current !== null) {
+        window.cancelAnimationFrame(restoreTimer.current);
+      }
+      const y = savedScrollY.current;
       restoreTimer.current = window.requestAnimationFrame(() => {
-        window.scrollTo({ top: savedScrollY.current, behavior: "auto" });
-        restoreTimer.current = null;
+        window.scrollTo({ top: y, behavior: "auto" });
+        restoreTimer.current = window.requestAnimationFrame(() => {
+          window.scrollTo({ top: y, behavior: "auto" });
+          restoreTimer.current = null;
+        });
       });
     };
 
-    capture();
+    // Do NOT capture the current scroll when a search-param navigation has just
+    // committed: TanStack Router may already have reset it to 0. Restore the
+    // position captured before navigation instead.
+    readStored();
     window.addEventListener("scroll", capture, { passive: true });
 
-    // Browser tab switching/focus must not reset the working position.
     const onVisibility = () => {
       if (!document.hidden) restore();
     };
     document.addEventListener("visibilitychange", onVisibility);
 
-    // Preserve position after same-page search-param navigation (opening or
-    // closing an order/detail view) as well.
+    // Same-page order/detail navigation and remounts must keep the exact position.
     restore();
 
     return () => {
@@ -78,14 +107,20 @@ export function AdminOrderStability() {
     };
   }, [location.pathname, location.search]);
 
-  // Some browsers/React transitions can move scroll to 0 immediately after a
-  // button/select action. Capture the position before the action and restore it
-  // on the next frames. Normal manual scrolling is still completely untouched.
+  // Capture the position BEFORE any order/detail button action. This runs in the
+  // capture phase so it happens before the router can reset scroll for navigation.
   useEffect(() => {
     if (location.pathname !== "/admin/orders") return;
-    const restoreAfterAction = () => {
+
+    const remember = () => {
+      if (document.hidden) return;
       const y = window.scrollY;
       savedScrollY.current = y;
+      try { sessionStorage.setItem(SCROLL_STORAGE_KEY, String(y)); } catch { /* ignore */ }
+    };
+
+    const restoreAfterAction = () => {
+      const y = savedScrollY.current;
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           if (location.pathname === "/admin/orders") {
@@ -94,12 +129,14 @@ export function AdminOrderStability() {
         });
       });
     };
+
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as HTMLElement | null;
       if (!target?.closest("button,select,[role='button']")) return;
-      savedScrollY.current = window.scrollY;
+      remember();
       restoreAfterAction();
     };
+
     document.addEventListener("pointerdown", onPointerDown, true);
     return () => document.removeEventListener("pointerdown", onPointerDown, true);
   }, [location.pathname]);
@@ -113,7 +150,10 @@ export function AdminOrderStability() {
       const status = payload?.new?.status as string | undefined;
       const queries = qc.getQueryCache().findAll({ queryKey: ["admin-orders"] });
       const y = window.scrollY;
-      savedScrollY.current = y;
+      if (!document.hidden) {
+        savedScrollY.current = y;
+        try { sessionStorage.setItem(SCROLL_STORAGE_KEY, String(y)); } catch { /* ignore */ }
+      }
 
       for (const query of queries) {
         const key = query.queryKey;
@@ -150,7 +190,10 @@ export function AdminOrderStability() {
       if (!rawId) return;
       const id = `inc:${rawId}`;
       const y = window.scrollY;
-      savedScrollY.current = y;
+      if (!document.hidden) {
+        savedScrollY.current = y;
+        try { sessionStorage.setItem(SCROLL_STORAGE_KEY, String(y)); } catch { /* ignore */ }
+      }
 
       qc.setQueryData(["admin-orders-incomplete"], (current: any[] | undefined) => {
         if (!current) return current;
