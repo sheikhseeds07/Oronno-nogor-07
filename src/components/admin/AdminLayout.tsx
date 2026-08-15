@@ -6,7 +6,7 @@ import logo from "@/assets/logo.jpg";
 import {
   LayoutDashboard, Package, ShoppingBag, Users, FolderTree, Image as ImageIcon,
   Tag, Settings, Globe, UserCog, LogOut, Menu, X, Layers, Clock, FileSpreadsheet,
-  PanelLeftClose, PanelLeftOpen, Radio
+  PanelLeftClose, PanelLeftOpen
 } from "lucide-react";
 import { NewOrderNotifier } from "@/components/admin/NewOrderNotifier";
 import { AdminOrderStability } from "@/components/admin/AdminOrderStability";
@@ -17,7 +17,6 @@ type NavItem = { to: string; label: string; icon: React.ComponentType<{ classNam
 const NAV: NavItem[] = [
   { to: "/admin", label: "ড্যাশবোর্ড", icon: LayoutDashboard, exact: true, perm: "always" },
   { to: "/admin/orders", label: "অর্ডার", icon: ShoppingBag, perm: "orders" },
-  { to: "/admin/sms-orders", label: "SMS অর্ডার", icon: Radio, perm: "orders" },
   { to: "/admin/order-import", label: "ফাইল আপলোড করে অর্ডার", icon: FileSpreadsheet, perm: "orders" },
   { to: "/admin/products", label: "প্রোডাক্ট", icon: Package, perm: "products" },
   { to: "/admin/categories", label: "ক্যাটাগরি", icon: FolderTree, perm: "categories" },
