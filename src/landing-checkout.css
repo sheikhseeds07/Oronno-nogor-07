@@ -19,8 +19,8 @@
 #order #lp-order-form button[type="button"]:active { transform:scale(.99); }
 #order #lp-order-form .border-2.rounded-2xl { border-color:rgba(21,128,61,.16); box-shadow:0 7px 22px -20px rgba(6,78,59,.55); }
 
-/* Keep the checkout reassurance text visually separate from the product selector. */
-#order .lp-checkout-reassurance { margin-top:12px !important; margin-bottom:12px !important; }
+/* Keep the checkout reassurance text visually separate from the product selector and slightly lower. */
+#order .lp-checkout-reassurance { margin-top:18px !important; margin-bottom:12px !important; }
 #order .lp-checkout-reassurance + .border-2.rounded-2xl,
 #order .lp-checkout-reassurance + .rounded-2xl { margin-top:10px !important; }
 
@@ -41,7 +41,7 @@
   #order #lp-order-form input:not([type="checkbox"]), #order #lp-order-form textarea { min-height:54px; font-size:16px; }
   #order #lp-order-form textarea { min-height:96px; }
   #order #lp-order-form > .border-2.rounded-2xl.p-3 { padding:.5rem; margin-top:-10px; margin-bottom:-8px; }
-  #order .lp-checkout-reassurance { margin-top:10px !important; margin-bottom:10px !important; }
+  #order .lp-checkout-reassurance { margin-top:16px !important; margin-bottom:10px !important; }
   .container.mx-auto.px-4.max-w-2xl.py-6 { padding-top:.45rem; padding-bottom:.45rem; }
   .container.mx-auto.px-4.max-w-2xl.py-6 > .relative.overflow-hidden.rounded-2xl > .flex > div { padding:.6rem .75rem; }
   .container.mx-auto.px-4.max-w-2xl.py-6 .grid.sm\:grid-cols-2.gap-3 { min-height:150px; }
