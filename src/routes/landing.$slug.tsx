@@ -12,9 +12,9 @@ const LEGACY_SLUGS = new Set(["seeds-combo-24"]);
 
 export const Route = createFileRoute("/landing/$slug")({ component: LandingPage });
 
-function LandingPopupBehavior({ enabled }: { enabled: boolean }) {
+function LandingPopupBehavior({ enabled, hideReviews }: { enabled: boolean; hideReviews?: boolean }) {
   useEffect(() => {
-    if (!enabled || typeof document === "undefined") return;
+    if ((!enabled && !hideReviews) || typeof document === "undefined") return;
 
     let timer: ReturnType<typeof setTimeout> | null = null;
     let activePopup: Element | null = null;
@@ -28,13 +28,27 @@ function LandingPopupBehavior({ enabled }: { enabled: boolean }) {
       closeButton?.click();
     };
 
-    const attach = () => {
-      const popup = document.querySelector('.fixed.inset-0.z-\\[60\\]');
-      if (!popup || popup === activePopup) return;
+    const removeReviews = () => {
+      if (!hideReviews) return;
+      const sections = document.querySelectorAll("section");
+      for (const section of sections) {
+        const heading = section.querySelector("h2");
+        if (heading?.textContent?.trim() === "কাস্টমার রিভিউ") {
+          section.remove();
+        }
+      }
+    };
 
-      activePopup = popup;
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(closePopup, 10_000);
+    const attach = () => {
+      if (enabled) {
+        const popup = document.querySelector('.fixed.inset-0.z-\\[60\\]');
+        if (popup && popup !== activePopup) {
+          activePopup = popup;
+          if (timer) clearTimeout(timer);
+          timer = setTimeout(closePopup, 10_000);
+        }
+      }
+      removeReviews();
     };
 
     const handleDocumentClick = (event: MouseEvent) => {
@@ -69,7 +83,7 @@ function LandingPopupBehavior({ enabled }: { enabled: boolean }) {
       if (timer) clearTimeout(timer);
       activePopup = null;
     };
-  }, [enabled]);
+  }, [enabled, hideReviews]);
 
   return null;
 }
@@ -87,11 +101,12 @@ function LandingPage() {
   });
 
   const popupBehaviorEnabled = slug === "seedcombo" || slug === "seeds-combo-24";
+  const hideReviews = slug === "seedcombo";
 
   if (isLegacySlug) {
     return (
       <>
-        <LandingPopupBehavior enabled={popupBehaviorEnabled} />
+        <LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} />
         <LegacyLandingPage slug={slug} />
       </>
     );
@@ -102,7 +117,7 @@ function LandingPage() {
   if (template === "all") {
     return (
       <>
-        <LandingPopupBehavior enabled={popupBehaviorEnabled} />
+        <LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} />
         <LegacyLandingPage slug={slug} />
       </>
     );
@@ -110,7 +125,7 @@ function LandingPage() {
 
   return (
     <>
-      <LandingPopupBehavior enabled={popupBehaviorEnabled} />
+      <LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} />
       <CleanLandingPage slug={slug} />
     </>
   );
