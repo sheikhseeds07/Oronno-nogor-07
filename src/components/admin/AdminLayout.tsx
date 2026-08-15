@@ -94,8 +94,8 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
 
       <NewOrderNotifier />
       <AdminOrderStability />
-      {loc.pathname === "/admin/all-api" && <PresswayyCard />}
       <div className="flex-1 min-w-0 transition-all duration-300 ease-in-out">
+        {loc.pathname === "/admin/all-api" && <div className="p-4 lg:p-6 pb-0"><PresswayyCard /></div>}
         <header className="sticky top-0 z-30 bg-white border-b px-4 py-3 flex items-center gap-3 flex-wrap">
           <button onClick={() => setOpen(true)} className="lg:hidden"><Menu className="w-6 h-6" /></button>
           <button onClick={() => setCollapsed(!collapsed)} className="hidden lg:flex items-center justify-center w-8 h-8 rounded-md border bg-gray-50 hover:bg-gray-100 transition-colors" title={collapsed ? "সাইডবার খুলুন" : "সাইডবার বন্ধ করুন"}>{collapsed ? <PanelLeftOpen className="w-5 h-5 text-gray-600" /> : <PanelLeftClose className="w-5 h-5 text-gray-600" />}</button>
