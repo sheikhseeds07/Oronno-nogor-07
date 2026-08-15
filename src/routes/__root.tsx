@@ -12,6 +12,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/lib/personal-supabase/client";
 
 import appCss from "../styles.css?url";
+import landingCheckoutCss from "../landing-checkout.css?url";
 
 function NotFoundComponent() {
   return (
@@ -65,6 +66,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "stylesheet", href: landingCheckoutCss },
       { rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
       { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32-v2.png" },
       { rel: "icon", type: "image/png", sizes: "192x192", href: "/icon-192-v2.png" },
