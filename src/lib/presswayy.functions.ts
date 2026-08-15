@@ -27,7 +27,6 @@ export const presswayyInboundVerify = async (request: Request) => { const row = 
 export async function handlePresswayyOrder(input: any) {
   const payload = input?.order && !input?.line_items ? input.order : input;
   const items = Array.isArray(payload?.line_items) ? payload.line_items : [];
-  if (!items.length) throw new Error("No line items");
   const customer = payload.customer ?? payload.billing ?? {};
   const externalId = payload.id ?? payload.order_id ?? payload.number ?? payload.order_number ?? null;
 
@@ -47,17 +46,30 @@ export async function handlePresswayyOrder(input: any) {
     const quantity = Math.max(1, Number(i.quantity ?? 1));
     const itemTotal = Number(i.total ?? 0);
     const price = itemTotal > 0 ? itemTotal / quantity : Number(p?.sale_price ?? p?.price ?? i.price ?? 0);
-    return { product_id: p?.id ?? (i.product_id ?? null), product_name: p?.name ?? i.name ?? i.product_name ?? "Presswayy AI Product", price, quantity, subtotal: itemTotal > 0 ? itemTotal : price * quantity };
+    return { product_id: p?.id ?? null, product_name: p?.name ?? i.name ?? i.product_name ?? "Presswayy AI Product", price, quantity, subtotal: itemTotal > 0 ? itemTotal : price * quantity, _matched: !!p };
   });
 
   const subtotal = Number(payload.subtotal ?? rows.reduce((s: number, i: any) => s + Number(i.subtotal || 0), 0));
   const total = Number(payload.total ?? subtotal);
-  const notes = [payload.note, externalId != null ? `[presswayy_id:${String(externalId)}]` : null].filter(Boolean).join(" | ");
-  const { data: order, error } = await supabaseAdmin.from("orders").insert({ customer_name: [customer.first_name, customer.last_name].filter(Boolean).join(" ") || customer.name || "Presswayy AI Customer", customer_phone: customer.phone ?? "", customer_address: customer.address_1 ?? customer.address ?? "", notes, subtotal, delivery_fee: Number(payload.delivery_fee ?? 0), total, payment_method: "COD", source: "presswayy-ai", status: payload.status ?? "processing" }).select("id").single();
+  const address = typeof customer.address_1 === "string" ? customer.address_1 : (typeof customer.address === "string" ? customer.address : (customer.address_1 ? JSON.stringify(customer.address_1) : ""));
+  const notes = [payload.note, externalId != null ? `[presswayy_id:${String(externalId)}]` : null, !items.length ? "[presswayy_no_line_items]" : null].filter(Boolean).join(" | ");
+
+  // Create the order first. A missing/mismatched local product must never cause
+  // the Presswayy order itself to disappear from SMS Orders.
+  const { data: order, error } = await supabaseAdmin.from("orders").insert({ customer_name: [customer.first_name, customer.last_name].filter(Boolean).join(" ") || customer.name || "Presswayy AI Customer", customer_phone: customer.phone ?? "", customer_address: address, notes, subtotal, delivery_fee: Number(payload.delivery_fee ?? 0), total, payment_method: "COD", source: "presswayy-ai", status: payload.status ?? "processing" }).select("id").single();
   if (error || !order) throw new Error(error?.message ?? "Order create failed");
-  const { error: itemError } = await supabaseAdmin.from("order_items").insert(rows.map((r: any) => ({ ...r, order_id: order.id })));
-  if (itemError) { await supabaseAdmin.from("orders").delete().eq("id", order.id); throw new Error(itemError.message); }
-  return { order_id: order.id, order_number: String(order.id) };
+
+  // Only insert line items whose product exists locally. This keeps the order
+  // visible even when Presswayy and the local catalog IDs differ.
+  const matchedRows = rows.filter((r: any) => r._matched).map(({ _matched, ...r }: any) => ({ ...r, order_id: order.id }));
+  if (matchedRows.length) {
+    const { error: itemError } = await supabaseAdmin.from("order_items").insert(matchedRows);
+    if (itemError) {
+      console.error("[presswayy/order] item insert failed; keeping order", itemError);
+    }
+  }
+
+  return { order_id: order.id, order_number: String(order.id), synced_items: matchedRows.length, received_items: rows.length };
 }
 
 export async function handlePresswayyInventory(payload: any) { if (!payload?.product_id) throw new Error("product_id is required"); const { error } = await supabaseAdmin.from("products").update({ stock: Math.max(0, Number(payload.stock_quantity ?? 0)) }).eq("id", payload.product_id); if (error) throw new Error(error.message); return { ok: true }; }
