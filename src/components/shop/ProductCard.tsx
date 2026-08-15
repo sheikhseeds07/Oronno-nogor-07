@@ -1,9 +1,8 @@
 import { useNavigate } from "@tanstack/react-router";
-import { ShoppingCart, Zap, Minus, Plus } from "lucide-react";
+import { ShoppingCart, Zap, Minus, Plus, Check } from "lucide-react";
 import { memo, useState } from "react";
 import { taka, bnDigits } from "@/lib/format";
 import { useCart } from "@/lib/cart-store";
-import { toastAddedToCart } from "@/lib/cart-toast";
 import { trackAddToCart } from "@/lib/fbq";
 import { toImg, imgSrcSet } from "@/lib/img";
 import { ProductQuickView } from "./ProductQuickView";
@@ -27,6 +26,7 @@ export const ProductCard = memo(function ProductCard({ p }: { p: Product }) {
   const inCart = useCart((s) => s.items.find((i) => i.id === p.id));
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [justAdded, setJustAdded] = useState(false);
   const price = p.sale_price ?? p.price;
   const discount = p.sale_price ? Math.round(((p.price - p.sale_price) / p.price) * 100) : 0;
   const img = p.images?.[0] || "/placeholder.svg";
@@ -34,6 +34,8 @@ export const ProductCard = memo(function ProductCard({ p }: { p: Product }) {
   const addItem = () => {
     add({ id: p.id, name: p.name, slug: p.slug, price, image: img, stock: p.stock });
     trackAddToCart({ id: p.id, name: p.name, price, quantity: 1 });
+    setJustAdded(true);
+    window.setTimeout(() => setJustAdded(false), 1400);
   };
 
   return (
@@ -92,10 +94,11 @@ export const ProductCard = memo(function ProductCard({ p }: { p: Product }) {
             ) : (
               <button
                 disabled={p.stock <= 0}
-                onClick={() => { addItem(); toastAddedToCart(p.name); }}
-                className="flex items-center justify-center gap-1.5 border border-brand text-brand py-2 rounded-md text-xs font-bold hover:bg-brand-light/50 disabled:opacity-50"
+                onClick={addItem}
+                className={`flex items-center justify-center gap-1.5 border py-2 rounded-md text-xs font-bold transition-colors disabled:opacity-50 ${justAdded ? "border-brand bg-brand text-white" : "border-brand text-brand hover:bg-brand-light/50"}`}
               >
-                <ShoppingCart className="w-3.5 h-3.5" /> কার্টে যোগ করুন
+                {justAdded ? <Check className="w-3.5 h-3.5" /> : <ShoppingCart className="w-3.5 h-3.5" />}
+                {justAdded ? "কার্টে যোগ হয়েছে" : "কার্টে যোগ করুন"}
               </button>
             )}
             <button
