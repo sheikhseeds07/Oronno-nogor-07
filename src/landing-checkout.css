@@ -1,6 +1,5 @@
 /* High-conversion landing-page checkout styling. Scoped to #order / #lp-order-form. */
-#order { scroll-margin-top: 84px; margin-top: -52px; }
-#order > .mb-4 { display:none !important; }
+#order { scroll-margin-top: 84px; margin-top: -24px; }
 #order #lp-order-form { position:relative; border:1px solid rgba(21,128,61,.14); border-radius:22px; background:linear-gradient(180deg,#fff 0%,#fbfffc 100%); box-shadow:0 16px 45px -28px rgba(6,78,59,.42); }
 #order #lp-order-form label { color:#17351f; font-weight:700; }
 #order #lp-order-form input:not([type="checkbox"]), #order #lp-order-form textarea { width:100%; min-height:52px; border:1.5px solid #dbe7df; border-radius:13px; background:#f9fcfa; color:#17231b; font-size:15px; box-shadow:inset 0 1px 2px rgba(15,23,42,.025); transition:border-color 160ms ease,box-shadow 160ms ease,background 160ms ease,transform 160ms ease; }
@@ -9,7 +8,7 @@
 #order #lp-order-form input::placeholder, #order #lp-order-form textarea::placeholder { color:#9aa9a0; }
 #order #lp-order-form .divide-y { border-color:#dfeae2; border-radius:16px; background:#fff; box-shadow:0 8px 24px -20px rgba(6,78,59,.45); }
 #order #lp-order-form .divide-y > div:last-child { background:linear-gradient(90deg,#ecfdf3,#f5fff8); border-top:1px solid #d8efdf; }
-/* Keep package selection compact and pull checkout directly upward. */
+/* Compact product selector and reduce the gap before checkout/order summary. */
 #order #lp-order-form > .border-2.rounded-2xl.p-3 { padding:.55rem; margin-top:-8px; margin-bottom:-6px; }
 #order #lp-order-form > .border-2.rounded-2xl.p-3 .space-y-2 { gap:.3rem; }
 #order #lp-order-form > .border-2.rounded-2xl.p-3 .space-y-2 > button { padding:.45rem; }
@@ -17,6 +16,11 @@
 #order #lp-order-form button[type="button"] { transition:transform 150ms ease,box-shadow 150ms ease,border-color 150ms ease; }
 #order #lp-order-form button[type="button"]:active { transform:scale(.99); }
 #order #lp-order-form .border-2.rounded-2xl { border-color:rgba(21,128,61,.16); box-shadow:0 7px 22px -20px rgba(6,78,59,.55); }
+
+/* Keep the checkout reassurance text visually separate from the product selector. */
+#order .lp-checkout-reassurance { margin-top:12px !important; margin-bottom:12px !important; }
+#order .lp-checkout-reassurance + .border-2.rounded-2xl,
+#order .lp-checkout-reassurance + .rounded-2xl { margin-top:10px !important; }
 
 /* Premium customer review carousel: exactly one review visible at a time. */
 .container.mx-auto.px-4.max-w-2xl.py-6 { padding-top:.65rem; padding-bottom:.65rem; }
@@ -28,25 +32,18 @@
 .container.mx-auto.px-4.max-w-2xl.py-6 .grid.sm\:grid-cols-2.gap-3 > div:nth-child(1) { animation-delay:0s; }
 .container.mx-auto.px-4.max-w-2xl.py-6 .grid.sm\:grid-cols-2.gap-3 > div:nth-child(2) { animation-delay:6s; }
 .container.mx-auto.px-4.max-w-2xl.py-6 .grid.sm\:grid-cols-2.gap-3 > div:nth-child(3) { animation-delay:12s; }
-@keyframes lpReviewPremium {
-  0% { opacity:0; visibility:hidden; transform:translateY(16px) scale(.985); }
-  5% { opacity:1; visibility:visible; transform:translateY(0) scale(1); }
-  28% { opacity:1; visibility:visible; transform:translateY(0) scale(1); }
-  36% { opacity:0; visibility:hidden; transform:translateY(-12px) scale(.99); }
-  100% { opacity:0; visibility:hidden; transform:translateY(-12px) scale(.99); }
-}
-
+@keyframes lpReviewPremium { 0% { opacity:0; visibility:hidden; transform:translateY(16px) scale(.985); } 5% { opacity:1; visibility:visible; transform:translateY(0) scale(1); } 28% { opacity:1; visibility:visible; transform:translateY(0) scale(1); } 36% { opacity:0; visibility:hidden; transform:translateY(-12px) scale(.99); } 100% { opacity:0; visibility:hidden; transform:translateY(-12px) scale(.99); } }
 @media (max-width:640px) {
-  #order { margin-top:-60px; }
+  #order { margin-top:-28px; }
   #order #lp-order-form { border-radius:20px; box-shadow:0 14px 36px -26px rgba(6,78,59,.42); }
   #order #lp-order-form input:not([type="checkbox"]), #order #lp-order-form textarea { min-height:54px; font-size:16px; }
   #order #lp-order-form textarea { min-height:96px; }
   #order #lp-order-form > .border-2.rounded-2xl.p-3 { padding:.5rem; margin-top:-10px; margin-bottom:-8px; }
+  #order .lp-checkout-reassurance { margin-top:10px !important; margin-bottom:10px !important; }
   .container.mx-auto.px-4.max-w-2xl.py-6 { padding-top:.45rem; padding-bottom:.45rem; }
   .container.mx-auto.px-4.max-w-2xl.py-6 > .relative.overflow-hidden.rounded-2xl > .flex > div { padding:.6rem .75rem; }
   .container.mx-auto.px-4.max-w-2xl.py-6 .grid.sm\:grid-cols-2.gap-3 { min-height:150px; }
 }
-
 @media (prefers-reduced-motion: reduce) {
   .container.mx-auto.px-4.max-w-2xl.py-6 .grid.sm\:grid-cols-2.gap-3 > div { animation:none; opacity:0; visibility:hidden; }
   .container.mx-auto.px-4.max-w-2xl.py-6 .grid.sm\:grid-cols-2.gap-3 > div:first-child { opacity:1; visibility:visible; transform:none; }
