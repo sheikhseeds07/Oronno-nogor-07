@@ -1,26 +1,29 @@
 import { createServerFn } from "@tanstack/react-start";
+import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 
 const PermSchema = z.object({
-  orders: z.boolean().default(false),
-  web_orders: z.boolean().default(false),
-  new_order: z.boolean().default(false),
-  products: z.boolean().default(false),
-  categories: z.boolean().default(false),
-  customers: z.boolean().default(false),
-  marketing: z.boolean().default(false),
-  delivery: z.boolean().default(false),
-  reports: z.boolean().default(false),
-  hrm: z.boolean().default(false),
-  settings: z.boolean().default(false),
-  landing_pages: z.boolean().default(false),
-  all_api: z.boolean().default(false),
-  messages: z.boolean().default(false),
+  orders: z.boolean().default(false).optional(),
+  web_orders: z.boolean().default(false).optional(),
+  new_order: z.boolean().default(false).optional(),
+  products: z.boolean().default(false).optional(),
+  categories: z.boolean().default(false).optional(),
+  customers: z.boolean().default(false).optional(),
+  marketing: z.boolean().default(false).optional(),
+  delivery: z.boolean().default(false).optional(),
+  reports: z.boolean().default(false).optional(),
+  hrm: z.boolean().default(false).optional(),
+  settings: z.boolean().default(false).optional(),
+  landing_pages: z.boolean().default(false).optional(),
+  all_api: z.boolean().default(false).optional(),
+  messages: z.boolean().default(false).optional(),
 });
 
 export type EmployeePermissions = z.infer<typeof PermSchema>;
+
+const RoleEnum = z.enum(["super_admin", "admin", "employee"]);
 
 const CreateSchema = z.object({
   name: z.string().min(1).max(100),
@@ -28,7 +31,7 @@ const CreateSchema = z.object({
   email: z.string().email().max(255),
   password: z.string().min(6).max(128),
   position: z.string().max(100).optional().default(""),
-  role: z.enum(["super_admin", "admin", "employee"]).default("employee"),
+  role: RoleEnum.default("employee"),
   permissions: PermSchema,
 });
 
@@ -44,11 +47,10 @@ async function assertAdmin(userId: string) {
 
 export const createEmployee = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => CreateSchema.parse(input))
+  .validator(zodValidator(CreateSchema))
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
 
-    // Create auth user
     const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
       email: data.email,
       password: data.password,
@@ -59,25 +61,21 @@ export const createEmployee = createServerFn({ method: "POST" })
 
     const uid = created.user.id;
 
-    // Profile (handle_new_user trigger should also do this, but upsert to be sure)
     await supabaseAdmin.from("profiles").upsert(
       { id: uid, full_name: data.name, phone: data.phone },
       { onConflict: "id" },
     );
 
-    // Role
     await supabaseAdmin.from("user_roles").upsert(
       { user_id: uid, role: data.role } as any,
       { onConflict: "user_id,role" } as any,
     );
 
-    // Permissions
     await supabaseAdmin.from("employee_permissions").upsert(
       { user_id: uid, ...data.permissions, updated_at: new Date().toISOString() },
       { onConflict: "user_id" } as never,
     );
 
-    // Employees row
     await supabaseAdmin.from("employees").insert({
       name: data.name,
       phone: data.phone,
@@ -92,7 +90,7 @@ export const createEmployee = createServerFn({ method: "POST" })
 
 export const updateEmployeePermissions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ user_id: z.string().uuid(), permissions: PermSchema }).parse(input))
+  .validator(zodValidator(z.object({ user_id: z.string().uuid(), permissions: PermSchema })))
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const { error } = await supabaseAdmin.from("employee_permissions").upsert(
@@ -105,7 +103,7 @@ export const updateEmployeePermissions = createServerFn({ method: "POST" })
 
 export const deleteEmployee = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ employee_id: z.string().uuid() }).parse(input))
+  .validator(zodValidator(z.object({ employee_id: z.string().uuid() })))
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const { data: emp } = await supabaseAdmin.from("employees").select("user_id").eq("id", data.employee_id).maybeSingle();
@@ -120,7 +118,7 @@ export const deleteEmployee = createServerFn({ method: "POST" })
 
 export const resetEmployeePassword = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ user_id: z.string().uuid(), password: z.string().min(6).max(128) }).parse(input))
+  .validator(zodValidator(z.object({ user_id: z.string().uuid(), password: z.string().min(6).max(128) })))
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const { error } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, { password: data.password });
@@ -130,10 +128,9 @@ export const resetEmployeePassword = createServerFn({ method: "POST" })
 
 export const updateEmployeeRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ user_id: z.string().uuid(), role: z.enum(["super_admin", "admin", "employee"]) }).parse(input))
+  .validator(zodValidator(z.object({ user_id: z.string().uuid(), role: RoleEnum })))
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
-    // Remove old roles and set new one
     await supabaseAdmin.from("user_roles").delete().eq("user_id", data.user_id);
     const { error } = await supabaseAdmin.from("user_roles").insert({
       user_id: data.user_id,
@@ -160,7 +157,7 @@ export const listEmployeesFull = createServerFn({ method: "GET" })
           supabaseAdmin.from("user_roles").select("*").in("user_id", ids)
         ])
       : [{ data: [] }, { data: [] }];
-
+ 
     const permMap = new Map((perms ?? []).map((p) => [p.user_id, p as any]));
     const roleMap = new Map((roles ?? []).map((r) => [r.user_id, r.role]));
 
