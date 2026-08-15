@@ -37,7 +37,8 @@ function LandingPopupBehavior({ enabled }: { enabled: boolean }) {
       timer = setTimeout(closePopup, 10_000);
     };
 
-    const handleDocumentClick = () => {
+    const handleDocumentClick = (event: MouseEvent) => {
+      if (!event.isTrusted) return;
       if (activePopup && document.body.contains(activePopup)) closePopup();
     };
 
