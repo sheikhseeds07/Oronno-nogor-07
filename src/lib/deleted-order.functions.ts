@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
+import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
+
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 
@@ -69,7 +71,8 @@ export const listDeletedOrders = createServerFn({ method: "GET" })
 
 export const restoreDeletedOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => RestoreSchema.parse(input))
+  .validator(zodValidator(RestoreSchema))
+
   .handler(async ({ data, context }) => {
     await getOrderAccess(context.userId);
     const { data: restored, error } = await (supabaseAdmin as any).rpc("restore_deleted_order", {
@@ -83,7 +86,8 @@ export const restoreDeletedOrder = createServerFn({ method: "POST" })
 
 export const bulkRestoreDeletedOrders = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => BulkRestoreSchema.parse(input))
+  .validator(zodValidator(BulkRestoreSchema))
+
   .handler(async ({ data, context }) => {
     await getOrderAccess(context.userId);
     const { data: restored, error } = await (supabaseAdmin as any).rpc("restore_deleted_orders", {
@@ -96,7 +100,8 @@ export const bulkRestoreDeletedOrders = createServerFn({ method: "POST" })
 
 export const permanentlyDeleteArchivedOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => IdSchema.parse(input))
+  .validator(zodValidator(IdSchema))
+
   .handler(async ({ data, context }) => {
     const access = await getOrderAccess(context.userId);
     if (!access.canPermanentDelete) throw new Error("শুধু অ্যাডমিন পার্মানেন্ট ডিলিট করতে পারবেন");
@@ -111,7 +116,8 @@ export const permanentlyDeleteArchivedOrder = createServerFn({ method: "POST" })
 
 export const bulkPermanentlyDeleteArchivedOrders = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => IdsSchema.parse(input))
+  .validator(zodValidator(IdsSchema))
+
   .handler(async ({ data, context }) => {
     const access = await getOrderAccess(context.userId);
     if (!access.canPermanentDelete) throw new Error("শুধু অ্যাডমিন পার্মানেন্ট ডিলিট করতে পারবেন");
