@@ -10,11 +10,6 @@ const InputSchema = z.object({
   customer_name: z.string().min(1).max(255), customer_phone: z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number. Use 01XXXXXXXXX."), customer_address: z.string().min(1).max(1000), district: z.string().max(100).optional().nullable(), thana: z.string().max(100).optional().nullable(), notes: z.string().max(2000).optional().nullable(), delivery_fee: z.number().min(0).max(10000).default(50), items: z.array(ItemSchema).min(1).max(100), created_by: z.string().uuid().optional().nullable(), checkout_session_id: z.string().uuid().optional().nullable(), fbp: z.string().max(200).optional().nullable(), fbc: z.string().max(500).optional().nullable(), source_url: z.string().max(2000).optional().nullable(),
 });
 
-function isRateLimitError(message: string) {
-  const text = message.toLowerCase();
-  return text.includes("rate") || text.includes("repeat") || text.includes("order_rate") || text.includes("cooldown") || text.includes("wait") || text.includes("already");
-}
-
 export const placeOrder = createServerFn({ method: "POST" }).inputValidator((input) => InputSchema.parse(input)).handler(async ({ data }) => {
   const customerPhone = data.customer_phone;
   const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
@@ -29,11 +24,12 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
     const { data: rate, error: rateError } = await supabaseAdmin.rpc("check_and_touch_order_rate_limit", { p_phone: customerPhone, p_ip: clientIp, p_phone_minutes: phoneRepeatMinutes, p_ip_minutes: ipRepeatMinutes });
     if (rateError) {
       console.error("[placeOrder] order repeat limit check failed:", rateError);
-      throw new Error("ORDER_RATE_CHECK_FAILED");
+      const wait = Math.max(1, Math.max(phoneRepeatMinutes, ipRepeatMinutes));
+      throw new Error(`আপনি ইতিমধ্যে একটি অর্ডার করেছেন। দয়া করে অপেক্ষা করুন, আপনাকে কল করা হবে। পরবর্তী অর্ডার করতে আরও ${wait} মিনিট অপেক্ষা করুন।`);
     }
     if (rate && rate.allowed === false) {
-      const wait = Math.max(1, Number(rate.wait_minutes ?? 1));
-      throw new Error(`ORDER_RATE_LIMIT:${wait}`);
+      const wait = Math.max(1, Number(rate.wait_minutes ?? Math.max(phoneRepeatMinutes, ipRepeatMinutes) ?? 1));
+      throw new Error(`আপনি ইতিমধ্যে একটি অর্ডার করেছেন। দয়া করে অপেক্ষা করুন, আপনাকে কল করা হবে। পরবর্তী অর্ডার করতে আরও ${wait} মিনিট অপেক্ষা করুন।`);
     }
   }
 
