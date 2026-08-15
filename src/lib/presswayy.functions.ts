@@ -7,6 +7,16 @@ const STORE_URL = "https://oronnonogor.com";
 const WEBHOOK_URL = "https://app.presswayy.com/api/store/webhooks";
 const ROW = "presswayy_store";
 
+type PressCfg = {
+  connection_key: string;
+  store_url: string;
+  inbound_base: string;
+  platform: string;
+  framework: string;
+};
+
+type StoredRow = { config: Partial<PressCfg>; is_active: boolean } | null;
+
 const ConfigSchema = z.object({
   connection_key: z.string().trim().min(20).max(300),
   store_url: z.string().url().default(STORE_URL),
@@ -14,10 +24,6 @@ const ConfigSchema = z.object({
   platform: z.string().default("tanstack"),
   framework: z.string().default("custom"),
 });
-
-type PressCfg = z.infer<typeof ConfigSchema>;
-
-type StoredRow = { config: Partial<PressCfg>; is_active: boolean } | null;
 
 async function loadConfig(): Promise<StoredRow> {
   const { data } = await supabaseAdmin.from("integrations").select("config,is_active").eq("name", ROW).maybeSingle();
@@ -146,38 +152,60 @@ export const presswayyInboundVerify = async (request: Request) => {
 };
 
 export async function handlePresswayyOrder(payload: any) {
-  const items = Array.isArray(payload?.line_items) ? payload.line_items : [];
+  // Presswayy sends chat orders to POST /presswayy/v1/order with
+  // { line_items, customer, note, status }. Also accept { order: {...} }
+  // so the handler remains compatible with order.upsert-style payloads.
+  const orderPayload = payload?.order ?? payload ?? {};
+  const items = Array.isArray(orderPayload.line_items) ? orderPayload.line_items : [];
   if (!items.length) throw new Error("No line items");
-  const customer = payload.customer ?? {};
+
+  const customer = orderPayload.customer ?? orderPayload.billing ?? {};
   const ids = items.map((i: any) => String(i.product_id ?? "")).filter(Boolean);
-  const { data: products } = await supabaseAdmin.from("products").select("id,name,price,sale_price").in("id", ids);
+  const { data: products, error: productLookupError } = await supabaseAdmin
+    .from("products")
+    .select("id,name,price,sale_price")
+    .in("id", ids);
+  if (productLookupError) throw new Error(productLookupError.message);
+
   const map = new Map((products ?? []).map((p: any) => [String(p.id), p]));
   const rows = items.map((i: any) => {
     const p = map.get(String(i.product_id));
     if (!p) throw new Error(`Product not found: ${i.product_id}`);
-    const price = Number(p.sale_price ?? p.price ?? i.total ?? 0);
+    const price = Number(i.total ?? p.sale_price ?? p.price ?? 0) / Math.max(1, Number(i.quantity ?? 1));
     const quantity = Math.max(1, Number(i.quantity ?? 1));
     return { product_id: p.id, product_name: p.name, price, quantity, subtotal: price * quantity };
   });
+
   const subtotal = rows.reduce((s: number, i: any) => s + i.subtotal, 0);
+  const orderNote = [
+    "Presswayy AI order",
+    orderPayload.id ? `Presswayy ID: ${orderPayload.id}` : "",
+    orderPayload.number ? `Presswayy No: ${orderPayload.number}` : "",
+    orderPayload.note ?? "",
+  ].filter(Boolean).join(" | ");
+
   const { data: order, error } = await supabaseAdmin.from("orders").insert({
     customer_name: [customer.first_name, customer.last_name].filter(Boolean).join(" ") || "Presswayy AI Customer",
     customer_phone: customer.phone ?? "",
-    customer_address: customer.address_1 ?? "",
-    notes: payload.note ?? "",
+    customer_address: customer.address_1 ?? customer.address ?? "",
+    notes: orderNote,
     subtotal,
     delivery_fee: 0,
-    total: subtotal,
+    total: Number(orderPayload.total ?? subtotal),
     payment_method: "COD",
     source: "presswayy-ai",
-    status: payload.status ?? "web_pending",
+    status: orderPayload.status ?? "web_pending",
   }).select("id").single();
   if (error || !order) throw new Error(error?.message ?? "Order create failed");
-  const { error: itemError } = await supabaseAdmin.from("order_items").insert(rows.map((r: any) => ({ ...r, order_id: order.id })));
+
+  const { error: itemError } = await supabaseAdmin.from("order_items").insert(
+    rows.map((r: any) => ({ ...r, order_id: order.id }))
+  );
   if (itemError) {
     await supabaseAdmin.from("orders").delete().eq("id", order.id);
     throw new Error(itemError.message);
   }
+
   return { order_id: order.id, order_number: String(order.id) };
 }
 
