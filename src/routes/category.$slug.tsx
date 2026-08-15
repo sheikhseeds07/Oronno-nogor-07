@@ -94,24 +94,36 @@ function CategoryPage() {
         <h1 className="text-2xl font-bold mb-4">{cat?.name ?? "ক্যাটাগরি"}</h1>
 
         {children.length > 0 && (
-          <section className="mb-7">
-            <h2 className="font-bold text-lg mb-3">সাব-ক্যাটাগরি</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+          <section className="mb-8">
+            <h2 className="text-lg font-bold mb-4 text-brand-dark flex items-center gap-2">
+              <span className="w-1.5 h-6 bg-brand rounded-full"></span>
+              সাব-ক্যাটাগরি
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {children.map((child) => (
                 <Link
                   key={child.id}
                   to="/category/$slug"
                   params={{ slug: child.slug }}
-                  className="bg-white border rounded-xl p-3 hover:border-brand/40 hover:shadow-md transition text-center"
+                  className="group relative flex flex-col items-center p-2 rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-md hover:border-brand/30 transition-all duration-300"
                 >
-                  <div className="aspect-square rounded-lg overflow-hidden bg-muted mb-2">
+                  <div className="w-full aspect-square rounded-xl overflow-hidden bg-brand-light/20 mb-3 relative">
                     {child.image_url ? (
-                      <img src={child.image_url} alt={child.name} className="w-full h-full object-cover" />
+                      <img
+                        src={child.image_url}
+                        alt={child.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-3xl">🌱</div>
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-brand-light/30 to-white">
+                        <span className="text-4xl group-hover:scale-110 transition-transform duration-500">🌱</span>
+                      </div>
                     )}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors duration-300" />
                   </div>
-                  <div className="font-semibold text-sm">{child.name}</div>
+                  <h3 className="text-sm font-bold text-gray-800 text-center line-clamp-1 group-hover:text-brand transition-colors px-1">
+                    {child.name}
+                  </h3>
                 </Link>
               ))}
             </div>
