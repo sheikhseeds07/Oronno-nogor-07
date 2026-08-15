@@ -53,17 +53,6 @@ function Home() {
   const categories = home.categories;
   const popularProducts = home.products as unknown as Product[];
 
-  // Do not compete with the initial homepage request. Route code is loaded on demand
-  // when the visitor actually navigates instead of preloading three routes on first paint.
-  useEffect(() => {
-    const warmNextPage = () => {
-      const links = document.querySelectorAll<HTMLAnchorElement>('a[href="/shop"]');
-      links.forEach((link) => link.setAttribute("data-prefetch-ready", "1"));
-    };
-    const timer = window.setTimeout(warmNextPage, 6000);
-    return () => window.clearTimeout(timer);
-  }, []);
-
   const [slide, setSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   useEffect(() => {
