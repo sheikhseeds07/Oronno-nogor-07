@@ -28,6 +28,14 @@ function belongsToList(mode: string, filter: string, status: string) {
 }
 
 const SCROLL_STORAGE_KEY = "admin-orders-scroll-y";
+const ORDER_STABLE_QUERY_KEYS = [
+  "admin-orders",
+  "admin-orders-incomplete",
+  "order-status-counts",
+  "incomplete-count",
+  "order-search",
+  "order-detail",
+] as const;
 
 /**
  * Keep the currently visible Orders table stable while realtime changes arrive.
@@ -45,6 +53,25 @@ export function AdminOrderStability() {
   const [trashTarget, setTrashTarget] = useState<HTMLElement | null>(null);
   const savedScrollY = useRef(0);
   const restoreTimer = useRef<number | null>(null);
+
+  // Defense-in-depth: even if another order component requests an invalidation,
+  // switching browser tabs must never trigger a focus/reconnect/mount refetch of
+  // the active order table. Explicit actions and realtime cache patches remain.
+  useEffect(() => {
+    for (const key of ORDER_STABLE_QUERY_KEYS) {
+      qc.setQueryDefaults([key], {
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+        refetchOnMount: false,
+      });
+    }
+    qc.setQueryDefaults(["order-locks"], {
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      refetchOnMount: false,
+      refetchIntervalInBackground: false,
+    });
+  }, [qc]);
 
   // Save only the last known visible position. While the browser tab is hidden,
   // some mobile browsers can emit a scroll=0 event during tab suspension; that
@@ -86,9 +113,13 @@ export function AdminOrderStability() {
       });
     };
 
-    // Do NOT capture the current scroll when a search-param navigation has just
-    // committed: TanStack Router may already have reset it to 0. Restore the
-    // position captured before navigation instead.
+    // Keep the position across Android tab suspension/BFCache restoration too.
+    const saveBeforePageHide = () => {
+      if (document.hidden) return;
+      capture();
+    };
+    const restoreAfterPageShow = () => restore();
+
     readStored();
     window.addEventListener("scroll", capture, { passive: true });
 
@@ -96,6 +127,8 @@ export function AdminOrderStability() {
       if (!document.hidden) restore();
     };
     document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", saveBeforePageHide);
+    window.addEventListener("pageshow", restoreAfterPageShow);
 
     // Same-page order/detail navigation and remounts must keep the exact position.
     restore();
@@ -103,6 +136,8 @@ export function AdminOrderStability() {
     return () => {
       window.removeEventListener("scroll", capture);
       document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", saveBeforePageHide);
+      window.removeEventListener("pageshow", restoreAfterPageShow);
       if (restoreTimer.current !== null) window.cancelAnimationFrame(restoreTimer.current);
     };
   }, [location.pathname, location.search]);
