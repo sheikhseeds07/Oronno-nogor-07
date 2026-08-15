@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
@@ -41,6 +41,68 @@ export function AdminOrderStability() {
   const qc = useQueryClient();
   const location = useLocation();
   const [trashTarget, setTrashTarget] = useState<HTMLElement | null>(null);
+  const savedScrollY = useRef(0);
+  const restoreTimer = useRef<number | null>(null);
+
+  // Remember the admin's exact scroll position. Order actions, route-search
+  // updates and browser tab visibility changes must never throw the operator
+  // back to the top of a long order list.
+  useEffect(() => {
+    const capture = () => { savedScrollY.current = window.scrollY; };
+    const restore = () => {
+      if (location.pathname !== "/admin/orders") return;
+      if (restoreTimer.current !== null) window.cancelAnimationFrame(restoreTimer.current);
+      restoreTimer.current = window.requestAnimationFrame(() => {
+        window.scrollTo({ top: savedScrollY.current, behavior: "auto" });
+        restoreTimer.current = null;
+      });
+    };
+
+    capture();
+    window.addEventListener("scroll", capture, { passive: true });
+
+    // Browser tab switching/focus must not reset the working position.
+    const onVisibility = () => {
+      if (!document.hidden) restore();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    // Preserve position after same-page search-param navigation (opening or
+    // closing an order/detail view) as well.
+    restore();
+
+    return () => {
+      window.removeEventListener("scroll", capture);
+      document.removeEventListener("visibilitychange", onVisibility);
+      if (restoreTimer.current !== null) window.cancelAnimationFrame(restoreTimer.current);
+    };
+  }, [location.pathname, location.search]);
+
+  // Some browsers/React transitions can move scroll to 0 immediately after a
+  // button/select action. Capture the position before the action and restore it
+  // on the next frames. Normal manual scrolling is still completely untouched.
+  useEffect(() => {
+    if (location.pathname !== "/admin/orders") return;
+    const restoreAfterAction = () => {
+      const y = window.scrollY;
+      savedScrollY.current = y;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (location.pathname === "/admin/orders") {
+            window.scrollTo({ top: y, behavior: "auto" });
+          }
+        });
+      });
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target?.closest("button,select,[role='button']")) return;
+      savedScrollY.current = window.scrollY;
+      restoreAfterAction();
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+  }, [location.pathname]);
 
   useEffect(() => {
     const applyOrderChange = (payload: any) => {
@@ -50,6 +112,8 @@ export function AdminOrderStability() {
       const isDelete = payload.eventType === "DELETE";
       const status = payload?.new?.status as string | undefined;
       const queries = qc.getQueryCache().findAll({ queryKey: ["admin-orders"] });
+      const y = window.scrollY;
+      savedScrollY.current = y;
 
       for (const query of queries) {
         const key = query.queryKey;
@@ -71,12 +135,22 @@ export function AdminOrderStability() {
           );
         });
       }
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (!document.hidden && location.pathname === "/admin/orders") {
+            window.scrollTo({ top: y, behavior: "auto" });
+          }
+        });
+      });
     };
 
     const applyIncompleteChange = (payload: any) => {
       const rawId = payload?.new?.id ?? payload?.old?.id;
       if (!rawId) return;
       const id = `inc:${rawId}`;
+      const y = window.scrollY;
+      savedScrollY.current = y;
 
       qc.setQueryData(["admin-orders-incomplete"], (current: any[] | undefined) => {
         if (!current) return current;
@@ -106,6 +180,14 @@ export function AdminOrderStability() {
           };
         });
       });
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (!document.hidden && location.pathname === "/admin/orders") {
+            window.scrollTo({ top: y, behavior: "auto" });
+          }
+        });
+      });
     };
 
     const channel = supabase
@@ -119,7 +201,7 @@ export function AdminOrderStability() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [qc]);
+  }, [qc, location.pathname]);
 
   useEffect(() => {
     if (location.pathname !== "/admin/orders") {
