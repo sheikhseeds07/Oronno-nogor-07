@@ -75,16 +75,22 @@ function Checkout() {
           customer_name: form.name.trim(),
           customer_phone: form.phone,
           customer_address: form.address.trim(),
-          district: null,
-          thana: null,
+          district: "", // Changed from null to empty string
+          thana: "", // Changed from null to empty string
           notes: form.note?.trim() || null,
           delivery_fee: delivery,
-          created_by: session?.user?.id ?? null,
-          checkout_session_id: checkoutSessionId || null,
-          items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity })),
+          subtotal: subtotal,
+          total: total,
+          items: items.map((i) => ({ 
+            product_id: i.id, 
+            product_name: i.name, 
+            price: i.price, 
+            quantity: i.quantity 
+          })),
           ...fbCtx,
         },
       });
+
       if (typeof window !== "undefined") {
         trackPurchase(
           items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity })),
