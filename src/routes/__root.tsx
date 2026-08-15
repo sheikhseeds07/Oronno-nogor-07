@@ -145,13 +145,22 @@ function AuthCacheSync() {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      // Mobile tab resume can trigger TOKEN_REFRESHED. It is only session
-      // maintenance and must not remount/refetch the current admin page.
-      if (event === "TOKEN_REFRESHED") return;
+      // Session maintenance events must never invalidate the router/cache.
+      // Browsers can emit these when a background tab becomes active again.
+      if (
+        event === "INITIAL_SESSION" ||
+        event === "TOKEN_REFRESHED" ||
+        event === "SIGNED_IN" ||
+        event === "USER_UPDATED"
+      ) {
+        return;
+      }
 
-      // Keep real authentication changes working normally.
-      router.invalidate();
-      queryClient.invalidateQueries();
+      // Only a real sign-out needs a global auth refresh.
+      if (event === "SIGNED_OUT") {
+        router.invalidate();
+        queryClient.invalidateQueries();
+      }
     });
     return () => subscription.unsubscribe();
   }, [queryClient, router]);
