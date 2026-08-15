@@ -30,7 +30,7 @@ async function saveNext(prefix: string, next: number) {
 /** True when the invoice already follows the configured format (e.g. AA123). */
 export function isValidInvoice(invoice: string | null, prefix: string): boolean {
   if (!invoice) return false;
-  return new RegExp(`^${prefix.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}\\\\d+$`).test(invoice);
+  return new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\d+$`).test(invoice);
 }
 
 /**
