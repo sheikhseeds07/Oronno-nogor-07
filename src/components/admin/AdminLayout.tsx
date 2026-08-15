@@ -32,7 +32,7 @@ const NAV: NavItem[] = [
 
 function AdminLayoutContent({ children, headerExtra }: { children: React.ReactNode; headerExtra?: React.ReactNode }) {
   const { user, isStaff, isAdmin, permissions, loading, initialized, role } = useAuth();
-  const { language, setLanguage } = useAdminLanguage();
+  const { language, setLanguage, t } = useAdminLanguage();
   const navigate = useNavigate();
   const loc = useLocation();
   const [open, setOpen] = useState(false);
@@ -46,15 +46,15 @@ function AdminLayoutContent({ children, headerExtra }: { children: React.ReactNo
     if (!user) navigate({ to: "/login" as any });
   }, [user, initialized, navigate]);
 
-  if (!mounted || (loading && !role)) return <div className="min-h-screen flex items-center justify-center">{language === "en" ? "Please wait..." : "অপেক্ষা করুন..."}</div>;
+  if (!mounted || (loading && !role)) return <div className="min-h-screen flex items-center justify-center">{t("অপেক্ষা করুন...", "Please wait...")}</div>;
 
   if (!isStaff) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted px-4">
         <div className="max-w-md rounded-xl border bg-card p-6 text-center shadow-sm">
-          <h1 className="text-xl font-bold text-brand-dark">{language === "en" ? "Access Denied" : "প্রবেশাধিকার নেই"}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">{language === "en" ? "You do not have permission to view this page." : "এই পেজটি দেখার অনুমতি আপনার নেই।"}</p>
-          <button onClick={() => navigate({ to: "/" })} className="mt-5 rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-primary-foreground">{language === "en" ? "Go Home" : "হোমে যান"}</button>
+          <h1 className="text-xl font-bold text-brand-dark">{t("প্রবেশাধিকার নেই", "Access Denied")}</h1>
+          <p className="mt-2 text-sm text-muted-foreground">{t("এই পেজটি দেখার অনুমতি আপনার নেই।", "You do not have permission to view this page.")}</p>
+          <button onClick={() => navigate({ to: "/" })} className="mt-5 rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-primary-foreground">{t("হোমে যান", "Go Home")}</button>
         </div>
       </div>
     );
@@ -74,13 +74,13 @@ function AdminLayoutContent({ children, headerExtra }: { children: React.ReactNo
       <aside className={`fixed lg:sticky lg:top-0 top-0 left-0 h-screen bg-sidebar border-r z-50 transition-all duration-300 ease-in-out ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} ${collapsed ? "w-20" : "w-64"}`}>
         <div className="p-4 border-b flex items-center gap-2 overflow-hidden">
           <img src={logo} className="w-9 h-9 rounded-full shrink-0" alt="" />
-          {!collapsed && <div className="min-w-0 transition-opacity duration-200"><div className="font-extrabold text-sidebar-foreground truncate">অনন্য নগর</div><div className="text-[10px] text-muted-foreground truncate">{isAdmin ? (language === "en" ? "Admin Panel" : "অ্যাডমিন প্যানেল") : (language === "en" ? "Staff Panel" : "কর্মী প্যানেল")}</div></div>}
-          <button onClick={() => setOpen(false)} className="lg:hidden ml-auto"><X className="w-5 h-5 text-sidebar-foreground" /></button>
+          {!collapsed && <div className="min-w-0 transition-opacity duration-200"><div className="font-extrabold text-sidebar-foreground truncate">অনন্য নগর</div><div className="text-[10px] text-muted-foreground truncate">{isAdmin ? t("অ্যাডমিন প্যানেল", "Admin Panel") : t("কর্মী প্যানেল", "Staff Panel")}</div></div>}
+          <button onClick={() => setOpen(false)} className="lg:hidden ml-auto" aria-label={t("বন্ধ করুন", "Close")}><X className="w-5 h-5 text-sidebar-foreground" /></button>
         </div>
         <nav className="p-2 overflow-y-auto h-[calc(100vh-140px)] scrollbar-thin">
           {myProfileTo && user?.id && (
             <Link to={"/admin/employees/$userId" as any} params={{ userId: user.id } as any} preload="intent" onClick={() => setOpen(false)} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm mb-0.5 transition-colors ${loc.pathname.startsWith(myProfileTo) ? "bg-brand text-white font-semibold" : "text-sidebar-foreground hover:bg-sidebar-accent"}`}>
-              <Clock className="w-4 h-4 shrink-0" />{!collapsed && <span>{language === "en" ? "Attendance" : "হাজিরা"}</span>}
+              <Clock className="w-4 h-4 shrink-0" />{!collapsed && <span>{t("হাজিরা", "Attendance")}</span>}
             </Link>
           )}
           {visibleNav.map((n) => {
@@ -89,7 +89,7 @@ function AdminLayoutContent({ children, headerExtra }: { children: React.ReactNo
           })}
         </nav>
         <div className="absolute bottom-0 left-0 right-0 p-3 border-t bg-sidebar overflow-hidden">
-          <button onClick={logout} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-destructive hover:bg-destructive/10 transition-colors"><LogOut className="w-4 h-4 shrink-0" />{!collapsed && <span>{language === "en" ? "Logout" : "লগআউট"}</span>}</button>
+          <button onClick={logout} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-destructive hover:bg-destructive/10 transition-colors"><LogOut className="w-4 h-4 shrink-0" />{!collapsed && <span>{t("লগআউট", "Logout")}</span>}</button>
         </div>
       </aside>
 
@@ -97,11 +97,11 @@ function AdminLayoutContent({ children, headerExtra }: { children: React.ReactNo
       <AdminOrderStability />
       <div className="flex-1 min-w-0 transition-all duration-300 ease-in-out">
         <header className="sticky top-0 z-30 bg-white border-b px-4 py-3 flex items-center gap-3 flex-wrap">
-          <button onClick={() => setOpen(true)} className="lg:hidden"><Menu className="w-6 h-6" /></button>
-          <button onClick={() => setCollapsed(!collapsed)} className="hidden lg:flex items-center justify-center w-8 h-8 rounded-md border bg-gray-50 hover:bg-gray-100 transition-colors" title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}>{collapsed ? <PanelLeftOpen className="w-5 h-5 text-gray-600" /> : <PanelLeftClose className="w-5 h-5 text-gray-600" />}</button>
-          <div className="font-bold whitespace-nowrap">{isAdmin ? (language === "en" ? "Admin Panel" : "অ্যাডমিন প্যানেল") : (language === "en" ? "Staff Panel" : "কর্মী প্যানেল")}</div>
-          <button type="button" onClick={() => setLanguage(language === "bn" ? "en" : "bn")} title={language === "bn" ? "Switch to English" : "বাংলায় পরিবর্তন করুন"} aria-label={language === "bn" ? "Switch to English" : "Switch to Bangla"} className="ml-1 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-bold text-slate-700 shadow-sm transition-all hover:bg-white hover:shadow active:scale-95"><Languages className="h-3.5 w-3.5" /><span>{language === "bn" ? "EN" : "বাংলা"}</span></button>
-          <div className="ml-auto text-sm text-muted-foreground hidden sm:block truncate max-w-[200px]">{user?.email ?? ""}</div>
+          <button onClick={() => setOpen(true)} className="lg:hidden" aria-label={t("মেনু", "Menu")}><Menu className="w-6 h-6" /></button>
+          <button onClick={() => setCollapsed(!collapsed)} className="hidden lg:flex items-center justify-center w-8 h-8 rounded-md border bg-gray-50 hover:bg-gray-100 transition-colors" title={collapsed ? t("Expand Sidebar") : t("Collapse Sidebar")}>{collapsed ? <PanelLeftOpen className="w-5 h-5 text-gray-600" /> : <PanelLeftClose className="w-5 h-5 text-gray-600" />}</button>
+          <div className="font-bold whitespace-nowrap">{isAdmin ? t("অ্যাডমিন প্যানেল", "Admin Panel") : t("কর্মী প্যানেল", "Staff Panel")}</div>
+          <button type="button" onClick={() => setLanguage(language === "bn" ? "en" : "bn")} title={language === "bn" ? t("ইংরেজিতে পরিবর্তন করুন", "Switch to English") : t("বাংলায় পরিবর্তন করুন", "Switch to Bengali")} aria-label={language === "bn" ? t("ইংরেজিতে পরিবর্তন করুন", "Switch to English") : t("বাংলায় পরিবর্তন করুন", "Switch to Bengali")} className="ml-1 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-bold text-slate-700 shadow-sm transition-all hover:bg-white hover:shadow active:scale-95"><Languages className="h-3.5 w-3.5" /><span>{language === "bn" ? "EN" : "BN"}</span></button>
+          <div className="ml-auto text-sm text-muted-foreground hidden sm:block truncate max-w-[200px]" data-admin-language-ignore="true">{user?.email ?? ""}</div>
           {headerExtra && <div className="w-full basis-full flex items-center gap-2 overflow-x-auto pt-2">{headerExtra}</div>}
         </header>
         <div className="p-4 lg:p-6"><AdminLanguageSurface>{children}</AdminLanguageSurface></div>
