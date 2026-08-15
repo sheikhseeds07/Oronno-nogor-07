@@ -52,7 +52,7 @@ export function AdminOrderStability() {
   const location = useLocation();
   const [trashTarget, setTrashTarget] = useState<HTMLElement | null>(null);
   const savedScrollY = useRef(0);
-  const restoreTimer = useRef<number | null>(null);
+  const restoreTimers = useRef<number[]>([]);
 
   // Defense-in-depth: even if another order component requests an invalidation,
   // switching browser tabs must never trigger a focus/reconnect/mount refetch of
@@ -74,8 +74,8 @@ export function AdminOrderStability() {
   }, [qc]);
 
   // Save only the last known visible position. While the browser tab is hidden,
-  // some mobile browsers can emit a scroll=0 event during tab suspension; that
-  // must never overwrite the operator's real working position.
+  // some browsers can emit a scroll=0 event during tab suspension; that must
+  // never overwrite the operator's real working position.
   useEffect(() => {
     if (location.pathname !== "/admin/orders") return;
 
@@ -98,25 +98,36 @@ export function AdminOrderStability() {
       try { sessionStorage.setItem(SCROLL_STORAGE_KEY, String(y)); } catch { /* ignore */ }
     };
 
+    // Restore repeatedly because a tab can be resumed/reloaded before the order
+    // rows have been painted. A single requestAnimationFrame can run while the
+    // document is still short, causing scrollTo() to clamp to 0 permanently.
     const restore = () => {
       readStored();
-      if (restoreTimer.current !== null) {
-        window.cancelAnimationFrame(restoreTimer.current);
+      for (const timer of restoreTimers.current) {
+        window.clearTimeout(timer);
       }
+      restoreTimers.current = [];
+
       const y = savedScrollY.current;
-      restoreTimer.current = window.requestAnimationFrame(() => {
-        window.scrollTo({ top: y, behavior: "auto" });
-        restoreTimer.current = window.requestAnimationFrame(() => {
+      const apply = () => {
+        if (document.hidden || location.pathname !== "/admin/orders") return;
+        const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+        if (y <= maxScroll + 8) {
           window.scrollTo({ top: y, behavior: "auto" });
-          restoreTimer.current = null;
-        });
-      });
+        }
+      };
+
+      apply();
+      requestAnimationFrame(apply);
+      requestAnimationFrame(() => requestAnimationFrame(apply));
+      restoreTimers.current = [50, 150, 300, 600, 1000].map((delay) =>
+        window.setTimeout(apply, delay),
+      );
     };
 
-    // Keep the position across Android tab suspension/BFCache restoration too.
     const saveBeforePageHide = () => {
-      if (document.hidden) return;
-      capture();
+      // Scroll events while visible already persist the exact position.
+      if (!document.hidden) capture();
     };
     const restoreAfterPageShow = () => restore();
 
@@ -138,7 +149,8 @@ export function AdminOrderStability() {
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", saveBeforePageHide);
       window.removeEventListener("pageshow", restoreAfterPageShow);
-      if (restoreTimer.current !== null) window.cancelAnimationFrame(restoreTimer.current);
+      for (const timer of restoreTimers.current) window.clearTimeout(timer);
+      restoreTimers.current = [];
     };
   }, [location.pathname, location.search]);
 
