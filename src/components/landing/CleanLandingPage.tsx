@@ -537,7 +537,7 @@ export function CleanLandingPage({ slug }: { slug: string }) {
         {packages.length > 1 && (
           <Reveal className="lp-product-selector">
             <SectionHead kicker={C.package_kicker} title={C.package_title} />
-            <div className="space-y-2">
+            <div className="space-y-2 lp-product-selector-list">
               {packages.map((p, i) => {
                 const active = selectedPkg === i;
                 return (
