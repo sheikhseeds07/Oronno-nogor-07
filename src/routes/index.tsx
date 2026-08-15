@@ -21,47 +21,20 @@ const HERO_BANNERS = [
   { id: "hero-fertilizer", title: "সার ও কীটনাশক", image_url: "/banner-fertilizer.jpg", link_url: "/shop", is_active: true, display_order: 3 },
 ] as unknown as HomeData["banners"];
 
-const PROMO_BANNER_URL = "/banner-seeds.jpg";
 const FALLBACK_HOME: HomeData = { banners: HERO_BANNERS, categories: [], subcategories: [], products: [] };
 
 const homeQueryOptions = queryOptions({
   queryKey: ["home-data-v1"],
   queryFn: getHomeData,
+  enabled: typeof window !== "undefined",
   staleTime: 5 * 60_000,
   retry: 1,
-  refetchOnMount: false,
-});
-
-export const Route = createFileRoute("/")({
-  loader: ({ context }) => context.queryClient.ensureQueryData(homeQueryOptions),
-  head: () => {
-    const firstBanner = PROMO_BANNER_URL;
-    return {
-      meta: [
-        { title: "অরন্য নগর (Oronno Nogor) — অরিজিনাল বীজ, গার্ডেন টুলস ও সার" },
-        { name: "description", content: "অরন্য নগর — ছাদ বাগানির বিশ্বস্ত সঙ্গী। ১০০% অরিজিনাল সবজি, ফল ও ফুলের বীজ, গার্ডেন টুলস, সার ও কীটনাশক অনলাইনে অর্ডার করুন। সারাদেশে হোম ডেলিভারি ও ক্যাশ অন ডেলিভারি।" },
-        { name: "keywords", content: "অরন্য নগর, oronno nogor, oronnonogor, বীজ, সবজির বীজ, ফুলের বীজ, গার্ডেন টুলস, সার, কীটনাশক, ছাদ বাগান" },
-        { property: "og:title", content: "অরন্য নগর (Oronno Nogor) — অরিজিনাল বীজ, গার্ডেন টুলস ও সার" },
-        { property: "og:description", content: "ছাদ বাগানির বিশ্বস্ত সঙ্গী — ১০০% অরিজিনাল বীজ, গার্ডেন টুলস ও সার। সারাদেশে ক্যাশ অন ডেলিভারি।" },
-        { property: "og:url", content: "https://oronnonogor.com/" },
-        { property: "og:image", content: "https://oronnonogor.com/og-oronno-nogor.jpg" },
-        { property: "og:image:width", content: "1200" },
-        { property: "og:image:height", content: "630" },
-        { name: "twitter:card", content: "summary_large_image" },
-        { name: "twitter:image", content: "https://oronnonogor.com/og-oronno-nogor.jpg" },
-      ],
-      links: [
-        { rel: "canonical", href: "https://oronnonogor.com/" },
-        ...(firstBanner ? [{ rel: "preload", as: "image", href: firstBanner }] : []),
-      ],
-    };
-  },
-  component: Home,
+  refetchOnMount: "always",
 });
 
 function SectionTitle({ title, subtitle, action }: { title: string; subtitle?: string; action?: { label: string; to: string } }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6 sm:mb-8">
+    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 sm:gap-3 mb-3 sm:mb-8">
       <div className="text-center sm:text-left">
         <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-brand-dark tracking-tight">{title}</h2>
         {subtitle && <p className="mt-1.5 text-sm sm:text-base text-muted-foreground max-w-xl">{subtitle}</p>}
@@ -129,14 +102,14 @@ function Home() {
         </section>
       )}
 
-      <section className="py-10 sm:py-14 bg-gradient-to-b from-brand-light/25 via-transparent to-transparent">
+      <section className="py-4 sm:py-14 bg-gradient-to-b from-brand-light/25 via-transparent to-transparent">
         <div className="container mx-auto px-3 sm:px-4"><SectionTitle title="পপুলার ক্যাটেগরি" /></div>
         <div className="px-3 sm:px-4">
-          {isPending ? <div className="container mx-auto"><div className="rounded-3xl border border-dashed bg-white/90 p-8 text-center text-sm text-muted-foreground">ক্যাটাগরি লোড হচ্ছে...</div></div> : categories.length > 0 ? (
+          {isPending ? <div className="container mx-auto"><div className="rounded-3xl border border-dashed bg-white/90 p-4 sm:p-8 text-center text-sm text-muted-foreground">ক্যাটাগরি লোড হচ্ছে...</div></div> : categories.length > 0 ? (
             <div className="relative overflow-hidden max-w-7xl mx-auto">
               <div className="pointer-events-none absolute inset-y-0 left-0 w-8 sm:w-14 bg-gradient-to-r from-background via-background/90 to-transparent z-10" />
               <div className="pointer-events-none absolute inset-y-0 right-0 w-8 sm:w-14 bg-gradient-to-l from-background via-background/90 to-transparent z-10" />
-              <div className="flex w-max gap-3 sm:gap-4 py-2" style={{ animation: categories.length > 1 ? "homeCategoryMarquee 30s linear infinite" : "none" }}>
+              <div className="flex w-max gap-3 sm:gap-4 py-0.5 sm:py-2" style={{ animation: categories.length > 1 ? "homeCategoryMarquee 30s linear infinite" : "none" }}>
                 {marqueeCategories.map((category, index) => (
                   <Link key={`${category.id}-${index}`} to="/category/$slug" params={{ slug: category.slug }} className="group shrink-0 w-[124px] sm:w-[148px] rounded-2xl sm:rounded-3xl border border-border/70 bg-white/95 p-2.5 sm:p-3 text-center shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-brand/30 hover:shadow-lg">
                     <div className="aspect-square rounded-2xl overflow-hidden bg-brand-light/30 mb-2.5 ring-1 ring-black/5">
@@ -147,13 +120,13 @@ function Home() {
                 ))}
               </div>
             </div>
-          ) : <div className="container mx-auto"><div className="rounded-3xl border border-dashed bg-white/90 p-8 text-center text-sm text-muted-foreground">এখনো কোনো হোম ক্যাটাগরি যোগ করা হয়নি।</div></div>}
+          ) : <div className="container mx-auto"><div className="rounded-3xl border border-dashed bg-white/90 p-4 sm:p-8 text-center text-sm text-muted-foreground">এখনো কোনো হোম ক্যাটাগরি যোগ করা হয়নি।</div></div>}
         </div>
       </section>
 
-      <section className="container mx-auto px-3 sm:px-4 py-8 sm:py-12">
+      <section className="container mx-auto px-3 sm:px-4 py-4 sm:py-12">
         <SectionTitle title="পপুলার পণ্য" subtitle="সবচেয়ে বেশি বিক্রি হওয়া পণ্য আগে দেখানো হচ্ছে" action={{ label: "সকল পণ্য দেখুন", to: "/shop" }} />
-        {popularProducts.length > 0 ? <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">{popularProducts.map((product) => <ProductCard key={product.id} p={product} />)}</div> : <div className="rounded-2xl border border-dashed bg-white p-8 text-center text-sm text-muted-foreground">এখনো কোনো পণ্য যোগ করা হয়নি।</div>}
+        {popularProducts.length > 0 ? <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">{popularProducts.map((product) => <ProductCard key={product.id} p={product} />)}</div> : <div className="rounded-2xl border border-dashed bg-white p-4 sm:p-8 text-center text-sm text-muted-foreground">এখনো কোনো পণ্য যোগ করা হয়নি।</div>}
       </section>
 
       <section className="py-12 sm:py-16 bg-gradient-to-b from-transparent via-brand-light/20 to-transparent">
@@ -169,3 +142,7 @@ function Home() {
     </SiteLayout>
   );
 }
+
+export const Route = createFileRoute("/")({
+  component: Home,
+});
