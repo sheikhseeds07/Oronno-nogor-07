@@ -10,6 +10,99 @@ import { mergeContent } from "@/lib/landing-content";
 const LEGACY_SLUGS = new Set(["seeds-combo-24"]);
 export const Route = createFileRoute("/landing/$slug")({ component: LandingPage });
 
+const seedComboCheckoutCss = `
+#order { scroll-margin-top: 76px !important; margin-top: -34px !important; padding-top: 0 !important; }
+#order > .mb-4.text-center { margin-bottom: 10px !important; }
+#order #lp-order-form {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(21,128,61,.16) !important;
+  border-radius: 26px !important;
+  padding: 12px !important;
+  background: linear-gradient(145deg,#ffffff 0%,#f7fff9 48%,#ffffff 100%) !important;
+  box-shadow: 0 20px 55px -30px rgba(6,78,59,.45), 0 0 0 1px rgba(255,255,255,.8) inset !important;
+}
+#order #lp-order-form::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg,#16a34a,#f59e0b,#22c55e,#0ea5e9,#16a34a);
+  background-size: 220% 100%;
+  animation: seedComboGradient 4s linear infinite;
+}
+#order #lp-order-form::after {
+  content: "";
+  position: absolute;
+  width: 180px; height: 180px;
+  right: -90px; top: 20px;
+  border-radius: 999px;
+  background: radial-gradient(circle,rgba(34,197,94,.11),transparent 68%);
+  pointer-events: none;
+}
+@keyframes seedComboGradient { to { background-position: 220% 0; } }
+#order #lp-order-form > .border-2.rounded-2xl.p-3 {
+  position: relative;
+  z-index: 1;
+  margin: 0 0 8px !important;
+  padding: 8px !important;
+  border: 1px solid rgba(21,128,61,.14) !important;
+  border-radius: 18px !important;
+  background: linear-gradient(135deg,rgba(240,253,244,.96),rgba(255,255,255,.98)) !important;
+  box-shadow: 0 7px 20px -18px rgba(6,78,59,.5) !important;
+}
+#order #lp-order-form > .border-2.rounded-2xl.p-3 .space-y-2 { gap: 6px !important; }
+#order #lp-order-form > .border-2.rounded-2xl.p-3 .space-y-2 > button {
+  min-height: 54px !important;
+  padding: 7px 9px !important;
+  border-radius: 14px !important;
+  transition: transform .2s ease,box-shadow .2s ease,border-color .2s ease,background .2s ease !important;
+}
+#order #lp-order-form > .border-2.rounded-2xl.p-3 .space-y-2 > button:hover { transform: translateY(-1px); box-shadow: 0 8px 18px -15px rgba(6,78,59,.65); }
+#order #lp-order-form > .border-2.rounded-2xl.p-3 .space-y-2 > button:first-child { animation: seedComboSelected 2.4s ease-in-out infinite; }
+@keyframes seedComboSelected { 0%,100% { box-shadow: 0 0 0 0 rgba(34,197,94,.16); } 50% { box-shadow: 0 0 0 5px rgba(34,197,94,0); } }
+#order #lp-order-form > .border-2.rounded-2xl.p-3 + * { margin-top: 0 !important; }
+#order #lp-order-form label { font-weight: 800 !important; color: #17351f !important; }
+#order #lp-order-form input:not([type="checkbox"]), #order #lp-order-form textarea {
+  min-height: 48px !important;
+  border: 1.5px solid #d7e7dc !important;
+  border-radius: 13px !important;
+  background: rgba(255,255,255,.9) !important;
+  transition: border-color .18s ease,box-shadow .18s ease,transform .18s ease !important;
+}
+#order #lp-order-form input:not([type="checkbox"]):focus, #order #lp-order-form textarea:focus {
+  border-color: #22c55e !important;
+  box-shadow: 0 0 0 4px rgba(34,197,94,.11) !important;
+  transform: translateY(-1px);
+}
+#order #lp-order-form textarea { min-height: 78px !important; }
+#order #lp-order-form .divide-y {
+  margin-top: 8px !important;
+  border-radius: 15px !important;
+  overflow: hidden;
+  border: 1px solid #dfeae2;
+  background: #fff;
+}
+#order #lp-order-form .divide-y > div { padding-top: 8px !important; padding-bottom: 8px !important; }
+#order #lp-order-form .divide-y > div:last-child { background: linear-gradient(90deg,#ecfdf3,#f0fdf4) !important; }
+#order .lp-checkout-reassurance { margin: 8px 2px !important; font-size: 12px !important; }
+#order #lp-order-form button[type="submit"] { display:none !important; }
+#order #lp-order-form button[type="button"] { transition: transform .18s ease,box-shadow .18s ease !important; }
+#order #lp-order-form button[type="button"]:active { transform: scale(.985); }
+@media (max-width:640px) {
+  #order { margin-top: -38px !important; }
+  #order > .mb-4.text-center { margin-bottom: 7px !important; }
+  #order #lp-order-form { padding: 8px !important; border-radius: 22px !important; }
+  #order #lp-order-form > .border-2.rounded-2xl.p-3 { margin-bottom: 6px !important; padding: 6px !important; border-radius: 16px !important; }
+  #order #lp-order-form > .border-2.rounded-2xl.p-3 .space-y-2 > button { min-height: 50px !important; padding: 6px 7px !important; border-radius: 12px !important; }
+  #order #lp-order-form input:not([type="checkbox"]), #order #lp-order-form textarea { min-height: 50px !important; font-size: 16px !important; }
+  #order #lp-order-form textarea { min-height: 82px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #order #lp-order-form::before, #order #lp-order-form > .border-2.rounded-2xl.p-3 .space-y-2 > button:first-child { animation: none !important; }
+}
+`;
+
 function LandingPopupBehavior({ enabled, hideReviews }: { enabled: boolean; hideReviews?: boolean }) {
   useEffect(() => {
     if ((!enabled && !hideReviews) || typeof document === "undefined") return;
@@ -115,7 +208,7 @@ function LandingPopupBehavior({ enabled, hideReviews }: { enabled: boolean; hide
       activePopup = null;
     };
   }, [enabled, hideReviews]);
-  return null;
+  return <>{enabled && <style dangerouslySetInnerHTML={{ __html: seedComboCheckoutCss }} />}</>;
 }
 
 function LandingPage() {
