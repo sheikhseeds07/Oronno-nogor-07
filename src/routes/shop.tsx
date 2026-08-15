@@ -55,6 +55,7 @@ function Shop() {
         categoryIds = [selected.id, ...((children ?? []) as Array<{ id: string }>).map((c) => c.id)];
       }
 
+      // No category is applied on /shop: show every active product.
       let query = supabase.from("products").select("*").eq("is_active", true);
       if (categoryIds) query = query.in("category_id", categoryIds);
       if (q) query = query.ilike("name", `%${q}%`);
@@ -73,7 +74,7 @@ function Shop() {
           <div className="flex gap-1.5 overflow-x-auto">
             <Link
               to="/shop"
-              className={`px-4 py-2 rounded-xl text-sm font-bold shrink-0 transition ${!cat ? "bg-gradient-to-r from-brand to-brand-dark text-white shadow" : "text-foreground hover:bg-brand-light/40"}`}
+              className="px-4 py-2 rounded-xl text-sm font-bold shrink-0 transition text-foreground hover:bg-brand-light/40"
             >
               সব পণ্য
             </Link>
