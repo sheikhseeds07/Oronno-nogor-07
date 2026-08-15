@@ -1,68 +1,73 @@
 import { createServerFn } from "@tanstack/react-start";
+import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 
-const STALE_MS = 60_000; // lock considered stale after 60s without heartbeat
-
-async function getDisplayName(userId: string): Promise<string> {
-  const { data } = await supabaseAdmin.from("profiles").select("full_name").eq("id", userId).maybeSingle();
-  return data?.full_name ?? "Staff";
-}
+const LOCK_SECONDS = 45;
 
 export const acquireOrderLock = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i) => z.object({ order_id: z.string().uuid(), takeover: z.boolean().optional() }).parse(i))
+  .validator(zodValidator(z.object({ order_id: z.string().uuid(), takeover: z.boolean().optional() })))
+
   .handler(async ({ data, context }) => {
-    const { order_id, takeover } = data;
+    const { data: profile } = await supabaseAdmin.from("profiles").select("full_name").eq("id", context.userId).maybeSingle();
+    const userName = profile?.full_name || "Staff";
+
     const { data: existing } = await supabaseAdmin
-      .from("order_locks").select("*").eq("order_id", order_id).maybeSingle();
+      .from("order_locks")
+      .select("user_id, user_name")
+      .eq("order_id", data.order_id)
+      .maybeSingle();
 
-    const now = Date.now();
-    const stale = existing && now - new Date(existing.heartbeat_at).getTime() > STALE_MS;
-    const isOwn = existing && existing.user_id === context.userId;
-
-    if (existing && !isOwn && !stale && !takeover) {
-      return { ok: false, locked_by: existing.user_name, locked_by_id: existing.user_id };
+    if (existing && existing.user_id !== context.userId) {
+      return { ok: false, locked_by: existing.user_name || "Someone else" };
     }
 
-    const name = await getDisplayName(context.userId);
-    const payload = { order_id, user_id: context.userId, user_name: name, locked_at: new Date().toISOString(), heartbeat_at: new Date().toISOString() };
-    const { error } = await supabaseAdmin.from("order_locks").upsert(payload, { onConflict: "order_id" });
-    if (error) throw new Error(error.message);
-    return { ok: true, locked_by: name, locked_by_id: context.userId };
+    const { error } = await supabaseAdmin.from("order_locks").upsert({
+      order_id: data.order_id,
+      user_id: context.userId,
+      user_name: userName,
+      locked_at: new Date().toISOString(),
+      heartbeat_at: new Date().toISOString(),
+    });
+
+    return { ok: !error };
   });
 
 export const heartbeatOrderLock = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i) => z.object({ order_id: z.string().uuid() }).parse(i))
+  .validator(zodValidator(z.object({ order_id: z.string().uuid() })))
   .handler(async ({ data, context }) => {
-    await supabaseAdmin.from("order_locks")
+    const { error } = await supabaseAdmin
+      .from("order_locks")
       .update({ heartbeat_at: new Date().toISOString() })
       .eq("order_id", data.order_id)
       .eq("user_id", context.userId);
-    return { ok: true };
+    return { ok: !error };
   });
 
 export const releaseOrderLock = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i) => z.object({ order_id: z.string().uuid() }).parse(i))
+  .validator(zodValidator(z.object({ order_id: z.string().uuid() })))
   .handler(async ({ data, context }) => {
-    await supabaseAdmin.from("order_locks").delete()
-      .eq("order_id", data.order_id).eq("user_id", context.userId);
+    await supabaseAdmin.from("order_locks").delete().eq("order_id", data.order_id).eq("user_id", context.userId);
     return { ok: true };
   });
 
 export const listOrderLocks = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i) => z.object({ order_ids: z.array(z.string().uuid()).max(200) }).parse(i))
+  .validator(zodValidator(z.object({ order_ids: z.array(z.string().uuid()) })))
   .handler(async ({ data }) => {
-    if (!data.order_ids.length) return { locks: [] as { order_id: string; user_id: string; user_name: string; heartbeat_at: string }[] };
-    const { data: rows } = await supabaseAdmin
+    // Cleanup old locks (more than 60s since heartbeat)
+    const limit = new Date(Date.now() - 60000).toISOString();
+    await supabaseAdmin.from("order_locks").delete().lt("heartbeat_at", limit);
+
+    const { data: locks } = await supabaseAdmin
       .from("order_locks")
-      .select("order_id,user_id,user_name,heartbeat_at")
+      .select("order_id, user_id, user_name")
       .in("order_id", data.order_ids);
-    const cutoff = Date.now() - STALE_MS;
-    const fresh = (rows ?? []).filter((r) => new Date(r.heartbeat_at).getTime() >= cutoff);
-    return { locks: fresh };
+
+    return { locks: locks ?? [] };
   });
+
