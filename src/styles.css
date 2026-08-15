@@ -280,3 +280,8 @@ div[style*="homeCategoryMarquee"] > button > div:nth-child(2) {
   order: 1;
   margin-bottom: 0.625rem;
 }
+
+/* Hide the reassurance sentence shown directly under the landing-page checkout submit button. */
+#order #lp-order-form > p:last-child {
+  display: none !important;
+}
