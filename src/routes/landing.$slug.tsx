@@ -73,7 +73,34 @@ function LandingPopupBehavior({ enabled, hideReviews }: { enabled: boolean; hide
     attach();
     const observer = new MutationObserver(attach);
     observer.observe(document.body, { childList: true, subtree: true });
-    return () => { observer.disconnect(); if (timer) clearTimeout(timer); if (countdownTimer) clearInterval(countdownTimer); activePopup = null; };
+
+    // The popup CTA should only dismiss the popup. It must never trigger its original
+    // checkout/scroll action or move the page position.
+    const handlePopupCta = (event: MouseEvent) => {
+      if (!activePopup || !document.body.contains(activePopup)) return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target || !activePopup.contains(target)) return;
+      const control = target.closest("button, a") as HTMLElement | null;
+      if (!control) return;
+      const label = (control.textContent || "").trim();
+      const isClose = control.matches('button[aria-label="বন্ধ করুন"], button[aria-label="close"]');
+      if (isClose) return;
+      // Treat the popup's action CTA (including “এখনই অর্ডার করুন”) as a close-only action.
+      if (/এখনই অর্ডার করুন|অর্ডার করুন/.test(label)) {
+        event.preventDefault();
+        event.stopPropagation();
+        closePopup();
+      }
+    };
+    document.addEventListener("click", handlePopupCta, true);
+
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("click", handlePopupCta, true);
+      if (timer) clearTimeout(timer);
+      if (countdownTimer) clearInterval(countdownTimer);
+      activePopup = null;
+    };
   }, [enabled, hideReviews]);
   return null;
 }
@@ -91,8 +118,6 @@ function LandingPage() {
   const popupBehaviorEnabled = slug === "seedcombo" || slug === "seeds-combo-24";
   const hideReviews = slug === "seedcombo";
   if (isLegacySlug) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} /><LegacyLandingPage slug={slug} /></>;
-  // Render the landing shell immediately instead of blocking the entire page on Supabase.
-  // The cached/default template is used while the small template query resolves.
   const template = mergeContent(data?.planting_steps).template;
   if (isLoading && !data) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} /><CleanLandingPage slug={slug} /></>;
   if (template === "all") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} /><LegacyLandingPage slug={slug} /></>;
