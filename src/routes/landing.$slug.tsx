@@ -28,6 +28,21 @@ function LandingPopupBehavior({ enabled, hideReviews }: { enabled: boolean; hide
         if (markers.some((marker) => text.includes(marker))) section.remove();
       }
     };
+    const hideOrderTexts = () => {
+      if (!hideReviews) return;
+      const exactTexts = new Set([
+        "ধাপ ২",
+        "ডেলিভারি তথ্য দিন",
+        "নিশ্চিন্তে অর্ডার করুন। অর্ডার করার পরে আমরা আপনাকে কল দিয়ে বিস্তারিত বলে কনফার্ম করবো।",
+      ]);
+      for (const el of document.querySelectorAll("div, p, h2, h3")) {
+        const text = el.textContent?.trim() || "";
+        if (exactTexts.has(text)) el.setAttribute("data-seedcombo-hidden-copy", "true");
+      }
+      for (const el of document.querySelectorAll("[data-seedcombo-hidden-copy]")) {
+        (el as HTMLElement).style.visibility = "hidden";
+      }
+    };
     const moveCountdownToHeader = () => {
       if (!enabled || document.querySelector("[data-seedcombo-header-countdown]")) return;
       const header = document.querySelector("header") as HTMLElement | null;
@@ -68,14 +83,13 @@ function LandingPopupBehavior({ enabled, hideReviews }: { enabled: boolean; hide
         if (popup && popup !== activePopup) { activePopup = popup; if (timer) clearTimeout(timer); timer = setTimeout(closePopup, 10000); }
       }
       removeReviews();
+      hideOrderTexts();
       moveCountdownToHeader();
     };
     attach();
     const observer = new MutationObserver(attach);
     observer.observe(document.body, { childList: true, subtree: true });
 
-    // The popup CTA should only dismiss the popup. It must never trigger its original
-    // checkout/scroll action or move the page position.
     const handlePopupCta = (event: MouseEvent) => {
       if (!activePopup || !document.body.contains(activePopup)) return;
       const target = event.target instanceof Element ? event.target : null;
@@ -85,7 +99,6 @@ function LandingPopupBehavior({ enabled, hideReviews }: { enabled: boolean; hide
       const label = (control.textContent || "").trim();
       const isClose = control.matches('button[aria-label="বন্ধ করুন"], button[aria-label="close"]');
       if (isClose) return;
-      // Treat the popup's action CTA (including “এখনই অর্ডার করুন”) as a close-only action.
       if (/এখনই অর্ডার করুন|অর্ডার করুন/.test(label)) {
         event.preventDefault();
         event.stopPropagation();
