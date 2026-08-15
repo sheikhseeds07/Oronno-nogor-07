@@ -31,6 +31,30 @@ import {
 
 const DEFAULT_ICONS = [Sprout, Leaf, ShieldCheck, Award, Wallet, Truck, Headphones, BarChart3];
 
+
+const LANDING_CHECKOUT_GROUP_STYLE = `
+.lp-product-checkout-group {
+  border: 1px solid rgb(226 232 240);
+  border-radius: 16px;
+  background: white;
+  overflow: hidden;
+}
+.lp-product-checkout-group .lp-product-selector {
+  padding: 16px;
+  margin: 0;
+  border-bottom: 1px solid rgb(226 232 240);
+}
+.lp-product-checkout-group > section {
+  padding: 16px;
+  margin: 0;
+}
+.lp-product-checkout-group .lp-product-selector > div,
+.lp-product-checkout-group > section > div {
+  margin-bottom: 0;
+}
+`;
+
+
 function IconRowList({
   items,
   themeColor,
@@ -255,6 +279,7 @@ export function CleanLandingPage({ slug }: { slug: string }) {
   return (
     <div className="lp-root min-h-screen bg-[#f4faf3] text-slate-700 pb-24" style={{ ["--lp" as string]: themeColor }}>
       <FacebookPixel eager />
+      <style>{LANDING_CHECKOUT_GROUP_STYLE}</style>
       <LandingVisitTracker slug={slug} />
 
       {C.show_popup && (
@@ -510,7 +535,7 @@ export function CleanLandingPage({ slug }: { slug: string }) {
 
         {/* Package selector */}
         {packages.length > 1 && (
-          <Reveal>
+          <Reveal className="lp-product-selector">
             <SectionHead kicker={C.package_kicker} title={C.package_title} />
             <div className="space-y-2">
               {packages.map((p, i) => {
@@ -552,7 +577,7 @@ export function CleanLandingPage({ slug }: { slug: string }) {
         )}
 
         {/* Checkout */}
-        <section id="order" ref={orderSectionRef} className="scroll-mt-20">
+        <section id="order" ref={orderSectionRef} className="scroll-mt-20 lp-product-checkout-group">
           <SectionHead kicker={packages.length > 1 ? C.order_kicker : "অর্ডার"} title={C.order_title} />
           {C.order_note && (
             <p className="text-center text-[13px] font-medium text-emerald-800 bg-emerald-50 rounded-xl px-4 py-3 mb-3 leading-relaxed">

@@ -537,18 +537,11 @@ function LandingPagesAdmin() {
                       <Field label="রিভিউ — বড়"><input value={C.reviews_title} onChange={(e) => setC({ reviews_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field>
                       <Field label="প্যাকেজ — ছোট"><input value={C.package_kicker} onChange={(e) => setC({ package_kicker: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field>
                       <Field label="প্যাকেজ — বড়"><input value={C.package_title} onChange={(e) => setC({ package_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field>
-                      <Field label="অর্ডার — ছোট"><input value={C.order_kicker} onChange={(e) => setC({ order_kicker: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field>
-                      <Field label="অর্ডার — বড়"><input value={C.order_title} onChange={(e) => setC({ order_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field>
-                    </div>
+</div>
                   </div>
-
-                  {/* Order form */}
+                  {/* Checkout fields */}
                   <div className="pt-3 border-t space-y-3">
-                    <div className="font-semibold text-sm">অর্ডার ফর্ম</div>
-                    <Field label="ফর্মের উপরের নোট">
-                      <textarea rows={2} value={C.order_note} onChange={(e) => setC({ order_note: e.target.value })} className="w-full border rounded-lg px-3 py-2 text-sm" />
-                    </Field>
-                    <div className="grid grid-cols-2 gap-3">
+<div className="grid grid-cols-2 gap-3">
                       <Field label="নামের লেবেল"><input value={C.name_label} onChange={(e) => setC({ name_label: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field>
                       <Field label="ফোনের লেবেল"><input value={C.phone_label} onChange={(e) => setC({ phone_label: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field>
                       <Field label="ঠিকানার লেবেল"><input value={C.address_label} onChange={(e) => setC({ address_label: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field>
