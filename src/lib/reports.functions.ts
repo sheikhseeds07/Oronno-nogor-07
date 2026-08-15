@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
+import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
+
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
@@ -23,7 +25,8 @@ const RangeSchema = z.object({
 /** Status counts grouped by status, optionally restricted to a status set + date range. */
 export const getOrderStatusCounts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => RangeSchema.parse(input))
+  .validator(zodValidator(RangeSchema))
+
   .handler(async ({ data, context }) => {
     const db = context.supabase;
     await assertStaff(db, context.userId);
@@ -45,7 +48,8 @@ export const getOrderStatusCounts = createServerFn({ method: "POST" })
 /** Sales report — daily revenue + status breakdown for a date range. */
 export const getSalesReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => RangeSchema.parse(input))
+  .validator(zodValidator(RangeSchema))
+
   .handler(async ({ data, context }) => {
     const db = context.supabase;
     await assertStaff(db, context.userId);
@@ -89,7 +93,8 @@ export const getSalesReport = createServerFn({ method: "POST" })
 /** Employee report — per-employee order stats in a date range. */
 export const getEmployeeReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => RangeSchema.parse(input))
+  .validator(zodValidator(RangeSchema))
+
   .handler(async ({ data, context }) => {
     const db = context.supabase;
     await assertStaff(db, context.userId);
@@ -143,7 +148,8 @@ export const getEmployeeReport = createServerFn({ method: "POST" })
  */
 export const getFunnelReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => RangeSchema.parse(input))
+  .validator(zodValidator(RangeSchema))
+
   .handler(async ({ context, data }) => {
     await assertStaff(context.supabase, context.userId);
     const db = context.supabase;
