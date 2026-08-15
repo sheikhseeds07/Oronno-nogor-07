@@ -43,12 +43,12 @@ function AdminLayoutContent({ children, headerExtra }: { children: React.ReactNo
   const myProfileTo = !isAdmin && user?.id ? `/admin/employees_/${user.id}` : null;
   const logout = async () => { await supabase.auth.signOut(); navigate({ to: "/" }); };
 
-  return <div className="flex min-h-screen bg-muted">
+  return <AdminLanguageSurface><div className="flex min-h-screen bg-muted">
     <aside className={`fixed lg:sticky lg:top-0 top-0 left-0 h-screen bg-sidebar border-r z-50 transition-all duration-300 ease-in-out ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} ${collapsed ? "w-20" : "w-64"}`}>
-      <div className="p-4 border-b flex items-center gap-2 overflow-hidden"><img src={logo} className="w-9 h-9 rounded-full shrink-0" alt="" />{!collapsed && <div className="min-w-0 transition-opacity duration-200"><div className="font-extrabold text-sidebar-foreground truncate">অনন্য নগর</div><div className="text-[10px] text-muted-foreground truncate">{isAdmin ? t("অ্যাডমিন প্যানেল", "Admin Panel") : t("কর্মী প্যানেল", "Staff Panel")}</div></div>}<button onClick={() => setOpen(false)} className="lg:hidden ml-auto" aria-label={t("বন্ধ করুন", "Close")}><X className="w-5 h-5 text-sidebar-foreground" /></button></div>
+      <div className="p-4 border-b flex items-center gap-2 overflow-hidden"><img src={logo} className="w-9 h-9 rounded-full shrink-0" alt="" />{!collapsed && <div className="min-w-0 transition-opacity duration-200"><div className="font-extrabold text-sidebar-foreground truncate">{t("অনন্য নগর", "Oronno Nogor")}</div><div className="text-[10px] text-muted-foreground truncate">{isAdmin ? t("অ্যাডমিন প্যানেল", "Admin Panel") : t("কর্মী প্যানেল", "Staff Panel")}</div></div>}<button onClick={() => setOpen(false)} className="lg:hidden ml-auto" aria-label={t("বন্ধ করুন", "Close")}><X className="w-5 h-5 text-sidebar-foreground" /></button></div>
       <nav className="p-2 overflow-y-auto h-[calc(100vh-140px)] scrollbar-thin">
         {myProfileTo && user?.id && <Link to={"/admin/employees/$userId" as any} params={{ userId: user.id } as any} preload="intent" onClick={() => setOpen(false)} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm mb-0.5 transition-colors ${loc.pathname.startsWith(myProfileTo) ? "bg-brand text-white font-semibold" : "text-sidebar-foreground hover:bg-sidebar-accent"}`}><Clock className="w-4 h-4 shrink-0" />{!collapsed && <span>{t("হাজিরা", "Attendance")}</span>}</Link>}
-        {visibleNav.map((n) => { const active = n.exact ? loc.pathname === n.to : loc.pathname.startsWith(n.to); return <Link key={n.to} to={n.to} preload="intent" onClick={() => setOpen(false)} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm mb-0.5 transition-colors ${active ? "bg-brand text-white font-semibold" : "text-sidebar-foreground hover:bg-sidebar-accent"}`}><n.icon className="w-4 h-4 shrink-0" />{!collapsed && <span className="truncate">{language === "en" ? n.labelEn : n.label}</span>}</Link>; })}
+        {visibleNav.map((n) => { const active = n.exact ? loc.pathname === n.to : loc.pathname.startsWith(n.to); return <Link key={n.to} to={n.to} preload="intent" onClick={() => setOpen(false)} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm mb-0.5 transition-colors ${active ? "bg-brand text-white font-semibold" : "text-sidebar-foreground hover:bg-sidebar-accent"}`}><n.icon className="w-4 h-4 shrink-0" />{!collapsed && <span className="truncate">{language === "en" ? n.labelEn : n.label}</span></Link>; })}
       </nav>
       <div className="absolute bottom-0 left-0 right-0 p-3 border-t bg-sidebar overflow-hidden"><button onClick={logout} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-destructive hover:bg-destructive/10 transition-colors"><LogOut className="w-4 h-4 shrink-0" />{!collapsed && <span>{t("লগআউট", "Logout")}</span>}</button></div>
     </aside>
@@ -62,9 +62,9 @@ function AdminLayoutContent({ children, headerExtra }: { children: React.ReactNo
         <div className="ml-auto text-sm text-muted-foreground hidden sm:block truncate max-w-[200px]" data-admin-language-ignore="true">{user?.email ?? ""}</div>
         {headerExtra && <div className="w-full basis-full flex items-center gap-2 overflow-x-auto pt-2">{headerExtra}</div>}
       </header>
-      <div className="p-4 lg:p-6"><AdminLanguageSurface>{children}</AdminLanguageSurface></div>
+      <div className="p-4 lg:p-6">{children}</div>
     </div>
-  </div>;
+  </div></AdminLanguageSurface>;
 }
 
 export function AdminLayout({ children, headerExtra }: { children: React.ReactNode; headerExtra?: React.ReactNode }) {
