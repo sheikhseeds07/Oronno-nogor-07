@@ -1,5 +1,7 @@
 /* High-conversion landing-page checkout styling. Scoped to #order / #lp-order-form. */
 #order { scroll-margin-top: 84px; margin-top: -24px; }
+/* Remove the checkout step heading (e.g. "ধাপ ২ / ডেলিভারি তথ্য দিন") completely. */
+#order > .mb-4.text-center { display:none !important; }
 #order #lp-order-form { position:relative; border:1px solid rgba(21,128,61,.14); border-radius:22px; background:linear-gradient(180deg,#fff 0%,#fbfffc 100%); box-shadow:0 16px 45px -28px rgba(6,78,59,.42); }
 #order #lp-order-form label { color:#17351f; font-weight:700; }
 #order #lp-order-form input:not([type="checkbox"]), #order #lp-order-form textarea { width:100%; min-height:52px; border:1.5px solid #dbe7df; border-radius:13px; background:#f9fcfa; color:#17231b; font-size:15px; box-shadow:inset 0 1px 2px rgba(15,23,42,.025); transition:border-color 160ms ease,box-shadow 160ms ease,background 160ms ease,transform 160ms ease; }
