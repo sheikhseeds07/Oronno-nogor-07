@@ -21,12 +21,13 @@ export const getRouter = () => {
   // with a loader and collapsed the page height (jumping the admin back to top).
   // Mark active order lists stale without immediately refetching them. The
   // realtime cache synchronizer removes/moves changed rows in-place, while an
-  // internal tab/status remount gets a fresh copy from Supabase.
+  // internal tab/status remount keeps the existing cache instead of forcing a
+  // visible reload. A brand-new query still fetches normally when no cache exists.
   for (const key of ["admin-orders", "admin-orders-incomplete"] as const) {
     queryClient.setQueryDefaults([key], {
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
-      refetchOnMount: "always",
+      refetchOnMount: false,
     });
   }
 
