@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
@@ -56,7 +57,7 @@ async function doCheckOut(targetUserId: string) {
 
 export const checkInAttendance = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ user_id: z.string().uuid().optional() }).optional().parse(input))
+  .validator(zodValidator(z.object({ user_id: z.string().uuid().optional() }).optional()))
   .handler(async ({ data, context }) => {
     const targetId = data?.user_id ?? context.userId;
     if (targetId !== context.userId && !(await isAdminUser(context.userId))) {
@@ -67,7 +68,7 @@ export const checkInAttendance = createServerFn({ method: "POST" })
 
 export const checkOutAttendance = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ user_id: z.string().uuid().optional() }).optional().parse(input))
+  .validator(zodValidator(z.object({ user_id: z.string().uuid().optional() }).optional()))
   .handler(async ({ data, context }) => {
     const targetId = data?.user_id ?? context.userId;
     if (targetId !== context.userId && !(await isAdminUser(context.userId))) {
@@ -78,7 +79,7 @@ export const checkOutAttendance = createServerFn({ method: "POST" })
 
 export const getEmployeeProfile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ user_id: z.string().uuid().optional() }).parse(input))
+  .validator(zodValidator(z.object({ user_id: z.string().uuid().optional() })))
   .handler(async ({ data, context }) => {
     const targetId = data.user_id ?? context.userId;
     if (targetId !== context.userId && !(await isAdminUser(context.userId))) {
@@ -136,7 +137,7 @@ export const getEmployeeProfile = createServerFn({ method: "POST" })
 
 export const listAttendanceOverview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ days: z.number().min(1).max(90).default(30) }).optional().parse(input))
+  .validator(zodValidator(z.object({ days: z.number().min(1).max(90).default(30) }).optional()))
   .handler(async ({ data, context }) => {
     if (!(await isAdminUser(context.userId))) throw new Error("Unauthorized");
     const days = data?.days ?? 30;
