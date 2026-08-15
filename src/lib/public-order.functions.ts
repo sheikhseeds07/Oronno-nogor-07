@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
+import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
+
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 
 const InputSchema = z.object({ id: z.string().uuid() });
@@ -10,7 +12,8 @@ type Input = z.infer<typeof InputSchema>;
 // phone is masked to the last 3 digits, and only the city/area is returned
 // for address — not the full street address.
 export const getPublicOrder = createServerFn({ method: "GET" })
-  .inputValidator((input: Input) => InputSchema.parse(input))
+  .validator(zodValidator(InputSchema))
+
   .handler(async ({ data }) => {
     const { data: order } = await supabaseAdmin
       .from("orders")
