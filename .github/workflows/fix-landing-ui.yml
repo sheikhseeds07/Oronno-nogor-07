@@ -23,13 +23,8 @@ jobs:
           admin = Path('src/routes/admin/landing-pages.tsx')
           if admin.exists():
               s = admin.read_text(encoding='utf-8')
-
-              # Permanently remove the legacy Content-editor options.
               for label in ['অর্ডার — ছোট', 'অর্ডার — বড়']:
                   s = re.sub(r'\s*<Field label="' + re.escape(label) + r'">.*?</Field>\s*', '\n', s, count=1, flags=re.S)
-
-              # Remove the legacy Order form heading and its editable note field,
-              # while keeping all actual checkout/customer fields intact.
               s = re.sub(
                   r'\s*\{\/\* Order form \*\/\}\s*'
                   r'<div className="pt-3 border-t space-y-3">\s*'
@@ -39,8 +34,7 @@ jobs:
                   s, count=1, flags=re.S)
               admin.write_text(s, encoding='utf-8')
 
-          # Remove legacy visible labels from landing-page JSX without touching
-          # normal checkout inputs or order processing.
+          # Remove the two legacy visible labels only from landing-page JSX.
           for p in Path('src').rglob('*.tsx'):
               if 'landing' not in str(p).lower():
                   continue
@@ -49,30 +43,37 @@ jobs:
               s = re.sub(r'<([A-Za-z][A-Za-z0-9.]*)[^>]*>\s*ডেলিভারি তথ্য দিন\s*</\1>', '', s)
               p.write_text(s, encoding='utf-8')
 
-          # Make the product-selection and checkout area visually one continuous
-          # bordered card on the clean landing page. This preserves all behavior.
           clean = Path('src/components/landing/CleanLandingPage.tsx')
           if clean.exists():
               s = clean.read_text(encoding='utf-8')
-              marker = '        {/* Checkout */}\n        <section id="order" ref={orderSectionRef} className="scroll-mt-20">'
-              if marker in s and 'lp-product-checkout-group' not in s:
-                  s = s.replace(marker, '        {/* Checkout */}\n        <section id="order" ref={orderSectionRef} className="scroll-mt-20 lp-product-checkout-group">', 1)
 
-              # Add the shared card class to the package selector's Reveal wrapper.
-              s = s.replace('          <Reveal>\n            <SectionHead kicker={C.package_kicker} title={C.package_title} />', '          <Reveal className="lp-product-selector">\n            <SectionHead kicker={C.package_kicker} title={C.package_title} />', 1)
+              # Give the package list a stable hook. Do not pass props to Reveal.
+              s = s.replace(
+                  '<SectionHead kicker={C.package_kicker} title={C.package_title} />\n            <div className="space-y-2">',
+                  '<SectionHead kicker={C.package_kicker} title={C.package_title} />\n            <div className="space-y-2 lp-product-selector-list">',
+                  1,
+              )
 
-              # Shared border styling: selector + checkout visually touch as one card.
-              if 'lp-product-checkout-group' in s and 'lp-product-checkout-group{' not in s:
-                  style = '''\n\nconst LANDING_CHECKOUT_GROUP_STYLE = `\n.lp-product-checkout-group {\n  border: 1px solid rgb(226 232 240);\n  border-radius: 16px;\n  background: white;\n  overflow: hidden;\n}\n.lp-product-checkout-group .lp-product-selector {\n  padding: 16px;\n  margin: 0;\n  border-bottom: 1px solid rgb(226 232 240);\n}\n.lp-product-checkout-group > section {\n  padding: 16px;\n  margin: 0;\n}\n.lp-product-checkout-group .lp-product-selector > div,\n.lp-product-checkout-group > section > div {\n  margin-bottom: 0;\n}\n`;\n\n'''
+              # Hook the checkout section without changing checkout behavior.
+              s = s.replace(
+                  '<section id="order" ref={orderSectionRef} className="scroll-mt-20">',
+                  '<section id="order" ref={orderSectionRef} className="scroll-mt-20 lp-product-checkout-group">',
+                  1,
+              )
+
+              style = '''\nconst LANDING_CHECKOUT_GROUP_STYLE = `\n/* Product selection + checkout = one continuous bordered card */\n.lp-product-checkout-group {\n  border: 1px solid rgb(226 232 240);\n  border-top: 0;\n  border-radius: 0 0 16px 16px;\n  background: white;\n  padding: 16px;\n  margin-top: -24px;\n}\n.lp-root .container.max-w-2xl.space-y-6 > *:has(.lp-product-selector-list) {\n  border: 1px solid rgb(226 232 240);\n  border-bottom: 0;\n  border-radius: 16px 16px 0 0;\n  background: white;\n  padding: 16px;\n  margin-bottom: 0;\n}\n.lp-product-checkout-group > div {\n  margin-bottom: 0;\n}\n`;\n\n'''
+              if 'const LANDING_CHECKOUT_GROUP_STYLE' not in s:
                   anchor = 'const DEFAULT_ICONS = [Sprout, Leaf, ShieldCheck, Award, Wallet, Truck, Headphones, BarChart3];\n'
-                  if anchor in s:
-                      s = s.replace(anchor, anchor + style, 1)
+                  s = s.replace(anchor, anchor + style, 1)
 
-              # Inject the style once at runtime without requiring another CSS file.
               inject = '      <style>{LANDING_CHECKOUT_GROUP_STYLE}</style>\n'
               if inject not in s:
                   s = s.replace('      <FacebookPixel eager />\n', '      <FacebookPixel eager />\n' + inject, 1)
+
               clean.write_text(s, encoding='utf-8')
+
+          # This is a one-shot migration; remove the helper workflow after it runs.
+          Path('.github/workflows/fix-landing-ui.yml').unlink(missing_ok=True)
 
       - name: Commit changes
         shell: bash
