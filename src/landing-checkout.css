@@ -1,6 +1,6 @@
 /* High-conversion landing-page checkout styling. Scoped to #order / #lp-order-form. */
 #order { scroll-margin-top: 84px; margin-top: -24px; }
-/* Remove the checkout step heading (e.g. "ধাপ ২ / ডেলিভারি তথ্য দিন") completely. */
+/* Remove the checkout step heading completely. */
 #order > .mb-4.text-center { display:none !important; }
 #order #lp-order-form { position:relative; border:1px solid rgba(21,128,61,.14); border-radius:22px; background:linear-gradient(180deg,#fff 0%,#fbfffc 100%); box-shadow:0 16px 45px -28px rgba(6,78,59,.42); }
 #order #lp-order-form label { color:#17351f; font-weight:700; }
@@ -10,7 +10,7 @@
 #order #lp-order-form input::placeholder, #order #lp-order-form textarea::placeholder { color:#9aa9a0; }
 #order #lp-order-form .divide-y { border-color:#dfeae2; border-radius:16px; background:#fff; box-shadow:0 8px 24px -20px rgba(6,78,59,.45); }
 #order #lp-order-form .divide-y > div:last-child { background:linear-gradient(90deg,#ecfdf3,#f5fff8); border-top:1px solid #d8efdf; }
-/* Compact product selector and bring it slightly closer to the reassurance text. */
+/* Compact product selector. */
 #order #lp-order-form > .border-2.rounded-2xl.p-3 { padding:.55rem; margin-top:-12px; margin-bottom:-6px; }
 #order #lp-order-form > .border-2.rounded-2xl.p-3 .space-y-2 { gap:.3rem; }
 #order #lp-order-form > .border-2.rounded-2xl.p-3 .space-y-2 > button { padding:.45rem; }
@@ -19,10 +19,9 @@
 #order #lp-order-form button[type="button"]:active { transform:scale(.99); }
 #order #lp-order-form .border-2.rounded-2xl { border-color:rgba(21,128,61,.16); box-shadow:0 7px 22px -20px rgba(6,78,59,.55); }
 
-/* Keep the reassurance text separate while moving the product selector slightly upward. */
-#order .lp-checkout-reassurance { margin-top:16px !important; margin-bottom:8px !important; }
-#order .lp-checkout-reassurance + .border-2.rounded-2xl,
-#order .lp-checkout-reassurance + .rounded-2xl { margin-top:6px !important; }
+/* Remove the reassurance sentence from the landing-page checkout. */
+#order #lp-order-form > p:last-child { display:none !important; }
+#order .lp-checkout-reassurance { display:none !important; }
 
 /* Premium customer review carousel: exactly one review visible at a time. */
 .container.mx-auto.px-4.max-w-2xl.py-6 { padding-top:.65rem; padding-bottom:.65rem; }
@@ -41,7 +40,6 @@
   #order #lp-order-form input:not([type="checkbox"]), #order #lp-order-form textarea { min-height:54px; font-size:16px; }
   #order #lp-order-form textarea { min-height:96px; }
   #order #lp-order-form > .border-2.rounded-2xl.p-3 { padding:.5rem; margin-top:-14px; margin-bottom:-8px; }
-  #order .lp-checkout-reassurance { margin-top:14px !important; margin-bottom:8px !important; }
   .container.mx-auto.px-4.max-w-2xl.py-6 { padding-top:.45rem; padding-bottom:.45rem; }
   .container.mx-auto.px-4.max-w-2xl.py-6 > .relative.overflow-hidden.rounded-2xl > .flex > div { padding:.6rem .75rem; }
   .container.mx-auto.px-4.max-w-2xl.py-6 .grid.sm\:grid-cols-2.gap-3 { min-height:150px; }
