@@ -17,6 +17,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.15
+
       - name: Restore last known-good Product Style component
         run: |
           git checkout 5af0f35dc5a3c9918d828a1946ae6c48fe659ad1 -- src/components/landing/ProductStyleLandingPage.tsx
