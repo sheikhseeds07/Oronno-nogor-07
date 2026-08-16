@@ -1,0 +1,1 @@
+Next integration step: add `sheikh-seeds-reference` to the existing landing-page template registry and render this component only when that template is selected. Existing templates must retain their current rendering paths unchanged.
