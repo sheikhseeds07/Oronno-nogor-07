@@ -12,7 +12,6 @@ const isWebPending = (status: unknown) => String(status) === "web_pending";
 
 // Web Order Report is intentionally mutually exclusive:
 // every Web Order is exactly one of Processing, Approved or Cancelled.
-// This guarantees Processing + Approved + Cancelled === Total Web Orders.
 const getWebBucket = (status: unknown): "processing" | "approved" | "cancelled" => {
   if (isCancelled(status)) return "cancelled";
   if (isApproved(status)) return "approved";
@@ -51,9 +50,6 @@ export const getPremiumDashboardReport = createServerFn({ method: "POST" })
     const webOrders = orders.filter((o) => String(o.source) === "web");
     const convertedOrders = webOrders.filter((o) => Boolean(o.originated_from_incomplete));
 
-    // IMPORTANT: these are mutually exclusive buckets. A newly placed Web
-    // Order enters Processing. Approving it moves it to Approved. Cancelling
-    // it moves it to Cancelled. The order never counts in two buckets.
     const webProcessing = webOrders.filter((o) => getWebBucket(o.status) === "processing").length;
     const webApproved = webOrders.filter((o) => getWebBucket(o.status) === "approved").length;
     const webCancelled = webOrders.filter((o) => getWebBucket(o.status) === "cancelled").length;
@@ -67,8 +63,6 @@ export const getPremiumDashboardReport = createServerFn({ method: "POST" })
     const convertedCancelled = convertedOrders.filter((o) => getWebBucket(o.status) === "cancelled").length;
     const convertedPending = convertedOrders.filter((o) => getWebBucket(o.status) === "processing").length;
 
-    // Active Incomplete is independent from Web Orders. A phone that has
-    // successfully placed an order is no longer an active incomplete lead.
     const latestByPhone = new Map<string, { event: string; created_at: string }>();
     for (const event of incompleteEvents) {
       const phone = String(event.phone || "").trim();
@@ -88,9 +82,22 @@ export const getPremiumDashboardReport = createServerFn({ method: "POST" })
       openLeads: openIncompleteLeads,
     };
 
+    // Source attribution is deliberately different from the raw `orders.source`:
+    // an order manually promoted from Incomplete may have source=web so that it
+    // can enter the Web Pending workflow, but it must remain INCOMPLETE in the
+    // dashboard's source report. Direct customer checkout orders are WEB.
+    // Manual/admin orders are MANUAL. This prevents converted incomplete orders
+    // from inflating the direct WEB count.
     const sourceMap = new Map<string, { source: string; count: number; revenue: number }>();
     for (const order of orders) {
-      const source = String(order.source || "unknown");
+      let source = String(order.source || "unknown").toLowerCase();
+      if (Boolean(order.originated_from_incomplete)) {
+        source = "incomplete";
+      } else if (source === "web") {
+        source = "web";
+      } else if (["manual", "direct"].includes(source)) {
+        source = "manual";
+      }
       const row = sourceMap.get(source) ?? { source, count: 0, revenue: 0 };
       row.count += 1;
       row.revenue += Number(order.total) || 0;
@@ -168,17 +175,7 @@ export const getPremiumDashboardReport = createServerFn({ method: "POST" })
     const stockSummary = { total: products.length, low: products.filter((p) => (p.stock ?? 0) > 0 && (p.stock ?? 0) <= 5).length, out: products.filter((p) => (p.stock ?? 0) <= 0).length };
 
     return {
-      // Keep `created` as the total so existing UI remains compatible.
-      // The three status counters always add up exactly to this value.
-      real: {
-        created: webTotal,
-        total: webTotal,
-        processing: webProcessing,
-        approved: webApproved,
-        cancelled: webCancelled,
-        pending: webProcessing,
-        revenue: webRevenue,
-      },
+      real: { created: webTotal, total: webTotal, processing: webProcessing, approved: webApproved, cancelled: webCancelled, pending: webProcessing, revenue: webRevenue },
       incomplete: { ...incompleteFunnel, converted: incompleteConverted, convertedApproved, convertedCancelled },
       sourceBreakdown: Array.from(sourceMap.values()).sort((a, b) => b.count - a.count),
       statusBreakdown: Array.from(statusBreakdown.entries()).map(([status, count]) => ({ status, count })).sort((a, b) => b.count - a.count),
