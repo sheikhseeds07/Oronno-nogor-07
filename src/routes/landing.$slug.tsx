@@ -6,7 +6,6 @@ import { LegacyLandingPage } from "@/components/landing/LegacyLandingPage";
 import { CleanLandingPage } from "@/components/landing/CleanLandingPage";
 import { ProfessionalLandingPage } from "@/components/landing/ProfessionalLandingPage";
 import { ProductStyleLandingPage } from "@/components/landing/ProductStyleLandingPage";
-import { BrandLoader } from "@/components/layout/BrandLoader";
 import { mergeContent } from "@/lib/landing-content";
 
 const LEGACY_SLUGS = new Set(["seeds-combo-24"]);
@@ -73,10 +72,10 @@ function LandingPage() {
   const hideReviews = slug === "seedcombo";
   if (isLegacySlug) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} /><LegacyLandingPage slug={slug} /></>;
   const template = mergeContent(data?.planting_steps).template as string;
-  if (template === "product") return <ProductStyleLandingPage slug={slug} />;
+  if (template === "product") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} /><ProductStyleLandingPage slug={slug} /></>;
   if (template === "premium") return <ProfessionalLandingPage slug={slug} variant="premium" />;
   if (template === "modern") return <ProfessionalLandingPage slug={slug} variant="modern" />;
-  if (isLoading && !data) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} /><CleanLandingPage slug={slug} /></>;
+  if (isLoading && !data) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} /><ProductStyleLandingPage slug={slug} /></>;
   if (template === "all") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} /><LegacyLandingPage slug={slug} /></>;
   return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} /><CleanLandingPage slug={slug} /></>;
 }
