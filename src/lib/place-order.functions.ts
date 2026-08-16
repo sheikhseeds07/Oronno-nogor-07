@@ -41,6 +41,10 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   const subtotal = safeItems.reduce((s, i) => s + i.price * i.quantity, 0);
   const total = subtotal + data.delivery_fee;
 
+  // A customer who successfully places the checkout order is ALWAYS a Web Order.
+  // `originated_from_incomplete` is reserved for orders manually promoted by staff
+  // from the Incomplete queue. It must never be set merely because a customer had
+  // an abandoned checkout draft before completing the order.
   const orderRes = await supabaseAdmin.from("orders").insert({ customer_name: data.customer_name, customer_phone: customerPhone, customer_address: data.customer_address, district: data.district ?? null, thana: data.thana ?? null, notes: data.notes ?? null, subtotal, delivery_fee: data.delivery_fee, total, payment_method: "COD", source: "web", status: "web_pending", created_by: data.created_by ?? null, originated_from_incomplete: false }).select("id").single();
   if (orderRes.error || !orderRes.data) throw new Error(orderRes.error?.message ?? "Order create failed");
   const order = orderRes.data;
@@ -49,23 +53,23 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   const itemsRes = await supabaseAdmin.from("order_items").insert(rows);
   if (itemsRes.error) { await supabaseAdmin.from("orders").delete().eq("id", order.id); throw new Error(itemsRes.error.message); }
 
-  // A customer becomes Incomplete only after a valid phone is entered before
-  // placing the order. Once the order is successfully placed, remove that
-  // draft and mark this Web Order as converted_from_incomplete when applicable.
-  let converted = false;
+  // Remove only abandoned checkout drafts for this phone. Do NOT let a draft
+  // survive and make the same successfully placed customer order appear in the
+  // Incomplete queue as well. Staff-promoted incomplete records are protected by
+  // their status='web_pending'.
   try {
-    if (data.checkout_session_id) {
-      const { data: deleted, error } = await supabaseAdmin.from("incomplete_orders").delete().eq("checkout_session_id", data.checkout_session_id).select("id");
-      if (error) throw error; converted = (deleted ?? []).length > 0;
-    } else {
-      const { data: latest, error: findError } = await supabaseAdmin.from("incomplete_orders").select("id").eq("phone", customerPhone).order("updated_at", { ascending: false }).limit(1).maybeSingle();
-      if (findError) throw findError;
-      if (latest) { const { error: deleteError } = await supabaseAdmin.from("incomplete_orders").delete().eq("id", latest.id); if (deleteError) throw deleteError; converted = true; }
+    const { data: deleted, error } = await supabaseAdmin
+      .from("incomplete_orders")
+      .delete()
+      .eq("phone", customerPhone)
+      .eq("status", "incomplete")
+      .select("id");
+    if (error) throw error;
+    if ((deleted ?? []).length > 0) {
+      await supabaseAdmin.from("incomplete_events").insert({ phone: customerPhone, event: "converted" });
     }
-  } catch (e) { console.error("[placeOrder] incomplete draft cleanup failed:", e); }
-  if (converted) {
-    await supabaseAdmin.from("orders").update({ originated_from_incomplete: true }).eq("id", order.id);
-    await supabaseAdmin.from("incomplete_events").insert({ phone: customerPhone, event: "converted" });
+  } catch (e) {
+    console.error("[placeOrder] incomplete draft cleanup failed:", e);
   }
 
   try {
