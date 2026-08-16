@@ -1,0 +1,1 @@
+No existing landing page source files are modified by this isolated template branch.
