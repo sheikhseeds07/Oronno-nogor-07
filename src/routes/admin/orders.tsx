@@ -1575,7 +1575,7 @@ function RelativeUpdatedTime({ value }: { value?: string | null }) {
 function OrdersTableRows({
   orders, loading, mode, onOpen, empty,
   selectedIds, onToggleOne, onToggleAll, allChecked,
-  lockMap, currentUserId,
+  lockMap, currentUserId, creatorMap,
 }: {
   orders: OrderRow[]; loading?: boolean; mode?: "web" | "list";
   onOpen: (id: string) => void;
