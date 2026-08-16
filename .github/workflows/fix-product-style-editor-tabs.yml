@@ -16,17 +16,16 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Update Product Style editor tabs
+      - name: Repair Product Style editor tab block
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re
           p = Path('src/routes/admin/landing-pages.tsx')
           s = p.read_text()
-          pattern = r'''(\[\"main\", \"Main\"\],\s*\[\"page\", \"Full page\"\],\s*)(\.\.\.\(C\.template === \"all\" \? \[\] : \[\[\"content\", \"কনটেন্ট\"\] as const\]\),\s*)(\[\"products\", \"Products\"\],)'''
-          replacement = r'''\1...(C.template === \"all\" || C.template === \"product\" ? [] : [[\"content\", \"কনটেন্ট\"] as const]),
-                [\"products\", C.template === \"product\" ? \"Product\" : \"Products\"],'''
-          updated, count = re.subn(pattern, replacement, s, count=1)
+          pattern = r'\{\(\[\s*\["main", "Main"\],\s*\["page", "Full page"\],.*?\]\s*as const\)\.map\(\(\[k, l\]\) => \('
+          replacement = '''{([\n                ["main", "Main"],\n                ["page", "Full page"],\n                ...(C.template === "all" || C.template === "product" ? [] : [["content", "কনটেন্ট"] as const]),\n                ["products", C.template === "product" ? "Product" : "Products"],\n              ] as const).map(([k, l]) => ('''
+          updated, count = re.subn(pattern, replacement, s, count=1, flags=re.S)
           if count != 1:
               raise SystemExit('Product Style editor tab block not found; refusing to modify the file.')
           p.write_text(updated)
@@ -37,5 +36,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/routes/admin/landing-pages.tsx
-          git commit -m "Hide content tab for Product Style landing pages"
+          if git diff --cached --quiet; then
+            echo "No source changes needed"
+            exit 0
+          fi
+          git commit -m "Fix Product Style editor tab source"
           git push
