@@ -1,0 +1,39 @@
+name: Fix Product Style editor tabs
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Update Product Style editor tabs
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/routes/admin/landing-pages.tsx')
+          s = p.read_text()
+          old = '''                ...(C.template === "all" ? [] : [["content", "কনটেন্ট"] as const]),
+                ["products", "Products"],'''
+          new = '''                ...(C.template === "all" || C.template === "product" ? [] : [["content", "কনটেন্ট"] as const]),
+                ["products", C.template === "product" ? "Product" : "Products"],'''
+          if old not in s:
+              raise SystemExit('Target tab navigation block not found; refusing to modify the file.')
+          p.write_text(s.replace(old, new, 1))
+          PY
+
+      - name: Commit change
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routes/admin/landing-pages.tsx
+          git diff --cached --quiet && { echo "No changes needed"; exit 0; }
+          git commit -m "Hide content tab for Product Style landing pages"
+          git push
