@@ -1,0 +1,45 @@
+name: Fix Product Style landing page loading flash
+on:
+  push:
+    paths:
+      - .github/workflows/fix-product-style-loading-flash.yml
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.15
+      - run: bun install --frozen-lockfile
+      - name: Build baseline
+        run: bun run build
+      - name: Remove visible loading/error flash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/components/landing/ProductStyleLandingPage.tsx')
+          s=p.read_text()
+          old='if (isLoading) return <div className="min-h-screen grid place-items-center bg-[#fafcf9]"><div className="animate-pulse font-bold">লোড হচ্ছে...</div></div>;'
+          new='if (isLoading) return <div className="min-h-screen bg-[#f7f9f6]" aria-hidden="true" />;'
+          if old not in s:
+              raise SystemExit('Expected Product Style loading fallback not found; refusing unsafe edit')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+      - name: Build after fix
+        run: bun run build
+      - name: Commit source only after successful build
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/components/landing/ProductStyleLandingPage.tsx
+          git commit -m 'Remove Product Style loading flash' || exit 0
+          git push origin main
+      - name: Remove temporary workflow
+        run: |
+          git rm .github/workflows/fix-product-style-loading-flash.yml
+          git commit -m 'Remove temporary loading flash workflow'
+          git push origin main
