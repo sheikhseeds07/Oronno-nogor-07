@@ -139,7 +139,12 @@ export const getEmployeeReport = createServerFn({ method: "POST" })
 
 /**
  * Daily funnel for incomplete carts and web orders.
- * Returns per-day rows: { date, totalIncomplete, cancelled, converted, totalWeb, webCancelled, webProcessed }
+ * A customer placing a fresh order is immediately a Web Order in Processing,
+ * even while its status is `web_pending`. It must therefore be counted in
+ * webProcessed from the moment it enters Web Pending. Employee confirmation
+ * moves it to the normal order-list pipeline; cancellation is counted as
+ * Web Cancelled. Incomplete carts remain separate until an admin explicitly
+ * converts one to a Pending order.
  */
 export const getFunnelReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -177,7 +182,19 @@ export const getFunnelReport = createServerFn({ method: "POST" })
       else if (e.event === "converted") r.converted += 1;
     }
 
-    const processedStatuses = new Set(["rts", "shipped", "delivered", "pending_return", "returned", "partial"]);
+    // `web_pending` is the Processing state for a newly placed Web Order.
+    // Keep it in webProcessed so the dashboard's Web Order → Processing
+    // metric increments immediately, before an employee opens the order.
+    const processingWebStatuses = new Set([
+      "web_pending",
+      "rts",
+      "shipped",
+      "delivered",
+      "pending_return",
+      "returned",
+      "partial",
+    ]);
+
     for (const o of webRes.data ?? []) {
       const createdDay = dayKey(o.created_at as string);
       const createdInRange = (o.created_at as string) >= from && (o.created_at as string) <= to;
@@ -185,8 +202,11 @@ export const getFunnelReport = createServerFn({ method: "POST" })
 
       const updDay = dayKey((o.updated_at as string) ?? createdDay);
       const updInRange = (o.updated_at as string) >= from && (o.updated_at as string) <= to;
-      if (o.status === "cancelled" && updInRange) ensure(updDay).webCancelled += 1;
-      else if (processedStatuses.has(o.status as string) && updInRange) ensure(updDay).webProcessed += 1;
+      if (o.status === "cancelled" && updInRange) {
+        ensure(updDay).webCancelled += 1;
+      } else if (processingWebStatuses.has(o.status as string) && updInRange) {
+        ensure(updDay).webProcessed += 1;
+      }
     }
 
     return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
