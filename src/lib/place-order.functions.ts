@@ -41,9 +41,10 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   const subtotal = safeItems.reduce((s, i) => s + i.price * i.quantity, 0);
   const total = subtotal + data.delivery_fee;
 
-  // Every successful customer checkout is a DIRECT WEB ORDER.
-  // Only staff-promoted incomplete orders may set originated_from_incomplete=true.
-  const orderRes = await supabaseAdmin.from("orders").insert({ customer_name: data.customer_name, customer_phone: customerPhone, customer_address: data.customer_address, district: data.district ?? null, thana: data.thana ?? null, notes: data.notes ?? null, subtotal, delivery_fee: data.delivery_fee, total, payment_method: "COD", source: "web", status: "web_pending", created_by: data.created_by ?? null, originated_from_incomplete: false }).select("id").single();
+  // Customer checkout is ALWAYS a direct Web Order. Employee/admin-created
+  // orders use createManualOrder instead, so a browser session user must not
+  // change the order's origin classification.
+  const orderRes = await supabaseAdmin.from("orders").insert({ customer_name: data.customer_name, customer_phone: customerPhone, customer_address: data.customer_address, district: data.district ?? null, thana: data.thana ?? null, notes: data.notes ?? null, subtotal, delivery_fee: data.delivery_fee, total, payment_method: "COD", source: "web", status: "web_pending", created_by: null, originated_from_incomplete: false }).select("id").single();
   if (orderRes.error || !orderRes.data) throw new Error(orderRes.error?.message ?? "Order create failed");
   const order = orderRes.data;
   const validIds = new Set((dbProducts ?? []).map((r) => r.id));
@@ -51,34 +52,18 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   const itemsRes = await supabaseAdmin.from("order_items").insert(rows);
   if (itemsRes.error) { await supabaseAdmin.from("orders").delete().eq("id", order.id); throw new Error(itemsRes.error.message); }
 
-  // Remove the exact checkout draft first, then any legacy phone-only draft.
-  // This prevents a successfully placed Web Order from remaining in Incomplete,
-  // including when the checkout was created with a session id.
   try {
     let removed = 0;
     if (data.checkout_session_id) {
-      const { data: deletedBySession, error: sessionDeleteError } = await supabaseAdmin
-        .from("incomplete_orders")
-        .delete()
-        .eq("checkout_session_id", data.checkout_session_id)
-        .select("id");
+      const { data: deletedBySession, error: sessionDeleteError } = await supabaseAdmin.from("incomplete_orders").delete().eq("checkout_session_id", data.checkout_session_id).select("id");
       if (sessionDeleteError) throw sessionDeleteError;
       removed += (deletedBySession ?? []).length;
     }
-
-    const { data: deletedByPhone, error: phoneDeleteError } = await supabaseAdmin
-      .from("incomplete_orders")
-      .delete()
-      .eq("phone", customerPhone)
-      .select("id");
+    const { data: deletedByPhone, error: phoneDeleteError } = await supabaseAdmin.from("incomplete_orders").delete().eq("phone", customerPhone).select("id");
     if (phoneDeleteError) throw phoneDeleteError;
     removed += (deletedByPhone ?? []).length;
-
-    if (removed > 0) {
-      await supabaseAdmin.from("incomplete_events").insert({ phone: customerPhone, event: "converted" });
-    }
+    if (removed > 0) await supabaseAdmin.from("incomplete_events").insert({ phone: customerPhone, event: "converted" });
   } catch (e) {
-    // Do not fail a real Web Order because cleanup telemetry failed.
     console.error("[placeOrder] incomplete draft cleanup failed:", e);
   }
 
