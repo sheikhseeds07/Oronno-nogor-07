@@ -1,0 +1,1 @@
+Use the SheikhSeedsReferenceTemplate with product data from the landing-page editor. It is an additive template and must not replace or alter any existing landing-page template.
