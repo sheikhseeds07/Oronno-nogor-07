@@ -1,0 +1,1 @@
+Safe integration rule: only the new `sheikh-seeds-reference` branch/template is additive. No edits to existing Combo, Premium Product, Modern Sales, or other landing-page templates are permitted as part of this request.
