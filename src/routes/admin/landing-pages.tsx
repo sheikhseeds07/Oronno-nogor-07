@@ -220,8 +220,8 @@ function LandingPagesAdmin() {
               {([
                 ["main", "Main"],
                 ["page", "Full page"],
-                ...(C.template === \"all\" || C.template === \"product\" ? [] : [[\"content\", \"কনটেন্ট\"] as const]),
-      [\"products\", C.template === \"product\" ? \"Product\" : \"Products\"],
+                ...(C.template === "all" || C.template === "product" ? [] : [["content", "কনটেন্ট"] as const]),
+                ["products", C.template === "product" ? "Product" : "Products"],
               ] as const).map(([k, l]) => (
                 <button key={k} onClick={() => setTab(k as typeof tab)}
                   className={`px-4 py-2 rounded-t-lg font-semibold ${tab === k ? "bg-brand text-white" : "hover:bg-muted"}`}>
