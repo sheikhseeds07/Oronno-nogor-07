@@ -1,0 +1,1 @@
+Reference template boundary: this file is intentionally additive. Existing landing-page components and templates must remain untouched.
