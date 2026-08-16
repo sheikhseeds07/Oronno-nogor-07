@@ -4,7 +4,7 @@ import { useState } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { supabase } from "@/lib/personal-supabase/client";
 import { toast } from "sonner";
-import { Plus, Trash2, ExternalLink, Edit, X, PackagePlus } from "lucide-react";
+import { Plus, Trash2, ExternalLink, Edit, X, PackagePlus, Copy } from "lucide-react";
 import { uploadToBucket, safeFileName } from "@/lib/storage-upload";
 import {
   mergeContent,
@@ -136,6 +136,31 @@ function LandingPagesAdmin() {
     qc.invalidateQueries({ queryKey: ["admin-landing"] });
   };
 
+  const duplicateLandingPage = async (row: LP) => {
+    if (!row.id) return toast.error("ল্যান্ডিং পেজের ID পাওয়া যায়নি");
+    const suffix = Date.now().toString(36);
+    const source = { ...row } as Record<string, unknown>;
+    delete source.id;
+    delete source.created_at;
+    delete source.updated_at;
+    const baseSlug = (row.slug || "landing-page").replace(/-copy(?:-[a-z0-9]+)?$/i, "");
+    const payload = {
+      ...source,
+      title: `${row.title || "Landing page"} (কপি)`,
+      slug: `${baseSlug}-copy-${suffix}`,
+      is_published: false,
+    };
+    const { data: created, error } = await supabase
+      .from("landing_pages")
+      .insert(payload)
+      .select("*")
+      .single();
+    if (error) return toast.error(`ডুপ্লিকেট তৈরি হয়নি: ${error.message}`);
+    toast.success("ল্যান্ডিং পেজ ডুপ্লিকেট হয়েছে — এখন এডিট করুন");
+    qc.invalidateQueries({ queryKey: ["admin-landing"] });
+    if (created) openEdit(created);
+  };
+
   const uploadImage = async (file: File): Promise<string | null> => {
     try {
       return await uploadToBucket("site-assets", `landing-${safeFileName(file.name)}`, file);
@@ -197,6 +222,9 @@ function LandingPagesAdmin() {
                 </Link>
                 <button onClick={() => openEdit(p)} className="flex-1 p-1.5 hover:bg-muted rounded text-xs">
                   <Edit className="w-3.5 h-3.5 inline" /> এডিট
+                </button>
+                <button onClick={() => duplicateLandingPage(p)} className="flex-1 p-1.5 hover:bg-green-50 text-green-700 rounded text-xs" title="ডুপ্লিকেট">
+                  <Copy className="w-3.5 h-3.5 inline" /> ডুপ্লিকেট
                 </button>
                 <button onClick={() => remove(p.id)} className="p-1.5 hover:bg-destructive/10 text-destructive rounded">
                   <Trash2 className="w-3.5 h-3.5" />
