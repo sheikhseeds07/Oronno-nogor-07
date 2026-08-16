@@ -25,6 +25,33 @@ const NAV: NavItem[] = [
   { to: "/admin/settings", label: "সেটিংস", icon: Settings, perm: "settings", tone: "from-slate-300 to-slate-500" },
 ];
 
+const orderUiCss = `
+[data-admin-route="/admin/orders"] .order-extra-shell { margin-top: 2px; }
+[data-admin-route="/admin/orders"] .order-extra-shell > div { background: linear-gradient(135deg,#f8fafc 0%,#eef6f4 48%,#f7f4ff 100%) !important; border: 1px solid rgba(148,163,184,.28) !important; border-radius: 16px !important; padding: 4px !important; box-shadow: 0 8px 24px rgba(15,23,42,.07), inset 0 1px 0 rgba(255,255,255,.9) !important; }
+[data-admin-route="/admin/orders"] .order-extra-shell button { min-height: 38px; border-radius: 11px !important; transition: transform .25s cubic-bezier(.22,1,.36,1), box-shadow .25s ease, background .25s ease !important; }
+[data-admin-route="/admin/orders"] .order-extra-shell button:hover { transform: translateY(-1px); box-shadow: 0 5px 14px rgba(15,23,42,.10); }
+[data-admin-route="/admin/orders"] .order-extra-shell button:active { transform: scale(.97); }
+[data-admin-route="/admin/orders"] > div:last-child { background: linear-gradient(180deg,#f8fafc 0%,#f3f7f6 55%,#f7f7fb 100%); }
+[data-admin-route="/admin/orders"] input, [data-admin-route="/admin/orders"] select { border-color: rgba(148,163,184,.30) !important; border-radius: 12px !important; box-shadow: 0 2px 8px rgba(15,23,42,.035); transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
+[data-admin-route="/admin/orders"] input:focus, [data-admin-route="/admin/orders"] select:focus { border-color: rgba(16,185,129,.55) !important; box-shadow: 0 0 0 4px rgba(16,185,129,.10), 0 5px 16px rgba(15,23,42,.05) !important; }
+[data-admin-route="/admin/orders"] table { border-collapse: separate !important; border-spacing: 0 7px !important; }
+[data-admin-route="/admin/orders"] thead tr { background: linear-gradient(135deg,#0f766e,#115e59) !important; color: white !important; }
+[data-admin-route="/admin/orders"] thead th { color: white !important; border: 0 !important; padding-top: 10px !important; padding-bottom: 10px !important; font-size: 11px !important; letter-spacing: .01em; }
+[data-admin-route="/admin/orders"] tbody tr { background: rgba(255,255,255,.96) !important; box-shadow: 0 3px 14px rgba(15,23,42,.055); transition: transform .22s ease, box-shadow .22s ease; }
+[data-admin-route="/admin/orders"] tbody tr:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(15,23,42,.09); }
+[data-admin-route="/admin/orders"] tbody td { border-top: 1px solid rgba(226,232,240,.72) !important; border-bottom: 1px solid rgba(226,232,240,.72) !important; background: transparent !important; }
+[data-admin-route="/admin/orders"] tbody td:first-child { border-left: 1px solid rgba(226,232,240,.72) !important; border-radius: 12px 0 0 12px; }
+[data-admin-route="/admin/orders"] tbody td:last-child { border-right: 1px solid rgba(226,232,240,.72) !important; border-radius: 0 12px 12px 0; }
+[data-admin-route="/admin/orders"] .rounded-full { transition: transform .2s ease; }
+[data-admin-route="/admin/orders"] .rounded-full:hover { transform: scale(1.04); }
+@media (max-width: 640px) {
+  [data-admin-route="/admin/orders"] .order-extra-shell { margin-left: -2px; margin-right: -2px; }
+  [data-admin-route="/admin/orders"] .order-extra-shell > div { gap: 3px !important; padding: 3px !important; border-radius: 14px !important; }
+  [data-admin-route="/admin/orders"] .order-extra-shell button { min-height: 34px; padding: 6px 7px !important; font-size: 10px !important; }
+  [data-admin-route="/admin/orders"] table { min-width: 760px; }
+}
+`;
+
 export function AdminLayout({ children, headerExtra }: { children: React.ReactNode; headerExtra?: React.ReactNode }) {
   const { user, isStaff, isAdmin, permissions, loading, initialized, role } = useAuth();
   const navigate = useNavigate(); const loc = useLocation();
@@ -36,7 +63,8 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
   const visibleNav = NAV.filter((n) => { if (isAdmin) return true; if (n.exact && n.to === "/admin") return false; if (n.perm === "always") return true; return n.perm ? permissions[n.perm] : false; });
   const myProfileTo = !isAdmin && user?.id ? `/admin/employees_/${user.id}` : null;
   const logout = async () => { await supabase.auth.signOut(); navigate({ to: "/" }); };
-  return <div className="flex min-h-screen bg-muted">
+  return <div data-admin-route={loc.pathname} className="flex min-h-screen bg-muted">
+    {loc.pathname === "/admin/orders" && <style>{orderUiCss}</style>}
     <aside className={`fixed lg:sticky lg:top-0 top-0 left-0 h-screen z-50 overflow-hidden bg-[#101827] border-r border-white/10 shadow-2xl shadow-slate-950/30 transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)] ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} ${collapsed ? "w-20" : "w-72"}`}>
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_15%_5%,rgba(16,185,129,.22),transparent_32%),radial-gradient(circle_at_90%_18%,rgba(59,130,246,.20),transparent_30%),radial-gradient(circle_at_70%_78%,rgba(139,92,246,.18),transparent_34%),radial-gradient(circle_at_10%_95%,rgba(6,182,212,.14),transparent_28%)]" />
       <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(135deg,rgba(255,255,255,.055),transparent_28%,rgba(255,255,255,.015)_60%,rgba(255,255,255,.04))]" />
@@ -66,7 +94,7 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
         <button onClick={() => setCollapsed(!collapsed)} className="hidden lg:flex items-center justify-center w-9 h-9 rounded-xl border bg-slate-50 hover:bg-slate-100 transition-all duration-300 hover:scale-105" title={collapsed ? "সাইডবার খুলুন" : "সাইডবার বন্ধ করুন"}>{collapsed ? <PanelLeftOpen className="w-5 h-5 text-gray-600" /> : <PanelLeftClose className="w-5 h-5 text-gray-600" />}</button>
         <div className="font-bold whitespace-nowrap">{isAdmin ? "অ্যাডমিন প্যানেল" : "কর্মী প্যানেল"}</div>
         <div className="ml-auto text-sm text-muted-foreground hidden sm:block truncate max-w-[200px]">{user?.email ?? ""}</div>
-        {headerExtra && <div className="w-full basis-full flex items-center gap-2 overflow-x-auto pt-2">{headerExtra}</div>}
+        {headerExtra && <div className={`w-full basis-full flex items-center gap-2 overflow-x-auto pt-2 ${loc.pathname === "/admin/orders" ? "order-extra-shell" : ""}`}>{headerExtra}</div>}
       </header>
       <div className="p-4 lg:p-6">{children}{loc.pathname === "/admin/all-api" && <div className="mt-6"><PresswayyCard /></div>}</div>
     </div>
