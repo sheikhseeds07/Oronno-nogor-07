@@ -1,0 +1,48 @@
+name: Premium Product CTA
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-build-push:
+    if: github.actor == 'shawon079'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Apply premium CTA styling
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/components/landing/ProductStyleLandingPage.tsx')
+          s = p.read_text(encoding='utf-8')
+          old = '.hng-image-compact-cta button{width:100%;max-width:300px;border:1px solid #3f7650;border-radius:12px;padding:11px 20px;background:linear-gradient(135deg,#123d24 0%,#0b2a18 100%);color:#fff;font-size:14px;font-weight:900;box-shadow:0 8px 20px rgba(10,58,30,.22),inset 0 1px 0 rgba(255,255,255,.08);transition:transform .2s,box-shadow .2s}.hng-image-compact-cta button:hover{transform:translateY(-2px);box-shadow:0 12px 26px rgba(10,58,30,.28)}'
+          new = '.hng-image-compact-cta button{position:relative;width:100%;max-width:320px;border:1px solid rgba(134,239,172,.55);border-radius:14px;padding:12px 22px;background:linear-gradient(135deg,#0b3d26 0%,#166534 52%,#14532d 100%);color:#fff;font-size:15px;font-weight:950;letter-spacing:.1px;box-shadow:0 10px 24px rgba(20,83,45,.28),inset 0 1px 0 rgba(255,255,255,.16),inset 0 -1px 0 rgba(0,0,0,.16);transition:transform .2s ease,box-shadow .2s ease,filter .2s ease;overflow:hidden}.hng-image-compact-cta button:before{content:"";position:absolute;inset:1px;border-radius:13px;background:linear-gradient(110deg,transparent 20%,rgba(255,255,255,.18) 48%,transparent 72%);transform:translateX(-120%);transition:transform .6s ease;pointer-events:none}.hng-image-compact-cta button:hover{transform:translateY(-2px);filter:saturate(1.08);box-shadow:0 14px 30px rgba(20,83,45,.34),inset 0 1px 0 rgba(255,255,255,.2)}.hng-image-compact-cta button:hover:before{transform:translateX(120%)}.hng-image-compact-cta button:active{transform:translateY(0) scale(.985);box-shadow:0 7px 16px rgba(20,83,45,.24)}.hng-image-compact-cta button:focus-visible{outline:3px solid rgba(34,197,94,.28);outline-offset:3px}'
+          if old not in s:
+              raise SystemExit('Existing Product Style CTA style was not found; refusing to modify source.')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          PY
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Verify production build
+        run: bun run build
+
+      - name: Commit verified change and remove workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/landing/ProductStyleLandingPage.tsx
+          git rm .github/workflows/premium-product-cta.yml
+          git commit -m "Polish Product Style CTA with premium agriculture design"
+          git push origin main
