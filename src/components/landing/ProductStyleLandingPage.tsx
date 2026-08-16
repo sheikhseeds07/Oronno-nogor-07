@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Check, ChevronDown, Minus, Plus, ShieldCheck, Star, Truck, ShoppingBag } from "lucide-react";
+import { Check, ChevronDown, ShieldCheck, Star, Truck, ShoppingBag } from "lucide-react";
 import { supabase } from "@/lib/personal-supabase/client";
 import { placeOrder } from "@/lib/place-order.functions";
 import { useCheckoutAutofill } from "@/lib/useCheckoutAutofill";
@@ -25,10 +25,10 @@ export function ProductStyleLandingPage({ slug }: Props) {
   const navigate = useNavigate();
   const runPlaceOrder = useServerFn(placeOrder);
   const [selected, setSelected] = useState(0);
-  const [qty, setQty] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const [form, setForm] = useState({ name: "", phone: "", address: "", note: "" });
+  const [checkoutVisible, setCheckoutVisible] = useState(false);
+  const [form, setForm] = useState({ name: "", phone: "", address: "" });
   const { data: page, isLoading } = useQuery({
     queryKey: ["landing-product-style", slug],
     queryFn: async () => (await supabase.from("landing_pages").select("*, products(id,name,price,sale_price,images)").eq("slug", slug).eq("is_published", true).maybeSingle()).data as Page | null,
@@ -50,7 +50,7 @@ export function ProductStyleLandingPage({ slug }: Props) {
     return [...main, ...addons.map(a => ({ name: a.name, price: Number(a.price), old: a.old_price, image: a.image, product_id: a.product_id, delivery_fee: a.delivery_fee == null ? delivery : Number(a.delivery_fee) }))];
   }, [product, addons, basePrice, regularPrice, heroImage, delivery]);
   const selectedPackage = packages[selected] || packages[0];
-  const subtotal = selectedPackage ? selectedPackage.price * qty : 0;
+  const subtotal = selectedPackage ? selectedPackage.price : 0;
   const shipping = selectedPackage ? selectedPackage.delivery_fee : delivery;
   const total = subtotal + shipping;
   const theme = page?.theme_color || "#166534";
@@ -58,7 +58,15 @@ export function ProductStyleLandingPage({ slug }: Props) {
   const brand = settings.site_name || "অরণ্য নগর";
   const logo = settings.logo_url || brandLogoFile;
 
-  useCheckoutAutofill({ form, setForm: updater => setForm(f => updater(f) as typeof f), items: selectedPackage ? [{ id: selectedPackage.product_id || `addon-${selected}`, name: selectedPackage.name, price: selectedPackage.price, quantity: qty }] : [], subtotal, total, deliveryFee: shipping });
+  useEffect(() => {
+    const el = document.getElementById("product-order");
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => setCheckoutVisible(entry.isIntersecting), { threshold: 0.08 });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [page]);
+
+  useCheckoutAutofill({ form, setForm: updater => setForm(f => updater(f) as typeof f), items: selectedPackage ? [{ id: selectedPackage.product_id || `addon-${selected}`, name: selectedPackage.name, price: selectedPackage.price, quantity: 1 }] : [], subtotal, total, deliveryFee: shipping });
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,9 +74,9 @@ export function ProductStyleLandingPage({ slug }: Props) {
     if (!selectedPackage) return toast.error("প্রোডাক্ট নির্বাচন করুন");
     setSubmitting(true);
     try {
-      const items = [{ id: selectedPackage.product_id || `addon-${selected}`, name: selectedPackage.name, price: selectedPackage.price, quantity: qty }];
+      const items = [{ id: selectedPackage.product_id || `addon-${selected}`, name: selectedPackage.name, price: selectedPackage.price, quantity: 1 }];
       trackInitiateCheckout(items, total);
-      const order = await runPlaceOrder({ data: { customer_name: form.name, customer_phone: form.phone.replace(/[\s-]/g, ""), customer_address: form.address, delivery_fee: shipping, items, notes: form.note || null, ...getFbContext() } });
+      const order = await runPlaceOrder({ data: { customer_name: form.name, customer_phone: form.phone.replace(/[\s-]/g, ""), customer_address: form.address, delivery_fee: shipping, items, notes: null, ...getFbContext() } });
       trackPurchase(items, total, order.id);
       toast.success("অর্ডার সফল হয়েছে!");
       navigate({ to: "/order/$id", params: { id: order.id } });
@@ -117,22 +125,21 @@ export function ProductStyleLandingPage({ slug }: Props) {
       <section id="product-order" className="rounded-[28px] bg-white border shadow-sm overflow-hidden scroll-mt-24">
         <div className="p-5 sm:p-7 text-center border-b"><div className="text-xs font-black uppercase tracking-widest" style={{ color: theme }}>অর্ডার করুন</div><h2 className="text-2xl sm:text-3xl font-black mt-1">ডেলিভারি তথ্য দিন</h2></div>
         <form onSubmit={submit} className="p-4 sm:p-7 space-y-4">
-          {packages.length > 0 && <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 sm:p-4">
-            <div className="flex items-center justify-between gap-3 mb-3"><div><div className="text-xs font-bold text-slate-500">পণ্য</div><div className="font-black text-base sm:text-lg">প্যাকেজ নির্বাচন করুন</div></div><div className="text-xs font-bold text-slate-400">{packages.length} অপশন</div></div>
-            <div className="grid gap-2.5 sm:grid-cols-2">{packages.map((p, i) => <button key={i} type="button" onClick={() => setSelected(i)} className="w-full text-left rounded-2xl border-2 p-3 transition active:scale-[.99]" style={selected === i ? { borderColor: theme, background: `${theme}08` } : { borderColor: "#e2e8f0", background: "white" }}><div className="flex gap-3 items-center"><img src={p.image || heroImage} alt="" className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl object-cover shrink-0"/><div className="min-w-0 flex-1"><div className="font-extrabold leading-snug line-clamp-2">{p.name}</div><div className="font-black mt-1" style={{ color: theme }}>{taka(p.price)} {p.old && p.old > p.price && <span className="text-xs text-slate-400 line-through ml-1">{taka(p.old)}</span>}</div></div>{selected === i && <span className="w-7 h-7 rounded-full grid place-items-center shrink-0" style={{ background: theme, color: "white" }}><Check className="w-4 h-4"/></span>}</div></button>)}</div>
+          {packages.length > 0 && <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3 sm:p-3.5">
+            <div className="flex items-center justify-between gap-3 mb-2.5"><div><div className="text-xs font-bold text-slate-500">পণ্য</div><div className="font-black text-base sm:text-lg">প্যাকেজ নির্বাচন করুন</div></div><div className="text-xs font-bold text-slate-400">{packages.length} অপশন</div></div>
+            <div className="grid gap-2 sm:grid-cols-2">{packages.map((p, i) => <button key={i} type="button" onClick={() => setSelected(i)} className="w-full text-left rounded-2xl border-2 p-2.5 transition active:scale-[.99]" style={selected === i ? { borderColor: theme, background: `${theme}08` } : { borderColor: "#e2e8f0", background: "white" }}><div className="flex gap-2.5 items-center"><img src={p.image || heroImage} alt="" className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl object-cover shrink-0"/><div className="min-w-0 flex-1"><div className="font-extrabold leading-snug line-clamp-2 text-sm sm:text-base">{p.name}</div><div className="font-black mt-0.5" style={{ color: theme }}>{taka(p.price)} {p.old && p.old > p.price && <span className="text-xs text-slate-400 line-through ml-1">{taka(p.old)}</span>}</div></div>{selected === i && <span className="w-6 h-6 rounded-full grid place-items-center shrink-0" style={{ background: theme, color: "white" }}><Check className="w-3.5 h-3.5"/></span>}</div></button>)}</div>
           </div>}
-          <div className="rounded-2xl border p-4 bg-white"><div className="flex gap-3 items-center"><img src={selectedPackage?.image || heroImage} alt="" className="w-16 h-16 rounded-xl object-cover"/><div className="flex-1 min-w-0"><div className="font-black truncate">{selectedPackage?.name || page.title}</div><div className="font-black" style={{ color: theme }}>{taka(subtotal)}</div></div><div className="flex items-center gap-1 border rounded-xl bg-white"><button type="button" aria-label="কম" className="p-2" onClick={() => setQty(q => Math.max(1, q - 1))}><Minus className="w-4 h-4"/></button><span className="w-7 text-center font-black">{qty}</span><button type="button" aria-label="বেশি" className="p-2" onClick={() => setQty(q => q + 1)}><Plus className="w-4 h-4"/></button></div></div></div>
+          <div className="rounded-2xl border p-4 bg-white"><div className="flex gap-3 items-center"><img src={selectedPackage?.image || heroImage} alt="" className="w-14 h-14 rounded-xl object-cover"/><div className="flex-1 min-w-0"><div className="font-black truncate">{selectedPackage?.name || page.title}</div><div className="font-black" style={{ color: theme }}>{taka(subtotal)}</div></div></div></div>
           <div className="grid sm:grid-cols-2 gap-3"><label className="space-y-1.5"><span className="text-sm font-bold">আপনার নাম *</span><input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="w-full min-h-12 rounded-xl border px-3 outline-none focus:ring-4" placeholder="পূর্ণ নাম" /></label><label className="space-y-1.5"><span className="text-sm font-bold">ফোন নম্বর *</span><input required inputMode="tel" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} className="w-full min-h-12 rounded-xl border px-3 outline-none focus:ring-4" placeholder="01XXXXXXXXX" /></label></div>
           <label className="space-y-1.5 block"><span className="text-sm font-bold">সম্পূর্ণ ঠিকানা *</span><textarea required rows={3} value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} className="w-full rounded-xl border px-3 py-3 outline-none focus:ring-4" placeholder="বাড়ি, রাস্তা, এলাকা, উপজেলা, জেলা" /></label>
-          <label className="space-y-1.5 block"><span className="text-sm font-bold">নোট (ঐচ্ছিক)</span><textarea rows={2} value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} className="w-full rounded-xl border px-3 py-3" placeholder="কোনো অতিরিক্ত তথ্য" /></label>
           <div className="rounded-2xl border overflow-hidden"><div className="flex justify-between p-3 text-sm"><span>পণ্যের মূল্য</span><b>{taka(subtotal)}</b></div><div className="flex justify-between p-3 text-sm border-t"><span>ডেলিভারি</span><b>{taka(shipping)}</b></div><div className="flex justify-between p-4 border-t font-black text-lg" style={{ background: `${theme}0d` }}><span>সর্বমোট</span><b style={{ color: theme }}>{taka(total)}</b></div></div>
-          <button disabled={submitting} type="submit" className="w-full rounded-2xl py-4 text-white font-black text-lg disabled:opacity-60" style={{ background: theme }}>{submitting ? "অর্ডার নেওয়া হচ্ছে..." : "অর্ডার কনফার্ম করুন"}</button><p className="text-center text-xs text-slate-500">🔒 ক্যাশ অন ডেলিভারি • আপনার তথ্য নিরাপদ রাখা হবে</p>
+          <button disabled={submitting} type="submit" className="w-full rounded-2xl py-4 text-white font-black text-lg disabled:opacity-60" style={{ background: theme }}>{submitting ? "অর্ডার নেওয়া হচ্ছে..." : "অর্ডারটি কনফার্ম করুন"}</button><p className="text-center text-xs text-slate-500">🔒 ক্যাশ অন ডেলিভারি • আপনার তথ্য নিরাপদ রাখা হবে</p>
         </form>
       </section>
 
       <section className="rounded-3xl bg-white border divide-y">{["ডেলিভারি কত দিনে পাব?", "পণ্য হাতে পাওয়ার পর কীভাবে পেমেন্ট করব?", "অর্ডার কনফার্ম করার পর কি ফোন করা হবে?"].map((q, i) => <div key={q}><button type="button" className="w-full flex items-center justify-between p-4 text-left font-bold" onClick={() => setOpenFaq(openFaq === i ? null : i)}>{q}<ChevronDown className={`w-5 h-5 transition ${openFaq === i ? "rotate-180" : ""}`}/></button>{openFaq === i && <div className="px-4 pb-4 text-sm text-slate-500 leading-6">অর্ডার নেওয়ার পর আমাদের টিম আপনার দেওয়া নম্বরে যোগাযোগ করে বিস্তারিত কনফার্ম করবে।</div>}</div>)}</section>
     </main>
-    <div className="fixed bottom-3 left-3 right-3 z-30 md:hidden"><button onClick={goOrder} className="w-full rounded-2xl py-3.5 text-white font-black shadow-2xl flex items-center justify-center gap-2" style={{ background: theme }}><ShoppingBag className="w-5 h-5"/> এখনই অর্ডার করুন</button></div>
+    <div className="fixed bottom-3 left-3 right-3 z-30 md:hidden"><button onClick={checkoutVisible ? undefined : goOrder} type={checkoutVisible ? "button" : "button"} className="w-full rounded-2xl py-3.5 text-white font-black shadow-2xl flex items-center justify-center gap-2" style={{ background: theme }}>{checkoutVisible ? <><Check className="w-5 h-5"/> অর্ডারটি কনফার্ম করুন</> : <><ShoppingBag className="w-5 h-5"/> এখনই অর্ডার করুন</>}</button></div>
     <div className="pb-20 md:pb-0"><Footer /></div>
   </div>;
 }
