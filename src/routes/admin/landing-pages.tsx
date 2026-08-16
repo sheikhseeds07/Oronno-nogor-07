@@ -235,10 +235,9 @@ function LandingPagesAdmin() {
                 <>
                   <Field label="টেমপ্লেট">
                     <div className="grid grid-cols-2 gap-2">
-                      {([
-                        ["combo", "Combo", "ফানেল স্টাইল — প্রোমো স্ক্রল, গিফট, কাউন্টডাউন, পপআপ"],
-                        ["all", "All product", "seeds-combo-24 এর মতো ফুল ডিজাইন"],
-                      ] as const).map(([val, label, hint]) => (
+                      {([[
+                        "combo", "Combo", "ফানেল স্টাইল — প্রোমো স্ক্রল, গিফট, কাউন্টডাউন, পপআপ"
+                      ]] as const).map(([val, label, hint]) => (
                         <button
                           key={val}
                           type="button"

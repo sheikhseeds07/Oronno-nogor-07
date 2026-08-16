@@ -6,7 +6,7 @@ export type SeedRow = { name: string; qty: string };
 export type Feature = { title: string; text?: string; icon?: string };
 export type WhyItem = { title: string; text?: string; icon?: string };
 export type Review = { name: string; rating: number; text: string };
-export type LandingTemplate = "combo" | "all";
+export type LandingTemplate = "combo";
 
 export type LandingContent = {
   template: LandingTemplate;
