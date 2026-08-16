@@ -176,7 +176,7 @@ export const updateAdminOrder = createServerFn({ method: "POST" })
       delivery_fee: data.delivery_fee,
       discount: data.discount,
       total: data.total,
-      ...(data.confirm ? { status: "pending" as const } : {}),
+      ...(data.confirm ? { status: "pending" as const, created_by: context.userId } : {}),
     };
 
     const { error } = await supabaseAdmin.from("orders").update(updates).eq("id", data.id);
