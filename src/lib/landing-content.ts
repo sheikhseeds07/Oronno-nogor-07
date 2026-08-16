@@ -6,7 +6,7 @@ export type SeedRow = { name: string; qty: string };
 export type Feature = { title: string; text?: string; icon?: string };
 export type WhyItem = { title: string; text?: string; icon?: string };
 export type Review = { name: string; rating: number; text: string };
-export type LandingTemplate = "combo";
+export type LandingTemplate = "combo" | "premium" | "modern";
 
 export type LandingContent = {
   template: LandingTemplate;
@@ -136,11 +136,13 @@ export const DEFAULT_CONTENT: LandingContent = {
 export function mergeContent(raw: unknown): LandingContent {
   const value = (raw && typeof raw === "object" ? raw : {}) as Partial<LandingContent>;
   const out = { ...DEFAULT_CONTENT, ...value, seed_table: Array.isArray(value.seed_table) && value.seed_table.length ? value.seed_table : DEFAULT_CONTENT.seed_table } as LandingContent;
-  // Permanently suppress these legacy checkout labels, including old saved values.
-  out.package_kicker = "";
-  out.package_title = "";
-  out.order_kicker = "";
-  out.order_title = "";
-  out.order_note = "";
+  // Keep the existing Combo template's legacy checkout labels exactly as they are today.
+  if (out.template === "combo") {
+    out.package_kicker = "";
+    out.package_title = "";
+    out.order_kicker = "";
+    out.order_title = "";
+    out.order_note = "";
+  }
   return out;
 }
