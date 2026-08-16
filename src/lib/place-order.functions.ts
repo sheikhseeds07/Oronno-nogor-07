@@ -41,7 +41,7 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   const subtotal = safeItems.reduce((s, i) => s + i.price * i.quantity, 0);
   const total = subtotal + data.delivery_fee;
 
-  const orderRes = await supabaseAdmin.from("orders").insert({ customer_name: data.customer_name, customer_phone: customerPhone, customer_address: data.customer_address, district: data.district ?? null, thana: data.thana ?? null, notes: data.notes ?? null, subtotal, delivery_fee: data.delivery_fee, total, payment_method: "COD", source: "web", status: "web_pending", created_by: data.created_by ?? null }).select("id").single();
+  const orderRes = await supabaseAdmin.from("orders").insert({ customer_name: data.customer_name, customer_phone: customerPhone, customer_address: data.customer_address, district: data.district ?? null, thana: data.thana ?? null, notes: data.notes ?? null, subtotal, delivery_fee: data.delivery_fee, total, payment_method: "COD", source: "web", status: "web_pending", created_by: data.created_by ?? null, originated_from_incomplete: false }).select("id").single();
   if (orderRes.error || !orderRes.data) throw new Error(orderRes.error?.message ?? "Order create failed");
   const order = orderRes.data;
   const validIds = new Set((dbProducts ?? []).map((r) => r.id));
@@ -49,6 +49,9 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   const itemsRes = await supabaseAdmin.from("order_items").insert(rows);
   if (itemsRes.error) { await supabaseAdmin.from("orders").delete().eq("id", order.id); throw new Error(itemsRes.error.message); }
 
+  // A customer becomes Incomplete only after a valid phone is entered before
+  // placing the order. Once the order is successfully placed, remove that
+  // draft and mark this Web Order as converted_from_incomplete when applicable.
   let converted = false;
   try {
     if (data.checkout_session_id) {
@@ -60,7 +63,10 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
       if (latest) { const { error: deleteError } = await supabaseAdmin.from("incomplete_orders").delete().eq("id", latest.id); if (deleteError) throw deleteError; converted = true; }
     }
   } catch (e) { console.error("[placeOrder] incomplete draft cleanup failed:", e); }
-  if (converted) await supabaseAdmin.from("incomplete_events").insert({ phone: customerPhone, event: "converted" });
+  if (converted) {
+    await supabaseAdmin.from("orders").update({ originated_from_incomplete: true }).eq("id", order.id);
+    await supabaseAdmin.from("incomplete_events").insert({ phone: customerPhone, event: "converted" });
+  }
 
   try {
     const userAgent = getRequestHeader("user-agent") ?? null;
