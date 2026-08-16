@@ -53,16 +53,16 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   const itemsRes = await supabaseAdmin.from("order_items").insert(rows);
   if (itemsRes.error) { await supabaseAdmin.from("orders").delete().eq("id", order.id); throw new Error(itemsRes.error.message); }
 
-  // Remove only abandoned checkout drafts for this phone. Do NOT let a draft
-  // survive and make the same successfully placed customer order appear in the
-  // Incomplete queue as well. Staff-promoted incomplete records are protected by
-  // their status='web_pending'.
+  // A successfully placed customer order must never remain as an active incomplete
+  // checkout. The incomplete_orders table is the abandoned-checkout store; it does
+  // not use a status column. Staff promotion is tracked on the resulting orders row
+  // with originated_from_incomplete=true, so removing the abandoned draft here does
+  // not erase the order's incomplete attribution.
   try {
     const { data: deleted, error } = await supabaseAdmin
       .from("incomplete_orders")
       .delete()
       .eq("phone", customerPhone)
-      .eq("status", "incomplete")
       .select("id");
     if (error) throw error;
     if ((deleted ?? []).length > 0) {
