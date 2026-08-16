@@ -1,0 +1,1 @@
+The new Sheikh Seeds Reference template is additive only. Do not modify existing landing page templates when wiring it into the template selector.
