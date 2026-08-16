@@ -3,11 +3,7 @@ import { useEffect, useState } from "react";
 import { useAuth, type Permissions } from "@/lib/auth";
 import { supabase } from "@/lib/personal-supabase/client";
 import logo from "@/assets/logo.jpg";
-import {
-  LayoutDashboard, Package, ShoppingBag, Users, FolderTree, Image as ImageIcon,
-  Tag, Settings, Globe, UserCog, LogOut, Menu, X, Layers, Clock, FileSpreadsheet,
-  PanelLeftClose, PanelLeftOpen, ChevronRight, Sparkles
-} from "lucide-react";
+import { LayoutDashboard, Package, ShoppingBag, Users, FolderTree, Image as ImageIcon, Tag, Settings, Globe, UserCog, LogOut, Menu, X, Layers, Clock, FileSpreadsheet, PanelLeftClose, PanelLeftOpen, ChevronRight, Sparkles } from "lucide-react";
 import { NewOrderNotifier } from "@/components/admin/NewOrderNotifier";
 import { AdminOrderStability } from "@/components/admin/AdminOrderStability";
 import { PresswayyCard } from "@/components/admin/PresswayyCard";
@@ -41,8 +37,9 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
   const myProfileTo = !isAdmin && user?.id ? `/admin/employees_/${user.id}` : null;
   const logout = async () => { await supabase.auth.signOut(); navigate({ to: "/" }); };
   return <div className="flex min-h-screen bg-muted">
-    <aside className={`fixed lg:sticky lg:top-0 top-0 left-0 h-screen z-50 overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-indigo-950 border-r border-white/10 shadow-2xl shadow-indigo-950/10 transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)] ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} ${collapsed ? "w-20" : "w-72"}`}>
-      <div className="absolute inset-0 pointer-events-none opacity-30 bg-[radial-gradient(circle_at_20%_0%,rgba(139,92,246,.5),transparent_35%),radial-gradient(circle_at_90%_70%,rgba(6,182,212,.25),transparent_35%)]" />
+    <aside className={`fixed lg:sticky lg:top-0 top-0 left-0 h-screen z-50 overflow-hidden bg-slate-950 border-r border-white/10 shadow-2xl shadow-slate-950/20 transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)] ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} ${collapsed ? "w-20" : "w-72"}`}>
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_top_left,rgba(124,58,237,.28),transparent_42%),radial-gradient(ellipse_at_65%_45%,rgba(14,165,233,.14),transparent_38%),radial-gradient(ellipse_at_bottom_right,rgba(236,72,153,.13),transparent_38%)]" />
+      <div className="absolute inset-x-0 top-0 h-40 pointer-events-none bg-gradient-to-b from-white/[.07] to-transparent" />
       <div className={`relative p-4 border-b border-white/10 flex items-center gap-3 ${collapsed ? "justify-center" : ""}`}>
         <div className="relative shrink-0"><div className="absolute -inset-1 rounded-full bg-gradient-to-r from-violet-500 to-cyan-400 blur opacity-70" /><img src={logo} className="relative w-10 h-10 rounded-xl object-cover ring-1 ring-white/20" alt="" /></div>
         {!collapsed && <div className="min-w-0 animate-in fade-in slide-in-from-left-2 duration-300"><div className="font-extrabold text-white truncate tracking-tight">অনন্য নগর</div><div className="text-[10px] text-slate-400 truncate flex items-center gap-1"><Sparkles className="w-3 h-3 text-violet-400" />{isAdmin ? "অ্যাডমিন প্যানেল" : "কর্মী প্যানেল"}</div></div>}
@@ -58,7 +55,7 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
           {active && <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-gradient-to-b from-cyan-300 to-violet-500 shadow-[0_0_12px_rgba(139,92,246,.8)]" />}
         </Link>; })}
       </nav>
-      <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-white/10 bg-slate-950/70 backdrop-blur-xl">
+      <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-white/10 bg-black/25 backdrop-blur-xl">
         <button onClick={logout} className="group w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:text-red-200 hover:bg-red-500/10 transition-all duration-300"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-500/15 text-red-400 group-hover:bg-red-500/25 group-hover:scale-105 transition-transform"><LogOut className="w-4 h-4" /></span>{!collapsed && <span>লগআউট</span>}</button>
       </div>
     </aside>
