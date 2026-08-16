@@ -10,19 +10,19 @@ import { PresswayyCard } from "@/components/admin/PresswayyCard";
 
 type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }>; exact?: boolean; perm?: keyof Permissions | "always"; tone: string };
 const NAV: NavItem[] = [
-  { to: "/admin", label: "ড্যাশবোর্ড", icon: LayoutDashboard, exact: true, perm: "always", tone: "from-lime-400 to-green-600" },
-  { to: "/admin/orders", label: "অর্ডার", icon: ShoppingBag, perm: "orders", tone: "from-emerald-400 to-green-600" },
-  { to: "/admin/order-import", label: "ফাইল আপলোড করে অর্ডার", icon: FileSpreadsheet, perm: "orders", tone: "from-teal-400 to-emerald-600" },
-  { to: "/admin/products", label: "প্রোডাক্ট", icon: Package, perm: "products", tone: "from-amber-400 to-lime-600" },
-  { to: "/admin/categories", label: "ক্যাটাগরি", icon: FolderTree, perm: "categories", tone: "from-green-400 to-teal-600" },
-  { to: "/admin/customers", label: "কাস্টমার", icon: Users, perm: "customers", tone: "from-sky-400 to-emerald-600" },
-  { to: "/admin/banners", label: "ব্যানার", icon: ImageIcon, perm: "marketing", tone: "from-yellow-400 to-green-600" },
-  { to: "/admin/coupons", label: "কুপন", icon: Tag, perm: "marketing", tone: "from-lime-400 to-amber-600" },
-  { to: "/admin/landing-pages", label: "ল্যান্ডিং পেজ", icon: Globe, perm: "landing_pages", tone: "from-emerald-400 to-cyan-600" },
-  { to: "/admin/employees", label: "কর্মচারী", icon: UserCog, perm: "hrm", tone: "from-green-400 to-emerald-700" },
-  { to: "/admin/attendance", label: "হাজিরা", icon: Clock, perm: "hrm", tone: "from-lime-400 to-green-700" },
-  { to: "/admin/all-api", label: "All API", icon: Layers, perm: "all_api", tone: "from-teal-400 to-green-700" },
-  { to: "/admin/settings", label: "সেটিংস", icon: Settings, perm: "settings", tone: "from-slate-300 to-emerald-600" },
+  { to: "/admin", label: "ড্যাশবোর্ড", icon: LayoutDashboard, exact: true, perm: "always", tone: "from-emerald-400 to-cyan-500" },
+  { to: "/admin/orders", label: "অর্ডার", icon: ShoppingBag, perm: "orders", tone: "from-blue-400 to-cyan-500" },
+  { to: "/admin/order-import", label: "ফাইল আপলোড করে অর্ডার", icon: FileSpreadsheet, perm: "orders", tone: "from-teal-400 to-emerald-500" },
+  { to: "/admin/products", label: "প্রোডাক্ট", icon: Package, perm: "products", tone: "from-amber-400 to-orange-500" },
+  { to: "/admin/categories", label: "ক্যাটাগরি", icon: FolderTree, perm: "categories", tone: "from-fuchsia-400 to-pink-500" },
+  { to: "/admin/customers", label: "কাস্টমার", icon: Users, perm: "customers", tone: "from-sky-400 to-blue-500" },
+  { to: "/admin/banners", label: "ব্যানার", icon: ImageIcon, perm: "marketing", tone: "from-rose-400 to-red-500" },
+  { to: "/admin/coupons", label: "কুপন", icon: Tag, perm: "marketing", tone: "from-yellow-400 to-orange-500" },
+  { to: "/admin/landing-pages", label: "ল্যান্ডিং পেজ", icon: Globe, perm: "landing_pages", tone: "from-cyan-400 to-blue-600" },
+  { to: "/admin/employees", label: "কর্মচারী", icon: UserCog, perm: "hrm", tone: "from-green-400 to-emerald-600" },
+  { to: "/admin/attendance", label: "হাজিরা", icon: Clock, perm: "hrm", tone: "from-violet-400 to-purple-600" },
+  { to: "/admin/all-api", label: "All API", icon: Layers, perm: "all_api", tone: "from-indigo-400 to-violet-600" },
+  { to: "/admin/settings", label: "সেটিংস", icon: Settings, perm: "settings", tone: "from-slate-300 to-slate-500" },
 ];
 
 export function AdminLayout({ children, headerExtra }: { children: React.ReactNode; headerExtra?: React.ReactNode }) {
@@ -37,26 +37,26 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
   const myProfileTo = !isAdmin && user?.id ? `/admin/employees_/${user.id}` : null;
   const logout = async () => { await supabase.auth.signOut(); navigate({ to: "/" }); };
   return <div className="flex min-h-screen bg-muted">
-    <aside className={`fixed lg:sticky lg:top-0 top-0 left-0 h-screen z-50 overflow-hidden bg-gradient-to-br from-[#173b24] via-[#24552f] to-[#102d1b] border-r border-lime-200/15 shadow-2xl shadow-green-950/30 transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)] ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} ${collapsed ? "w-20" : "w-72"}`}>
-      <div className="absolute inset-0 pointer-events-none opacity-80 bg-[radial-gradient(ellipse_at_top_left,rgba(163,230,53,.20),transparent_40%),radial-gradient(ellipse_at_70%_35%,rgba(34,197,94,.16),transparent_38%),radial-gradient(ellipse_at_bottom_right,rgba(20,184,166,.15),transparent_42%)]" />
-      <div className="absolute inset-x-0 top-0 h-44 pointer-events-none bg-gradient-to-b from-lime-100/[.06] via-green-400/[.03] to-transparent" />
-      <div className={`relative p-4 border-b border-lime-100/10 flex items-center gap-3 ${collapsed ? "justify-center" : ""}`}>
-        <div className="relative shrink-0"><div className="absolute -inset-1 rounded-full bg-gradient-to-r from-lime-400 to-emerald-400 blur opacity-70" /><img src={logo} className="relative w-10 h-10 rounded-xl object-cover ring-1 ring-lime-100/25" alt="" /></div>
-        {!collapsed && <div className="min-w-0 animate-in fade-in slide-in-from-left-2 duration-300"><div className="font-extrabold text-white truncate tracking-tight">অনন্য নগর</div><div className="text-[10px] text-lime-100/60 truncate flex items-center gap-1"><Leaf className="w-3 h-3 text-lime-300" />{isAdmin ? "অ্যাডমিন প্যানেল" : "কর্মী প্যানেল"}</div></div>}
-        <button onClick={() => setOpen(false)} className="lg:hidden ml-auto text-lime-100/70 hover:text-white"><X className="w-5 h-5" /></button>
+    <aside className={`fixed lg:sticky lg:top-0 top-0 left-0 h-screen z-50 overflow-hidden bg-[#101827] border-r border-white/10 shadow-2xl shadow-slate-950/30 transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)] ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} ${collapsed ? "w-20" : "w-72"}`}>
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_15%_5%,rgba(16,185,129,.22),transparent_32%),radial-gradient(circle_at_90%_18%,rgba(59,130,246,.20),transparent_30%),radial-gradient(circle_at_70%_78%,rgba(139,92,246,.18),transparent_34%),radial-gradient(circle_at_10%_95%,rgba(6,182,212,.14),transparent_28%)]" />
+      <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(135deg,rgba(255,255,255,.055),transparent_28%,rgba(255,255,255,.015)_60%,rgba(255,255,255,.04))]" />
+      <div className={`relative p-4 border-b border-white/10 flex items-center gap-3 ${collapsed ? "justify-center" : ""}`}>
+        <div className="relative shrink-0"><div className="absolute -inset-1.5 rounded-2xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-violet-500 blur opacity-60" /><img src={logo} className="relative w-10 h-10 rounded-xl object-cover ring-1 ring-white/25" alt="" /></div>
+        {!collapsed && <div className="min-w-0 animate-in fade-in slide-in-from-left-2 duration-300"><div className="font-extrabold text-white truncate tracking-tight">অনন্য নগর</div><div className="text-[10px] text-slate-400 truncate flex items-center gap-1"><Sparkles className="w-3 h-3 text-emerald-300" />{isAdmin ? "অ্যাডমিন প্যানেল" : "কর্মী প্যানেল"}</div></div>}
+        <button onClick={() => setOpen(false)} className="lg:hidden ml-auto text-slate-300 hover:text-white"><X className="w-5 h-5" /></button>
       </div>
-      <nav className="relative p-3 overflow-y-auto h-[calc(100vh-150px)] scrollbar-thin scrollbar-thumb-lime-100/10 scrollbar-track-transparent">
-        {!collapsed && <div className="px-2 pt-1 pb-2 text-[10px] uppercase tracking-[.18em] font-bold text-lime-100/40 flex items-center gap-1.5"><Leaf className="w-3 h-3" /> মেনু</div>}
-        {myProfileTo && user?.id && <Link to={"/admin/employees/$userId" as any} params={{ userId: user.id } as any} preload="intent" onClick={() => setOpen(false)} className={`group relative flex items-center gap-3 px-3 py-3 rounded-xl text-sm mb-1 transition-all duration-300 ${loc.pathname.startsWith(myProfileTo) ? "bg-gradient-to-r from-lime-500 to-emerald-600 text-white shadow-lg shadow-green-950/30" : "text-lime-50/75 hover:text-white hover:bg-lime-100/8 hover:translate-x-1"}`}><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-lime-400 to-green-600 shadow-lg"><Clock className="w-4 h-4" /></span>{!collapsed && <span className="font-medium">হাজিরা</span>}</Link>}
-        {visibleNav.map((n) => { const active = n.exact ? loc.pathname === n.to : loc.pathname.startsWith(n.to); return <Link key={n.to} to={n.to} preload="intent" onClick={() => setOpen(false)} className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm mb-1 transition-all duration-300 ${active ? "text-white bg-lime-100/12 shadow-lg shadow-green-950/15" : "text-lime-50/75 hover:text-white hover:bg-lime-100/8 hover:translate-x-1"}`}>
-          <span className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${n.tone} text-white shadow-md transition-transform duration-300 group-hover:scale-110 group-hover:rotate-2 ${active ? "ring-2 ring-lime-100/35" : ""}`}><n.icon className="w-[18px] h-[18px]" /></span>
+      <nav className="relative p-3 overflow-y-auto h-[calc(100vh-150px)] scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+        {!collapsed && <div className="px-2 pt-1 pb-2 text-[10px] uppercase tracking-[.18em] font-bold text-slate-500 flex items-center gap-1.5"><Leaf className="w-3 h-3 text-emerald-400" /> মেনু</div>}
+        {myProfileTo && user?.id && <Link to={"/admin/employees/$userId" as any} params={{ userId: user.id } as any} preload="intent" onClick={() => setOpen(false)} className={`group relative flex items-center gap-3 px-3 py-3 rounded-xl text-sm mb-1 transition-all duration-300 ${loc.pathname.startsWith(myProfileTo) ? "bg-gradient-to-r from-emerald-500 to-cyan-500 text-white shadow-lg shadow-emerald-950/30" : "text-slate-300 hover:text-white hover:bg-white/8 hover:translate-x-1"}`}><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 shadow-lg"><Clock className="w-4 h-4" /></span>{!collapsed && <span className="font-medium">হাজিরা</span>}</Link>}
+        {visibleNav.map((n) => { const active = n.exact ? loc.pathname === n.to : loc.pathname.startsWith(n.to); return <Link key={n.to} to={n.to} preload="intent" onClick={() => setOpen(false)} className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm mb-1 transition-all duration-300 ${active ? "text-white bg-white/10 shadow-lg shadow-black/10" : "text-slate-300 hover:text-white hover:bg-white/7 hover:translate-x-1"}`}>
+          <span className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${n.tone} text-white shadow-md transition-transform duration-300 group-hover:scale-110 group-hover:rotate-2 ${active ? "ring-2 ring-white/30" : ""}`}><n.icon className="w-[18px] h-[18px]" /></span>
           {!collapsed && <span className="truncate font-medium flex-1">{n.label}</span>}
-          {!collapsed && <ChevronRight className={`w-4 h-4 text-lime-100/30 transition-all duration-300 group-hover:translate-x-1 group-hover:text-lime-100/70 ${active ? "text-white" : ""}`} />}
-          {active && <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-gradient-to-b from-lime-300 to-emerald-400 shadow-[0_0_14px_rgba(163,230,53,.8)]" />}
+          {!collapsed && <ChevronRight className={`w-4 h-4 text-slate-600 transition-all duration-300 group-hover:translate-x-1 group-hover:text-slate-300 ${active ? "text-white" : ""}`} />}
+          {active && <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-gradient-to-b from-emerald-300 via-cyan-300 to-violet-400 shadow-[0_0_14px_rgba(45,212,191,.8)]" />}
         </Link>; })}
       </nav>
-      <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-lime-100/10 bg-[#0b2515]/55 backdrop-blur-xl">
-        <button onClick={logout} className="group w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-lime-50/70 hover:text-red-100 hover:bg-red-500/10 transition-all duration-300"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-400/10 text-red-300 group-hover:bg-red-400/20 group-hover:scale-105 transition-transform"><LogOut className="w-4 h-4" /></span>{!collapsed && <span>লগআউট</span>}</button>
+      <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-white/10 bg-slate-950/45 backdrop-blur-xl">
+        <button onClick={logout} className="group w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:text-red-200 hover:bg-red-500/10 transition-all duration-300"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-500/15 text-red-400 group-hover:bg-red-500/25 group-hover:scale-105 transition-transform"><LogOut className="w-4 h-4" /></span>{!collapsed && <span>লগআউট</span>}</button>
       </div>
     </aside>
     <NewOrderNotifier /><AdminOrderStability />
