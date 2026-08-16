@@ -1,0 +1,78 @@
+name: Add two landing templates
+on:
+  push:
+    branches: [main]
+jobs:
+  apply:
+    if: ${{ !contains(github.event.head_commit.message, 'Add two editable professional landing page templates') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add templates
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/lib/landing-content.ts')
+          s = p.read_text()
+          s = s.replace('export type LandingTemplate = "combo";', 'export type LandingTemplate = "combo" | "premium" | "modern";')
+          p.write_text(s)
+
+          p = Path('src/components/landing/AlternativeLandingTemplates.tsx')
+          p.write_text(r'''import { CleanLandingPage } from "@/components/landing/CleanLandingPage";
+
+const STYLE = `
+.lp-template-premium .lp-root{background:linear-gradient(180deg,#f8fafc 0%,#eef7f2 45%,#f8fafc 100%)!important}
+.lp-template-premium .lp-root .container{max-width:720px!important}
+.lp-template-premium .lp-root header{background:rgba(255,255,255,.96)!important;border-bottom:1px solid #dbe7df!important;box-shadow:0 8px 30px -24px rgba(15,23,42,.55)}
+.lp-template-premium .lp-root .lp-offer{background:linear-gradient(135deg,#052e2b 0%,#0f766e 52%,#14532d 100%)!important;border:1px solid rgba(255,255,255,.16);box-shadow:0 28px 60px -35px rgba(6,78,59,.65)}
+.lp-template-premium .lp-root .lp-price-pill{background:#fff!important;box-shadow:0 12px 30px -18px rgba(0,0,0,.55)}
+.lp-template-premium .lp-root .lp-red-cta{background:linear-gradient(135deg,#0f766e,#16a34a)!important;border-radius:15px!important;box-shadow:0 16px 30px -18px rgba(6,78,59,.75);transition:transform .2s,box-shadow .2s}
+.lp-template-premium .lp-root .lp-red-cta:hover{transform:translateY(-2px);box-shadow:0 20px 36px -18px rgba(6,78,59,.75)}
+.lp-template-premium .lp-root section{border-radius:22px}
+.lp-template-premium .lp-root img{border-radius:20px}
+.lp-template-premium .lp-root [class*=border-slate-200]{border-color:#dbe7df!important;box-shadow:0 12px 32px -26px rgba(15,23,42,.55)}
+.lp-template-premium .lp-root h1,.lp-template-premium .lp-root h2{letter-spacing:-.025em}
+
+.lp-template-modern .lp-root{background:#f6f7fb!important}
+.lp-template-modern .lp-root .container{max-width:720px!important}
+.lp-template-modern .lp-root header{background:#111827!important;border-color:#1f2937!important}
+.lp-template-modern .lp-root header *{color:#fff!important}
+.lp-template-modern .lp-root header button{background:linear-gradient(135deg,#f97316,#ef4444)!important;color:#fff!important}
+.lp-template-modern .lp-root .lp-offer{background:linear-gradient(145deg,#111827 0%,#312e81 58%,#7c2d12 100%)!important;border-radius:28px!important;box-shadow:0 30px 65px -35px rgba(30,41,59,.85)}
+.lp-template-modern .lp-root .lp-price-pill{background:linear-gradient(135deg,#fff,#f8fafc)!important;box-shadow:0 16px 36px -20px rgba(0,0,0,.65)}
+.lp-template-modern .lp-root .lp-red-cta{background:linear-gradient(135deg,#f97316,#ef4444)!important;border-radius:16px!important;box-shadow:0 16px 30px -18px rgba(239,68,68,.7);transition:transform .2s,filter .2s}
+.lp-template-modern .lp-root .lp-red-cta:hover{transform:translateY(-2px);filter:saturate(1.12)}
+.lp-template-modern .lp-root [class*=border-slate-200]{border-color:#e5e7eb!important;background:#fff!important;box-shadow:0 14px 34px -28px rgba(15,23,42,.7)}
+.lp-template-modern .lp-root .bg-slate-900{background:#0b1020!important}
+.lp-template-modern .lp-root h1,.lp-template-modern .lp-root h2{letter-spacing:-.035em}
+`;
+
+export function PremiumLandingPage({slug}:{slug:string}){return <div className="lp-template-premium"><style dangerouslySetInnerHTML={{__html:STYLE}}/><CleanLandingPage slug={slug}/></div>}
+export function ModernLandingPage({slug}:{slug:string}){return <div className="lp-template-modern"><style dangerouslySetInnerHTML={{__html:STYLE}}/><CleanLandingPage slug={slug}/></div>}
+''')
+
+          p = Path('src/routes/landing.$slug.tsx')
+          s = p.read_text()
+          s = s.replace('import { CleanLandingPage } from "@/components/landing/CleanLandingPage";', 'import { CleanLandingPage } from "@/components/landing/CleanLandingPage";\nimport { PremiumLandingPage, ModernLandingPage } from "@/components/landing/AlternativeLandingTemplates";')
+          old = '  if (template === "all") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} /><LegacyLandingPage slug={slug} /></>;\n  return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} /><CleanLandingPage slug={slug} /></>;'
+          new = '  if (template === "all") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} /><LegacyLandingPage slug={slug} /></>;\n  if (template === "premium") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} /><PremiumLandingPage slug={slug} /></>;\n  if (template === "modern") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} /><ModernLandingPage slug={slug} /></>;\n  return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} /><CleanLandingPage slug={slug} /></>;'
+          if old not in s: raise SystemExit('landing route pattern not found')
+          p.write_text(s.replace(old,new))
+
+          p = Path('src/routes/admin/landing-pages.tsx')
+          s = p.read_text()
+          old = '''                      {([[\n                        "combo", "Combo", "ফানেল স্টাইল — প্রোমো স্ক্রল, গিফট, কাউন্টডাউন, পপআপ"\n                      ]] as const).map(([val, label, hint]) => ('''
+          new = '''                      {([[\n                        "combo", "Combo", "ফানেল স্টাইল — প্রোমো স্ক্রল, গিফট, কাউন্টডাউন, পপআপ",\n                        "premium", "Premium Product", "প্রিমিয়াম প্রোডাক্ট শোকেস — পরিষ্কার, elegant ও trust-focused",\n                        "modern", "Modern Sales", "মডার্ন conversion layout — bold hero, offer ও strong CTA"\n                      ]] as const).reduce<Array<[string,string,string]>>((acc, item) => { if (item.length === 3) acc.push(item as [string,string,string]); return acc; }, []).map(([val, label, hint]) => ('''
+          if old not in s: raise SystemExit('admin template pattern not found')
+          s = s.replace(old,new)
+          s = s.replace('onClick={() => setC({ template: val })}', 'onClick={() => setC({ template: val as LandingContent["template"] })}')
+          p.write_text(s)
+          PY
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add src/lib/landing-content.ts src/components/landing/AlternativeLandingTemplates.tsx src/routes/landing.$slug.tsx src/routes/admin/landing-pages.tsx
+          git rm .github/workflows/add-two-landing-templates.yml
+          git commit -m "Add two editable professional landing page templates"
+          git push
