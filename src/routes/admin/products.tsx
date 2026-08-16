@@ -13,7 +13,7 @@ export const Route = createFileRoute("/admin/products")({ component: Products })
 type Product = {
   id?: string; name: string; slug: string; sku?: string;
   description?: string; short_description?: string;
-  price: number; sale_price?: number | null; stock: number;
+  price: number; sale_price?: number | null; cost?: number | null; stock: number;
   category_id?: string | null; images?: string[];
   is_active?: boolean; is_featured?: boolean;
 };
@@ -53,7 +53,7 @@ function Products() {
     <AdminLayout>
       <div className="flex items-center justify-between mb-4 gap-3">
         <h1 className="text-2xl font-bold">প্রোডাক্ট</h1>
-        <button onClick={() => setEditing({ name: "", slug: "", price: 0, stock: 0, images: [], is_active: true })} className="bg-brand text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2">
+        <button onClick={() => setEditing({ name: "", slug: "", price: 0, cost: 0, stock: 0, images: [], is_active: true })} className="bg-brand text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2">
           <Plus className="w-4 h-4" /> নতুন প্রোডাক্ট
         </button>
       </div>
@@ -76,7 +76,7 @@ function Products() {
                   <td className="p-3 text-center">{p.is_active ? <span className="bg-brand-light text-brand-dark text-xs px-2 py-0.5 rounded">সক্রিয়</span> : <span className="bg-muted text-xs px-2 py-0.5 rounded">নিষ্ক্রিয়</span>}</td>
                   <td className="p-3 text-right">
                     <button onClick={() => setEditing(p as Product)} className="p-1.5 hover:bg-muted rounded"><Edit className="w-4 h-4" /></button>
-                    <button onClick={() => remove(p.id)} className="p-1.5 hover:bg-destructive/10 text-destructive rounded"><Trash2 className="w-4 h-4" /></button>
+                    <button onClick={() => remove(p.id!)} className="p-1.5 hover:bg-destructive/10 text-destructive rounded"><Trash2 className="w-4 h-4" /></button>
                   </td>
                 </tr>
               ))}
@@ -114,7 +114,7 @@ function ProductModal({ product, categories, onClose, onSaved, onAdded }: { prod
       name: p.name, slug: p.slug || slugify(p.name), sku: p.sku ?? null,
       description: p.description ?? null, short_description: p.short_description ?? null,
       price: Number(p.price), sale_price: p.sale_price ? Number(p.sale_price) : null,
-      stock: Number(p.stock), category_id: p.category_id || null,
+      cost: Number(p.cost ?? 0), stock: Number(p.stock), category_id: p.category_id || null,
       images: p.images ?? [], is_active: p.is_active ?? true, is_featured: p.is_featured ?? false,
     };
     const { error } = p.id
@@ -124,7 +124,7 @@ function ProductModal({ product, categories, onClose, onSaved, onAdded }: { prod
     if (error) return toast.error(error.message);
     toast.success("সংরক্ষণ হয়েছে");
     if (addAnother) {
-      setP({ name: "", slug: "", price: 0, stock: 0, images: [], is_active: true, category_id: p.category_id ?? null });
+      setP({ name: "", slug: "", price: 0, cost: 0, stock: 0, images: [], is_active: true, category_id: p.category_id ?? null });
       onAdded?.();
     } else {
       onSaved();
@@ -144,6 +144,7 @@ function ProductModal({ product, categories, onClose, onSaved, onAdded }: { prod
           <div className="grid grid-cols-2 gap-3">
             <div><label className="text-sm font-medium">দাম *</label><input type="number" value={p.price} onChange={(e) => setP({ ...p, price: +e.target.value })} className="w-full border rounded-lg px-3 py-2 mt-1" /></div>
             <div><label className="text-sm font-medium">সেল প্রাইস</label><input type="number" value={p.sale_price ?? ""} onChange={(e) => setP({ ...p, sale_price: e.target.value ? +e.target.value : null })} className="w-full border rounded-lg px-3 py-2 mt-1" /></div>
+            <div><label className="text-sm font-medium">প্রোডাক্ট কস্ট</label><input type="number" min="0" step="0.01" value={p.cost ?? 0} onChange={(e) => setP({ ...p, cost: Number(e.target.value) || 0 })} className="w-full border rounded-lg px-3 py-2 mt-1" placeholder="প্রতি ইউনিট কস্ট" /></div>
             <div><label className="text-sm font-medium">স্টক</label><input type="number" value={p.stock} onChange={(e) => setP({ ...p, stock: +e.target.value })} className="w-full border rounded-lg px-3 py-2 mt-1" /></div>
             <div><label className="text-sm font-medium">SKU</label><input value={p.sku ?? ""} onChange={(e) => setP({ ...p, sku: e.target.value })} className="w-full border rounded-lg px-3 py-2 mt-1" /></div>
           </div>
