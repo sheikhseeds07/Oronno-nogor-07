@@ -607,13 +607,26 @@ function OrdersTable({
       const list = (filter === "all" ? statuses : [filter]).filter((s) => s !== "incomplete");
       const { data: ords } = await supabase
         .from("orders")
-        .select("id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment,printed_at,created_at,updated_at,order_items(id,product_name,quantity,price,product_id)")
+        .select("id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment,printed_at,created_at,updated_at,created_by,order_items(id,product_name,quantity,price,product_id)")
         .in("status", list as Exclude<OrderStatus, "incomplete">[])
         .order("created_at", { ascending: false })
         .limit(500);
       return await attachProductImages((ords ?? []) as unknown as OrderRow[]);
     },
   });
+
+  const creatorIds = Array.from(new Set((orders ?? []).map((o) => o.created_by).filter((x): x is string => !!x)));
+  const { data: creatorProfiles } = useQuery({
+    queryKey: ["order-creators", creatorIds.join(",")],
+    enabled: creatorIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("id,full_name").in("id", creatorIds);
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
+    staleTime: 60_000,
+  });
+  const creatorMap = useMemo(() => new Map((creatorProfiles ?? []).map((p) => [p.id, p.full_name || "Unknown user"])), [creatorProfiles]);
 
   // Incomplete checkout carts shaped as OrderRow so they render in the same table.
   // Realtime subscription below keeps this fresh — no polling.
@@ -1120,6 +1133,7 @@ function OrdersTable({
           allChecked={allChecked}
           lockMap={lockMap}
           currentUserId={currentUserId}
+          creatorMap={creatorMap}
           empty={isIncomplete ? "কোনো ইনকমপ্লিট অর্ডার নেই — কাস্টমার চেকআউটে ফোন দিয়ে অর্ডার শেষ না করলে এখানে আসবে" : (search ? `"${search}" এর সাথে মিলে এমন কোনো অর্ডার নেই` : "কোনো অর্ডার নেই")}
         />
 
@@ -1353,6 +1367,7 @@ type OrderRow = {
   courier_consignment?: string | null; printed_at?: string | null;
   order_items?: OrderItemRow[];
   assigned_to?: string | null;
+  created_by?: string | null;
 };
 
 
@@ -1571,6 +1586,7 @@ function OrdersTableRows({
   allChecked?: boolean;
   lockMap?: Map<string, { user_id: string; user_name: string }>;
   currentUserId?: string | null;
+  creatorMap?: Map<string, string>;
 }) {
   const isWeb = mode === "web";
   const isList = mode === "list";
@@ -1655,33 +1671,25 @@ function OrdersTableRows({
                     const handleClick = (e: MouseEvent) => {
                       if (!e.metaKey && !e.ctrlKey && e.button === 0) { e.preventDefault(); onOpen(o.id); }
                     };
+                    const creatorName = o.created_by ? creatorMap?.get(o.created_by) : undefined;
                     if (lockedByOther) {
                       return (
-                        <Link
-                          to="/admin/orders"
-                          search={linkSearch}
-                          onClick={handleClick}
-                          className="inline-flex flex-col items-end gap-0.5 px-2.5 py-1.5 rounded border border-red-300 bg-red-50 text-red-700 text-xs font-semibold hover:bg-red-100 animate-pulse"
-                          title={`${lock.user_name} এই অর্ডারটি ওপেন করেছেন — ক্লিক করলে ওয়ারনিং + টেকওভার অপশন আসবে`}
-                        >
-                          <span className="inline-flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                            লকড · Open
-                          </span>
-                          <span className="text-[10px] font-normal text-red-600 max-w-[140px] truncate">{lock.user_name}</span>
-                        </Link>
+                        <div className="flex flex-col items-end">
+                          <Link to="/admin/orders" search={linkSearch} onClick={handleClick} className="inline-flex flex-col items-end gap-0.5 px-2.5 py-1.5 rounded border border-red-300 bg-red-50 text-red-700 text-xs font-semibold hover:bg-red-100 animate-pulse" title={`${lock.user_name} এই অর্ডারটি ওপেন করেছেন — ক্লিক করলে ওয়ারনিং + টেকওভার অপশন আসবে`}>
+                            <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-red-500" />লকড · Open</span>
+                            <span className="text-[10px] font-normal text-red-600 max-w-[140px] truncate">{lock.user_name}</span>
+                          </Link>
+                          {creatorName && <span className="text-[10px] text-red-600 font-semibold mt-1 max-w-[150px] truncate">Created by: {creatorName}</span>}
+                        </div>
                       );
                     }
                     return (
-                      <Link
-                        to="/admin/orders"
-                        search={linkSearch}
-                        onClick={handleClick}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded border border-blue-200 bg-blue-50 text-blue-700 text-xs font-semibold hover:bg-blue-100"
-                        title="অর্ডার ওপেন (রাইট ক্লিক / নতুন ট্যাবে খুলুন)"
-                      >
-                        Open <ExternalLink className="w-3 h-3" />
-                      </Link>
+                      <div className="flex flex-col items-end">
+                        <Link to="/admin/orders" search={linkSearch} onClick={handleClick} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded border border-blue-200 bg-blue-50 text-blue-700 text-xs font-semibold hover:bg-blue-100" title="অর্ডার ওপেন (রাইট ক্লিক / নতুন ট্যাবে খুলুন)">
+                          Open <ExternalLink className="w-3 h-3" />
+                        </Link>
+                        {creatorName && <span className="text-[10px] text-red-600 font-semibold mt-1 max-w-[150px] truncate">Created by: {creatorName}</span>}
+                      </div>
                     );
                   })()}
                 </td>
@@ -1879,21 +1887,11 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
           {!items.length && <p className="text-sm text-muted-foreground py-6 text-center">প্রোডাক্ট যোগ করুন</p>}
           {items.map((i, idx) => (
             <div key={i.product_id} className="flex items-center gap-2 py-2 border-b">
-              <div className="flex-1">
-                <div className="text-sm font-semibold">{i.product_name}</div>
-                <div className="text-xs text-muted-foreground">{taka(i.price)} × {i.quantity}</div>
-              </div>
-              <input
-                type="number" min={1} value={i.quantity}
-                onChange={(e) => {
-                  const qty = Math.max(1, Number(e.target.value));
-                  setItems((prev) => prev.map((x, ix) => ix === idx ? { ...x, quantity: qty } : x));
-                }}
-                className="w-16 border rounded px-2 py-1 text-sm"
-              />
-              <button onClick={() => setItems((prev) => prev.filter((_, ix) => ix !== idx))} className="p-1.5 text-red-600 hover:bg-red-50 rounded">
-                <Trash2 className="w-4 h-4" />
-              </button>
+              <div className="flex-1 min-w-0"><div className="text-sm font-semibold truncate">{i.product_name}</div><div className="text-xs text-muted-foreground">পণ্যের মূল্য কাস্টমাইজ করা যাবে</div></div>
+              <div className="w-24"><div className="text-[10px] text-muted-foreground mb-0.5">Price</div><input type="number" min={0} step="0.01" value={i.price} onChange={(e) => { const price = Math.max(0, Number(e.target.value)); setItems((prev) => prev.map((x, ix) => ix === idx ? { ...x, price } : x)); }} className="w-full border rounded px-2 py-1 text-sm font-semibold" /></div>
+              <div className="w-16"><div className="text-[10px] text-muted-foreground mb-0.5">Qty</div><input type="number" min={1} value={i.quantity} onChange={(e) => { const qty = Math.max(1, Number(e.target.value)); setItems((prev) => prev.map((x, ix) => ix === idx ? { ...x, quantity: qty } : x)); }} className="w-full border rounded px-2 py-1 text-sm" /></div>
+              <div className="w-20 text-right"><div className="text-[10px] text-muted-foreground">Total</div><div className="text-sm font-bold">{taka(i.price * i.quantity)}</div></div>
+              <button onClick={() => setItems((prev) => prev.filter((_, ix) => ix !== idx))} className="p-1.5 text-red-600 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button>
             </div>
           ))}
         </div>

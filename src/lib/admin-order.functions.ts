@@ -137,6 +137,7 @@ export const createManualOrder = createServerFn({ method: "POST" })
         source: "manual",
         status: "pending",
         payment_method: "cod",
+        created_by: context.userId,
       })
       .select("id,invoice_no")
       .single();
