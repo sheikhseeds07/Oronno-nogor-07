@@ -1,0 +1,54 @@
+name: Fix Product Style React Hooks
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.15
+      - run: bun install --frozen-lockfile
+      - name: Move popup hooks above conditional returns
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('src/components/landing/ProductStyleLandingPage.tsx')
+          s = p.read_text(encoding='utf-8')
+          state = '  const [showGuaranteePopup, setShowGuaranteePopup] = useState(true);\n  useEffect(() => { const timer = window.setTimeout(() => setShowGuaranteePopup(false), 10000); return () => window.clearTimeout(timer); }, []);\n  const closeGuaranteePopup = () => setShowGuaranteePopup(false);\n'
+          old = '  const submit = async (e?: React.FormEvent) => {'
+          if 'const [showGuaranteePopup' not in s:
+              raise SystemExit('Popup hooks not found')
+          start = s.index('  const [showGuaranteePopup')
+          end = s.index('  const goOrder =', start)
+          popup_hooks = s[start:end]
+          s = s[:start] + s[end:]
+          marker = '  const submit = async (e?: React.FormEvent) => {'
+          pos = s.index(marker)
+          s = s[:pos] + popup_hooks + s[pos:]
+          p.write_text(s, encoding='utf-8')
+      - name: Production build
+        run: bun run build
+      - name: Commit fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/components/landing/ProductStyleLandingPage.tsx
+          git commit -m 'fix: keep Product Style popup hooks unconditional' || exit 0
+          git push origin main
+      - name: Remove temporary workflow
+        if: success()
+        run: |
+          git rm .github/workflows/fix-product-style-react-hooks.yml
+          git commit -m 'chore: remove temporary React hooks fix workflow'
+          git push origin main
