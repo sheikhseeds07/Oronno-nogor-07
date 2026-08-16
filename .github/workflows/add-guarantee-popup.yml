@@ -1,0 +1,73 @@
+name: Add Guarantee Popup Safely
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  update-popup:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.15
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Add popup safely
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('src/components/landing/ProductStyleLandingPage.tsx')
+          s = p.read_text(encoding='utf-8')
+          marker = 'const goOrder = () => document.getElementById("product-order")?.scrollIntoView({ behavior: "smooth" });'
+          if 'hng-guarantee-popup' in s:
+              raise SystemExit('Popup already exists; refusing duplicate modification.')
+          if marker not in s:
+              raise SystemExit('Expected goOrder marker not found; refusing modification.')
+          state = '''const [showGuaranteePopup, setShowGuaranteePopup] = useState(true);\n  useEffect(() => { const timer = window.setTimeout(() => setShowGuaranteePopup(false), 10000); return () => window.clearTimeout(timer); }, []);\n  const closeGuaranteePopup = () => setShowGuaranteePopup(false);'''
+          s = s.replace(marker, state + '\n  ' + marker, 1)
+          mount = '<FacebookPixel eager />'
+          popup = '''<FacebookPixel eager />{showGuaranteePopup && <div className="hng-guarantee-popup" role="dialog" aria-modal="true" aria-label="গ্যারান্টি কার্ড অফার"><div className="hng-guarantee-backdrop" onClick={closeGuaranteePopup} /><div className="hng-guarantee-card"><button type="button" className="hng-guarantee-close" onClick={closeGuaranteePopup} aria-label="বন্ধ করুন">×</button><div className="hng-guarantee-icon"><ShieldCheck size={30} strokeWidth={2.4} /></div><div className="hng-guarantee-badge">বিশেষ সুবিধা</div><h2>গ্যারান্টি কার্ড</h2><p>আমাদের বীজ কিনলেই পাবেন <strong>গ্যারান্টি কার্ড</strong> এবং বীজ থেকে চারা তৈরির সম্পূর্ণ নির্দেশনা।</p><button type="button" className="hng-guarantee-order" onClick={() => { closeGuaranteePopup(); goOrder(); }}><span>এখনই অর্ডার করুন</span><span aria-hidden="true">→</span></button><div className="hng-guarantee-note">🌱 সহজে চাষ করুন • নিশ্চিন্তে অর্ডার করুন</div></div></div>}'''
+          if mount not in s:
+              raise SystemExit('Expected FacebookPixel mount not found; refusing modification.')
+          s = s.replace(mount, popup, 1)
+          css_marker = '.hng-section-cta{display:flex;justify-content:center;margin:-2px 0 7px}'
+          css = '''.hng-guarantee-popup{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:20px;animation:hngPopupFade .28s ease-out}.hng-guarantee-backdrop{position:absolute;inset:0;background:rgba(2,18,12,.62);backdrop-filter:blur(7px)}.hng-guarantee-card{position:relative;width:min(420px,100%);padding:30px 24px 22px;border:1px solid rgba(134,239,172,.28);border-radius:24px;background:radial-gradient(circle at 50% 0%,#064e3b 0%,#022c22 58%,#011c15 100%);color:#fff;text-align:center;box-shadow:0 28px 80px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.1);overflow:hidden;animation:hngPopupCard .38s cubic-bezier(.2,.8,.2,1)}.hng-guarantee-card:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 18% 18%,rgba(74,222,128,.13),transparent 28%),radial-gradient(circle at 84% 12%,rgba(245,158,11,.12),transparent 25%);pointer-events:none}.hng-guarantee-card>*{position:relative;z-index:1}.hng-guarantee-close{position:absolute!important;right:12px;top:10px;width:36px;height:36px;border:1px solid rgba(255,255,255,.16);border-radius:50%;background:rgba(255,255,255,.08);color:#fff;font-size:25px;line-height:1;cursor:pointer;transition:transform .2s,background .2s}.hng-guarantee-close:hover{transform:rotate(90deg);background:rgba(255,255,255,.16)}.hng-guarantee-icon{width:64px;height:64px;margin:0 auto 12px;display:grid;place-items:center;border-radius:20px;background:linear-gradient(145deg,#22c55e,#166534);border:1px solid rgba(187,247,208,.35);box-shadow:0 12px 30px rgba(34,197,94,.25),inset 0 1px 0 rgba(255,255,255,.2);animation:hngPopupIcon 2.8s ease-in-out infinite}.hng-guarantee-badge{display:inline-block;padding:5px 12px;border-radius:999px;background:rgba(245,158,11,.13);border:1px solid rgba(245,158,11,.35);color:#fde68a;font-size:11px;font-weight:900;letter-spacing:.3px}.hng-guarantee-card h2{margin:10px 0 8px;font-size:26px;font-weight:950;background:linear-gradient(135deg,#fff,#bbf7d0);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}.hng-guarantee-card p{margin:0 auto;color:#d1fae5;font-size:14px;line-height:1.75;max-width:340px}.hng-guarantee-card p strong{color:#fff}.hng-guarantee-order{width:100%;margin-top:20px;padding:13px 18px;border:1px solid rgba(134,239,172,.5);border-radius:14px;background:linear-gradient(135deg,#22c55e 0%,#166534 55%,#14532d 100%);color:#fff;font-size:15px;font-weight:950;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 12px 28px rgba(5,46,22,.34),inset 0 1px 0 rgba(255,255,255,.2);cursor:pointer;transition:transform .2s,box-shadow .2s}.hng-guarantee-order:hover{transform:translateY(-2px);box-shadow:0 16px 34px rgba(5,46,22,.42)}.hng-guarantee-order:active{transform:scale(.985)}.hng-guarantee-note{margin-top:12px;color:#86efac;font-size:11px;font-weight:700}@keyframes hngPopupFade{from{opacity:0}to{opacity:1}}@keyframes hngPopupCard{from{opacity:0;transform:translateY(18px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}@keyframes hngPopupIcon{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}@media(max-width:480px){.hng-guarantee-popup{padding:14px}.hng-guarantee-card{padding:28px 18px 20px;border-radius:21px}.hng-guarantee-card h2{font-size:24px}.hng-guarantee-card p{font-size:13px}}''' + css_marker
+          if css_marker not in s:
+              raise SystemExit('Expected CSS marker not found; refusing modification.')
+          s = s.replace(css_marker, css, 1)
+          p.write_text(s, encoding='utf-8')
+
+      - name: Production build
+        run: bun run build
+
+      - name: Commit only after successful build
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/landing/ProductStyleLandingPage.tsx
+          git diff --cached --quiet && { echo "No changes"; exit 0; }
+          git commit -m "feat: add animated guarantee card popup"
+          git push origin main
+
+      - name: Remove temporary workflow
+        if: success()
+        run: |
+          git rm .github/workflows/add-guarantee-popup.yml
+          git commit -m "chore: remove temporary popup workflow"
+          git push origin main
