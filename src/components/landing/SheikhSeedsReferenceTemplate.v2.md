@@ -1,0 +1,1 @@
+Reusable Sheikh Seeds reference template is implemented in SheikhSeedsReferenceTemplate.tsx on this branch. This marker exists only to document the additive template boundary.
