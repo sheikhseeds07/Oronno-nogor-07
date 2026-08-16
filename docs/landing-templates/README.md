@@ -1,0 +1,1 @@
+A reusable Sheikh Seeds reference template was added on branch `new-sheikhseeds-reference-template`. It is based on the supplied public step-page reference and is intentionally isolated from existing landing pages.
