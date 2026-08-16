@@ -1,0 +1,52 @@
+name: Fix Product Style image block safely
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fix-product-style-image-block.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  fix-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restore last known-good Product Style component
+        run: |
+          git checkout 5af0f35dc5a3c9918d828a1946ae6c48fe659ad1 -- src/components/landing/ProductStyleLandingPage.tsx
+
+      - name: Hide only the content block directly below the product image
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/components/landing/ProductStyleLandingPage.tsx')
+          s = p.read_text(encoding='utf-8')
+          marker = 'className="order-2 py-0 sm:py-1"'
+          if marker not in s:
+              raise SystemExit('Expected Product Style image-below content wrapper was not found; refusing to modify source.')
+          s = s.replace(marker, 'className="hidden"', 1)
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Production build verification
+        run: bun run build
+
+      - name: Commit verified fix and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/landing/ProductStyleLandingPage.tsx
+          git rm .github/workflows/fix-product-style-image-block.yml
+          git commit -m "Fix Product Style image block safely"
+          git push origin main
