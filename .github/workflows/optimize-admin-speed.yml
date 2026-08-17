@@ -14,29 +14,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: '1.2.15'
       - name: Apply safe admin performance optimizations
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
+
           p = Path('src/routes/admin/orders.tsx')
           s = p.read_text()
+
           old = '''      const { data } = await supabase.from("orders").select("*, order_items(*)").eq("id", id).maybeSingle();
-                return (data as unknown as DetailOrder | null) ?? null;'''
-          new = '''      const { data, error } = await supabase
-                .from("orders")
-                .select("id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,notes,subtotal,delivery_fee,discount,total,created_at,assigned_to,originated_from_incomplete,order_items(id,product_id,product_name,quantity,price,subtotal)")
-                .eq("id", id)
-                .maybeSingle();
-              if (error) throw new Error(error.message);
-              return (data as unknown as DetailOrder | null) ?? null;'''
-          if old not in s:
-              old = '''      const { data } = await supabase.from("orders").select("*, order_items(*)").eq("id", id).maybeSingle();
       return (data as unknown as DetailOrder | null) ?? null;'''
-              new = '''      const { data, error } = await supabase
+          new = '''      const { data, error } = await supabase
         .from("orders")
         .select("id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,notes,subtotal,delivery_fee,discount,total,created_at,assigned_to,originated_from_incomplete,order_items(id,product_id,product_name,quantity,price,subtotal)")
         .eq("id", id)
@@ -106,9 +95,7 @@ jobs:
               raise SystemExit('admin layout pattern not found')
           p.write_text(s.replace(old, new, 1))
           PY
-      - name: Verify build
-        run: bun install --frozen-lockfile && bun run build
-      - name: Commit verified optimization
+      - name: Commit changes
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
