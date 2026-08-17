@@ -46,6 +46,18 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
     }
   }
 
+  // A successful public order supersedes any currently active incomplete lead
+  // matching either the customer's phone or the current IP.
+  const { data: matchedIncomplete } = await supabaseAdmin
+    .from("incomplete_orders")
+    .select("id,phone")
+    .or(`phone.eq.${customerPhone}${clientIp ? `,ip.eq.${clientIp}` : ""}`)
+    .limit(20);
+  if (matchedIncomplete?.length) {
+    await supabaseAdmin.from("incomplete_events").insert(matchedIncomplete.map((r) => ({ phone: r.phone, event: "converted" })));
+    await supabaseAdmin.from("incomplete_orders").delete().in("id", matchedIncomplete.map((r) => r.id));
+  }
+
   const uuidIds = data.items.map((i) => i.id).filter((s) => /^[0-9a-f-]{36}$/i.test(s));
   const { data: dbProducts } = uuidIds.length ? await supabaseAdmin.from("products").select("id,price,sale_price").in("id", uuidIds) : { data: [] as { id: string; price: number; sale_price: number | null }[] };
   const priceMap = new Map<string, number>();
@@ -54,8 +66,6 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   const subtotal = safeItems.reduce((s, i) => s + i.price * i.quantity, 0);
   const total = subtotal + data.delivery_fee;
 
-  // Every public checkout creates exactly one Web Order in Web Pending.
-  // Confirmation later edits this same row to Pending and records the employee.
   const orderRes = await supabaseAdmin.from("orders").insert({ customer_name: data.customer_name, customer_phone: customerPhone, customer_address: data.customer_address, district: data.district ?? null, thana: data.thana ?? null, notes: data.notes ?? null, subtotal, delivery_fee: data.delivery_fee, total, payment_method: "COD", source: "web", status: "web_pending", created_by: null, originated_from_incomplete: false }).select("id").single();
   if (orderRes.error || !orderRes.data) throw new Error(orderRes.error?.message ?? "Order create failed");
   const order = orderRes.data;
