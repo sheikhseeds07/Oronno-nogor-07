@@ -7,8 +7,21 @@ import { sendPurchaseEvent } from "@/lib/facebook-capi.server";
 const PHONE_RE = /^01[3-9][0-9]{8}$/;
 const ItemSchema = z.object({ id: z.string().min(1).max(64), name: z.string().min(1).max(500), price: z.number().min(0).max(10_000_000), quantity: z.number().int().min(1).max(1000) });
 const InputSchema = z.object({
-  customer_name: z.string().min(1).max(255), customer_phone: z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number. Use 01XXXXXXXXX."), customer_address: z.string().min(1).max(1000), district: z.string().max(100).optional().nullable(), thana: z.string().max(100).optional().nullable(), notes: z.string().max(2000).optional().nullable(), delivery_fee: z.number().min(0).max(10000).default(50), items: z.array(ItemSchema).min(1).max(100), created_by: z.string().uuid().optional().nullable(), checkout_session_id: z.string().uuid().optional().nullable(), fbp: z.string().max(200).optional().nullable(), fbc: z.string().max(500).optional().nullable(), source_url: z.string().max(2000).optional().nullable(),
+  customer_name: z.string().min(1).max(255), customer_phone: z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number. Use 01XXXXXXXXX."), customer_address: z.string().min(1).max(1000), district: z.string().max(100).optional().nullable(), thana: z.string().max(100).optional().nullable(), notes: z.string().max(2000).optional().nullable(), delivery_fee: z.number().min(0).max(10000).default(50), items: z.array(ItemSchema).min(1).max(100), created_by: z.string().uuid().optional().nullable(), fbp: z.string().max(200).optional().nullable(), fbc: z.string().max(500).optional().nullable(), source_url: z.string().max(2000).optional().nullable(),
 });
+
+export const lookupCustomerByPhone = createServerFn({ method: "POST" })
+  .inputValidator((input) => z.object({ phone: z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number") }).parse(input))
+  .handler(async ({ data }) => {
+    const { data: order } = await supabaseAdmin
+      .from("orders")
+      .select("customer_name,customer_address")
+      .eq("customer_phone", data.phone)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return order ? { name: order.customer_name, address: order.customer_address } : null;
+  });
 
 export const placeOrder = createServerFn({ method: "POST" }).inputValidator((input) => InputSchema.parse(input)).handler(async ({ data }) => {
   const customerPhone = data.customer_phone;
@@ -41,9 +54,8 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   const subtotal = safeItems.reduce((s, i) => s + i.price * i.quantity, 0);
   const total = subtotal + data.delivery_fee;
 
-  // Customer checkout is ALWAYS a direct Web Order. Employee/admin-created
-  // orders use createManualOrder instead, so a browser session user must not
-  // change the order's origin classification.
+  // Every public checkout creates exactly one Web Order in Web Pending.
+  // Confirmation later edits this same row to Pending and records the employee.
   const orderRes = await supabaseAdmin.from("orders").insert({ customer_name: data.customer_name, customer_phone: customerPhone, customer_address: data.customer_address, district: data.district ?? null, thana: data.thana ?? null, notes: data.notes ?? null, subtotal, delivery_fee: data.delivery_fee, total, payment_method: "COD", source: "web", status: "web_pending", created_by: null, originated_from_incomplete: false }).select("id").single();
   if (orderRes.error || !orderRes.data) throw new Error(orderRes.error?.message ?? "Order create failed");
   const order = orderRes.data;
@@ -51,21 +63,6 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   const rows = safeItems.map((i) => ({ order_id: order.id, product_id: validIds.has(i.id) ? i.id : null, product_name: i.name, price: i.price, quantity: i.quantity, subtotal: i.price * i.quantity }));
   const itemsRes = await supabaseAdmin.from("order_items").insert(rows);
   if (itemsRes.error) { await supabaseAdmin.from("orders").delete().eq("id", order.id); throw new Error(itemsRes.error.message); }
-
-  try {
-    let removed = 0;
-    if (data.checkout_session_id) {
-      const { data: deletedBySession, error: sessionDeleteError } = await supabaseAdmin.from("incomplete_orders").delete().eq("checkout_session_id", data.checkout_session_id).select("id");
-      if (sessionDeleteError) throw sessionDeleteError;
-      removed += (deletedBySession ?? []).length;
-    }
-    const { data: deletedByPhone, error: phoneDeleteError } = await supabaseAdmin.from("incomplete_orders").delete().eq("phone", customerPhone).select("id");
-    if (phoneDeleteError) throw phoneDeleteError;
-    removed += (deletedByPhone ?? []).length;
-    if (removed > 0) await supabaseAdmin.from("incomplete_events").insert({ phone: customerPhone, event: "converted" });
-  } catch (e) {
-    console.error("[placeOrder] incomplete draft cleanup failed:", e);
-  }
 
   try {
     const userAgent = getRequestHeader("user-agent") ?? null;
