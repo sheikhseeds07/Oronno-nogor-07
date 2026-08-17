@@ -13,7 +13,8 @@ const sourceOf=(o:any)=>String(o.source??"").toLowerCase();
 const isIncomplete=(o:any)=>sourceOf(o)==="incomplete";
 const isRealOrder=(o:any)=>!isIncomplete(o);
 const isWebOrder=(o:any)=>isRealOrder(o)&&sourceOf(o)==="web";
-const isWebPending=(o:any)=>String(o.status??"").toLowerCase()==="web_pending";
+// Processing can be represented by the legacy web_pending status or the explicit processing status.
+const isWebPending=(o:any)=>["web_pending","processing"].includes(String(o.status??"").toLowerCase());
 const bdDay=(iso:string)=>new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Dhaka"}).format(new Date(iso));
 const bdHour=(iso:string)=>Number(new Intl.DateTimeFormat("en-US",{hour:"2-digit",hour12:false,timeZone:"Asia/Dhaka"}).format(new Date(iso)));
 const bdMonth=(iso:string)=>new Intl.DateTimeFormat("en-US",{month:"short",year:"2-digit",timeZone:"Asia/Dhaka"}).format(new Date(iso));
@@ -37,7 +38,7 @@ export const getPremiumDashboardReport=createServerFn({method:"POST"}).middlewar
  const visitorsR=await db.from("site_visitors").select("id,path,landing_page_id,product_id,last_seen").gte("last_seen",new Date(Date.now()-120000).toISOString()).limit(5000);
  const queryError=ordersR.error??productsR.error??customersR.error??employeesR.error??landingR.error??todayVisitorsR.error??activeIncompleteR.error??visitorsR.error;if(queryError)throw new Error(queryError.message);
  const orders=ordersR.data??[],realOrders=orders.filter(isRealOrder),webOrders=realOrders.filter(isWebOrder),webPendingOrders=webOrders.filter(isWebPending),webConfirmedOrders=webOrders.filter(o=>isConfirmed(o.status)),webCancelledOrders=webOrders.filter(o=>isCancelled(o.status));
- const incompleteSourceOrders=orders.filter(isIncomplete),incompleteProcessing=incompleteSourceOrders.filter(o=>isWebPending(o.status)),incompleteConfirmed=incompleteSourceOrders.filter(o=>isConfirmed(o.status)),incompleteCancelled=incompleteSourceOrders.filter(o=>isCancelled(o.status));
+ const incompleteSourceOrders=orders.filter(isIncomplete),incompleteProcessing=incompleteSourceOrders.filter(isWebPending),incompleteConfirmed=incompleteSourceOrders.filter(o=>isConfirmed(o.status)),incompleteCancelled=incompleteSourceOrders.filter(o=>isCancelled(o.status));
  const confirmedOrders=realOrders.filter(o=>isConfirmed(o.status));
  const confirmedRevenue=confirmedOrders.reduce((s,o)=>s+Number(o.total||0),0),webRevenue=webOrders.reduce((s,o)=>s+Number(o.total||0),0); const visitorRows=visitorsR.data??[],landingPages=landingR.data??[],products=productsR.data??[];
  const landingMap=new Map(landingPages.map(p=>[p.id,p])),productMap=new Map(products.map(p=>[p.id,p])),liveLandingCount=new Map<string,number>(),liveProductCount=new Map<string,number>();for(const v of visitorRows){if(v.landing_page_id)liveLandingCount.set(v.landing_page_id,(liveLandingCount.get(v.landing_page_id)??0)+1);if(v.product_id)liveProductCount.set(v.product_id,(liveProductCount.get(v.product_id)??0)+1)}
