@@ -5,19 +5,11 @@ import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 
 const RangeSchema = z.object({ from: z.string().datetime(), to: z.string().datetime() });
-const APPROVED_STATUSES = new Set(["pending", "shipped", "delivered", "rts", "hold", "partial", "pending_return", "returned"]);
-const isApproved = (status: unknown) => APPROVED_STATUSES.has(String(status));
-const isCancelled = (status: unknown) => String(status) === "cancelled";
-const isWebPending = (status: unknown) => String(status) === "web_pending";
-
-// Web Order Report is intentionally mutually exclusive:
-// every Web Order is exactly one of Processing, Approved or Cancelled.
-const getWebBucket = (status: unknown): "processing" | "approved" | "cancelled" => {
-  if (isCancelled(status)) return "cancelled";
-  if (isApproved(status)) return "approved";
-  return "processing";
-};
-
+const CONFIRMED = new Set(["pending", "rts", "shipped", "delivered", "pending_return", "returned", "partial"]);
+const isConfirmed = (s: unknown) => CONFIRMED.has(String(s));
+const isCancelled = (s: unknown) => String(s) === "cancelled";
+const isWeb = (o: any) => String(o.source) === "web" && !Boolean(o.originated_from_incomplete);
+const bdDay = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dhaka" }).format(new Date(iso));
 const bdHour = (iso: string) => Number(new Intl.DateTimeFormat("en-US", { hour: "2-digit", hour12: false, timeZone: "Asia/Dhaka" }).format(new Date(iso)));
 const bdMonth = (iso: string) => new Intl.DateTimeFormat("en-US", { month: "short", year: "2-digit", timeZone: "Asia/Dhaka" }).format(new Date(iso));
 
@@ -33,159 +25,78 @@ export const getPremiumDashboardReport = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const db = context.supabase;
     await assertStaff(db, context.userId);
-
-    const [ordersResult, incompleteEventsResult, productsResult, customersResult] = await Promise.all([
-      db.from("orders").select("id,source,status,total,created_at,updated_at,originated_from_incomplete").gte("created_at", data.from).lte("created_at", data.to).limit(20000),
-      db.from("incomplete_events").select("phone,event,created_at").gte("created_at", data.from).lte("created_at", data.to).limit(20000),
-      db.from("products").select("id,name,stock,is_active").eq("is_active", true).order("stock", { ascending: true }).limit(1000),
+    const [ordersR, productsR, customersR, employeesR, landingR, visitorsR] = await Promise.all([
+      db.from("orders").select("id,source,status,total,created_at,updated_at,created_by,assigned_to,originated_from_incomplete").gte("created_at", data.from).lte("created_at", data.to).limit(30000),
+      db.from("products").select("id,name,stock,is_active").eq("is_active", true).order("stock", { ascending: true }).limit(2000),
       db.from("profiles").select("id", { count: "exact", head: true }),
+      db.from("employees").select("id,name,user_id,is_active").eq("is_active", true).order("name"),
+      db.from("landing_pages").select("id,title,slug,product_id,is_published").eq("is_published", true),
+      (db as any).from("site_visitors").select("id,path,landing_page_id,product_id,last_seen").gte("last_seen", new Date(Date.now() - 120000).toISOString()).limit(5000),
     ]);
+    const err = ordersR.error ?? productsR.error ?? customersR.error ?? employeesR.error ?? landingR.error ?? visitorsR.error;
+    if (err) throw new Error(err.message);
+    const orders = ordersR.data ?? [];
+    const webOrders = orders.filter(isWeb);
+    const confirmed = webOrders.filter((o) => isConfirmed(o.status));
+    const processing = webOrders.filter((o) => String(o.status) === "web_pending");
+    const cancelled = webOrders.filter((o) => isCancelled(o.status));
+    const confirmedRevenue = confirmed.reduce((n, o) => n + Number(o.total || 0), 0);
+    const allWebRevenue = webOrders.reduce((n, o) => n + Number(o.total || 0), 0);
 
-    const firstError = ordersResult.error ?? incompleteEventsResult.error ?? productsResult.error ?? customersResult.error;
-    if (firstError) throw new Error(firstError.message);
-
-    const orders = ordersResult.data ?? [];
-    const incompleteEvents = incompleteEventsResult.data ?? [];
-    const products = productsResult.data ?? [];
-    const webOrders = orders.filter((o) => String(o.source) === "web");
-    const convertedOrders = webOrders.filter((o) => Boolean(o.originated_from_incomplete));
-
-    const webProcessing = webOrders.filter((o) => getWebBucket(o.status) === "processing").length;
-    const webApproved = webOrders.filter((o) => getWebBucket(o.status) === "approved").length;
-    const webCancelled = webOrders.filter((o) => getWebBucket(o.status) === "cancelled").length;
-    const webTotal = webProcessing + webApproved + webCancelled;
-    const webRevenue = webOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
-
-    const incompleteCreated = incompleteEvents.filter((e) => e.event === "created").length;
-    const incompleteCancelled = incompleteEvents.filter((e) => e.event === "cancelled").length;
-    const incompleteConverted = incompleteEvents.filter((e) => e.event === "converted").length;
-    const convertedApproved = convertedOrders.filter((o) => getWebBucket(o.status) === "approved").length;
-    const convertedCancelled = convertedOrders.filter((o) => getWebBucket(o.status) === "cancelled").length;
-    const convertedPending = convertedOrders.filter((o) => getWebBucket(o.status) === "processing").length;
-
-    const latestByPhone = new Map<string, { event: string; created_at: string }>();
-    for (const event of incompleteEvents) {
-      const phone = String(event.phone || "").trim();
-      if (!phone) continue;
-      const previous = latestByPhone.get(phone);
-      if (!previous || new Date(event.created_at).getTime() > new Date(previous.created_at).getTime()) {
-        latestByPhone.set(phone, { event: event.event, created_at: event.created_at });
-      }
+    const visitorRows = visitorsR.data ?? [];
+    const lpMap = new Map((landingR.data ?? []).map((x) => [x.id, x]));
+    const productMap = new Map((productsR.data ?? []).map((x) => [x.id, x]));
+    const liveLanding = new Map<string, number>();
+    const liveProduct = new Map<string, number>();
+    for (const v of visitorRows) {
+      if (v.landing_page_id) liveLanding.set(v.landing_page_id, (liveLanding.get(v.landing_page_id) ?? 0) + 1);
+      if (v.product_id) liveProduct.set(v.product_id, (liveProduct.get(v.product_id) ?? 0) + 1);
     }
-    const openIncompleteLeads = Array.from(latestByPhone.values()).filter((x) => x.event === "created").length;
-    const incompleteFunnel = {
-      created: incompleteCreated,
-      webPending: incompleteConverted,
-      approved: convertedApproved,
-      cancelled: convertedCancelled + incompleteCancelled,
-      currentWebPending: convertedPending,
-      openLeads: openIncompleteLeads,
-    };
+    const liveLandingPages = Array.from(liveLanding.entries()).map(([id, visitors]) => ({ ...(lpMap.get(id) ?? { id, title: "Unknown", slug: "" }), visitors })).sort((a,b) => b.visitors-a.visitors);
+    const liveProducts = Array.from(liveProduct.entries()).map(([id, visitors]) => ({ ...(productMap.get(id) ?? { id, name: "Unknown", stock: 0 }), visitors })).sort((a,b) => b.visitors-a.visitors);
 
-    // Source attribution is deliberately different from the raw `orders.source`:
-    // an order manually promoted from Incomplete may have source=web so that it
-    // can enter the Web Pending workflow, but it must remain INCOMPLETE in the
-    // dashboard's source report. Direct customer checkout orders are WEB.
-    // Manual/admin orders are MANUAL. This prevents converted incomplete orders
-    // from inflating the direct WEB count.
-    const sourceMap = new Map<string, { source: string; count: number; revenue: number }>();
-    for (const order of orders) {
-      let source = String(order.source || "unknown").toLowerCase();
-      if (Boolean(order.originated_from_incomplete)) {
-        source = "incomplete";
-      } else if (source === "web") {
-        source = "web";
-      } else if (["manual", "direct"].includes(source)) {
-        source = "manual";
-      }
-      const row = sourceMap.get(source) ?? { source, count: 0, revenue: 0 };
-      row.count += 1;
-      row.revenue += Number(order.total) || 0;
-      sourceMap.set(source, row);
+    const sourceMap = new Map<string, { source:string; count:number; revenue:number }>();
+    for (const o of orders) {
+      const source = Boolean(o.originated_from_incomplete) ? "incomplete" : String(o.source || "unknown").toLowerCase() === "web" ? "web" : "manual";
+      const row = sourceMap.get(source) ?? { source, count:0, revenue:0 };
+      row.count++; row.revenue += Number(o.total || 0); sourceMap.set(source,row);
     }
 
-    const statusBreakdown = new Map<string, number>();
-    for (const order of orders) {
-      const status = String(order.status || "unknown");
-      statusBreakdown.set(status, (statusBreakdown.get(status) ?? 0) + 1);
+    const dayMap = new Map<string, { day:string; created:number; processing:number; confirmed:number; cancelled:number }>();
+    for (const o of webOrders) {
+      const key = bdDay(o.created_at); const row = dayMap.get(key) ?? { day:key, created:0, processing:0, confirmed:0, cancelled:0 };
+      row.created++; if (String(o.status)==="web_pending") row.processing++; if (isConfirmed(o.status)) row.confirmed++; if (isCancelled(o.status)) row.cancelled++; dayMap.set(key,row);
+    }
+    const hourly = Array.from({length:24},(_,hour)=>({hour,label:`${hour===0?12:hour>12?hour-12:hour}${hour<12?"AM":"PM"}`,orders:0}));
+    for (const o of webOrders) hourly[bdHour(o.created_at)].orders++;
+    const earnings = new Map<string,{month:string;orders:number;revenue:number;confirmed:number}>();
+    for (const o of webOrders) { const key=bdMonth(o.created_at); const row=earnings.get(key)??{month:key,orders:0,revenue:0,confirmed:0}; row.orders++; row.revenue+=Number(o.total||0); if(isConfirmed(o.status))row.confirmed++; earnings.set(key,row); }
+
+    const ids = orders.map(o=>o.id);
+    let bestSelling:Array<any>=[];
+    if(ids.length){
+      const itemsR=await db.from("order_items").select("order_id,product_id,product_name,quantity,subtotal").in("order_id",ids).limit(50000);
+      if(itemsR.error) throw new Error(itemsR.error.message);
+      const confirmedIds=new Set(confirmed.map(o=>o.id)); const map=new Map<string,{product_id:string|null;name:string;units:number;revenue:number}>();
+      for(const i of itemsR.data??[]){ if(!confirmedIds.has(i.order_id)) continue; const key=i.product_id??i.product_name; const row=map.get(key)??{product_id:i.product_id,name:i.product_name,units:0,revenue:0}; row.units+=Number(i.quantity||0); row.revenue+=Number(i.subtotal||0); map.set(key,row); }
+      bestSelling=Array.from(map.values()).sort((a,b)=>b.units-a.units).slice(0,10).map(x=>({...x,landingPages:(landingR.data??[]).filter(lp=>lp.product_id===x.product_id).map(lp=>({title:lp.title,slug:lp.slug}))}));
     }
 
-    const dayMap = new Map<string, { day: string; created: number; processing: number; approved: number; cancelled: number; incomplete: number; converted: number }>();
-    const ensureDay = (iso: string) => {
-      const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dhaka" }).format(new Date(iso));
-      let row = dayMap.get(day);
-      if (!row) {
-        row = { day, created: 0, processing: 0, approved: 0, cancelled: 0, incomplete: 0, converted: 0 };
-        dayMap.set(day, row);
-      }
-      return row;
-    };
-    for (const order of webOrders) {
-      const row = ensureDay(order.created_at ?? data.from);
-      row.created += 1;
-      const bucket = getWebBucket(order.status);
-      if (bucket === "processing") row.processing += 1;
-      if (bucket === "approved") row.approved += 1;
-      if (bucket === "cancelled") row.cancelled += 1;
-    }
-    for (const event of incompleteEvents) {
-      const row = ensureDay(event.created_at);
-      if (event.event === "created") row.incomplete += 1;
-      if (event.event === "converted") row.converted += 1;
-      if (event.event === "cancelled") row.cancelled += 1;
-    }
-
-    const hourly = Array.from({ length: 24 }, (_, hour) => ({ hour, label: `${hour === 0 ? 12 : hour > 12 ? hour - 12 : hour}${hour < 12 ? "AM" : "PM"}`, created: 0, processing: 0, approved: 0, cancelled: 0 }));
-    for (const order of webOrders) {
-      const h = bdHour(order.created_at);
-      hourly[h].created += 1;
-      const bucket = getWebBucket(order.status);
-      if (bucket === "processing") hourly[h].processing += 1;
-      if (bucket === "approved") hourly[h].approved += 1;
-      if (bucket === "cancelled") hourly[h].cancelled += 1;
-    }
-
-    const earningMap = new Map<string, { month: string; orders: number; revenue: number; approved: number }>();
-    for (const order of webOrders) {
-      const month = bdMonth(order.created_at);
-      const row = earningMap.get(month) ?? { month, orders: 0, revenue: 0, approved: 0 };
-      row.orders += 1;
-      row.revenue += Number(order.total) || 0;
-      if (getWebBucket(order.status) === "approved") row.approved += 1;
-      earningMap.set(month, row);
-    }
-
-    const orderIds = orders.map((o) => o.id);
-    let bestSelling: Array<{ name: string; units: number; revenue: number }> = [];
-    if (orderIds.length) {
-      const { data: items, error: itemsError } = await db.from("order_items").select("order_id,product_id,product_name,quantity,subtotal").in("order_id", orderIds).limit(30000);
-      if (itemsError) throw new Error(itemsError.message);
-      const byProduct = new Map<string, { name: string; units: number; revenue: number }>();
-      for (const item of items ?? []) {
-        const key = item.product_id ?? item.product_name;
-        const row = byProduct.get(key) ?? { name: item.product_name, units: 0, revenue: 0 };
-        row.units += Number(item.quantity) || 0;
-        row.revenue += Number(item.subtotal) || 0;
-        byProduct.set(key, row);
-      }
-      bestSelling = Array.from(byProduct.values()).sort((a, b) => b.units - a.units).slice(0, 8);
-    }
-
-    const lowStock = products.filter((p) => (p.stock ?? 0) <= 5).slice(0, 8).map((p) => ({ id: p.id, name: p.name, stock: p.stock ?? 0 }));
-    const stockSummary = { total: products.length, low: products.filter((p) => (p.stock ?? 0) > 0 && (p.stock ?? 0) <= 5).length, out: products.filter((p) => (p.stock ?? 0) <= 0).length };
+    const lowStock=(productsR.data??[]).filter(p=>(p.stock??0)<=5).slice(0,10).map(p=>({id:p.id,name:p.name,stock:p.stock??0}));
+    const stockSummary={total:(productsR.data??[]).length,low:(productsR.data??[]).filter(p=>(p.stock??0)>0&&(p.stock??0)<=5).length,out:(productsR.data??[]).filter(p=>(p.stock??0)<=0).length};
+    const employeeMap=new Map<string,{user_id:string|null;name:string;confirmed:number;cancelled:number;total:number}>();
+    for(const e of employeesR.data??[]) employeeMap.set(String(e.user_id||e.id),{user_id:e.user_id,name:e.name,confirmed:0,cancelled:0,total:0});
+    for(const o of orders){ const key=String(o.created_by||""); if(!key)continue; const e=employeeMap.get(key); if(!e)continue; if(isConfirmed(o.status)){e.confirmed++;e.total++;} else if(isCancelled(o.status))e.cancelled++; }
+    const employeePerformance=Array.from(employeeMap.values()).sort((a,b)=>b.confirmed-a.confirmed);
 
     return {
-      real: { created: webTotal, total: webTotal, processing: webProcessing, approved: webApproved, cancelled: webCancelled, pending: webProcessing, revenue: webRevenue },
-      incomplete: { ...incompleteFunnel, converted: incompleteConverted, convertedApproved, convertedCancelled },
-      sourceBreakdown: Array.from(sourceMap.values()).sort((a, b) => b.count - a.count),
-      statusBreakdown: Array.from(statusBreakdown.entries()).map(([status, count]) => ({ status, count })).sort((a, b) => b.count - a.count),
-      daily: Array.from(dayMap.values()).sort((a, b) => a.day.localeCompare(b.day)),
-      hourly,
-      earnings: Array.from(earningMap.values()),
-      bestSelling,
-      lowStock,
-      stockSummary,
-      customers: customersResult.count ?? 0,
-      products: products.length,
+      real:{created:webOrders.length,total:webOrders.length,processing:processing.length,approved:confirmed.length,pending:processing.length,cancelled:cancelled.length,revenue:confirmedRevenue,allRevenue:allWebRevenue},
+      sourceBreakdown:Array.from(sourceMap.values()).sort((a,b)=>b.count-a.count),
+      daily:Array.from(dayMap.values()).sort((a,b)=>a.day.localeCompare(b.day)), hourly,
+      earnings:Array.from(earnings.values()), bestSelling, lowStock, stockSummary,
+      customers:customersR.count??0, products:(productsR.data??[]).length,
+      liveVisitors:visitorRows.length, liveLandingPages, liveProducts,
+      employeePerformance,
+      incomplete:orders.filter(o=>Boolean(o.originated_from_incomplete)).length,
     };
   });
