@@ -41,18 +41,18 @@ type OrderStatus =
 
 type Tab = "search" | "new" | "web" | "list";
 
-const statusBn: Record<OrderStatus, string> = {
-  web_pending: "ওয়েব পেন্ডিং",
-  incomplete: "ইনকমপ্লিট",
-  pending: "পেন্ডিং",
-  rts: "RTS (রেডি)",
-  shipped: "শিপড",
-  delivered: "ডেলিভার্ড",
-  pending_return: "রিটার্ন পেন্ডিং",
-  returned: "রিটার্নড",
-  partial: "পার্শিয়াল",
-  cancelled: "ক্যান্সেলড",
-  hold: "হোল্ড",
+const statusEn: Record<OrderStatus, string> = {
+  web_pending: "Web Pending",
+  incomplete: "Incomplete",
+  pending: "Pending",
+  rts: "RTS (Ready to Ship)",
+  shipped: "Shipped",
+  delivered: "Delivered",
+  pending_return: "Return Pending",
+  returned: "Returned",
+  partial: "Partial",
+  cancelled: "Cancelled",
+  hold: "Hold",
 };
 
 const statusColor: Record<OrderStatus, string> = {
@@ -87,10 +87,10 @@ const LIST_STATUSES: OrderStatus[] = [
 ];
 
 const TABS: { key: Tab; label: string; icon: typeof Search }[] = [
-  { key: "search", label: "সার্চ", icon: Search },
-  { key: "new", label: "নিউ অর্ডার", icon: Plus },
-  { key: "web", label: "ওয়েব অর্ডার", icon: Globe },
-  { key: "list", label: "অর্ডার লিস্ট", icon: ListOrdered },
+  { key: "search", label: "Search", icon: Search },
+  { key: "new", label: "New Order", icon: Plus },
+  { key: "web", label: "Web Order", icon: Globe },
+  { key: "list", label: "Order List", icon: ListOrdered },
 ];
 
 // Keys that must refresh whenever any order data changes anywhere.
@@ -284,7 +284,7 @@ function SearchPanel({ onOpen }: { onOpen: (id: string) => void }) {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold">{section}</span>
-                  <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${statusColor[o.status]}`}>{statusBn[o.status]}</span>
+                  <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${statusColor[o.status]}`}>{statusEn[o.status]}</span>
                 </div>
                 <select
                   value={pendingStatus ?? o.status}
@@ -293,10 +293,10 @@ function SearchPanel({ onOpen }: { onOpen: (id: string) => void }) {
                   title="স্ট্যাটাস পরিবর্তন করুন"
                 >
                   <optgroup label="Web Order">
-                    {WEB_STATUSES.map((s) => <option key={s} value={s}>{statusBn[s]}</option>)}
+                    {WEB_STATUSES.map((s) => <option key={s} value={s}>{statusEn[s]}</option>)}
                   </optgroup>
                   <optgroup label="Order List">
-                    {LIST_STATUSES.map((s) => <option key={s} value={s}>{statusBn[s]}</option>)}
+                    {LIST_STATUSES.map((s) => <option key={s} value={s}>{statusEn[s]}</option>)}
                   </optgroup>
                 </select>
                 <button
@@ -893,7 +893,7 @@ function OrdersTable({
       qc.invalidateQueries({ queryKey: ["admin-orders"] });
       return;
     }
-    toast.success(`${ids.length} টি অর্ডার "${statusBn[status]}" এ পাঠানো হয়েছে`);
+    toast.success(`${ids.length} টি অর্ডার "${statusEn[status]}" এ পাঠানো হয়েছে`);
     qc.invalidateQueries({ queryKey: ["order-status-counts"] });
     qc.invalidateQueries({ queryKey: ["admin-orders"] });
   };
@@ -1048,7 +1048,7 @@ function OrdersTable({
                   : "bg-white border border-slate-200 text-slate-700 hover:border-brand/40 hover:shadow-sm"
               }`}
             >
-              {statusBn[s]}
+              {statusEn[s]}
               <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${active ? "bg-white/25" : c > 0 ? "bg-brand/10 text-brand-dark" : "bg-slate-100 text-slate-500"}`}>
                 {c}
               </span>
@@ -1337,7 +1337,7 @@ function DuplicateModal({ loading, rows, onDelete, onClose }: { loading: boolean
                     <td className="py-2 font-mono text-xs">{r.invoice}</td>
                     <td className="py-2">{r.name}</td>
                     <td className="py-2 font-mono text-xs">{r.phone}</td>
-                    <td className="py-2"><span className={`text-xs px-2 py-0.5 rounded font-semibold ${statusColor[r.status]}`}>{statusBn[r.status]}</span></td>
+                    <td className="py-2"><span className={`text-xs px-2 py-0.5 rounded font-semibold ${statusColor[r.status]}`}>{statusEn[r.status]}</span></td>
                     <td className="py-2 text-right">
                       <button onClick={() => onDelete(r.id)} className="inline-flex items-center gap-1 px-2 py-1 rounded bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700">
                         <Trash2 className="w-3 h-3" /> ডিলিট
@@ -2010,7 +2010,7 @@ function OurRecordCard({ history, total, success, cancelled }: { history: Histor
                     </div>
                   </div>
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${statusColor[o.status as OrderStatus] ?? "bg-gray-100 text-gray-700"}`}>
-                    {statusBn[o.status as OrderStatus] ?? o.status}
+                    {statusEn[o.status as OrderStatus] ?? o.status}
                   </span>
                 </div>
                 <div className="text-[11px] text-slate-700 mb-1">
