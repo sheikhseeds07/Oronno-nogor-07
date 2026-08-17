@@ -80,16 +80,17 @@ export async function ensureOrderInvoiceNo(orderId: string, current: string | nu
 }
 
 /**
- * Makes sure every given order has a valid invoice number BEFORE its status
- * leaves the web stage — this keeps the old DB fallback (SK…) from firing.
+ * Ensures invoices only for orders already in the Order List Pending status.
+ * Web Order Hold/Cancelled and other non-pending statuses are intentionally skipped.
  */
 export async function ensureInvoicesForOrders(ids: string[]): Promise<Record<string, string>> {
   if (!ids.length) return {};
   const { prefix } = await getInvoiceConfig();
   const { data: rows } = await supabaseAdmin
     .from("orders")
-    .select("id,invoice_no")
-    .in("id", ids);
+    .select("id,invoice_no,status")
+    .in("id", ids)
+    .eq("status", "pending");
 
   const result: Record<string, string> = {};
   const missing: string[] = [];
