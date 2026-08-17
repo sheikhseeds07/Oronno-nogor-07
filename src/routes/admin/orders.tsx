@@ -952,6 +952,7 @@ function OrdersTable({
             source: "web" as const,
             status: "web_pending" as const,
             payment_method: "cod",
+            originated_from_incomplete: true,
           },
         };
       });
@@ -1913,6 +1914,7 @@ type DetailOrder = {
   subtotal: number; delivery_fee: number; discount: number; total: number;
   created_at: string; order_items: DetailItem[];
   assigned_to?: string | null;
+  originated_from_incomplete?: boolean | null;
 };
 
 
@@ -2353,7 +2355,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
       <div className="min-h-full flex items-start justify-center p-2 sm:p-4">
         <div className="bg-white rounded-xl w-full max-w-5xl my-4" onClick={(e) => e.stopPropagation()}>
           {/* Header */}
-          {isDraft && (
+          {(isDraft || !!detail?.originated_from_incomplete) && (
             <div className="px-5 py-3 border-b-2 border-red-200 bg-red-50 text-center">
               <div className="text-2xl sm:text-3xl font-extrabold tracking-wide text-red-600">INCOMPLETE ORDER</div>
             </div>
