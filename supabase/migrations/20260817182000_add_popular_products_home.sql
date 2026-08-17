@@ -4,6 +4,12 @@ alter table public.products
 create index if not exists products_popular_home_idx
   on public.products (is_popular, is_active, created_at desc);
 
+update public.products p
+set is_popular = true
+where exists (
+  select 1 from public.top_selling_products t where t.product_id = p.id
+);
+
 create or replace function public.get_home_data_v1()
 returns jsonb
 language sql
