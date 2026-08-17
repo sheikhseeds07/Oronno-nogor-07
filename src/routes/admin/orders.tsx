@@ -1028,21 +1028,6 @@ function OrdersTable({
       </div>
 
       <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
-        {mode !== "list" && (
-          <button
-            onClick={() => setFilter("all")}
-            className={`px-3.5 py-1.5 rounded-full text-xs whitespace-nowrap font-bold inline-flex items-center gap-1.5 transition-all duration-200 ${
-              filter === "all"
-                ? "bg-gradient-to-br from-brand to-brand-dark text-white shadow-md scale-105"
-                : "bg-white border border-slate-200 text-slate-700 hover:border-brand/40 hover:shadow-sm"
-            }`}
-          >
-            সব
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${filter === "all" ? "bg-white/25" : "bg-slate-100 text-slate-600"}`}>
-              {Object.values(counts ?? {}).reduce((s, n) => s + n, 0)}
-            </span>
-          </button>
-        )}
         {statuses.map((s) => {
           const c = s === "incomplete" ? (incompleteCount ?? 0) : (counts?.[s] ?? 0);
           const active = filter === s;
