@@ -1,0 +1,31 @@
+name: Remove dashboard trend section
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  remove:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove Real Web Order trend section
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('src/components/admin/PremiumDashboard.tsx')
+          s=p.read_text()
+          pattern=r'\n <div className="grid gap-4 xl:grid-cols-\[1\.65fr_1fr\]">\s*<Section title="Real Web Order & Confirmation Trend">.*?</Section>\s*<Section title="Live Website"'
+          replacement='\n <div className="grid gap-4 xl:grid-cols-[1.65fr_1fr]">\n <Section title="Live Website"'
+          ns,n=re.subn(pattern,replacement,s,count=1,flags=re.S)
+          if n != 1:
+            raise SystemExit(f'Expected trend section once, found {n}')
+          p.write_text(ns)
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/admin/PremiumDashboard.tsx
+          git commit -m "fix: remove dashboard order trend section"
+          git push
