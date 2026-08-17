@@ -5,6 +5,12 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Keep every main build check running to completion instead of cancelling
+# the previous build when another main push arrives.
+concurrency:
+  group: build-check-main
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
