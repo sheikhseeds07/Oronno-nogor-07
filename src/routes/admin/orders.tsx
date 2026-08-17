@@ -2353,6 +2353,11 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
       <div className="min-h-full flex items-start justify-center p-2 sm:p-4">
         <div className="bg-white rounded-xl w-full max-w-5xl my-4" onClick={(e) => e.stopPropagation()}>
           {/* Header */}
+          {isDraft && (
+            <div className="px-5 py-3 border-b-2 border-red-200 bg-red-50 text-center">
+              <div className="text-2xl sm:text-3xl font-extrabold tracking-wide text-red-600">INCOMPLETE ORDER</div>
+            </div>
+          )}
           <div className="px-5 py-3 border-b flex justify-between items-center sticky top-0 bg-white z-10 rounded-t-xl">
             <div className="flex items-center gap-3">
               <span className="font-bold">New Order</span>
