@@ -4,17 +4,39 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
+
 const RangeSchema=z.object({from:z.string().datetime(),to:z.string().datetime()});
 const CONFIRMED=new Set(["pending","rts","shipped","delivered","pending_return","returned","partial"]);
-const isConfirmed=(s:unknown)=>CONFIRMED.has(String(s??"").toLowerCase()); const isCancelled=(s:unknown)=>["cancelled","canceled"].includes(String(s??"").toLowerCase());
-const sourceOf=(o:any)=>String(o.source??"").toLowerCase(); const isIncomplete=(o:any)=>sourceOf(o)==="incomplete"; const isRealOrder=(o:any)=>!isIncomplete(o); const isWebOrder=(o:any)=>isRealOrder(o)&&sourceOf(o)==="web"; const isWebPending=(o:any)=>isWebOrder(o)&&String(o.status??"").toLowerCase()==="web_pending";
-const bdDay=(iso:string)=>new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Dhaka"}).format(new Date(iso)); const bdHour=(iso:string)=>Number(new Intl.DateTimeFormat("en-US",{hour:"2-digit",hour12:false,timeZone:"Asia/Dhaka"}).format(new Date(iso))); const bdMonth=(iso:string)=>new Intl.DateTimeFormat("en-US",{month:"short",year:"2-digit",timeZone:"Asia/Dhaka"}).format(new Date(iso));
-async function assertStaff(db:SupabaseClient<Database>,userId:string){const {data,error}=await db.from("user_roles").select("role").eq("user_id",userId).in("role",["admin","super_admin","employee"]);if(error)throw new Error(error.message);if(!data?.length)throw new Error("Unauthorized");}
+const isConfirmed=(s:unknown)=>CONFIRMED.has(String(s??"").toLowerCase());
+const isCancelled=(s:unknown)=>["cancelled","canceled"].includes(String(s??"").toLowerCase());
+const sourceOf=(o:any)=>String(o.source??"").toLowerCase();
+const isIncomplete=(o:any)=>sourceOf(o)==="incomplete";
+const isRealOrder=(o:any)=>!isIncomplete(o);
+const isWebOrder=(o:any)=>isRealOrder(o)&&sourceOf(o)==="web";
+const isWebPending=(o:any)=>isWebOrder(o)&&String(o.status??"").toLowerCase()==="web_pending";
+const bdDay=(iso:string)=>new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Dhaka"}).format(new Date(iso));
+const bdHour=(iso:string)=>Number(new Intl.DateTimeFormat("en-US",{hour:"2-digit",hour12:false,timeZone:"Asia/Dhaka"}).format(new Date(iso)));
+const bdMonth=(iso:string)=>new Intl.DateTimeFormat("en-US",{month:"short",year:"2-digit",timeZone:"Asia/Dhaka"}).format(new Date(iso));
+const bdTodayStart=()=>{const day=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Dhaka"}).format(new Date());return new Date(`${day}T00:00:00+06:00`).toISOString()};
+const bdTomorrowStart=()=>{const start=new Date(bdTodayStart());start.setUTCDate(start.getUTCDate()+1);return start.toISOString()};
+
+async function assertStaff(db:SupabaseClient<Database>,userId:string){const {data,error}=await db.from("user_roles").select("role").eq("user_id",userId).in("role",["admin","super_admin","employee"]);if(error)throw new Error(error.message);if(!data?.length)throw new Error("Unauthorized")}
+
 export const getPremiumDashboardReport=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(input=>RangeSchema.parse(input)).handler(async({data,context})=>{
  await assertStaff(context.supabase,context.userId); const db=supabaseAdmin as SupabaseClient<Database>;
- const [ordersR,productsR,customersR,employeesR,landingR]=await Promise.all([db.from("orders").select("id,source,status,total,created_at,updated_at,created_by,assigned_to,originated_from_incomplete").gte("created_at",data.from).lte("created_at",data.to).limit(30000),db.from("products").select("id,name,stock,is_active").eq("is_active",true).order("stock",{ascending:true}).limit(2000),db.from("profiles").select("id",{count:"exact",head:true}),db.from("employees").select("id,name,user_id,is_active").eq("is_active",true).order("name"),db.from("landing_pages").select("id,title,slug,product_id,is_published").eq("is_published",true)]);
- const visitorsR=await db.from("site_visitors").select("id,path,landing_page_id,product_id,last_seen").gte("last_seen",new Date(Date.now()-120000).toISOString()).limit(5000); const queryError=ordersR.error??productsR.error??customersR.error??employeesR.error??landingR.error??visitorsR.error;if(queryError)throw new Error(queryError.message);
- const orders=ordersR.data??[],realOrders=orders.filter(isRealOrder),webOrders=realOrders.filter(isWebOrder),webPendingOrders=webOrders.filter(isWebPending),confirmedOrders=realOrders.filter(o=>isConfirmed(o.status)),cancelledOrders=realOrders.filter(o=>isCancelled(o.status));
+ const todayStart=bdTodayStart();
+ const tomorrowStart=bdTomorrowStart();
+ const [ordersR,productsR,customersR,employeesR,landingR,todayVisitorsR]=await Promise.all([
+  db.from("orders").select("id,source,status,total,created_at,updated_at,created_by,assigned_to,originated_from_incomplete").gte("created_at",data.from).lte("created_at",data.to).limit(30000),
+  db.from("products").select("id,name,stock,is_active").eq("is_active",true).order("stock",{ascending:true}).limit(2000),
+  db.from("profiles").select("id",{count:"exact",head:true}),
+  db.from("employees").select("id,name,user_id,is_active").eq("is_active",true).order("name"),
+  db.from("landing_pages").select("id,title,slug,product_id,is_published").eq("is_published",true),
+  db.from("site_visitors").select("id",{count:"exact",head:true}).gte("last_seen",todayStart).lt("last_seen",tomorrowStart)
+ ]);
+ const visitorsR=await db.from("site_visitors").select("id,path,landing_page_id,product_id,last_seen").gte("last_seen",new Date(Date.now()-120000).toISOString()).limit(5000);
+ const queryError=ordersR.error??productsR.error??customersR.error??employeesR.error??landingR.error??todayVisitorsR.error??visitorsR.error;if(queryError)throw new Error(queryError.message);
+ const orders=ordersR.data??[],realOrders=orders.filter(isRealOrder),webOrders=realOrders.filter(isWebOrder),webPendingOrders=webOrders.filter(isWebPending),webConfirmedOrders=webOrders.filter(o=>isConfirmed(o.status)),webCancelledOrders=webOrders.filter(o=>isCancelled(o.status)),confirmedOrders=realOrders.filter(o=>isConfirmed(o.status));
  const confirmedRevenue=confirmedOrders.reduce((s,o)=>s+Number(o.total||0),0),webRevenue=webOrders.reduce((s,o)=>s+Number(o.total||0),0); const visitorRows=visitorsR.data??[],landingPages=landingR.data??[],products=productsR.data??[];
  const landingMap=new Map(landingPages.map(p=>[p.id,p])),productMap=new Map(products.map(p=>[p.id,p])),liveLandingCount=new Map<string,number>(),liveProductCount=new Map<string,number>();for(const v of visitorRows){if(v.landing_page_id)liveLandingCount.set(v.landing_page_id,(liveLandingCount.get(v.landing_page_id)??0)+1);if(v.product_id)liveProductCount.set(v.product_id,(liveProductCount.get(v.product_id)??0)+1)}
  const liveLandingPages=Array.from(liveLandingCount.entries()).map(([id,visitors])=>({...((landingMap.get(id)??{id,title:"Unknown",slug:""}) as any),visitors})).sort((a,b)=>b.visitors-a.visitors),liveProducts=Array.from(liveProductCount.entries()).map(([id,visitors])=>({...((productMap.get(id)??{id,name:"Unknown",stock:0}) as any),visitors})).sort((a,b)=>b.visitors-a.visitors);
@@ -26,5 +48,5 @@ export const getPremiumDashboardReport=createServerFn({method:"POST"}).middlewar
  const lowStock=products.filter(p=>(p.stock??0)<=5).slice(0,10).map(p=>({id:p.id,name:p.name,stock:p.stock??0})),stockSummary={total:products.length,low:products.filter(p=>(p.stock??0)>0&&(p.stock??0)<=5).length,out:products.filter(p=>(p.stock??0)<=0).length};
  const employeeMap=new Map<string,{user_id:string|null;name:string;confirmed:number;cancelled:number;total:number}>();for(const e of employeesR.data??[])employeeMap.set(String(e.user_id||e.id),{user_id:e.user_id,name:e.name,confirmed:0,cancelled:0,total:0});
  for(const o of realOrders){const cancelActor=isCancelled(o.status)?String(o.assigned_to||""):"";const cancelEmployee=employeeMap.get(cancelActor);if(isCancelled(o.status)&&cancelEmployee)cancelEmployee.cancelled++;const confirmActor=String(o.created_by||"");const confirmEmployee=employeeMap.get(confirmActor);if(isConfirmed(o.status)&&confirmEmployee){confirmEmployee.confirmed++;confirmEmployee.total++;}}
- return {real:{created:webOrders.length,total:webOrders.length,processing:webPendingOrders.length,approved:confirmedOrders.length,pending:webPendingOrders.length,cancelled:cancelledOrders.length,revenue:confirmedRevenue,allRevenue:webRevenue},sourceBreakdown:Array.from(sourceMap.values()).sort((a,b)=>b.count-a.count),daily:Array.from(dayMap.values()).sort((a,b)=>a.day.localeCompare(b.day)),hourly,earnings:Array.from(earningsMap.values()),bestSelling,lowStock,stockSummary,customers:customersR.count??0,products:products.length,liveVisitors:visitorRows.length,liveLandingPages,liveProducts,employeePerformance:Array.from(employeeMap.values()).sort((a,b)=>(b.confirmed+b.cancelled)-(a.confirmed+a.cancelled)),incomplete:orders.filter(isIncomplete).length};
+ return {real:{created:webOrders.length,total:webOrders.length,processing:webPendingOrders.length,approved:webConfirmedOrders.length,pending:webPendingOrders.length,cancelled:webCancelledOrders.length,revenue:confirmedRevenue,allRevenue:webRevenue},webOrders:{total:webOrders.length,confirmed:webConfirmedOrders.length,processing:webPendingOrders.length,cancelled:webCancelledOrders.length},sourceBreakdown:Array.from(sourceMap.values()).sort((a,b)=>b.count-a.count),daily:Array.from(dayMap.values()).sort((a,b)=>a.day.localeCompare(b.day)),hourly,earnings:Array.from(earningsMap.values()),bestSelling,lowStock,stockSummary,customers:customersR.count??0,products:products.length,liveVisitors:visitorRows.length,todayVisitors:todayVisitorsR.count??0,liveLandingPages,liveProducts,employeePerformance:Array.from(employeeMap.values()).sort((a,b)=>(b.confirmed+b.cancelled)-(a.confirmed+a.cancelled)),incomplete:orders.filter(isIncomplete).length};
 });
