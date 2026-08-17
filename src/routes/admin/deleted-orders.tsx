@@ -299,96 +299,72 @@ function DeletedOrdersPage() {
             <div className="mt-1 text-xs text-muted-foreground">ডিলিট করা অর্ডার এখানে দেখা যাবে।</div>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div className="px-1 text-xs font-semibold text-muted-foreground">মোট {rows.length} টি ডিলিটেড অর্ডার</div>
-            {rows.map((row) => {
-              const items = Array.isArray(row.items) ? row.items : [];
-              const selectedStatus = restoreTargets[row.id] ?? preferredStatus(row.original_status);
-              const busy = busyId === row.id || bulkBusy;
-              const invoice = (row.invoice_no ?? row.id.slice(0, 8)).toUpperCase();
-
-              return (
-                <div key={row.id} className={`rounded-2xl border bg-white p-4 shadow-sm transition ${selectedIds.has(row.id) ? "border-brand ring-2 ring-brand/10" : "border-slate-200"}`}>
-                  <div className="flex items-start justify-between gap-3 flex-wrap">
-                    <div className="flex items-start gap-3 min-w-0 flex-1">
+            <div className="space-y-2">
+              {rows.map((row) => {
+                const selectedStatus = restoreTargets[row.id] ?? preferredStatus(row.original_status);
+                const busy = busyId === row.id || bulkBusy;
+                const invoice = (row.invoice_no ?? row.id.slice(0, 8)).toUpperCase();
+                return (
+                  <div key={row.id} className={`group relative overflow-x-auto rounded-xl border bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md ${selectedIds.has(row.id) ? "border-brand ring-2 ring-brand/10" : "border-slate-200 hover:border-brand/30"}`}>
+                    <div className="flex min-w-[760px] items-center gap-2.5 px-3 py-2.5 sm:px-4 sm:py-3">
                       <input
                         type="checkbox"
                         checked={selectedIds.has(row.id)}
                         onChange={() => toggleOne(row.id)}
                         disabled={bulkBusy}
-                        className="mt-1"
+                        className="h-4 w-4 shrink-0 accent-brand"
                         aria-label={`#${invoice} সিলেক্ট করুন`}
                       />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono text-sm font-extrabold text-slate-800">#{invoice}</span>
-                          <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700">
-                            আগে: {STATUS_OPTIONS.find((s) => s.value === row.original_status)?.label ?? row.original_status}
-                          </span>
-                        </div>
-                        <div className="mt-1 text-sm font-bold text-slate-800">{row.customer_name}</div>
-                        <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
-                          <Phone className="h-3 w-3" /> {row.customer_phone}
-                        </div>
-                        <div className="mt-1 text-[11px] text-slate-400">
-                          অর্ডার: {format(new Date(row.original_created_at), "dd MMM yyyy, hh:mm a")} · ডিলিট: {format(new Date(row.deleted_at), "dd MMM yyyy, hh:mm a")}
-                        </div>
+                      <div className="w-[78px] shrink-0 font-mono text-sm font-extrabold text-slate-800">#{invoice}</div>
+                      <span className="shrink-0 rounded-full bg-rose-50 px-2 py-1 text-[10px] font-extrabold text-rose-700 ring-1 ring-rose-100">
+                        আগে: {STATUS_OPTIONS.find((s) => s.value === row.original_status)?.label ?? row.original_status}
+                      </span>
+                      <div className="w-[190px] min-w-0 shrink-0">
+                        <div className="truncate text-sm font-bold text-slate-800">{row.customer_name}</div>
+                        <div className="flex items-center gap-1.5 text-[11px] text-slate-500"><Phone className="h-3 w-3" />{row.customer_phone}</div>
+                      </div>
+                      <div className="w-[88px] shrink-0 text-right text-sm font-extrabold text-brand-dark">{taka(Number(row.total))}</div>
+                      <div className="w-[120px] shrink-0 text-[10px] text-slate-400">{format(new Date(row.deleted_at), "dd MMM, hh:mm a")}</div>
+                      <div className="ml-auto flex shrink-0 items-center gap-1.5">
+                        <select
+                          value={selectedStatus}
+                          onChange={(event) => setRestoreTargets((current) => ({ ...current, [row.id]: event.target.value as RestoreStatus }))}
+                          disabled={busy}
+                          className="h-9 min-w-[145px] rounded-lg border border-slate-200 bg-slate-50 px-2 text-[11px] font-bold text-slate-700 outline-none transition-all focus:border-brand focus:bg-white focus:ring-2 focus:ring-brand/20"
+                        >
+                          {STATUS_OPTIONS.map((status) => (
+                            <option key={status.value} value={status.value}>{status.label}-এ ফেরত নিন</option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => restore(row)}
+                          disabled={busy}
+                          className="inline-flex h-9 items-center gap-1 rounded-lg bg-gradient-to-br from-brand to-brand-dark px-3 text-[11px] font-extrabold text-white shadow-sm transition-all duration-300 hover:scale-[1.03] hover:shadow-md active:scale-95 disabled:opacity-50"
+                        >
+                          {busyId === row.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Undo2 className="h-3.5 w-3.5" />}
+                          রিস্টোর
+                        </button>
+                        {data?.canPermanentDelete && (
+                          <button
+                            type="button"
+                            onClick={() => permanentlyDelete(row)}
+                            disabled={busy}
+                            className="inline-flex h-9 items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2.5 text-[11px] font-extrabold text-rose-700 transition-all duration-300 hover:bg-rose-100 hover:shadow-sm disabled:opacity-50"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            ডিলিট
+                          </button>
+                        )}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-xs text-muted-foreground">মোট</div>
-                      <div className="text-lg font-extrabold text-brand-dark">{taka(Number(row.total))}</div>
-                    </div>
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px origin-left scale-x-0 bg-gradient-to-r from-brand via-emerald-400 to-transparent transition-transform duration-500 group-hover:scale-x-100" />
                   </div>
-
-                  {items.length > 0 && (
-                    <div className="mt-3 rounded-xl bg-slate-50 p-3">
-                      <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-500">Order Items</div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {items.map((item, index) => (
-                          <span key={item.id ?? `${row.id}-${index}`} className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700">
-                            {item.product_name} × {Number(item.quantity ?? 1)}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="mt-3 flex items-center gap-2 flex-wrap border-t pt-3">
-                    <select
-                      value={selectedStatus}
-                      onChange={(event) => setRestoreTargets((current) => ({ ...current, [row.id]: event.target.value as RestoreStatus }))}
-                      disabled={busy}
-                      className="min-w-[170px] rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
-                    >
-                      {STATUS_OPTIONS.map((status) => (
-                        <option key={status.value} value={status.value}>{status.label}-এ ফেরত নিন</option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => restore(row)}
-                      disabled={busy}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-brand to-brand-dark px-3 py-2 text-xs font-bold text-white shadow-sm disabled:opacity-50"
-                    >
-                      {busyId === row.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Undo2 className="h-3.5 w-3.5" />}
-                      রিস্টোর
-                    </button>
-                    {data?.canPermanentDelete && (
-                      <button
-                        type="button"
-                        onClick={() => permanentlyDelete(row)}
-                        disabled={busy}
-                        className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        পার্মানেন্ট ডিলিট
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
