@@ -143,7 +143,7 @@ function Home() {
       </section>
 
       <section className="container mx-auto px-3 sm:px-4 py-4 sm:py-12">
-        <SectionTitle title="পপুলার পণ্য" subtitle="আপনি যেসব পণ্য পপুলার হিসেবে নির্বাচন করবেন সেগুলো এখানে দেখাবে" action={{ label: "সকল পণ্য দেখুন", to: "/shop" }} />
+        <SectionTitle title="পপুলার পণ্য" subtitle="বর্তমান সময়ে সবচেয়ে চাহিদা সম্পন্ন পন্য গুলো" action={{ label: "সকল পণ্য দেখুন", to: "/shop" }} />
         {popularProducts.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">{popularProducts.map((product) => <ProductCard key={product.id} p={product} />)}</div>
         ) : (
