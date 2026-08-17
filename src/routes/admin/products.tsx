@@ -16,6 +16,7 @@ type Product = {
   price: number; sale_price?: number | null; cost?: number | null; stock: number;
   category_id?: string | null; images?: string[];
   is_active?: boolean; is_featured?: boolean; is_popular?: boolean;
+  categories?: { name?: string } | null;
 };
 
 function slugify(s: string) {
@@ -80,7 +81,7 @@ function Products() {
                 <tr key={p.id} className="border-t">
                   <td className="p-3"><img src={p.images?.[0] || "/placeholder.svg"} className="w-12 h-12 object-cover rounded" alt="" /></td>
                   <td className="p-3 font-semibold">{p.name}</td>
-                  <td className="p-3 text-xs">{(p.categories as { name?: string } | null)?.name ?? "-"}</td>
+                  <td className="p-3 text-xs">{p.categories?.name ?? "-"}</td>
                   <td className="p-3 text-right">{taka(p.sale_price ?? p.price)}</td>
                   <td className="p-3 text-right">{p.stock}</td>
                   <td className="p-3 text-center">
