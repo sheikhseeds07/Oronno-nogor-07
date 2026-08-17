@@ -73,7 +73,7 @@ function OrderStatusAction() {
 
   if (!isOrdersPage || !selected) return null;
 
-  const currentLabel = ORDER_ACTION_STATUSES.find((s) => s.value === status)?.label ?? status || "Status";
+  const currentLabel = (ORDER_ACTION_STATUSES.find((s) => s.value === status)?.label ?? status) || "Status";
 
   const apply = async () => {
     if (!draft || draft === status || !selected) return;
