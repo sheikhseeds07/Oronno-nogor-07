@@ -42,7 +42,7 @@ type OrderStatus =
 type Tab = "search" | "new" | "web" | "list";
 
 const statusEn: Record<OrderStatus, string> = {
-  web_pending: "Web Pending",
+  web_pending: "Processing",
   incomplete: "Incomplete",
   pending: "Pending",
   rts: "RTS (Ready to Ship)",
