@@ -46,19 +46,19 @@ async function getHomeDataFallback(): Promise<HomeData> {
       .limit(8),
     supabase
       .from("products")
-      .select("id,slug,name,price,sale_price,images,stock,is_featured,categories!left(is_hidden_from_home)")
+      .select("id,slug,name,price,sale_price,images,stock,is_featured")
       .eq("is_active", true)
       .eq("is_popular", true)
       .order("created_at", { ascending: false })
       .limit(12),
   ]);
 
-  const banners = (bannersRes.data ?? []) as HomeBanner[];
-  const products = ((productsRes.data ?? []) as Array<HomeProduct & { categories?: { is_hidden_from_home?: boolean } | null }>)
-    .filter((p) => !p.categories?.is_hidden_from_home)
-    .map(({ categories: _categories, ...product }) => product as HomeProduct);
-
-  return { banners, categories: [], subcategories: [], products };
+  return {
+    banners: (bannersRes.data ?? []) as HomeBanner[],
+    categories: [],
+    subcategories: [],
+    products: (productsRes.data ?? []) as HomeProduct[],
+  };
 }
 
 export async function getHomeData(): Promise<HomeData> {
