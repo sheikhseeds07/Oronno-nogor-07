@@ -5,7 +5,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { supabase } from "@/lib/personal-supabase/client";
 import { taka } from "@/lib/format";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, X } from "lucide-react";
+import { Plus, Edit, Trash2, X, Star } from "lucide-react";
 import { uploadToBucket, safeFileName } from "@/lib/storage-upload";
 
 export const Route = createFileRoute("/admin/products")({ component: Products });
@@ -15,7 +15,7 @@ type Product = {
   description?: string; short_description?: string;
   price: number; sale_price?: number | null; cost?: number | null; stock: number;
   category_id?: string | null; images?: string[];
-  is_active?: boolean; is_featured?: boolean;
+  is_active?: boolean; is_featured?: boolean; is_popular?: boolean;
 };
 
 function slugify(s: string) {
@@ -32,7 +32,7 @@ function Products() {
     queryFn: async () => {
       let q = supabase.from("products").select("*, categories(name)").order("created_at", { ascending: false });
       if (search) q = q.ilike("name", `%${search}%`);
-      return (await q).data ?? [];
+      return ((await q).data ?? []) as Product[];
     },
   });
 
@@ -40,6 +40,16 @@ function Products() {
     queryKey: ["admin-cats"],
     queryFn: async () => (await supabase.from("categories").select("*").order("display_order")).data ?? [],
   });
+
+  const togglePopular = async (product: Product) => {
+    if (!product.id) return;
+    const next = !(product.is_popular ?? false);
+    const { error } = await supabase.from("products").update({ is_popular: next } as never).eq("id", product.id);
+    if (error) return toast.error(error.message);
+    toast.success(next ? "পপুলার পণ্যে যোগ হয়েছে" : "পপুলার পণ্য থেকে সরানো হয়েছে");
+    qc.invalidateQueries({ queryKey: ["admin-products"] });
+    qc.invalidateQueries({ queryKey: ["home-data-v1"] });
+  };
 
   const remove = async (id: string) => {
     if (!confirm("ডিলিট করবেন?")) return;
@@ -53,7 +63,7 @@ function Products() {
     <AdminLayout>
       <div className="flex items-center justify-between mb-4 gap-3">
         <h1 className="text-2xl font-bold">প্রোডাক্ট</h1>
-        <button onClick={() => setEditing({ name: "", slug: "", price: 0, cost: 0, stock: 0, images: [], is_active: true })} className="bg-brand text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2">
+        <button onClick={() => setEditing({ name: "", slug: "", price: 0, cost: 0, stock: 0, images: [], is_active: true, is_popular: false })} className="bg-brand text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2">
           <Plus className="w-4 h-4" /> নতুন প্রোডাক্ট
         </button>
       </div>
@@ -63,7 +73,7 @@ function Products() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted">
-              <tr><th className="text-left p-3">ছবি</th><th className="text-left p-3">নাম</th><th className="text-left p-3">ক্যাটাগরি</th><th className="text-right p-3">দাম</th><th className="text-right p-3">স্টক</th><th className="text-center p-3">স্ট্যাটাস</th><th className="text-right p-3">অ্যাকশন</th></tr>
+              <tr><th className="text-left p-3">ছবি</th><th className="text-left p-3">নাম</th><th className="text-left p-3">ক্যাটাগরি</th><th className="text-right p-3">দাম</th><th className="text-right p-3">স্টক</th><th className="text-center p-3">পপুলার</th><th className="text-center p-3">স্ট্যাটাস</th><th className="text-right p-3">অ্যাকশন</th></tr>
             </thead>
             <tbody>
               {products?.map((p) => (
@@ -73,6 +83,11 @@ function Products() {
                   <td className="p-3 text-xs">{(p.categories as { name?: string } | null)?.name ?? "-"}</td>
                   <td className="p-3 text-right">{taka(p.sale_price ?? p.price)}</td>
                   <td className="p-3 text-right">{p.stock}</td>
+                  <td className="p-3 text-center">
+                    <button type="button" onClick={() => togglePopular(p)} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${p.is_popular ? "bg-amber-100 text-amber-700 ring-1 ring-amber-200" : "bg-muted text-muted-foreground hover:bg-amber-50 hover:text-amber-700"}`} title={p.is_popular ? "পপুলার পণ্য থেকে সরান" : "পপুলার পণ্যে যোগ করুন"}>
+                      <Star className={`w-3.5 h-3.5 ${p.is_popular ? "fill-current" : ""}`} /> {p.is_popular ? "পপুলার" : "যোগ করুন"}
+                    </button>
+                  </td>
                   <td className="p-3 text-center">{p.is_active ? <span className="bg-brand-light text-brand-dark text-xs px-2 py-0.5 rounded">সক্রিয়</span> : <span className="bg-muted text-xs px-2 py-0.5 rounded">নিষ্ক্রিয়</span>}</td>
                   <td className="p-3 text-right">
                     <button onClick={() => setEditing(p as Product)} className="p-1.5 hover:bg-muted rounded"><Edit className="w-4 h-4" /></button>
@@ -80,7 +95,7 @@ function Products() {
                   </td>
                 </tr>
               ))}
-              {!products?.length && <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">কোনো প্রোডাক্ট নেই</td></tr>}
+              {!products?.length && <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">কোনো প্রোডাক্ট নেই</td></tr>}
             </tbody>
           </table>
         </div>
@@ -116,15 +131,16 @@ function ProductModal({ product, categories, onClose, onSaved, onAdded }: { prod
       price: Number(p.price), sale_price: p.sale_price ? Number(p.sale_price) : null,
       cost: Number(p.cost ?? 0), stock: Number(p.stock), category_id: p.category_id || null,
       images: p.images ?? [], is_active: p.is_active ?? true, is_featured: p.is_featured ?? false,
+      is_popular: p.is_popular ?? false,
     };
     const { error } = p.id
-      ? await supabase.from("products").update(payload).eq("id", p.id)
-      : await supabase.from("products").insert(payload);
+      ? await supabase.from("products").update(payload as never).eq("id", p.id)
+      : await supabase.from("products").insert(payload as never);
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("সংরক্ষণ হয়েছে");
     if (addAnother) {
-      setP({ name: "", slug: "", price: 0, cost: 0, stock: 0, images: [], is_active: true, category_id: p.category_id ?? null });
+      setP({ name: "", slug: "", price: 0, cost: 0, stock: 0, images: [], is_active: true, is_popular: false, category_id: p.category_id ?? null });
       onAdded?.();
     } else {
       onSaved();
@@ -168,8 +184,9 @@ function ProductModal({ product, categories, onClose, onSaved, onAdded }: { prod
               ))}
             </div>
           </div>
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-4">
             <label className="flex items-center gap-2"><input type="checkbox" checked={p.is_active ?? true} onChange={(e) => setP({ ...p, is_active: e.target.checked })} /> সক্রিয়</label>
+            <label className="flex items-center gap-2 font-semibold text-amber-700"><input type="checkbox" checked={p.is_popular ?? false} onChange={(e) => setP({ ...p, is_popular: e.target.checked })} /> পপুলার পন্য হিসাবে যোগ করুন</label>
           </div>
         </div>
         <div className="p-4 border-t flex flex-wrap gap-2 justify-end sticky bottom-0 bg-white">
