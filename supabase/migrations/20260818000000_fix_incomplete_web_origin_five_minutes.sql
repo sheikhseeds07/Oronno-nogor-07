@@ -53,3 +53,10 @@ CREATE TRIGGER trg_mark_incomplete_conversion_order
 BEFORE INSERT ON public.orders
 FOR EACH ROW
 EXECUTE FUNCTION public.mark_incomplete_conversion_order();
+
+-- Legacy repair: anything already in Web Pending is a Web pipeline order.
+-- Staff conversion from Incomplete is created directly in Pending, so it is
+-- not affected by this normalization.
+UPDATE public.orders
+SET source = 'web', originated_from_incomplete = false
+WHERE source::text = 'incomplete' AND status = 'web_pending';
