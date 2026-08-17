@@ -1,11 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { ProductCard, type Product } from "@/components/shop/ProductCard";
 import { ShieldCheck, Truck, Headphones, ArrowRight, Sparkles } from "lucide-react";
 import { getHomeData, type HomeData } from "@/lib/home.functions";
-import { toImg, imgSrcSet } from "@/lib/img";
 
 type HeroCopy = { eyebrow: string; heading: string; sub: string; cta: string };
 
@@ -22,7 +21,7 @@ const HERO_BANNERS = [
 ] as unknown as HomeData["banners"];
 
 const FALLBACK_HOME: HomeData = { banners: HERO_BANNERS, categories: [], subcategories: [], products: [] };
-const HOME_CACHE_KEY = "oronno-home-data-v1";
+const HOME_CACHE_KEY = "oronno-home-data-v2";
 
 function getCachedHomeData(): HomeData {
   if (typeof window === "undefined") return FALLBACK_HOME;
@@ -32,8 +31,8 @@ function getCachedHomeData(): HomeData {
     const parsed = JSON.parse(raw) as Partial<HomeData>;
     return {
       banners: Array.isArray(parsed.banners) && parsed.banners.length ? parsed.banners : HERO_BANNERS,
-      categories: Array.isArray(parsed.categories) ? parsed.categories : [],
-      subcategories: Array.isArray(parsed.subcategories) ? parsed.subcategories : [],
+      categories: [],
+      subcategories: [],
       products: Array.isArray(parsed.products) ? parsed.products : [],
     };
   } catch {
@@ -69,7 +68,6 @@ function SectionTitle({ title, subtitle, action }: { title: string; subtitle?: s
 function Home() {
   const { data: home = FALLBACK_HOME, isPlaceholderData } = useQuery(homeQueryOptions);
   const banners = (home.banners.length ? home.banners : HERO_BANNERS) as HomeData["banners"];
-  const categories = home.categories;
   const popularProducts = home.products as unknown as Product[];
 
   useEffect(() => {
@@ -89,15 +87,8 @@ function Home() {
     return () => clearInterval(t);
   }, [banners, isPaused]);
 
-  const marqueeCategories = useMemo(() => {
-    if (!categories.length) return [] as HomeData["categories"];
-    const repeatCount = categories.length < 5 ? Math.max(3, Math.ceil(12 / categories.length)) : 2;
-    return Array.from({ length: repeatCount }, () => categories).flat();
-  }, [categories]);
-
   return (
     <SiteLayout>
-      <style>{`@keyframes homeCategoryMarquee { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-50%, 0, 0); } }`}</style>
       {banners && banners.length > 0 && (
         <section className="bg-background">
           <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6">
@@ -120,31 +111,13 @@ function Home() {
         </section>
       )}
 
-      <section className="py-4 sm:py-14 bg-gradient-to-b from-brand-light/25 via-transparent to-transparent">
-        <div className="container mx-auto px-3 sm:px-4"><SectionTitle title="পপুলার ক্যাটেগরি" /></div>
-        <div className="px-3 sm:px-4">
-          {categories.length > 0 && (
-            <div className="relative overflow-hidden max-w-7xl mx-auto">
-              <div className="pointer-events-none absolute inset-y-0 left-0 w-8 sm:w-14 bg-gradient-to-r from-background via-background/90 to-transparent z-10" />
-              <div className="pointer-events-none absolute inset-y-0 right-0 w-8 sm:w-14 bg-gradient-to-l from-background via-background/90 to-transparent z-10" />
-              <div className="flex w-max gap-3 sm:gap-4 py-0.5 sm:py-2" style={{ animation: categories.length > 1 ? "homeCategoryMarquee 30s linear infinite" : "none" }}>
-                {marqueeCategories.map((category, index) => (
-                  <Link key={`${category.id}-${index}`} to="/category/$slug" params={{ slug: category.slug }} className="group shrink-0 w-[124px] sm:w-[148px] rounded-2xl sm:rounded-3xl border border-border/70 bg-white/95 p-2.5 sm:p-3 text-center shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-brand/30 hover:shadow-lg">
-                    <div className="aspect-square rounded-2xl overflow-hidden bg-brand-light/30 mb-2.5 ring-1 ring-black/5">
-                      {category.image_url ? <img src={toImg(category.image_url, { w: 296, q: 75 })} srcSet={imgSrcSet(category.image_url, [148, 220, 296])} sizes="(max-width: 640px) 124px, 148px" alt={category.name} width={148} height={148} loading="eager" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : <div className="w-full h-full flex items-center justify-center text-3xl">🌱</div>}
-                    </div>
-                    <div className="text-xs sm:text-sm font-bold line-clamp-2 px-1 text-foreground group-hover:text-brand-dark transition-colors">{category.name}</div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
-
-      <section className="container mx-auto px-3 sm:px-4 py-4 sm:py-12">
-        <SectionTitle title="পপুলার পণ্য" subtitle="সবচেয়ে বেশি বিক্রি হওয়া পণ্য আগে দেখানো হচ্ছে" action={{ label: "সকল পণ্য দেখুন", to: "/shop" }} />
-        {popularProducts.length > 0 && <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">{popularProducts.map((product) => <ProductCard key={product.id} p={product} />)}</div>}
+      <section className="container mx-auto px-3 sm:px-4 py-6 sm:py-12">
+        <SectionTitle title="পপুলার পণ্য" subtitle="আপনি যেসব পণ্য পপুলার হিসেবে নির্বাচন করবেন সেগুলো এখানে দেখাবে" action={{ label: "সকল পণ্য দেখুন", to: "/shop" }} />
+        {popularProducts.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">{popularProducts.map((product) => <ProductCard key={product.id} p={product} />)}</div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-border bg-muted/30 px-5 py-10 text-center text-muted-foreground">এখনো কোনো পণ্য পপুলার হিসেবে যোগ করা হয়নি।</div>
+        )}
       </section>
 
       <section className="py-12 sm:py-16 bg-gradient-to-b from-transparent via-brand-light/20 to-transparent">
