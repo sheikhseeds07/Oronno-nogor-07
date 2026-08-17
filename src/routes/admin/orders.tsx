@@ -775,7 +775,13 @@ function OrdersTable({
   };
 
   const bulkPrintInvoice = async () => {
-    const picked = rows.filter((o) => selectedIds.has(o.id));
+    const picked = rows
+      .filter((o) => selectedIds.has(o.id))
+      .sort((a, b) => {
+        const aInvoice = (a.invoice_no ?? a.id).toUpperCase();
+        const bInvoice = (b.invoice_no ?? b.id).toUpperCase();
+        return aInvoice.localeCompare(bInvoice, undefined, { numeric: true, sensitivity: "base" });
+      });
     if (!picked.length) return;
     const html = buildInvoicesHTML(picked);
     const w = window.open("", "_blank");
