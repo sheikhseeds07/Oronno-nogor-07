@@ -9,9 +9,15 @@ const RangeSchema = z.object({ from: z.string().datetime(), to: z.string().datet
 const CONFIRMED = new Set(["pending", "rts", "shipped", "delivered", "pending_return", "returned", "partial"]);
 const isConfirmed = (status: unknown) => CONFIRMED.has(String(status ?? "").toLowerCase());
 const isCancelled = (status: unknown) => ["cancelled", "canceled"].includes(String(status ?? "").toLowerCase());
-const isIncomplete = (order: any) => Boolean(order.originated_from_incomplete) || String(order.source ?? "").toLowerCase() === "incomplete";
+
+// Source is the canonical business origin. `originated_from_incomplete` is
+// metadata about the journey and must NOT turn a genuine source=web checkout
+// into an incomplete/manual order. A staff-created order from the Incomplete
+// tab is source=incomplete and therefore never counts as a Web Order.
+const sourceOf = (order: any) => String(order.source ?? "").toLowerCase();
+const isIncomplete = (order: any) => sourceOf(order) === "incomplete";
 const isRealOrder = (order: any) => !isIncomplete(order);
-const isWebOrder = (order: any) => isRealOrder(order) && String(order.source ?? "").toLowerCase() === "web";
+const isWebOrder = (order: any) => isRealOrder(order) && sourceOf(order) === "web";
 const isWebPending = (order: any) => isWebOrder(order) && String(order.status ?? "").toLowerCase() === "web_pending";
 const bdDay = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dhaka" }).format(new Date(iso));
 const bdHour = (iso: string) => Number(new Intl.DateTimeFormat("en-US", { hour: "2-digit", hour12: false, timeZone: "Asia/Dhaka" }).format(new Date(iso)));
@@ -27,9 +33,6 @@ export const getPremiumDashboardReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => RangeSchema.parse(input))
   .handler(async ({ data, context }) => {
-    // Authenticate with the caller's JWT, then read the business analytics with
-    // the server admin client. This avoids RLS silently returning an empty
-    // dashboard even though the same orders are visible in the Order List.
     await assertStaff(context.supabase, context.userId);
     const db = supabaseAdmin as SupabaseClient<Database>;
 
@@ -69,8 +72,8 @@ export const getPremiumDashboardReport = createServerFn({ method: "POST" })
     const liveProducts = Array.from(liveProductCount.entries()).map(([id, visitors]) => ({ ...(productMap.get(id) ?? { id, name: "Unknown", stock: 0 }), visitors })).sort((a, b) => b.visitors - a.visitors);
 
     const sourceMap = new Map<string, { source: string; count: number; revenue: number }>();
-    for (const order of realOrders) {
-      const source = String(order.source ?? "manual").toLowerCase();
+    for (const order of orders) {
+      const source = sourceOf(order) || "unknown";
       const existing = sourceMap.get(source) ?? { source, count: 0, revenue: 0 };
       existing.count += 1;
       existing.revenue += Number(order.total || 0);
