@@ -30,6 +30,7 @@ function Checkout() {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", address: "", note: "", zone: "all" });
   const [phoneErr, setPhoneErr] = useState("");
+  const placedSuccessfully = useRef(false);
 
   const delivery = ZONES.find((z) => z.id === form.zone)?.fee ?? 50;
   const total = subtotal + delivery;
@@ -55,6 +56,35 @@ function Checkout() {
     deliveryFee: delivery,
     zone: form.zone,
   });
+
+  // Save only when the checkout page is actually being left. A valid 11-digit
+  // phone is the only required signal; the latest customer/product details win.
+  useEffect(() => {
+    if (!phoneValid || items.length === 0 || typeof window === "undefined") return;
+    const saveAbandonedCheckout = () => {
+      if (placedSuccessfully.current || !PHONE_RE.test(form.phone) || items.length === 0) return;
+      const payload = {
+        phone: form.phone,
+        customer_name: form.name.trim(),
+        customer_address: form.address.trim(),
+        delivery_zone: form.zone,
+        delivery_fee: delivery,
+        subtotal,
+        total,
+        note: form.note.trim(),
+        items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity })),
+      };
+      try {
+        const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
+        navigator.sendBeacon("/api/public/incomplete", blob);
+      } catch {
+        fetch("/api/public/incomplete", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), keepalive: true }).catch(() => {});
+      }
+    };
+    const onPageHide = () => saveAbandonedCheckout();
+    window.addEventListener("pagehide", onPageHide);
+    return () => window.removeEventListener("pagehide", onPageHide);
+  }, [phoneValid, form.phone, form.name, form.address, form.note, form.zone, delivery, subtotal, total, items]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,6 +115,7 @@ function Checkout() {
           ...fbCtx,
         },
       });
+      placedSuccessfully.current = true;
       if (typeof window !== "undefined") {
         trackPurchase(
           items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity })),
