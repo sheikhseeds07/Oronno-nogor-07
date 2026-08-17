@@ -16,7 +16,7 @@ language sql
 stable
 security invoker
 set search_path = ''
-as $$
+as $function$
   with home_products as materialized (
     select
       p.id,
@@ -29,15 +29,8 @@ as $$
       p.is_featured,
       p.created_at
     from public.products p
-    left join public.categories c on c.id = p.category_id
     where p.is_active = true
       and p.is_popular = true
-      and coalesce(c.is_hidden_from_home, false) = false
-      and not exists (
-        select 1
-        from public.landing_pages lp
-        where lp.product_id = p.id
-      )
     order by p.created_at desc
     limit 12
   )
