@@ -2519,7 +2519,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
 
           <div className="p-4 border-t sticky bottom-0 bg-white rounded-b-xl">
             {(() => {
-              const isWebStage = detail.status === "web_pending" || detail.status === "incomplete";
+              const isWebStage = detail.status === "web_pending" || detail.status === "incomplete" || detail.status === "hold";
               const label = isWebStage
                 ? `Create Order (${grand.toFixed(2)}৳)`
                 : `আপডেট করুন (${grand.toFixed(2)}৳)`;
