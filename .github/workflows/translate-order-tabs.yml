@@ -1,0 +1,58 @@
+name: Translate Order Tab Labels
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  translate-order-tabs:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Translate order tab and status labels
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/routes/admin/orders.tsx")
+          text = path.read_text(encoding="utf-8")
+
+          replacements = {
+              'const statusBn: Record<OrderStatus, string> = {': 'const statusEn: Record<OrderStatus, string> = {',
+              'web_pending: "ওয়েব পেন্ডিং",': 'web_pending: "Web Pending",',
+              'incomplete: "ইনকমপ্লিট",': 'incomplete: "Incomplete",',
+              'pending: "পেন্ডিং",': 'pending: "Pending",',
+              'rts: "RTS (রেডি)",': 'rts: "RTS (Ready to Ship)",',
+              'shipped: "শিপড",': 'shipped: "Shipped",',
+              'delivered: "ডেলিভার্ড",': 'delivered: "Delivered",',
+              'pending_return: "রিটার্ন পেন্ডিং",': 'pending_return: "Return Pending",',
+              'returned: "রিটার্নড",': 'returned: "Returned",',
+              'partial: "পার্শিয়াল",': 'partial: "Partial",',
+              'cancelled: "ক্যান্সেলড",': 'cancelled: "Cancelled",',
+              'hold: "হোল্ড",': 'hold: "Hold",',
+              '{ key: "search", label: "সার্চ", icon: Search },': '{ key: "search", label: "Search", icon: Search },',
+              '{ key: "new", label: "নিউ অর্ডার", icon: Plus },': '{ key: "new", label: "New Order", icon: Plus },',
+              '{ key: "web", label: "ওয়েব অর্ডার", icon: Globe },': '{ key: "web", label: "Web Order", icon: Globe },',
+              '{ key: "list", label: "অর্ডার লিস্ট", icon: ListOrdered },': '{ key: "list", label: "Order List", icon: ListOrdered },',
+              'statusBn[': 'statusEn[',
+          }
+
+          for old, new in replacements.items():
+              text = text.replace(old, new)
+
+          path.write_text(text, encoding="utf-8")
+          PY
+
+          rm -f .github/workflows/translate-order-tabs.yml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routes/admin/orders.tsx .github/workflows/translate-order-tabs.yml
+          git commit -m "Translate order tab and status labels to English"
+          git push
