@@ -730,7 +730,7 @@ function OrdersTable({
       })
     : baseRows;
   const rtsTotalPages = Math.max(1, Math.ceil(rows.length / rtsPageSize));
-  const displayRows = isRtsFilter ? rows.slice((rtsPage - 1) * rtsPageSize, rtsPage * rtsPageSize) : rows;
+  const displayRows = mode === "list" ? rows.slice((rtsPage - 1) * rtsPageSize, rtsPage * rtsPageSize) : rows;
   useEffect(() => { setRtsPage(1); }, [filter, mode, search, rtsPageSize]);
   useEffect(() => { if (rtsPage > rtsTotalPages) setRtsPage(rtsTotalPages); }, [rtsPage, rtsTotalPages]);
   const allChecked = displayRows.length > 0 && displayRows.every((o) => selectedIds.has(o.id));
@@ -1137,7 +1137,7 @@ function OrdersTable({
 
       </div>
 
-      {isRtsFilter && rows.length > 0 && (
+      {mode === "list" && rows.length > 0 && (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
           <div className="flex items-center gap-2 text-xs text-slate-600">
             <span className="font-semibold">প্রতি পেইজে</span>
