@@ -139,12 +139,8 @@ export const getEmployeeReport = createServerFn({ method: "POST" })
 
 /**
  * Daily funnel for incomplete carts and web orders.
- * A customer placing a fresh order is immediately a Web Order in Processing,
- * even while its status is `web_pending`. It must therefore be counted in
- * webProcessed from the moment it enters Web Pending. Employee confirmation
- * moves it to the normal order-list pipeline; cancellation is counted as
- * Web Cancelled. Incomplete carts remain separate until an admin explicitly
- * converts one to a Pending order.
+ * Cancellation counts come from append-only history so deleting a cancelled
+ * Web Order or Incomplete Order never rolls the Dashboard statistic back.
  */
 export const getFunnelReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -155,9 +151,10 @@ export const getFunnelReport = createServerFn({ method: "POST" })
     const from = data.from ?? new Date(Date.now() - 7 * 86400000).toISOString();
     const to = data.to ?? new Date().toISOString();
 
-    const [evRes, webRes] = await Promise.all([
+    const [evRes, webRes, cancelRes] = await Promise.all([
       db.from("incomplete_events").select("event,created_at").gte("created_at", from).lte("created_at", to),
       db.from("orders").select("status,created_at,updated_at").eq("source", "web").or(`and(created_at.gte.${from},created_at.lte.${to}),and(updated_at.gte.${from},updated_at.lte.${to})`),
+      db.from("order_cancellation_history").select("source,cancelled_at").gte("cancelled_at", from).lte("cancelled_at", to),
     ]);
 
     const dayKey = (iso: string) => iso.slice(0, 10);
@@ -182,9 +179,15 @@ export const getFunnelReport = createServerFn({ method: "POST" })
       else if (e.event === "converted") r.converted += 1;
     }
 
-    // `web_pending` is the Processing state for a newly placed Web Order.
-    // Keep it in webProcessed so the dashboard's Web Order → Processing
-    // metric increments immediately, before an employee opens the order.
+    // Cancellation is historical and append-only. It is intentionally not
+    // derived from the current orders table, because cancelled orders may be deleted.
+    for (const c of cancelRes.data ?? []) {
+      const d = dayKey(c.cancelled_at as string);
+      const r = ensure(d);
+      if (c.source === "incomplete") r.cancelled += 1;
+      else r.webCancelled += 1;
+    }
+
     const processingWebStatuses = new Set([
       "web_pending",
       "rts",
@@ -202,9 +205,7 @@ export const getFunnelReport = createServerFn({ method: "POST" })
 
       const updDay = dayKey((o.updated_at as string) ?? createdDay);
       const updInRange = (o.updated_at as string) >= from && (o.updated_at as string) <= to;
-      if (o.status === "cancelled" && updInRange) {
-        ensure(updDay).webCancelled += 1;
-      } else if (processingWebStatuses.has(o.status as string) && updInRange) {
+      if (processingWebStatuses.has(o.status as string) && updInRange) {
         ensure(updDay).webProcessed += 1;
       }
     }
