@@ -158,14 +158,15 @@ export const fetchSteadfastBalance = createServerFn({ method: "POST" })
     } catch (e) { return { ok: false, balance: null, message: e instanceof Error ? e.message : "Network error" }; }
   });
 
-function mapSteadfastStatus(s: string): "delivered" | "partial" | "cancelled" | "hold" | "shipped" | null {
-  const v = (s || "").toLowerCase();
+function mapSteadfastStatus(s: string): "delivered" | "partial" | "cancelled" | "hold" | "shipped" | "returned" {
+  const v = (s || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
   if (v === "delivered") return "delivered";
-  if (v.startsWith("partial")) return "partial";
-  if (v.startsWith("cancelled")) return "cancelled";
+  if (v === "partial" || v.startsWith("partial_")) return "partial";
+  if (v === "cancelled" || v === "canceled") return "cancelled";
   if (v === "hold") return "hold";
-  if (v === "in_review" || v === "pending" || v.endsWith("_approval_pending")) return "shipped";
-  return null;
+  if (v === "returned" || v === "return" || v === "rto" || v.startsWith("return_") || v.startsWith("rto_")) return "returned";
+  if (v === "in_review" || v === "pending" || v === "delivery_pending" || v === "pending_delivery" || v.endsWith("_approval_pending")) return "shipped";
+  return "shipped";
 }
 
 export const syncSteadfastStatuses = createServerFn({ method: "POST" })
@@ -193,7 +194,7 @@ export const syncSteadfastStatuses = createServerFn({ method: "POST" })
       }
       if (!delivery) continue;
       const mapped = mapSteadfastStatus(delivery);
-      if (mapped && mapped !== o.status) {
+      if (mapped !== o.status) {
         await supabaseAdmin.from("orders").update({ status: mapped, courier_status: delivery }).eq("id", o.id);
         updated++;
       } else {
