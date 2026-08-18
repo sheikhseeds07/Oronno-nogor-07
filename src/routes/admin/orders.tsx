@@ -537,6 +537,8 @@ function OrdersTable({
     });
   };
   const [search, setSearch] = useState("");
+  const [rtsPageSize, setRtsPageSize] = useState<20 | 50 | 100>(50);
+  const [rtsPage, setRtsPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [sendModal, setSendModal] = useState<SendProgress[] | null>(null);
   const [sendDone, setSendDone] = useState(false);
@@ -727,7 +729,11 @@ function OrdersTable({
         return inv.includes(searchTerm) || phone.includes(searchTerm) || name.includes(searchTerm) || cn.includes(searchTerm);
       })
     : baseRows;
-  const allChecked = rows.length > 0 && rows.every((o) => selectedIds.has(o.id));
+  const rtsTotalPages = Math.max(1, Math.ceil(rows.length / rtsPageSize));
+  const displayRows = isRtsFilter ? rows.slice((rtsPage - 1) * rtsPageSize, rtsPage * rtsPageSize) : rows;
+  useEffect(() => { setRtsPage(1); }, [filter, mode, search, rtsPageSize]);
+  useEffect(() => { if (rtsPage > rtsTotalPages) setRtsPage(rtsTotalPages); }, [rtsPage, rtsTotalPages]);
+  const allChecked = displayRows.length > 0 && displayRows.every((o) => selectedIds.has(o.id));
   const toggleAll = () => {
     setSelectedIds(() => allChecked ? new Set() : new Set(rows.map((o) => o.id)));
   };
@@ -1114,7 +1120,7 @@ function OrdersTable({
 
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
         <OrdersTableRows
-          orders={rows}
+          orders={displayRows}
           loading={isIncomplete ? incompleteFetching : isFetching}
           mode={mode}
           onOpen={handleOpen}
@@ -1130,6 +1136,21 @@ function OrdersTable({
         />
 
       </div>
+
+      {isRtsFilter && rows.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
+          <div className="flex items-center gap-2 text-xs text-slate-600">
+            <span className="font-semibold">প্রতি পেইজে</span>
+            <select value={rtsPageSize} onChange={(e) => setRtsPageSize(Number(e.target.value) as 20 | 50 | 100)} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand/30"><option value={20}>20</option><option value={50}>50</option><option value={100}>100</option></select>
+            <span>অর্ডার · মোট {rows.length}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <button disabled={rtsPage === 1} onClick={() => setRtsPage((p) => Math.max(1,p-1))} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold disabled:opacity-40">Previous</button>
+            {Array.from({length:rtsTotalPages},(_,i)=>i+1).map((p) => <button key={p} onClick={() => setRtsPage(p)} className={`min-w-8 rounded-lg px-2 py-1.5 text-xs font-bold ${rtsPage===p ? 'bg-gradient-to-br from-brand to-brand-dark text-white shadow-sm' : 'border border-slate-200 text-slate-700 hover:bg-slate-50'}`}>{p}</button>)}
+            <button disabled={rtsPage === rtsTotalPages} onClick={() => setRtsPage((p) => Math.min(rtsTotalPages,p+1))} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold disabled:opacity-40">Next</button>
+          </div>
+        </div>
+      )}
 
       {sendModal && (
         <SendProgressModal
