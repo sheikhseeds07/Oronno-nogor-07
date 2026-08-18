@@ -13,7 +13,6 @@ const sourceOf=(o:any)=>String(o.source??"").toLowerCase();
 const isIncomplete=(o:any)=>sourceOf(o)==="incomplete";
 const isRealOrder=(o:any)=>!isIncomplete(o);
 const isWebOrder=(o:any)=>isRealOrder(o)&&sourceOf(o)==="web";
-// Processing can be represented by the legacy web_pending status or the explicit processing status.
 const isWebPending=(o:any)=>["web_pending","processing"].includes(String(o.status??"").toLowerCase());
 const bdDay=(iso:string)=>new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Dhaka"}).format(new Date(iso));
 const bdHour=(iso:string)=>Number(new Intl.DateTimeFormat("en-US",{hour:"2-digit",hour12:false,timeZone:"Asia/Dhaka"}).format(new Date(iso)));
@@ -26,8 +25,9 @@ async function assertStaff(db:SupabaseClient<Database>,userId:string){const {dat
 export const getPremiumDashboardReport=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(input=>RangeSchema.parse(input)).handler(async({data,context})=>{
  await assertStaff(context.supabase,context.userId); const db=supabaseAdmin as SupabaseClient<Database>;
  const todayStart=bdTodayStart(); const tomorrowStart=bdTomorrowStart();
- const [ordersR,productsR,customersR,employeesR,landingR,todayVisitorsR,activeIncompleteR]=await Promise.all([
+ const [ordersR,deletedOrdersR,productsR,customersR,employeesR,landingR,todayVisitorsR,activeIncompleteR]=await Promise.all([
   db.from("orders").select("id,source,status,total,created_at,updated_at,created_by,assigned_to,originated_from_incomplete").gte("created_at",data.from).lte("created_at",data.to).limit(30000),
+  db.from("deleted_orders").select("id,order_data,original_status,original_created_at").gte("original_created_at",data.from).lte("original_created_at",data.to).limit(30000),
   db.from("products").select("id,name,stock,is_active").eq("is_active",true).order("stock",{ascending:true}).limit(2000),
   db.from("profiles").select("id",{count:"exact",head:true}),
   db.from("employees").select("id,name,user_id,is_active").eq("is_active",true).order("name"),
@@ -36,8 +36,16 @@ export const getPremiumDashboardReport=createServerFn({method:"POST"}).middlewar
   db.from("incomplete_orders").select("id",{count:"exact",head:true}).gte("updated_at",data.from).lte("updated_at",data.to)
  ]);
  const visitorsR=await db.from("site_visitors").select("id,path,landing_page_id,product_id,last_seen").gte("last_seen",new Date(Date.now()-120000).toISOString()).limit(5000);
- const queryError=ordersR.error??productsR.error??customersR.error??employeesR.error??landingR.error??todayVisitorsR.error??activeIncompleteR.error??visitorsR.error;if(queryError)throw new Error(queryError.message);
- const orders=ordersR.data??[],realOrders=orders.filter(isRealOrder),webOrders=realOrders.filter(isWebOrder),webPendingOrders=webOrders.filter(isWebPending),webConfirmedOrders=webOrders.filter(o=>isConfirmed(o.status)),webCancelledOrders=webOrders.filter(o=>isCancelled(o.status));
+ const queryError=ordersR.error??deletedOrdersR.error??productsR.error??customersR.error??employeesR.error??landingR.error??todayVisitorsR.error??activeIncompleteR.error??visitorsR.error;if(queryError)throw new Error(queryError.message);
+ // Dashboard statistics are historical. Deleted orders must remain in these calculations
+ // so removing an order from the admin panel does not roll back its dashboard metrics.
+ const activeOrders=ordersR.data??[];
+ const deletedOrders=(deletedOrdersR.data??[]).map((d:any)=>{const archived=(d.order_data??{}) as any;return {...archived,id:d.id,status:archived.status??d.original_status,created_at:archived.created_at??d.original_created_at,updated_at:archived.updated_at??d.original_created_at};});
+ const orderMap=new Map<string,any>();
+ for(const o of activeOrders) orderMap.set(String(o.id),o);
+ for(const o of deletedOrders) if(!orderMap.has(String(o.id))) orderMap.set(String(o.id),o);
+ const orders=Array.from(orderMap.values());
+ const realOrders=orders.filter(isRealOrder),webOrders=realOrders.filter(isWebOrder),webPendingOrders=webOrders.filter(isWebPending),webConfirmedOrders=webOrders.filter(o=>isConfirmed(o.status)),webCancelledOrders=webOrders.filter(o=>isCancelled(o.status));
  const incompleteSourceOrders=orders.filter(isIncomplete),incompleteProcessing=incompleteSourceOrders.filter(isWebPending),incompleteConfirmed=incompleteSourceOrders.filter(o=>isConfirmed(o.status)),incompleteCancelled=incompleteSourceOrders.filter(o=>isCancelled(o.status));
  const confirmedOrders=realOrders.filter(o=>isConfirmed(o.status));
  const confirmedRevenue=confirmedOrders.reduce((s,o)=>s+Number(o.total||0),0),webRevenue=webOrders.reduce((s,o)=>s+Number(o.total||0),0); const visitorRows=visitorsR.data??[],landingPages=landingR.data??[],products=productsR.data??[];
