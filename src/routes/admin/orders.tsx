@@ -1070,7 +1070,7 @@ function OrdersTable({
           {mode === "list" && !isRtsFilter && (
             <ActionBtn onClick={bulkMoveToRts} icon={CheckCircle2} tone="indigo">RTS এ পাঠান</ActionBtn>
           )}
-          {(filter === "pending" || filter === "rts" || (mode === "web" && filter === "web_pending")) && (
+          {(filter === "pending" || filter === "rts") && (
             <ActionBtn onClick={bulkDeleteSelected} icon={Trash2} tone="rose">ডিলিট করুন</ActionBtn>
           )}
 
