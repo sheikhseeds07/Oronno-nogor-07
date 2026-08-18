@@ -1,0 +1,75 @@
+name: Apply unlimited Order List pagination fix
+
+on:
+  push:
+    branches: [fix-order-pagination-unlimited]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch orders.tsx
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('src/routes/admin/orders.tsx')
+          s = p.read_text(encoding='utf-8')
+          old = '''  const { data: orders, isFetching } = useQuery({
+    queryKey: ["admin-orders", mode, filter],
+    enabled: !isIncomplete,
+    staleTime: 15_000,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const list = (filter === "all" ? statuses : [filter]).filter((s) => s !== "incomplete");
+      const { data: ords } = await supabase
+        .from("orders")
+        .select("id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment,printed_at,created_at,updated_at,created_by,order_items(id,product_name,quantity,price,product_id)")
+        .in("status", list as Exclude<OrderStatus, "incomplete">[])
+        .order("created_at", { ascending: false })
+        .limit(500);
+      return await attachProductImages((ords ?? []) as unknown as OrderRow[]);
+    },
+  });'''
+          new = '''  const { data: orders, isFetching } = useQuery({
+    queryKey: ["admin-orders", mode, filter],
+    enabled: !isIncomplete,
+    staleTime: 15_000,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const list = (filter === "all" ? statuses : [filter]).filter((s) => s !== "incomplete");
+      const select = "id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment,printed_at,created_at,updated_at,created_by,order_items(id,product_name,quantity,price,product_id)";
+      const chunkSize = 500;
+      const allOrders: OrderRow[] = [];
+
+      for (let offset = 0; ; offset += chunkSize) {
+        const { data: chunk, error } = await supabase
+          .from("orders")
+          .select(select)
+          .in("status", list as Exclude<OrderStatus, "incomplete">[])
+          .order("created_at", { ascending: false })
+          .range(offset, offset + chunkSize - 1);
+        if (error) throw new Error(error.message);
+        const rows = (chunk ?? []) as unknown as OrderRow[];
+        allOrders.push(...rows);
+        if (rows.length < chunkSize) break;
+      }
+
+      return await attachProductImages(allOrders);
+    },
+  });'''
+          if old not in s:
+              raise SystemExit('Target pagination query block not found')
+          s = s.replace(old, new, 1)
+          p.write_text(s, encoding='utf-8')
+      - name: Validate and commit patch
+        run: |
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routes/admin/orders.tsx .github/workflows/apply-unlimited-order-pagination.yml
+          git commit -m "fix: remove 500 order cap from Order List pagination"
+          git push
