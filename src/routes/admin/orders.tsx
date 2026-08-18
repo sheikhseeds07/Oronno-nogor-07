@@ -1070,7 +1070,7 @@ function OrdersTable({
           {mode === "list" && !isRtsFilter && (
             <ActionBtn onClick={bulkMoveToRts} icon={CheckCircle2} tone="indigo">RTS এ পাঠান</ActionBtn>
           )}
-          {(filter === "pending" || filter === "rts") && (
+          {(filter === "pending" || filter === "rts" || filter === "cancelled") && (
             <ActionBtn onClick={bulkDeleteSelected} icon={Trash2} tone="rose">ডিলিট করুন</ActionBtn>
           )}
 
@@ -1089,7 +1089,7 @@ function OrdersTable({
             <>
               <ActionBtn onClick={() => bulkUpdateStatus("pending")} icon={CheckCircle2} tone="emerald" title="অর্ডার লিস্টে পাঠান (Pending)">অর্ডার লিস্টে পাঠান</ActionBtn>
               <select
-                onChange={(e) => { const v = e.target.value; if (v && v !== "incomplete") { bulkUpdateStatus(v as Exclude<OrderStatus, "incomplete">); e.target.value = ""; } }}
+                onChange={(e) => { const v = e.target.value; if (v && v !== "incomplete") { const ok = window.confirm(`স্ট্যাটাস "${statusEn[v as OrderStatus]}" এ পরিবর্তন করবেন?`); if (ok) bulkUpdateStatus(v as Exclude<OrderStatus, "incomplete">); e.target.value = ""; } }}
                 className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold shadow-sm hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand/30"
                 defaultValue=""
               >
