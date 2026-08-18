@@ -1,0 +1,41 @@
+name: One-time Web Processing Delete Fix
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Apply only requested UI change
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/routes/admin/orders.tsx')
+          s = p.read_text()
+          old = '(filter === "pending" || filter === "rts" || (mode === "web" && filter === "web_pending"))'
+          new = '(filter === "pending" || filter === "rts")'
+          if s.count(old) != 1:
+              raise SystemExit(f'Expected exactly one target condition, found {s.count(old)}')
+          p.write_text(s.replace(old, new, 1))
+          wf = Path('.github/workflows/one-time-fix-web-processing-delete.yml')
+          wf.unlink()
+          PY
+      - name: Commit only the requested change
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/routes/admin/orders.tsx .github/workflows/one-time-fix-web-processing-delete.yml
+          git diff --cached --check
+          git diff --cached --stat
+          git commit -m 'fix: hide delete action for web processing only'
+          git push
