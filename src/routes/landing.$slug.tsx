@@ -67,9 +67,14 @@ function LandingPopupBehavior({ enabled, hideReviews }: { enabled: boolean; hide
 function LandingPage() {
   const { slug } = useParams({ from: "/landing/$slug" });
   const isLegacySlug = LEGACY_SLUGS.has(slug);
-  const { data, isLoading } = useQuery({ enabled: !isLegacySlug, staleTime: 5 * 60_000, gcTime: 30 * 60_000, queryKey: ["landing-template", slug], queryFn: async () => (await supabase.from("landing_pages").select("planting_steps").eq("slug", slug).maybeSingle()).data ?? null });
-  const popupBehaviorEnabled = slug === "seedcombo" || slug === "seeds-combo-24";
-  const hideReviews = slug === "seedcombo";
+  const isSeedComboSlug = slug === "seedcombo";
+  const { data, isLoading } = useQuery({ enabled: !isLegacySlug && !isSeedComboSlug, staleTime: 5 * 60_000, gcTime: 30 * 60_000, queryKey: ["landing-template", slug], queryFn: async () => (await supabase.from("landing_pages").select("planting_steps").eq("slug", slug).maybeSingle()).data ?? null });
+  const popupBehaviorEnabled = isSeedComboSlug || isLegacySlug;
+  const hideReviews = isSeedComboSlug;
+
+  // seedcombo is always Product Style, so don't make the visitor wait for a
+  // second template lookup before the actual landing page can start loading.
+  if (isSeedComboSlug) return <><LandingPopupBehavior enabled={true} hideReviews={true} /><ProductStyleLandingPage slug={slug} /></>;
   if (isLegacySlug) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} /><LegacyLandingPage slug={slug} /></>;
   const template = mergeContent(data?.planting_steps).template as string;
   if (template === "product") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} /><ProductStyleLandingPage slug={slug} /></>;
