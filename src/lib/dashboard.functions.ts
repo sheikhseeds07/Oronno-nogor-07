@@ -25,7 +25,7 @@ async function assertStaff(db:SupabaseClient<Database>,userId:string){const {dat
 export const getPremiumDashboardReport=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(input=>RangeSchema.parse(input)).handler(async({data,context})=>{
  await assertStaff(context.supabase,context.userId); const db=supabaseAdmin as any;
  const todayStart=bdTodayStart(); const tomorrowStart=bdTomorrowStart();
- const [ordersR,deletedOrdersR,productsR,customersR,employeesR,landingR,todayVisitorsR,activeIncompleteR,webCounterR]=await Promise.all([
+ const [ordersR,deletedOrdersR,productsR,customersR,employeesR,landingR,todayVisitorsR,activeIncompleteR]=await Promise.all([
   db.from("orders").select("id,source,status,total,created_at,updated_at,created_by,assigned_to,originated_from_incomplete").gte("created_at",data.from).lte("created_at",data.to).limit(30000),
   db.from("deleted_orders").select("id,order_data,original_status,original_created_at").gte("original_created_at",data.from).lte("original_created_at",data.to).limit(30000),
   db.from("products").select("id,name,stock,is_active").eq("is_active",true).order("stock",{ascending:true}).limit(2000),
@@ -33,11 +33,10 @@ export const getPremiumDashboardReport=createServerFn({method:"POST"}).middlewar
   db.from("employees").select("id,name,user_id,is_active").eq("is_active",true).order("name"),
   db.from("landing_pages").select("id,title,slug,product_id,is_published").eq("is_published",true),
   db.from("site_visitors").select("id",{count:"exact",head:true}).gte("last_seen",todayStart).lt("last_seen",tomorrowStart),
-  db.from("incomplete_orders").select("id",{count:"exact",head:true}).gte("updated_at",data.from).lte("updated_at",data.to),
-  db.from("dashboard_web_order_counter").select("total_received,processing_count,confirmed_count,cancelled_count").eq("id",true).maybeSingle()
+  db.from("incomplete_orders").select("id",{count:"exact",head:true}).gte("updated_at",data.from).lte("updated_at",data.to)
  ]);
  const visitorsR=await db.from("site_visitors").select("id,path,landing_page_id,product_id,last_seen").gte("last_seen",new Date(Date.now()-120000).toISOString()).limit(5000);
- const queryError=ordersR.error??deletedOrdersR.error??productsR.error??customersR.error??employeesR.error??landingR.error??todayVisitorsR.error??activeIncompleteR.error??webCounterR.error??visitorsR.error;if(queryError)throw new Error(queryError.message);
+ const queryError=ordersR.error??deletedOrdersR.error??productsR.error??customersR.error??employeesR.error??landingR.error??todayVisitorsR.error??activeIncompleteR.error??visitorsR.error;if(queryError)throw new Error(queryError.message);
  const activeOrders=ordersR.data??[];
  const deletedOrders=(deletedOrdersR.data??[]).map((d:any)=>{const archived=(d.order_data??{}) as any;return {...archived,id:d.id,status:archived.status??d.original_status,created_at:archived.created_at??d.original_created_at,updated_at:archived.updated_at??d.original_created_at};});
  const orderMap=new Map<string,any>();
@@ -58,6 +57,9 @@ export const getPremiumDashboardReport=createServerFn({method:"POST"}).middlewar
  const lowStock=products.filter(p=>(p.stock??0)<=5).slice(0,10).map(p=>({id:p.id,name:p.name,stock:p.stock??0})),stockSummary={total:products.length,low:products.filter(p=>(p.stock??0)>0&&(p.stock??0)<=5).length,out:products.filter(p=>(p.stock??0)<=0).length};
  const employeeMap=new Map<string,{user_id:string|null;name:string;confirmed:number;cancelled:number;total:number}>();for(const e of employeesR.data??[])employeeMap.set(String(e.user_id||e.id),{user_id:e.user_id,name:e.name,confirmed:0,cancelled:0,total:0});
  for(const o of orders){const cancelActor=isCancelled(o.status)?String(o.assigned_to||""):"";const cancelEmployee=employeeMap.get(cancelActor);if(isCancelled(o.status)&&cancelEmployee)cancelEmployee.cancelled++;const confirmActor=String(o.created_by||"");const confirmEmployee=employeeMap.get(confirmActor);if(isConfirmed(o.status)&&confirmEmployee){confirmEmployee.confirmed++;confirmEmployee.total++;}}
- const webCounter=webCounterR.data??{total_received:0,processing_count:0,confirmed_count:0,cancelled_count:0};
- return {real:{created:Number(webCounter.total_received??0),total:Number(webCounter.total_received??0),processing:Number(webCounter.processing_count??0),approved:Number(webCounter.confirmed_count??0),pending:Number(webCounter.processing_count??0),cancelled:Number(webCounter.cancelled_count??0),revenue:confirmedRevenue,allRevenue:webRevenue},webOrders:{total:Number(webCounter.total_received??0),confirmed:Number(webCounter.confirmed_count??0),processing:Number(webCounter.processing_count??0),cancelled:Number(webCounter.cancelled_count??0)},incompleteOrders:{total:incompleteSourceOrders.length,confirmed:incompleteConfirmed.length,processing:incompleteProcessing.length,cancelled:incompleteCancelled.length,active:activeIncompleteR.count??0},sourceBreakdown:Array.from(sourceMap.values()).sort((a,b)=>b.count-a.count),daily:Array.from(dayMap.values()).sort((a,b)=>a.day.localeCompare(b.day)),hourly,earnings:Array.from(earningsMap.values()),bestSelling,lowStock,stockSummary,customers:customersR.count??0,products:products.length,liveVisitors:visitorRows.length,todayVisitors:todayVisitorsR.count??0,liveLandingPages,liveProducts,employeePerformance:Array.from(employeeMap.values()).sort((a,b)=>(b.confirmed+b.cancelled)-(a.confirmed+a.cancelled)),incomplete:activeIncompleteR.count??0};
+ // Web Order is a historical count for the selected date range: it only grows when a web order is created.
+ // Deleted orders remain included via deleted_orders, so deleting an order cannot reduce this number.
+ // Incomplete-source orders are excluded by isWebOrder().
+ const webOrderTotal=webOrders.length;
+ return {real:{created:webOrderTotal,total:webOrderTotal,processing:webPendingOrders.length,approved:webConfirmedOrders.length,pending:webPendingOrders.length,cancelled:webCancelledOrders.length,revenue:confirmedRevenue,allRevenue:webRevenue},webOrders:{total:webOrderTotal,confirmed:webConfirmedOrders.length,processing:webPendingOrders.length,cancelled:webCancelledOrders.length},incompleteOrders:{total:incompleteSourceOrders.length,confirmed:incompleteConfirmed.length,processing:incompleteProcessing.length,cancelled:incompleteCancelled.length,active:activeIncompleteR.count??0},sourceBreakdown:Array.from(sourceMap.values()).sort((a,b)=>b.count-a.count),daily:Array.from(dayMap.values()).sort((a,b)=>a.day.localeCompare(b.day)),hourly,earnings:Array.from(earningsMap.values()),bestSelling,lowStock,stockSummary,customers:customersR.count??0,products:products.length,liveVisitors:visitorRows.length,todayVisitors:todayVisitorsR.count??0,liveLandingPages,liveProducts,employeePerformance:Array.from(employeeMap.values()).sort((a,b)=>(b.confirmed+b.cancelled)-(a.confirmed+a.cancelled)),incomplete:activeIncompleteR.count??0};
 });
