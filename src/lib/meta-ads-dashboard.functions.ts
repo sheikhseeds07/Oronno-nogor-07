@@ -44,13 +44,31 @@ export const getMetaAdsDashboard = createServerFn({ method: "POST" })
     const insight = insightsJson?.data?.[0] ?? {};
     const actions = Array.isArray(insight.actions) ? insight.actions : [];
     const costs = Array.isArray(insight.cost_per_action_type) ? insight.cost_per_action_type : [];
-    const purchaseTypes = new Set(["purchase", "omni_purchase", "offsite_conversion.fb_pixel_purchase", "onsite_conversion.purchase", "onsite_web_purchase", "web_in_store_purchase"]);
-    const purchases = actions.filter((a: any) => purchaseTypes.has(String(a.action_type))).reduce((sum: number, a: any) => sum + Number(a.value || 0), 0);
-    const purchaseCost = costs.find((a: any) => purchaseTypes.has(String(a.action_type)));
+
+    // Meta may expose the same conversion through several action types.
+    // Pick one canonical purchase metric instead of summing duplicate representations.
+    const purchaseActionPriority = [
+      "offsite_conversion.fb_pixel_purchase",
+      "onsite_web_purchase",
+      "onsite_conversion.purchase",
+      "purchase",
+      "omni_purchase",
+      "web_in_store_purchase",
+    ];
+    const findPurchase = (items: any[]) => {
+      for (const type of purchaseActionPriority) {
+        const item = items.find((a: any) => String(a?.action_type) === type);
+        if (item) return item;
+      }
+      return null;
+    };
+
+    const purchaseAction = findPurchase(actions);
+    const purchaseCost = findPurchase(costs);
+    const purchases = purchaseAction ? Number(purchaseAction.value || 0) : 0;
     const spend = Number(insight.spend || 0);
     const costPerPurchase = purchaseCost ? Number(purchaseCost.value || 0) : purchases > 0 ? spend / purchases : 0;
 
-    // Meta account monetary fields are returned in the account's minor unit.
     const amountSpent = Number(accountJson.amount_spent || 0) / 100;
     const spendCapRaw = Number(accountJson.spend_cap);
     const spendingCap = Number.isFinite(spendCapRaw) && spendCapRaw > 0 ? spendCapRaw / 100 : null;
@@ -71,6 +89,7 @@ export const getMetaAdsDashboard = createServerFn({ method: "POST" })
       since,
       until,
       source: "Meta Graph API / Account Insights",
+      purchaseActionType: purchaseAction?.action_type || null,
       fetchedAt: new Date().toISOString(),
     };
   });
