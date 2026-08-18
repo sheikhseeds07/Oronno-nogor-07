@@ -23,7 +23,7 @@ const bdTomorrowStart=()=>{const start=new Date(bdTodayStart());start.setUTCDate
 async function assertStaff(db:SupabaseClient<Database>,userId:string){const {data,error}=await db.from("user_roles").select("role").eq("user_id",userId).in("role",["admin","super_admin","employee"]);if(error)throw new Error(error.message);if(!data?.length)throw new Error("Unauthorized")}
 
 export const getPremiumDashboardReport=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(input=>RangeSchema.parse(input)).handler(async({data,context})=>{
- await assertStaff(context.supabase,context.userId); const db=supabaseAdmin as SupabaseClient<Database>;
+ await assertStaff(context.supabase,context.userId); const db=supabaseAdmin as any;
  const todayStart=bdTodayStart(); const tomorrowStart=bdTomorrowStart();
  const [ordersR,deletedOrdersR,productsR,customersR,employeesR,landingR,todayVisitorsR,activeIncompleteR,webCounterR]=await Promise.all([
   db.from("orders").select("id,source,status,total,created_at,updated_at,created_by,assigned_to,originated_from_incomplete").gte("created_at",data.from).lte("created_at",data.to).limit(30000),
