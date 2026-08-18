@@ -15,7 +15,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Patch orders pagination
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Patch only Order List pagination
         shell: python
         run: |
           from pathlib import Path
@@ -25,53 +30,60 @@ jobs:
           text = path.read_text(encoding='utf-8')
           original = text
 
-          # Add the requested page-size choices wherever the existing 20/50/100
-          # selector was introduced by the previous pagination change.
-          if 'value="70"' not in text:
-              text = text.replace(
-                  '<option value="100">100</option>',
-                  '<option value="70">70</option>\n              <option value="100">100</option>\n              <option value="200">200</option>\n              <option value="500">500</option>',
-                  1,
-              )
+          constants = '''const ORDER_LIST_PAGE_SIZE_KEY = "order-list-page-size";
+const ORDER_LIST_PAGE_SIZES = [20, 50, 70, 100, 200, 500] as const;
+type OrderListPageSize = (typeof ORDER_LIST_PAGE_SIZES)[number];
 
-          # Persist the selected page size across refreshes. Keep 50 as the
-          # default for new browsers/users and only accept the supported values.
-          allowed = '[20, 50, 70, 100, 200, 500]'
-          state_pattern = re.compile(
-              r'const \[pageSize, setPageSize\] = useState(?:<number>)?\(50\);'
-          )
-          state_replacement = '''const [pageSize, setPageSizeState] = useState<number>(() => {
+'''
+          if 'ORDER_LIST_PAGE_SIZE_KEY' not in text:
+              marker = 'const LIST_STATUSES: OrderStatus[] = ['
+              if marker not in text:
+                  raise SystemExit('LIST_STATUSES marker not found')
+              text = text.replace(marker, constants + marker, 1)
+
+          old_state = 'const [rtsPageSize, setRtsPageSize] = useState<20 | 50 | 100>(50);'
+          new_state = '''const [rtsPageSize, setRtsPageSize] = useState<OrderListPageSize>(() => {
     if (typeof window === "undefined") return 50;
-    const saved = Number(window.localStorage.getItem("admin-orders-page-size"));
-    return [20, 50, 70, 100, 200, 500].includes(saved) ? saved : 50;
+    const saved = Number(window.localStorage.getItem(ORDER_LIST_PAGE_SIZE_KEY));
+    return ORDER_LIST_PAGE_SIZES.includes(saved as OrderListPageSize)
+      ? (saved as OrderListPageSize)
+      : 50;
   });
-  const setPageSize = (value: number) => {
-    setPageSizeState(value);
+  useEffect(() => {
     if (typeof window !== "undefined") {
-      window.localStorage.setItem("admin-orders-page-size", String(value));
+      window.localStorage.setItem(ORDER_LIST_PAGE_SIZE_KEY, String(rtsPageSize));
     }
-  };'''
-          text, count = state_pattern.subn(state_replacement, text, count=1)
+  }, [rtsPageSize]);'''
+          if old_state in text:
+              text = text.replace(old_state, new_state, 1)
+          elif 'const [rtsPageSize, setRtsPageSize]' not in text:
+              raise SystemExit('rtsPageSize state not found')
 
-          if count == 0:
-              # If the previous implementation used a slightly different
-              # initializer, patch the first pageSize state conservatively.
-              alt = re.compile(
-                  r'const \[pageSize, setPageSize\] = useState(?:<number>)?\([^;]+\);'
-              )
-              text, count = alt.subn(state_replacement, text, count=1)
+          old_select = '<select value={rtsPageSize} onChange={(e) => setRtsPageSize(Number(e.target.value) as 20 | 50 | 100)} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand/30"><option value={20}>20</option><option value={50}>50</option><option value={100}>100</option></select>'
+          new_select = '<select value={rtsPageSize} onChange={(e) => setRtsPageSize(Number(e.target.value) as OrderListPageSize)} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand/30"><option value={20}>20</option><option value={50}>50</option><option value={70}>70</option><option value={100}>100</option><option value={200}>200</option><option value={500}>500</option></select>'
+          if old_select in text:
+              text = text.replace(old_select, new_select, 1)
+          elif not all(f'<option value={v}>{v}</option>' in text for v in (70, 200, 500)):
+              raise SystemExit('page-size selector not found')
 
           if text == original:
-              raise SystemExit('No matching pagination code found; refusing to commit a no-op.')
-
+              raise SystemExit('No changes were applied')
           path.write_text(text, encoding='utf-8')
-          print('Pagination patch applied. page-size state matches:', count)
 
-      - name: Commit and push
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
+
+      - name: Verify diff
+        run: git diff --check
+
+      - name: Commit code and remove temporary workflow
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/extend-order-pagination.yml
           git add src/routes/admin/orders.tsx
-          git diff --cached --quiet && exit 0
-          git commit -m "fix: persist order page size [page-size-persisted]"
+          git commit -m "fix: persist Order List page size [page-size-persisted]"
           git push
