@@ -1,0 +1,104 @@
+name: Fix Order List pagination beyond 500
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[order-pagination-fixed]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch OrdersTable pagination
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('src/routes/admin/orders.tsx')
+          s = p.read_text(encoding='utf-8')
+          old = '''  const { data: orders, isFetching } = useQuery({
+    queryKey: ["admin-orders", mode, filter],
+    enabled: !isIncomplete,
+    staleTime: 15_000,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const list = (filter === "all" ? statuses : [filter]).filter((s) => s !== "incomplete");
+      const { data: ords } = await supabase
+        .from("orders")
+        .select("id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment,printed_at,created_at,updated_at,created_by,order_items(id,product_name,quantity,price,product_id)")
+        .in("status", list as Exclude<OrderStatus, "incomplete">[])
+        .order("created_at", { ascending: false })
+        .limit(500);
+      return await attachProductImages((ords ?? []) as unknown as OrderRow[]);
+    },
+  });'''
+          new = '''  const searchTermForQuery = search.trim().toLowerCase();
+  const { data: ordersResult, isFetching } = useQuery({
+    queryKey: ["admin-orders", mode, filter, searchTermForQuery, rtsPage, rtsPageSize],
+    enabled: !isIncomplete,
+    staleTime: 15_000,
+    placeholderData: keepPreviousData,
+    queryFn: async () => {
+      const list = (filter === "all" ? statuses : [filter]).filter((s) => s !== "incomplete");
+      let query = supabase
+        .from("orders")
+        .select("id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment,printed_at,created_at,updated_at,created_by,order_items(id,product_name,quantity,price,product_id)", { count: "exact" })
+        .in("status", list as Exclude<OrderStatus, "incomplete">[]);
+      if (searchTermForQuery) {
+        const escaped = searchTermForQuery.replace(/[%(),]/g, "");
+        query = query.or(`invoice_no.ilike.%${escaped}%,customer_phone.ilike.%${escaped}%,customer_name.ilike.%${escaped}%,courier_consignment.ilike.%${escaped}%`);
+      }
+      const from = (rtsPage - 1) * rtsPageSize;
+      const to = from + rtsPageSize - 1;
+      const { data: ords, count, error } = await query
+        .order("created_at", { ascending: false })
+        .range(from, to);
+      if (error) throw new Error(error.message);
+      return {
+        rows: await attachProductImages((ords ?? []) as unknown as OrderRow[]),
+        total: count ?? 0,
+      };
+    },
+  });
+  const orders = ordersResult?.rows ?? [];
+  const serverTotal = ordersResult?.total ?? 0;'''
+          if old not in s:
+              raise SystemExit('Target OrdersTable query block not found')
+          s = s.replace(old, new, 1)
+          old_search = '''  const searchTerm = search.trim().toLowerCase();
+  const rows = searchTerm
+    ? baseRows.filter((o) => {
+        const inv = (o.invoice_no ?? o.id).toLowerCase();
+        const phone = (o.customer_phone ?? "").toLowerCase();
+        const name = (o.customer_name ?? "").toLowerCase();
+        const cn = (o.courier_consignment ?? "").toLowerCase();
+        return inv.includes(searchTerm) || phone.includes(searchTerm) || name.includes(searchTerm) || cn.includes(searchTerm);
+      })
+    : baseRows;
+  const rtsTotalPages = Math.max(1, Math.ceil(rows.length / rtsPageSize));
+  const displayRows = mode === "list" ? rows.slice((rtsPage - 1) * rtsPageSize, rtsPage * rtsPageSize) : rows;
+'''
+          new_search = '''  const searchTerm = search.trim().toLowerCase();
+  const rows = baseRows;
+  const rtsTotalPages = mode === "list"
+    ? Math.max(1, Math.ceil((isIncomplete ? rows.length : serverTotal) / rtsPageSize))
+    : 1;
+  const displayRows = rows;
+'''
+          if old_search not in s:
+              raise SystemExit('Client-side pagination block not found')
+          s = s.replace(old_search, new_search, 1)
+          p.write_text(s, encoding='utf-8')
+      - name: Install and build
+        run: bun install --frozen-lockfile && bun run build
+      - name: Verify and commit
+        run: |
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routes/admin/orders.tsx .github/workflows/fix-order-pagination-500.yml
+          git commit -m "fix: paginate Order List beyond 500 orders [order-pagination-fixed]"
+          git push
