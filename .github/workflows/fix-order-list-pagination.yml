@@ -1,0 +1,72 @@
+name: Safe Order List Pagination Patch
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[order-pagination-fixed]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Patch only Order List pagination
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('src/routes/admin/orders.tsx')
+          text = path.read_text(encoding='utf-8')
+          original = text
+
+          old_state = 'const [rtsPageSize, setRtsPageSize] = useState<20 | 50 | 100>(50);'
+          new_state = '''const ORDER_LIST_PAGE_SIZE_KEY = "order-list-page-size";
+  const ORDER_LIST_PAGE_SIZES = [20, 50, 70, 100, 200, 500] as const;
+  type OrderListPageSize = (typeof ORDER_LIST_PAGE_SIZES)[number];
+  const [rtsPageSize, setRtsPageSize] = useState<OrderListPageSize>(() => {
+    if (typeof window === "undefined") return 50;
+    const saved = Number(window.localStorage.getItem(ORDER_LIST_PAGE_SIZE_KEY));
+    return ORDER_LIST_PAGE_SIZES.includes(saved as OrderListPageSize)
+      ? (saved as OrderListPageSize)
+      : 50;
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(ORDER_LIST_PAGE_SIZE_KEY, String(rtsPageSize));
+    }
+  }, [rtsPageSize]);'''
+          if old_state not in text:
+              raise SystemExit('Expected rtsPageSize state was not found')
+          text = text.replace(old_state, new_state, 1)
+
+          old_select = '<select value={rtsPageSize} onChange={(e) => setRtsPageSize(Number(e.target.value) as 20 | 50 | 100)} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand/30"><option value={20}>20</option><option value={50}>50</option><option value={100}>100</option></select>'
+          new_select = '<select value={rtsPageSize} onChange={(e) => setRtsPageSize(Number(e.target.value) as OrderListPageSize)} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand/30"><option value={20}>20</option><option value={50}>50</option><option value={70}>70</option><option value={100}>100</option><option value={200}>200</option><option value={500}>500</option></select>'
+          if old_select not in text:
+              raise SystemExit('Expected page-size selector was not found')
+          text = text.replace(old_select, new_select, 1)
+
+          if text == original:
+              raise SystemExit('No changes applied')
+          path.write_text(text, encoding='utf-8')
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
+
+      - name: Verify diff
+        run: git diff --check
+
+      - name: Commit patch and remove workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routes/admin/orders.tsx
+          git rm .github/workflows/fix-order-list-pagination.yml
+          git commit -m "fix: persist Order List page size [order-pagination-fixed]"
+          git push
