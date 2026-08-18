@@ -624,7 +624,7 @@ useEffect(() => {
         .select("id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment,printed_at,created_at,updated_at,created_by,order_items(id,product_name,quantity,price,product_id)")
         .in("status", list as Exclude<OrderStatus, "incomplete">[])
         .order("created_at", { ascending: false })
-        .limit(500);
+        .limit(1000);
       return await attachProductImages((ords ?? []) as unknown as OrderRow[]);
     },
   });
