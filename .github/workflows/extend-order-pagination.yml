@@ -1,0 +1,77 @@
+name: Extend order pagination options
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-orders-pagination:
+    if: ${{ !contains(github.event.head_commit.message, '[page-size-persisted]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Patch orders pagination
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path('src/routes/admin/orders.tsx')
+          text = path.read_text(encoding='utf-8')
+          original = text
+
+          # Add the requested page-size choices wherever the existing 20/50/100
+          # selector was introduced by the previous pagination change.
+          if 'value="70"' not in text:
+              text = text.replace(
+                  '<option value="100">100</option>',
+                  '<option value="70">70</option>\n              <option value="100">100</option>\n              <option value="200">200</option>\n              <option value="500">500</option>',
+                  1,
+              )
+
+          # Persist the selected page size across refreshes. Keep 50 as the
+          # default for new browsers/users and only accept the supported values.
+          allowed = '[20, 50, 70, 100, 200, 500]'
+          state_pattern = re.compile(
+              r'const \[pageSize, setPageSize\] = useState(?:<number>)?\(50\);'
+          )
+          state_replacement = '''const [pageSize, setPageSizeState] = useState<number>(() => {
+    if (typeof window === "undefined") return 50;
+    const saved = Number(window.localStorage.getItem("admin-orders-page-size"));
+    return [20, 50, 70, 100, 200, 500].includes(saved) ? saved : 50;
+  });
+  const setPageSize = (value: number) => {
+    setPageSizeState(value);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("admin-orders-page-size", String(value));
+    }
+  };'''
+          text, count = state_pattern.subn(state_replacement, text, count=1)
+
+          if count == 0:
+              # If the previous implementation used a slightly different
+              # initializer, patch the first pageSize state conservatively.
+              alt = re.compile(
+                  r'const \[pageSize, setPageSize\] = useState(?:<number>)?\([^;]+\);'
+              )
+              text, count = alt.subn(state_replacement, text, count=1)
+
+          if text == original:
+              raise SystemExit('No matching pagination code found; refusing to commit a no-op.')
+
+          path.write_text(text, encoding='utf-8')
+          print('Pagination patch applied. page-size state matches:', count)
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routes/admin/orders.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: persist order page size [page-size-persisted]"
+          git push
