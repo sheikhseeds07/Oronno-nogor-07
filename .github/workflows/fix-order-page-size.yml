@@ -6,13 +6,11 @@ permissions:
   contents: write
 jobs:
   fix:
+    if: ${{ !contains(github.event.head_commit.message, '[pagination-final]') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-      - name: Patch
+      - name: Patch pagination
         shell: python
         run: |
           from pathlib import Path
@@ -42,13 +40,11 @@ jobs:
           if s == p.read_text(encoding='utf-8'):
               raise SystemExit('No pagination changes found')
           p.write_text(s, encoding='utf-8')
-      - name: Build
-        run: bun install --frozen-lockfile && bun run build
-      - name: Commit and push final code
+      - name: Commit final code
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git rm .github/workflows/fix-order-page-size.yml
           git add src/routes/admin/orders.tsx
-          git commit -m 'fix: Order List page size persistence [final]'
+          git commit -m 'fix: Order List page size persistence [pagination-final]'
           git push
