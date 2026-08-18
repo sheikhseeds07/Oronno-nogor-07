@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   patch-orders-pagination:
-    if: ${{ !contains(github.event.head_commit.message, '[page-size-persisted]') }}
+    if: ${{ !contains(github.event.head_commit.message, '[page-size-persisted]') && !contains(github.event.head_commit.message, '[order-fetch-cap-fixed]') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -18,37 +18,20 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - name: Patch only Order List pagination
+      - name: Remove Order List 500-row fetch cap
         shell: python
         run: |
           from pathlib import Path
           path = Path('src/routes/admin/orders.tsx')
           text = path.read_text(encoding='utf-8')
           original = text
-          constants = '''const ORDER_LIST_PAGE_SIZE_KEY = "order-list-page-size";
-const ORDER_LIST_PAGE_SIZES = [20, 50, 70, 100, 200, 500] as const;
-type OrderListPageSize = (typeof ORDER_LIST_PAGE_SIZES)[number];
-
-'''
-          if 'ORDER_LIST_PAGE_SIZE_KEY' not in text:
-              marker = 'const LIST_STATUSES: OrderStatus[] = ['
-              if marker not in text: raise SystemExit('LIST_STATUSES marker not found')
-              text = text.replace(marker, constants + marker, 1)
-          old = 'const [rtsPageSize, setRtsPageSize] = useState<20 | 50 | 100>(50);'
-          new = '''const [rtsPageSize, setRtsPageSize] = useState<OrderListPageSize>(() => {
-    if (typeof window === "undefined") return 50;
-    const saved = Number(window.localStorage.getItem(ORDER_LIST_PAGE_SIZE_KEY));
-    return ORDER_LIST_PAGE_SIZES.includes(saved as OrderListPageSize) ? (saved as OrderListPageSize) : 50;
-  });
-  useEffect(() => {
-    if (typeof window !== "undefined") window.localStorage.setItem(ORDER_LIST_PAGE_SIZE_KEY, String(rtsPageSize));
-  }, [rtsPageSize]);'''
-          if old in text: text = text.replace(old, new, 1)
-          old_select = '<select value={rtsPageSize} onChange={(e) => setRtsPageSize(Number(e.target.value) as 20 | 50 | 100)} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand/30"><option value={20}>20</option><option value={50}>50</option><option value={100}>100</option></select>'
-          new_select = '<select value={rtsPageSize} onChange={(e) => setRtsPageSize(Number(e.target.value) as OrderListPageSize)} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand/30"><option value={20}>20</option><option value={50}>50</option><option value={70}>70</option><option value={100}>100</option><option value={200}>200</option><option value={500}>500</option></select>'
-          if old_select in text: text = text.replace(old_select, new_select, 1)
-          if text == original: raise SystemExit('No changes were applied')
+          old = '.order("created_at", { ascending: false })\n        .limit(500);'
+          new = '.order("created_at", { ascending: false })\n        .limit(1000);'
+          if old not in text:
+              raise SystemExit('Expected Order List query limit(500) was not found')
+          text = text.replace(old, new, 1)
           path.write_text(text, encoding='utf-8')
+          print('Replaced the Order List fetch cap: 500 -> 1000')
       - name: Install dependencies
         run: bun install --frozen-lockfile
       - name: Build
@@ -61,5 +44,5 @@ type OrderListPageSize = (typeof ORDER_LIST_PAGE_SIZES)[number];
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git rm .github/workflows/extend-order-pagination.yml
           git add src/routes/admin/orders.tsx
-          git commit -m "fix: persist Order List page size [page-size-persisted]"
+          git commit -m "fix: remove Order List 500-row fetch cap [order-fetch-cap-fixed]"
           git push
