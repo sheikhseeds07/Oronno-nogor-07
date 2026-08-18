@@ -735,7 +735,7 @@ function OrdersTable({
   useEffect(() => { if (rtsPage > rtsTotalPages) setRtsPage(rtsTotalPages); }, [rtsPage, rtsTotalPages]);
   const allChecked = displayRows.length > 0 && displayRows.every((o) => selectedIds.has(o.id));
   const toggleAll = () => {
-    setSelectedIds(() => allChecked ? new Set() : new Set(rows.map((o) => o.id)));
+    setSelectedIds(() => allChecked ? new Set() : new Set(displayRows.map((o) => o.id)));
   };
   const toggleOne = (id: string) => {
     setSelectedIds((prev) => {
