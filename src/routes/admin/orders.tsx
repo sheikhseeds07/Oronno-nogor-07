@@ -537,7 +537,19 @@ function OrdersTable({
     });
   };
   const [search, setSearch] = useState("");
-  const [rtsPageSize, setRtsPageSize] = useState<20 | 50 | 100>(50);
+  const PAGE_SIZE_KEY = "order-list-page-size";
+const PAGE_SIZES = [20, 50, 70, 100, 200, 500] as const;
+type PageSize = (typeof PAGE_SIZES)[number];
+const [rtsPageSize, setRtsPageSize] = useState<PageSize>(() => {
+  if (typeof window === "undefined") return 50;
+  const saved = Number(window.localStorage.getItem(PAGE_SIZE_KEY));
+  return PAGE_SIZES.includes(saved as PageSize) ? (saved as PageSize) : 50;
+});
+useEffect(() => {
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(PAGE_SIZE_KEY, String(rtsPageSize));
+  }
+}, [rtsPageSize]);
   const [rtsPage, setRtsPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [sendModal, setSendModal] = useState<SendProgress[] | null>(null);
@@ -1141,7 +1153,7 @@ function OrdersTable({
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
           <div className="flex items-center gap-2 text-xs text-slate-600">
             <span className="font-semibold">প্রতি পেইজে</span>
-            <select value={rtsPageSize} onChange={(e) => setRtsPageSize(Number(e.target.value) as 20 | 50 | 100)} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand/30"><option value={20}>20</option><option value={50}>50</option><option value={100}>100</option></select>
+            <select value={rtsPageSize} onChange={(e) => setRtsPageSize(Number(e.target.value) as PageSize)} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand/30"><option value={20}>20</option><option value={50}>50</option><option value={70}>70</option><option value={100}>100</option><option value={200}>200</option><option value={500}>500</option></select>
             <span>অর্ডার · মোট {rows.length}</span>
           </div>
           <div className="flex items-center gap-1">
