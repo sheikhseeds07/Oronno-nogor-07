@@ -1,0 +1,46 @@
+name: Restore incomplete order banner
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Patch banner only
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path("src/routes/admin/orders.tsx")
+          text = path.read_text(encoding="utf-8")
+          marker = '''          {/* Header */}\n          <div className="px-5 py-3 border-b flex justify-between items-center sticky top-0 bg-white z-10 rounded-t-xl">'''
+          replacement = '''          {/* Header */}\n          {isDraft && (\n            <div className="px-5 py-3 border-b-2 border-red-200 bg-red-50 text-center">\n              <div className="text-2xl sm:text-3xl font-extrabold tracking-wide text-red-600">INCOMPLETE ORDER</div>\n            </div>\n          )}\n          <div className="px-5 py-3 border-b flex justify-between items-center sticky top-0 bg-white z-10 rounded-t-xl">'''
+          if "INCOMPLETE ORDER" in text:
+              raise SystemExit("Banner already present")
+          if marker not in text:
+              raise SystemExit("DetailModal header marker not found")
+          path.write_text(text.replace(marker, replacement, 1), encoding="utf-8")
+
+      - name: Build verification
+        run: |
+          bun install --frozen-lockfile
+          bun run build
+
+      - name: Commit only banner patch and remove workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routes/admin/orders.tsx
+          git rm .github/workflows/restore-incomplete-banner.yml
+          git commit -m "Restore incomplete order banner"
+          git push
