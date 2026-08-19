@@ -18,38 +18,22 @@ jobs:
           from pathlib import Path
           p = Path('src/routes/admin/orders.tsx')
           s = p.read_text()
-
-          # Ensure OrdersTableRows receives admin state.
-          s = s.replace(
-              '  const { user: meUser } = useAuth();',
-              '  const { user: meUser, isAdmin } = useAuth();', 1
-          )
-
-          # Show assignee under Open for the normal unlocked row.
+          s = s.replace('  const { user: meUser } = useAuth();', '  const { user: meUser, isAdmin } = useAuth();', 1)
           old = '''                        </Link>\n                        {creatorName && <span className="text-[10px] text-red-600 font-semibold mt-1 max-w-[150px] truncate">Created by: {creatorName}</span>}'''
           new = '''                        </Link>\n                        {isAdmin && assignedName && <span className="text-[10px] text-slate-600 font-semibold mt-1 max-w-[150px] truncate">Assigned to: {assignedName}</span>}\n                        {creatorName && <span className="text-[10px] text-red-600 font-semibold mt-1 max-w-[150px] truncate">Created by: {creatorName}</span>}'''
           if old not in s:
               raise SystemExit('normal Open row target not found')
           s = s.replace(old, new, 1)
-
-          # Clean duplicate assignee lines in locked rows if present, then keep one.
           dup = '''                          {isAdmin && assignedName && <span className="text-[10px] text-slate-600 font-semibold mt-1 max-w-[150px] truncate">Assigned to: {assignedName}</span>}\n                          {isAdmin && assignedName && <span className="text-[10px] text-slate-600 font-semibold mt-1 max-w-[150px] truncate">Assigned to: {assignedName}</span>}'''
           one = '''                          {isAdmin && assignedName && <span className="text-[10px] text-slate-600 font-semibold mt-1 max-w-[150px] truncate">Assigned to: {assignedName}</span>}'''
           s = s.replace(dup, one)
-
-          # If locked row has no assignee display, add it below the lock link.
-          lock_marker = '''                          </Link>\n                          {creatorName && <span className="text-[10px] text-red-600 font-semibold mt-1 max-w-[150px] truncate">Created by: {creatorName}</span>}'''
-          lock_repl = '''                          </Link>\n                          {isAdmin && assignedName && <span className="text-[10px] text-slate-600 font-semibold mt-1 max-w-[150px] truncate">Assigned to: {assignedName}</span>}\n                          {creatorName && <span className="text-[10px] text-red-600 font-semibold mt-1 max-w-[150px] truncate">Created by: {creatorName}</span>}'''
-          s = s.replace(lock_marker, lock_repl, 1)
-
-          # Verify exactly the required normal-row label exists.
-          if 'Assigned to: {assignedName}' not in s:
-              raise SystemExit('assignment display was not inserted')
           p.write_text(s)
-      - name: Commit final change and remove workflow
+      - name: Commit final change and remove one-time workflow
         run: |
+          grep -q 'Assigned to: {assignedName}' src/routes/admin/orders.tsx
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/routes/admin/orders.tsx .github/workflows/apply-admin-assignee-display.yml
+          git add src/routes/admin/orders.tsx
+          git rm .github/workflows/apply-admin-assignee-display.yml
           git commit -m 'feat: show assigned employee under Open for admins'
           git push
