@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { CalendarDays, ChevronDown } from "lucide-react";
-import { format, subDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { format, startOfDay, endOfDay, subDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -20,36 +20,19 @@ const PRESETS: { key: Preset; label: string }[] = [
   { key: "custom", label: "Custom Range" },
 ];
 
-const DHAKA = "Asia/Dhaka";
-
-const dhakaDateKey = (date: Date) =>
-  new Intl.DateTimeFormat("en-CA", { timeZone: DHAKA }).format(date);
-
-const dhakaDate = (date: Date) =>
-  new Date(`${dhakaDateKey(date)}T12:00:00+06:00`);
-
-const dhakaIsoRange = (from: Date, to: Date): DashboardRange => {
-  const fromKey = dhakaDateKey(from);
-  const toKey = dhakaDateKey(to);
-  return {
-    from: new Date(`${fromKey}T00:00:00+06:00`).toISOString(),
-    to: new Date(`${toKey}T23:59:59.999+06:00`).toISOString(),
-  };
-};
-
-const localIsoRange = (from: Date, to: Date): DashboardRange => ({
-  from: new Date(`${format(from, "yyyy-MM-dd")}T00:00:00`).toISOString(),
-  to: new Date(`${format(to, "yyyy-MM-dd")}T23:59:59.999`).toISOString(),
+const isoRange = (from: Date, to: Date): DashboardRange => ({
+  from: startOfDay(from).toISOString(),
+  to: endOfDay(to).toISOString(),
 });
 
 export function getDashboardPresetRange(preset: Preset, now = new Date()): DashboardRange | null {
-  const today = dhakaDate(now);
-  if (preset === "today") return dhakaIsoRange(today, today);
-  if (preset === "yesterday") { const day = subDays(today, 1); return dhakaIsoRange(day, day); }
-  if (preset === "7d") return dhakaIsoRange(subDays(today, 6), today);
-  if (preset === "30d") return dhakaIsoRange(subDays(today, 29), today);
-  if (preset === "month") return dhakaIsoRange(startOfMonth(today), today);
-  if (preset === "lastMonth") { const month = subMonths(today, 1); return dhakaIsoRange(startOfMonth(month), endOfMonth(month)); }
+  const today = startOfDay(now);
+  if (preset === "today") return isoRange(today, today);
+  if (preset === "yesterday") { const day = subDays(today, 1); return isoRange(day, day); }
+  if (preset === "7d") return isoRange(subDays(today, 6), today);
+  if (preset === "30d") return isoRange(subDays(today, 29), today);
+  if (preset === "month") return isoRange(startOfMonth(today), today);
+  if (preset === "lastMonth") { const month = subMonths(today, 1); return isoRange(startOfMonth(month), endOfMonth(month)); }
   return null;
 }
 
@@ -71,7 +54,7 @@ export function DashboardTimeFilter({ value, onChange }: { value: Preset; onChan
     if (!customRange?.from || !customRange?.to) return;
     const from = customRange.from <= customRange.to ? customRange.from : customRange.to;
     const to = customRange.from <= customRange.to ? customRange.to : customRange.from;
-    onChange("custom", localIsoRange(from, to));
+    onChange("custom", isoRange(from, to));
     setOpen(false);
   };
 
