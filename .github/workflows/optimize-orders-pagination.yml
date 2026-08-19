@@ -19,7 +19,6 @@ jobs:
           from pathlib import Path
           p = Path('src/routes/admin/orders.tsx')
           s = p.read_text()
-
           old_query = '''  const { data: orders, isFetching } = useQuery({
     queryKey: ["admin-orders", mode, filter],
     enabled: !isIncomplete,
@@ -36,7 +35,6 @@ jobs:
       return await attachProductImages((ords ?? []) as unknown as OrderRow[]);
     },
   });'''
-
           new_query = '''  const searchTerm = search.trim().toLowerCase();
   const { data: ordersPage, isFetching } = useQuery({
     queryKey: ["admin-orders", mode, filter, rtsPage, rtsPageSize, searchTerm],
@@ -64,11 +62,9 @@ jobs:
   });
   const orders = ordersPage?.rows ?? [];
   const serverTotal = ordersPage?.total ?? 0;'''
-
           if old_query not in s:
               raise SystemExit('orders query block not found; refusing to modify file')
           s = s.replace(old_query, new_query, 1)
-
           old_rows = '''  const baseRows = isIncomplete ? (incompleteRows ?? []) : (orders ?? []);
 
   // For incomplete rows we simply open the DetailModal in "draft" mode
@@ -91,19 +87,15 @@ jobs:
   const displayRows = mode === "list" ? rows.slice((rtsPage - 1) * rtsPageSize, rtsPage * rtsPageSize) : rows;
   useEffect(() => { setRtsPage(1); }, [filter, mode, search, rtsPageSize]);
   useEffect(() => { if (rtsPage > rtsTotalPages) setRtsPage(rtsTotalPages); }, [rtsPage, rtsTotalPages]);'''
-
           new_rows = '''  const baseRows = isIncomplete ? (incompleteRows ?? []) : (orders ?? []);
   const rows = baseRows;
   const rtsTotalPages = Math.max(1, Math.ceil((isIncomplete ? rows.length : serverTotal) / rtsPageSize));
   const displayRows = rows;
-  // Reset to page 1 when the server-side filter/search/page-size changes.
   useEffect(() => { setRtsPage(1); }, [filter, mode, search, rtsPageSize]);
   useEffect(() => { if (rtsPage > rtsTotalPages) setRtsPage(rtsTotalPages); }, [rtsPage, rtsTotalPages]);'''
-
           if old_rows not in s:
               raise SystemExit('client pagination block not found; refusing to modify file')
           s = s.replace(old_rows, new_rows, 1)
-
           p.write_text(s)
       - name: Verify build
         run: |
@@ -119,3 +111,4 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m 'perf: server-side order pagination'
           git push
+      # Triggered by a follow-up push so this workflow runs after creation.
