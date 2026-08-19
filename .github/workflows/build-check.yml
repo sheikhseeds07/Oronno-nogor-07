@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 # Keep every main build check running to completion instead of cancelling
 # the previous build when another main push arrives.
 concurrency:
@@ -17,6 +20,50 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: One-time admin assignee display patch
+        shell: python
+        run: |
+          from pathlib import Path
+
+          marker = Path(".github/workflows/one-time-show-assignee.yml")
+          if not marker.exists():
+              raise SystemExit(0)
+
+          path = Path("src/routes/admin/orders.tsx")
+          text = path.read_text()
+
+          old = '''  const defaultFilter: OrderStatus | "all" = mode === "list" ? "pending" : "web_pending";\n  const urlSearch = Route.useSearch();'''
+          new = '''  const defaultFilter: OrderStatus | "all" = mode === "list" ? "pending" : "web_pending";\n  const urlSearch = Route.useSearch();\n  const { isAdmin } = useAuth();'''
+          if old in text:
+              text = text.replace(old, new, 1)
+
+          old = '''  const creatorIds = Array.from(new Set((orders ?? []).map((o) => o.created_by).filter((x): x is string => !!x)));'''
+          new = '''  const creatorIds = Array.from(new Set(\n    (orders ?? [])\n      .flatMap((o) => [o.created_by, o.assigned_to])\n      .filter((x): x is string => !!x),\n  ));'''
+          if old in text:
+              text = text.replace(old, new, 1)
+
+          old = '''                          </Link>\n                          {creatorName && <span className="text-[10px] text-red-600 font-semibold mt-1 max-w-[150px] truncate">Created by: {creatorName}</span>}'''
+          new = '''                          </Link>\n                          {isAdmin && o.assigned_to && creatorMap?.get(o.assigned_to) && (\n                            <span className="text-[10px] text-slate-600 font-semibold mt-1 max-w-[150px] truncate">\n                              Assigned to: {creatorMap.get(o.assigned_to)}\n                            </span>\n                          )}\n                          {creatorName && <span className="text-[10px] text-red-600 font-semibold mt-1 max-w-[150px] truncate">Created by: {creatorName}</span>}'''
+          if old in text:
+              text = text.replace(old, new, 1)
+
+          old = '''                        </Link>\n                        {creatorName && <span className="text-[10px] text-red-600 font-semibold mt-1 max-w-[150px] truncate">Created by: {creatorName}</span>}'''
+          new = '''                        </Link>\n                        {isAdmin && o.assigned_to && creatorMap?.get(o.assigned_to) && (\n                          <span className="text-[10px] text-slate-600 font-semibold mt-1 max-w-[150px] truncate">\n                            Assigned to: {creatorMap.get(o.assigned_to)}\n                          </span>\n                        )}\n                        {creatorName && <span className="text-[10px] text-red-600 font-semibold mt-1 max-w-[150px] truncate">Created by: {creatorName}</span>}'''
+          if old in text:
+              text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          marker.unlink()
+      - name: Commit one-time patch
+        shell: bash
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routes/admin/orders.tsx .github/workflows/one-time-show-assignee.yml .github/workflows/build-check.yml
+          git commit -m "feat: show assigned employee to admins in orders"
+          git push
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
