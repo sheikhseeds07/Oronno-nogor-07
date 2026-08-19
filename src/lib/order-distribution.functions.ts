@@ -12,7 +12,7 @@ async function assertAdmin(userId: string) {
   if (!(data ?? []).some(r => r.role === "admin" || r.role === "super_admin")) throw new Error("Admin only");
 }
 
-const PROCESSING_STATUSES = ["web_pending", "pending"] as const;
+const PROCESSING_STATUS = "web_pending" as const;
 
 export const bulkAssignOrders = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator(Ids.parse).handler(async ({ data, context }) => {
   await assertAdmin(context.userId);
@@ -30,7 +30,7 @@ export const getAssignedOrders = createServerFn({ method: "POST" }).middleware([
     .from("orders")
     .select("id,invoice_id,customer_name,phone,total,status,created_at,assigned_to")
     .eq("assigned_to", data.userId)
-    .in("status", PROCESSING_STATUSES)
+    .eq("status", PROCESSING_STATUS)
     .order("created_at", { ascending: false })
     .limit(500);
   if (error) throw new Error(error.message);
@@ -60,7 +60,7 @@ export const getOrderAssignmentCounts = createServerFn({ method: "POST" })
         .from("orders")
         .select("id", { count: "exact", head: true })
         .eq("assigned_to", member.user_id)
-        .in("status", PROCESSING_STATUSES);
+        .eq("status", PROCESSING_STATUS);
       if (error) throw new Error(error.message);
       counts[member.user_id] = count ?? 0;
     }));
