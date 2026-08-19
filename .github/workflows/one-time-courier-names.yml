@@ -1,4 +1,4 @@
-name: One-time courier display names updater
+name: Apply courier display names
 
 on:
   push:
@@ -7,104 +7,128 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: courier-display-name-update
+  cancel-in-progress: false
+
 jobs:
   update:
+    # The updater stops itself once the actual source changes have been committed.
     if: ${{ !contains(github.event.head_commit.message, 'Add configurable courier display names') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Update courier display names
-        env:
-          PYTHONIOENCODING: utf-8
+      - name: Apply source changes
+        shell: bash
         run: |
-          python3 <<'PY'
+          set -euo pipefail
+          python3 - <<'PY'
           from pathlib import Path
           import re
 
           api = Path('src/routes/admin/all-api.tsx')
           s = api.read_text(encoding='utf-8')
 
-          old_type = 'type SteadfastCfg = { api_key: string; secret_key: string; base_url: string };'
-          new_type = 'type SteadfastCfg = { api_key: string; secret_key: string; base_url: string; display_name: string };'
-          if old_type in s:
-              s = s.replace(old_type, new_type, 1)
-          elif 'display_name: string' not in s:
-              raise SystemExit('Could not locate SteadfastCfg')
+          # 1) Store a human-readable display name alongside each Steadfast config.
+          s2 = s.replace(
+              'type SteadfastCfg = { api_key: string; secret_key: string; base_url: string };',
+              'type SteadfastCfg = { api_key: string; secret_key: string; base_url: string; display_name: string };',
+              1,
+          )
+          s2 = s2.replace(
+              'const emptySteadfast: SteadfastCfg = { api_key: "", secret_key: "", base_url: "https://portal.packzy.com/api/v1" };',
+              'const emptySteadfast: SteadfastCfg = { api_key: "", secret_key: "", base_url: "https://portal.packzy.com/api/v1", display_name: "" };',
+              1,
+          )
+          s2 = s2.replace(
+              'const trimmed = { api_key: cfg.api_key.trim(), secret_key: cfg.secret_key.trim(), base_url: cfg.base_url.trim() };',
+              'const trimmed = { api_key: cfg.api_key.trim(), secret_key: cfg.secret_key.trim(), base_url: cfg.base_url.trim(), display_name: cfg.display_name.trim() };',
+              1,
+          )
 
-          old_empty = 'const emptySteadfast: SteadfastCfg = { api_key: "", secret_key: "", base_url: "https://portal.packzy.com/api/v1" };'
-          new_empty = 'const emptySteadfast: SteadfastCfg = { api_key: "", secret_key: "", base_url: "https://portal.packzy.com/api/v1", display_name: "" };'
-          if old_empty in s:
-              s = s.replace(old_empty, new_empty, 1)
+          if 'Field label="Courier Name"' not in s2:
+              marker = '<div className="grid gap-4 sm:grid-cols-2"><Field label="API Key">'
+              if marker not in s2:
+                  raise SystemExit('Courier fields marker not found in all-api.tsx')
+              s2 = s2.replace(
+                  marker,
+                  '<div className="grid gap-4 sm:grid-cols-2"><Field label="Courier Name"><input value={cfg.display_name} onChange={e => setCfg({ ...cfg, display_name: e.target.value })} placeholder={`যেমন: Courier ${account}`} className={inputClass} /></Field><Field label="API Key">',
+                  1,
+              )
 
-          old_trimmed = 'const trimmed = { api_key: cfg.api_key.trim(), secret_key: cfg.secret_key.trim(), base_url: cfg.base_url.trim() };'
-          new_trimmed = 'const trimmed = { api_key: cfg.api_key.trim(), secret_key: cfg.secret_key.trim(), base_url: cfg.base_url.trim(), display_name: cfg.display_name.trim() };'
-          if old_trimmed in s:
-              s = s.replace(old_trimmed, new_trimmed, 1)
-          elif 'display_name: cfg.display_name.trim()' not in s:
-              raise SystemExit('Could not locate Steadfast trimmed config')
+          if s2 == s:
+              print('all-api.tsx already contains the requested change or could not be changed.')
+          else:
+              api.write_text(s2, encoding='utf-8')
 
-          marker = '<div className="grid gap-4 sm:grid-cols-2"><Field label="API Key">'
-          if marker in s and 'Field label="Courier Name"' not in s:
-              replacement = '<div className="grid gap-4 sm:grid-cols-2"><Field label="Courier Name"><input value={cfg.display_name} onChange={e => setCfg({ ...cfg, display_name: e.target.value })} placeholder={`যেমন: Courier ${account}`} className={inputClass} /></Field><Field label="API Key">'
-              s = s.replace(marker, replacement, 1)
-          elif 'Field label="Courier Name"' not in s:
-              raise SystemExit('Could not locate Steadfast fields')
-
-          api.write_text(s, encoding='utf-8')
-
+          # 2) Read the configured names in Orders and use them for RTS send buttons.
           orders = Path('src/routes/admin/orders.tsx')
           o = orders.read_text(encoding='utf-8')
 
-          # Add a small live query for the two configured display names.
-          anchor = '  const qc = useQueryClient();\n'
-          if 'courier-display-names' not in o:
+          if 'queryKey: ["courier-display-names"]' not in o:
+              anchor = '  const qc = useQueryClient();\n'
+              if anchor not in o:
+                  raise SystemExit('Orders query-client anchor not found')
               query = '''  const { data: courierDisplayNames } = useQuery({
-    queryKey: ["courier-display-names"],
-    staleTime: 60_000,
-    queryFn: async () => {
-      const { data } = await supabase.from("integrations").select("name,config").in("name", ["all_api_steadfast", "all_api_steadfast_2"]);
-      const result = { 1: "Courier 1", 2: "Courier 2" } as Record<1 | 2, string>;
-      for (const row of data ?? []) {
-        const cfg = (row.config ?? {}) as { display_name?: string };
-        if (row.name === "all_api_steadfast" && cfg.display_name?.trim()) result[1] = cfg.display_name.trim();
-        if (row.name === "all_api_steadfast_2" && cfg.display_name?.trim()) result[2] = cfg.display_name.trim();
-      }
-      return result;
-    },
-  });
-  const courier1Name = courierDisplayNames?.[1] ?? "Courier 1";
-  const courier2Name = courierDisplayNames?.[2] ?? "Courier 2";
+            queryKey: ["courier-display-names"],
+            staleTime: 60_000,
+            queryFn: async () => {
+              const { data } = await supabase
+                .from("integrations")
+                .select("name,config")
+                .in("name", ["all_api_steadfast", "all_api_steadfast_2"]);
+              const result = { 1: "Courier 1", 2: "Courier 2" } as Record<1 | 2, string>;
+              for (const row of data ?? []) {
+                const cfg = (row.config ?? {}) as { display_name?: string };
+                if (row.name === "all_api_steadfast" && cfg.display_name?.trim()) result[1] = cfg.display_name.trim();
+                if (row.name === "all_api_steadfast_2" && cfg.display_name?.trim()) result[2] = cfg.display_name.trim();
+              }
+              return result;
+            },
+          });
+          const courier1Name = courierDisplayNames?.[1] ?? "Courier 1";
+          const courier2Name = courierDisplayNames?.[2] ?? "Courier 2";
 '''
-              if anchor in o:
-                  o = o.replace(anchor, anchor + query, 1)
-              else:
-                  raise SystemExit('Could not locate OrdersTable query client anchor')
+              o = o.replace(anchor, anchor + query, 1)
 
-          # Replace only button labels associated with the two RTS send actions.
-          patterns = [
-              (r'(bulkSendCourier\(1\)[\s\S]{0,500}?)(Courier 1)', r'\1{courier1Name}'),
-              (r'(bulkSendCourier\(2\)[\s\S]{0,500}?)(Courier 2)', r'\1{courier2Name}'),
-          ]
-          for pat, rep in patterns:
-              o, n = re.subn(pat, rep, o, count=1)
-              if n == 0:
-                  # Try Bengali/numbered variants if the source uses them.
-                  if 'bulkSendCourier(1)' in o and 'courier1Name' not in o:
-                      o = o.replace('কুরিয়ার ১', '{courier1Name}', 1)
-                  if 'bulkSendCourier(2)' in o and 'courier2Name' not in o:
-                      o = o.replace('কুরিয়ার ২', '{courier2Name}', 1)
+          # Only alter visible labels belonging to bulkSendCourier(1)/(2).
+          if 'courier1Name' not in o or 'courier2Name' not in o:
+              def replace_near_call(text, call, candidates, replacement):
+                  idx = text.find(call)
+                  if idx < 0:
+                      return text, False
+                  end = min(len(text), idx + 2500)
+                  chunk = text[idx:end]
+                  for c in candidates:
+                      if c in chunk:
+                          chunk = chunk.replace(c, replacement, 1)
+                          return text[:idx] + chunk + text[end:], True
+                  return text, False
+
+              o, ok1 = replace_near_call(o, 'bulkSendCourier(1)', ['Courier 1', 'কুরিয়ার ১', 'কুরিয়ার ১'], '{courier1Name}')
+              o, ok2 = replace_near_call(o, 'bulkSendCourier(2)', ['Courier 2', 'কুরিয়ার ২', 'কুরিয়ার ২'], '{courier2Name}')
+              if not (ok1 and ok2):
+                  raise SystemExit(f'Could not locate both RTS courier labels: courier1={ok1}, courier2={ok2}')
 
           orders.write_text(o, encoding='utf-8')
-          print('Courier display-name changes applied.')
+          print('Courier display-name source changes applied.')
           PY
 
-      - name: Commit changes and remove one-time workflow
+      - name: Commit source changes
+        shell: bash
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/routes/admin/all-api.tsx src/routes/admin/orders.tsx .github/workflows/one-time-courier-names.yml
-          git rm .github/workflows/one-time-courier-names.yml
+          git add src/routes/admin/all-api.tsx src/routes/admin/orders.tsx
           git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
           git commit -m "Add configurable courier display names"
-          git push
+          git push origin main
