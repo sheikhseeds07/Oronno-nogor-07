@@ -30,7 +30,7 @@ export const saveOrderDistributionMembers = createServerFn({ method: "POST" }).m
   return { ok: true };
 });
 
-/** Live workload counts for the Order Division panel. Terminal orders are not counted. */
+/** Live count of orders currently in Processing and assigned to each employee. */
 export const getOrderAssignmentCounts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(Members.pick({ members: true }))
@@ -42,7 +42,7 @@ export const getOrderAssignmentCounts = createServerFn({ method: "POST" })
         .from("orders")
         .select("id", { count: "exact", head: true })
         .eq("assigned_to", member.user_id)
-        .not("status", "in", "(delivered,cancelled,canceled,returned,completed,deleted)");
+        .eq("status", "processing");
       if (error) throw new Error(error.message);
       counts[member.user_id] = count ?? 0;
     }));
