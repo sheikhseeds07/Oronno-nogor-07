@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 
 const Ids = z.object({ ids: z.array(z.string().uuid()).min(1).max(500), userId: z.string().uuid() });
+const MemberId = z.object({ userId: z.string().uuid() });
 const Members = z.object({ members: z.array(z.object({ user_id: z.string().uuid(), name: z.string().min(1), enabled: z.boolean(), position: z.number().int().min(0) })).max(100) });
 
 async function assertAdmin(userId: string) {
@@ -13,9 +14,19 @@ async function assertAdmin(userId: string) {
 
 export const bulkAssignOrders = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator(Ids.parse).handler(async ({ data, context }) => {
   await assertAdmin(context.userId);
+  const { data: employee, error: employeeError } = await supabaseAdmin.from("employees").select("user_id").eq("user_id", data.userId).eq("is_active", true).maybeSingle();
+  if (employeeError) throw new Error(employeeError.message);
+  if (!employee?.user_id) throw new Error("Selected employee is not active");
   const { error } = await supabaseAdmin.from("orders").update({ assigned_to: data.userId, updated_at: new Date().toISOString() }).in("id", data.ids);
   if (error) throw new Error(error.message);
   return { ok: true, count: data.ids.length };
+});
+
+export const getAssignedOrders = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator(MemberId).handler(async ({ data, context }) => {
+  await assertAdmin(context.userId);
+  const { data: orders, error } = await supabaseAdmin.from("orders").select("id,invoice_id,customer_name,phone,total,status,created_at,assigned_to").eq("assigned_to", data.userId).eq("status", "web_pending").order("created_at", { ascending: false }).limit(500);
+  if (error) throw new Error(error.message);
+  return orders ?? [];
 });
 
 export const saveOrderDistributionMembers = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator(Members.parse).handler(async ({ data, context }) => {
@@ -30,7 +41,6 @@ export const saveOrderDistributionMembers = createServerFn({ method: "POST" }).m
   return { ok: true };
 });
 
-/** Live count of Processing orders currently assigned to each employee. */
 export const getOrderAssignmentCounts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(Members.pick({ members: true }))
@@ -38,12 +48,7 @@ export const getOrderAssignmentCounts = createServerFn({ method: "POST" })
     await assertAdmin(context.userId);
     const counts: Record<string, number> = {};
     await Promise.all(data.members.map(async (member) => {
-      const { count, error } = await supabaseAdmin
-        .from("orders")
-        .select("id", { count: "exact", head: true })
-        .eq("assigned_to", member.user_id)
-        // The Admin Orders UI displays the database status `web_pending` as “Processing”.
-        .eq("status", "web_pending");
+      const { count, error } = await supabaseAdmin.from("orders").select("id", { count: "exact", head: true }).eq("assigned_to", member.user_id).eq("status", "web_pending");
       if (error) throw new Error(error.message);
       counts[member.user_id] = count ?? 0;
     }));
