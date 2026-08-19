@@ -7,6 +7,7 @@ on:
 permissions:
   contents: write
 
+# Triggered from the workflow file itself so GitHub loads the latest workflow definition.
 jobs:
   fix:
     if: "!contains(github.event.head_commit.message, '[skip-assignee-cleanup]')"
@@ -31,9 +32,9 @@ jobs:
       - name: Commit cleanup and remove workflow
         shell: bash
         run: |
-          rm -f .github/workflows/fix-assignee-display.yml ASSIGNEE_PATCH_TRIGGER.md
+          rm -f .github/workflows/fix-assignee-display.yml ASSIGNEE_PATCH_TRIGGER.md ASSIGNEE_CLEANUP_TRIGGER.md ASSIGNEE_CLEANUP_TRIGGER_2.md .github/assignee-patch-needed
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/routes/admin/orders.tsx .github/workflows/fix-assignee-display.yml ASSIGNEE_PATCH_TRIGGER.md
+          git add src/routes/admin/orders.tsx .github/workflows/fix-assignee-display.yml ASSIGNEE_PATCH_TRIGGER.md ASSIGNEE_CLEANUP_TRIGGER.md ASSIGNEE_CLEANUP_TRIGGER_2.md .github/assignee-patch-needed
           git commit -m "fix: show assignee once under Open for admins [skip-assignee-cleanup]"
           git push
