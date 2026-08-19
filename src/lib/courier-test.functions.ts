@@ -89,7 +89,7 @@ export const sendOrdersToSteadfast = createServerFn({ method: "POST" })
         const dstatus = deepFind(chk.json, ["delivery_status", "status_text"]);
         const known = dstatus && !/not[_\s-]?found|invalid|unknown/i.test(dstatus);
         if (chk.ok && (existing || known)) {
-          await supabaseAdmin.from("orders").update({ courier_consignment: existing || invoice, courier_status: dstatus || "in_review" }).eq("id", o.id);
+          await supabaseAdmin.from("orders").update({ courier_consignment: existing || invoice, courier_status: dstatus || "in_review", courier_display_name: (cfg.display_name || "").trim() || `Courier ${account}` }).eq("id", o.id);
           results.push({ id: o.id, ok: false, already: true, consignment: existing, message: "ইতিমধ্যে এন্ট্রি হয়েছে (Already entry)" });
           continue;
         }
@@ -120,7 +120,7 @@ export const sendOrdersToSteadfast = createServerFn({ method: "POST" })
         } catch { /* ignore */ }
       }
       if (consignment) {
-        await supabaseAdmin.from("orders").update({ courier_consignment: consignment, courier_status: "in_review" }).eq("id", o.id);
+        await supabaseAdmin.from("orders").update({ courier_consignment: consignment, courier_status: "in_review", courier_display_name: (cfg.display_name || "").trim() || `Courier ${account}` }).eq("id", o.id);
         results.push({ id: o.id, ok: true, consignment, message: "পাঠানো হয়েছে" });
       } else {
         results.push({ id: o.id, ok: false, message: `HTTP ${r.status} — ${r.body.slice(0, 160)}` });

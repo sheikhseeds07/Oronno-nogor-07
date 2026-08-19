@@ -642,7 +642,7 @@ useEffect(() => {
       const list = (filter === "all" ? statuses : [filter]).filter((s) => s !== "incomplete");
       const { data: ords } = await supabase
         .from("orders")
-        .select("id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment,printed_at,created_at,updated_at,created_by,order_items(id,product_name,quantity,price,product_id)")
+        .select("id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment,courier_display_name,printed_at,created_at,updated_at,created_by,order_items(id,product_name,quantity,price,product_id)")
         .in("status", list as Exclude<OrderStatus, "incomplete">[])
         .order("created_at", { ascending: false })
         .limit(1000);
@@ -1410,7 +1410,7 @@ type OrderRow = {
   customer_phone: string; customer_address?: string | null;
   thana?: string | null; district?: string | null;
   created_at: string; updated_at?: string | null; total: number; status: OrderStatus;
-  courier_consignment?: string | null; printed_at?: string | null;
+  courier_consignment?: string | null; courier_display_name?: string | null; printed_at?: string | null;
   order_items?: OrderItemRow[];
   assigned_to?: string | null;
   created_by?: string | null;
@@ -1488,7 +1488,7 @@ async function attachProductImages(orders: OrderRow[]): Promise<OrderRow[]> {
 }
 
 /* ───────────── Invoice HTML Builder (clean, minimal) ───────────── */
-type InvoiceOrder = OrderRow & { courier_consignment?: string | null };
+type InvoiceOrder = OrderRow & { courier_consignment?: string | null; courier_display_name?: string | null };
 const LOGO_URL = (typeof window !== "undefined" ? window.location.origin : "") + logoUrl;
 function buildInvoicesHTML(orders: InvoiceOrder[]) {
   const css = `
@@ -1500,6 +1500,7 @@ function buildInvoicesHTML(orders: InvoiceOrder[]) {
     .logo{width:90px;height:90px;border-radius:10px;object-fit:cover;background:#f1f5f9;border:1px solid #e2e8f0}
     .invtitle{font-size:42px;font-weight:900;letter-spacing:4px;color:#0f172a;line-height:1;text-align:center;justify-self:center}
     .invtitle .num{color:#8b0000}
+    .invtitle .courier{display:block;font-size:11px;font-weight:700;letter-spacing:.5px;color:#64748b;margin-top:6px;text-transform:none}
     .invspacer{width:90px}
     .meta{display:flex;justify-content:space-between;font-size:13px;margin-bottom:14px;color:#334155}
     .meta b{color:#0f172a}
@@ -1529,7 +1530,7 @@ function buildInvoicesHTML(orders: InvoiceOrder[]) {
       <div class="inv">
         <div class="head">
           <img class="logo" src="${escapeHtml(LOGO_URL)}" alt="logo"/>
-          <div class="invtitle">${invHtml}</div>
+          <div class="invtitle">${invHtml}${o.courier_display_name ? `<span class="courier">${escapeHtml(o.courier_display_name)}</span>` : ""}</div>
           <div class="invspacer"></div>
         </div>
         <div class="meta">
