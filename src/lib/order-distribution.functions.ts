@@ -30,7 +30,7 @@ export const saveOrderDistributionMembers = createServerFn({ method: "POST" }).m
   return { ok: true };
 });
 
-/** Live count of orders currently in Processing and assigned to each employee. */
+/** Live count of Processing orders currently assigned to each employee. */
 export const getOrderAssignmentCounts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(Members.pick({ members: true }))
@@ -42,7 +42,8 @@ export const getOrderAssignmentCounts = createServerFn({ method: "POST" })
         .from("orders")
         .select("id", { count: "exact", head: true })
         .eq("assigned_to", member.user_id)
-        .eq("status", "processing");
+        // The Admin Orders UI displays the database status `web_pending` as “Processing”.
+        .eq("status", "web_pending");
       if (error) throw new Error(error.message);
       counts[member.user_id] = count ?? 0;
     }));
