@@ -11,9 +11,6 @@ concurrency:
   group: build-check-main
   cancel-in-progress: false
 
-permissions:
-  contents: write
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -28,45 +25,6 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
-
-      - name: Apply one-time admin assignment display patch
-        if: contains(github.event.head_commit.message, '[apply-assignment]')
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          path = Path('src/routes/admin/orders.tsx')
-          s = path.read_text()
-
-          duplicate = '''                          {isAdmin && assignedName && <span className="text-[10px] text-slate-600 font-semibold mt-1 max-w-[150px] truncate">Assigned to: {assignedName}</span>}
-                          {isAdmin && assignedName && <span className="text-[10px] text-slate-600 font-semibold mt-1 max-w-[150px] truncate">Assigned to: {assignedName}</span>}
-                        {creatorName && <span className="text-[10px] text-red-600 font-semibold mt-1 max-w-[150px] truncate">Created by: {creatorName}</span>}'''
-          single = '''                          {isAdmin && assignedName && <span className="text-[10px] text-slate-600 font-semibold mt-1 max-w-[150px] truncate">Assigned to: {assignedName}</span>}
-                          {creatorName && <span className="text-[10px] text-red-600 font-semibold mt-1 max-w-[150px] truncate">Created by: {creatorName}</span>}'''
-          if duplicate in s:
-              s = s.replace(duplicate, single, 1)
-
-          normal = '''                        {creatorName && <span className="text-[10px] text-red-600 font-semibold mt-1 max-w-[150px] truncate">Created by: {creatorName}</span>}'''
-          normal_with_assignment = '''                        {isAdmin && assignedName && <span className="text-[10px] text-slate-600 font-semibold mt-1 max-w-[150px] truncate">Assigned to: {assignedName}</span>}
-                        {creatorName && <span className="text-[10px] text-red-600 font-semibold mt-1 max-w-[150px] truncate">Created by: {creatorName}</span>}'''
-          # Add the assignment line only to the normal (unlocked) action block.
-          if s.count(normal) == 1:
-              s = s.replace(normal, normal_with_assignment, 1)
-          elif s.count(normal_with_assignment) != 1:
-              raise SystemExit('normal order action assignment target not found')
-
-          if s.count('Assigned to: {assignedName}') != 2:
-              raise SystemExit('expected exactly two admin assignment labels after patch')
-          path.write_text(s)
-          PY
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/routes/admin/orders.tsx
-          if git diff --cached --quiet; then
-            echo 'Assignment display already patched.'
-          else
-            git commit -m 'Show assigned employee under order action'
-            git push
-          fi
 
       # Full production build — this check must pass on every main push.
       - name: Build
