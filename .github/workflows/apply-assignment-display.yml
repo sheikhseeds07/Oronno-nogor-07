@@ -1,0 +1,90 @@
+name: Apply assignment display
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-assignment-display.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply assignment display
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          path = Path('src/routes/admin/orders.tsx')
+          s = path.read_text()
+
+          s2 = re.sub(
+              r'  const creatorIds = Array\\.from\\(new Set\\(\\(orders \\?\\? \\[\\]\\)\\.map\\(\\(o\\) => o\\.created_by\\)\\.filter\\(\\(x\\): x is string => !!x\\)\\)\\);\\n  const \\{ data: creatorProfiles \\} = useQuery\\(\\{.*?  const creatorMap = useMemo\\(\\(\\) => new Map\\(\\(creatorProfiles \\?\\? \\[\\]\\)\\.map\\(\\(p\\) => \\[p\\.id, p\\.full_name \\|\\| "Unknown user"\\]\\)\\), \\[creatorProfiles\\]\\);',
+              '''  const creatorIds = Array.from(new Set((orders ?? []).map((o) => o.created_by).filter((x): x is string => !!x)));
+  const assignedIds = Array.from(new Set((orders ?? []).map((o) => o.assigned_to).filter((x): x is string => !!x)));
+  const profileIds = Array.from(new Set([...creatorIds, ...assignedIds]));
+  const { data: creatorProfiles } = useQuery({
+    queryKey: ["order-user-profiles", profileIds.join(",")],
+    enabled: profileIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("id,full_name").in("id", profileIds);
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
+    staleTime: 60_000,
+  });
+  const creatorMap = useMemo(() => new Map((creatorProfiles ?? []).map((p) => [p.id, p.full_name || "Unknown user"])), [creatorProfiles]);
+  const assignedMap = creatorMap;''',
+              s,
+              flags=re.S,
+          )
+          if s2 == s:
+              raise SystemExit('creator profile block not found')
+          s = s2
+
+          s = s.replace(
+              '  const { user: meUser } = useAuth();',
+              '  const { user: meUser, isAdmin } = useAuth();'
+          )
+
+          s = s.replace(
+              '          creatorMap={creatorMap}\n          empty=',
+              '          creatorMap={creatorMap}\n          assignedMap={assignedMap}\n          showAssignment={isAdmin}\n          empty='
+          )
+
+          s = s.replace(
+              '  creatorMap?: Map<string, string>;\n})',
+              '  creatorMap?: Map<string, string>;\n  assignedMap?: Map<string, string>;\n  showAssignment?: boolean;\n})'
+          )
+
+          s = s.replace(
+              '  creatorMap,\n}: {',
+              '  creatorMap, assignedMap, showAssignment = false,\n}: {'
+          )
+
+          s = s.replace(
+              '                    const creatorName = o.created_by ? creatorMap?.get(o.created_by) : undefined;\n',
+              '                    const creatorName = o.created_by ? creatorMap?.get(o.created_by) : undefined;\n                    const assignedName = o.assigned_to ? assignedMap?.get(o.assigned_to) : undefined;\n'
+          )
+
+          marker = '{creatorName && <span className="text-[10px] text-red-600 font-semibold mt-1 max-w-[150px] truncate">Created by: {creatorName}</span>}'
+          replacement = '{showAssignment && assignedName && <span className="text-[10px] text-blue-600 font-semibold mt-1 max-w-[150px] truncate">Assign to: {assignedName}</span>}\n                          ' + marker
+          count = s.count(marker)
+          if count != 2:
+              raise SystemExit(f'creator render marker count was {count}, expected 2')
+          s = s.replace(marker, replacement)
+          path.write_text(s)
+          PY
+      - name: Verify change
+        run: |
+          grep -q 'Assign to: {assignedName}' src/routes/admin/orders.tsx
+          grep -q 'assignedMap={assignedMap}' src/routes/admin/orders.tsx
+          test "$(grep -c 'Assign to: {assignedName}' src/routes/admin/orders.tsx)" -eq 2
+      - name: Commit and remove temporary workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/routes/admin/orders.tsx
+          git rm .github/workflows/apply-assignment-display.yml
+          git commit -m 'Show assigned employee in admin order actions'
+          git push
