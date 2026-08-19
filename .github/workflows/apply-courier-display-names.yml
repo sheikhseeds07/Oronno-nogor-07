@@ -1,0 +1,58 @@
+name: Apply courier display names
+on:
+  push:
+    branches: [courier-display-names-fix]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply changes
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          api = Path('src/routes/admin/all-api.tsx')
+          s = api.read_text()
+          s = s.replace('type SteadfastCfg = { api_key: string; secret_key: string; base_url: string };','type SteadfastCfg = { api_key: string; secret_key: string; base_url: string; display_name: string };')
+          s = s.replace('const emptySteadfast: SteadfastCfg = { api_key: "", secret_key: "", base_url: "https://portal.packzy.com/api/v1" };','const emptySteadfast: SteadfastCfg = { api_key: "", secret_key: "", base_url: "https://portal.packzy.com/api/v1", display_name: "" };')
+          s = s.replace('const trimmed = { api_key: cfg.api_key.trim(), secret_key: cfg.secret_key.trim(), base_url: cfg.base_url.trim() };','const trimmed = { api_key: cfg.api_key.trim(), secret_key: cfg.secret_key.trim(), base_url: cfg.base_url.trim(), display_name: cfg.display_name.trim() };')
+          marker = '<div className="grid gap-4 sm:grid-cols-2"><Field label="API Key">'
+          replacement = '<div className="grid gap-4 sm:grid-cols-2"><Field label="Courier Name"><input value={cfg.display_name} onChange={e => setCfg({ ...cfg, display_name: e.target.value })} placeholder={`যেমন: Courier ${account}`} className={inputClass} /></Field><Field label="API Key">'
+          if 'Field label="Courier Name"' not in s and marker in s: s = s.replace(marker, replacement, 1)
+          api.write_text(s)
+          orders = Path('src/routes/admin/orders.tsx')
+          o = orders.read_text()
+          query = '''  const { data: courierDisplayNames } = useQuery({
+    queryKey: ["courier-display-names"],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data } = await supabase.from("integrations").select("name,config").in("name", ["all_api_steadfast", "all_api_steadfast_2"]);
+      const result = { 1: "Courier 1", 2: "Courier 2" } as Record<1 | 2, string>;
+      for (const row of data ?? []) {
+        const cfg = (row.config ?? {}) as { display_name?: string };
+        if (row.name === "all_api_steadfast" && cfg.display_name?.trim()) result[1] = cfg.display_name.trim();
+        if (row.name === "all_api_steadfast_2" && cfg.display_name?.trim()) result[2] = cfg.display_name.trim();
+      }
+      return result;
+    },
+  });
+  const courier1Name = courierDisplayNames?.[1] ?? "Courier 1";
+  const courier2Name = courierDisplayNames?.[2] ?? "Courier 2";
+'''
+          table_anchor = '  const qc = useQueryClient();\n  const sendBulk = useServerFn(sendOrdersToSteadfast);'
+          if 'courier-display-names' not in o and table_anchor in o:
+              o = o.replace(table_anchor, '  const qc = useQueryClient();\n' + query + '  const sendBulk = useServerFn(sendOrdersToSteadfast);', 1)
+          o = o.replace('কুরিয়ার ১ এ পাঠান (Steadfast)', '{courier1Name} এ পাঠান', 1)
+          o = o.replace('কুরিয়ার ২ এ পাঠান (Steadfast)', '{courier2Name} এ পাঠান', 1)
+          orders.write_text(o)
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routes/admin/all-api.tsx src/routes/admin/orders.tsx
+          git diff --cached --check
+          git commit -m "Add configurable courier display names"
+          git push origin HEAD:main
