@@ -6,7 +6,7 @@ export const getRouter = () => {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 5 * 60_000, // 5 minutes default stale time
+        staleTime: 5 * 60_000,
         gcTime: 10 * 60_000,
         retry: 1,
         refetchOnWindowFocus: false,
@@ -16,13 +16,10 @@ export const getRouter = () => {
     },
   });
 
-  // Orders are high-interaction screens. Realtime events and explicit mutations
-  // used to invalidate the active list, which made the table replace its rows
-  // with a loader and collapsed the page height (jumping the admin back to top).
-  // Mark active order lists stale without immediately refetching them. The
-  // realtime cache synchronizer removes/moves changed rows in-place, while an
-  // internal tab/status remount keeps the existing cache instead of forcing a
-  // visible reload. A brand-new query still fetches normally when no cache exists.
+  // Keep admin order screens cached between navigation and only refetch the
+  // currently visible order query when an explicit invalidation occurs.
+  // This avoids making every admin interaction trigger network requests for
+  // inactive order tabs while preserving fast updates for the active screen.
   for (const key of ["admin-orders", "admin-orders-incomplete"] as const) {
     queryClient.setQueryDefaults([key], {
       refetchOnWindowFocus: false,
@@ -35,7 +32,9 @@ export const getRouter = () => {
   queryClient.invalidateQueries = ((filters?: Parameters<typeof baseInvalidateQueries>[0], options?: Parameters<typeof baseInvalidateQueries>[1]) => {
     const firstKey = Array.isArray(filters?.queryKey) ? filters?.queryKey?.[0] : undefined;
     if (firstKey === "admin-orders" || firstKey === "admin-orders-incomplete") {
-      return baseInvalidateQueries({ ...filters, refetchType: "none" }, options);
+      // Refetch active queries only. Inactive tabs remain cached and are
+      // refreshed naturally when their query becomes active/stale.
+      return baseInvalidateQueries({ ...filters, refetchType: "active" }, options);
     }
     return baseInvalidateQueries(filters, options);
   }) as typeof queryClient.invalidateQueries;
