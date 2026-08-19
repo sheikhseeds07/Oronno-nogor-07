@@ -147,7 +147,10 @@ function Orders() {
   const selected = search.selected ?? null;
   const setTab = (t: Tab) => navigate({ search: (p: typeof search) => ({ ...p, tab: t }) });
   const setSelected = (id: string | null) =>
-    navigate({ search: (p: typeof search) => ({ ...p, selected: id ?? undefined }) });
+    navigate({
+      search: (p: typeof search) => ({ ...p, selected: id ?? undefined }),
+      resetScroll: false,
+    });
   const qc = useQueryClient();
 
   return (
