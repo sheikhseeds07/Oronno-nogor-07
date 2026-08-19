@@ -1,4 +1,4 @@
-name: Apply courier display names
+name: Apply courier display names and invoice courier label
 on:
   push:
     branches: [courier-display-names-fix]
@@ -15,6 +15,8 @@ jobs:
         run: |
           python3 <<'PY'
           from pathlib import Path
+
+          # Keep the existing configurable Courier Name fields/buttons idempotent.
           api = Path('src/routes/admin/all-api.tsx')
           s = api.read_text()
           s = s.replace('type SteadfastCfg = { api_key: string; secret_key: string; base_url: string };','type SteadfastCfg = { api_key: string; secret_key: string; base_url: string; display_name: string };')
@@ -22,37 +24,63 @@ jobs:
           s = s.replace('const trimmed = { api_key: cfg.api_key.trim(), secret_key: cfg.secret_key.trim(), base_url: cfg.base_url.trim() };','const trimmed = { api_key: cfg.api_key.trim(), secret_key: cfg.secret_key.trim(), base_url: cfg.base_url.trim(), display_name: cfg.display_name.trim() };')
           marker = '<div className="grid gap-4 sm:grid-cols-2"><Field label="API Key">'
           replacement = '<div className="grid gap-4 sm:grid-cols-2"><Field label="Courier Name"><input value={cfg.display_name} onChange={e => setCfg({ ...cfg, display_name: e.target.value })} placeholder={`যেমন: Courier ${account}`} className={inputClass} /></Field><Field label="API Key">'
-          if 'Field label="Courier Name"' not in s and marker in s: s = s.replace(marker, replacement, 1)
+          if 'Field label="Courier Name"' not in s and marker in s:
+              s = s.replace(marker, replacement, 1)
           api.write_text(s)
+
           orders = Path('src/routes/admin/orders.tsx')
           o = orders.read_text()
           query = '''  const { data: courierDisplayNames } = useQuery({
-    queryKey: ["courier-display-names"],
-    staleTime: 60_000,
-    queryFn: async () => {
-      const { data } = await supabase.from("integrations").select("name,config").in("name", ["all_api_steadfast", "all_api_steadfast_2"]);
-      const result = { 1: "Courier 1", 2: "Courier 2" } as Record<1 | 2, string>;
-      for (const row of data ?? []) {
-        const cfg = (row.config ?? {}) as { display_name?: string };
-        if (row.name === "all_api_steadfast" && cfg.display_name?.trim()) result[1] = cfg.display_name.trim();
-        if (row.name === "all_api_steadfast_2" && cfg.display_name?.trim()) result[2] = cfg.display_name.trim();
-      }
-      return result;
-    },
-  });
-  const courier1Name = courierDisplayNames?.[1] ?? "Courier 1";
-  const courier2Name = courierDisplayNames?.[2] ?? "Courier 2";
-'''
+            queryKey: ["courier-display-names"],
+            staleTime: 60_000,
+            queryFn: async () => {
+              const { data } = await supabase.from("integrations").select("name,config").in("name", ["all_api_steadfast", "all_api_steadfast_2"]);
+              const result = { 1: "Courier 1", 2: "Courier 2" } as Record<1 | 2, string>;
+              for (const row of data ?? []) {
+                const cfg = (row.config ?? {}) as { display_name?: string };
+                if (row.name === "all_api_steadfast" && cfg.display_name?.trim()) result[1] = cfg.display_name.trim();
+                if (row.name === "all_api_steadfast_2" && cfg.display_name?.trim()) result[2] = cfg.display_name.trim();
+              }
+              return result;
+            },
+          });
+          const courier1Name = courierDisplayNames?.[1] ?? "Courier 1";
+          const courier2Name = courierDisplayNames?.[2] ?? "Courier 2";
+          '''
           table_anchor = '  const qc = useQueryClient();\n  const sendBulk = useServerFn(sendOrdersToSteadfast);'
-          if 'courier-display-names' not in o and table_anchor in o:
+          if 'queryKey: ["courier-display-names"]' not in o and table_anchor in o:
               o = o.replace(table_anchor, '  const qc = useQueryClient();\n' + query + '  const sendBulk = useServerFn(sendOrdersToSteadfast);', 1)
           o = o.replace('কুরিয়ার ১ এ পাঠান (Steadfast)', '{courier1Name} এ পাঠান', 1)
           o = o.replace('কুরিয়ার ২ এ পাঠান (Steadfast)', '{courier2Name} এ পাঠান', 1)
+
+          # Invoice print: show the exact display name captured when the order was sent.
+          o = o.replace('type InvoiceOrder = OrderRow & { courier_consignment?: string | null };', 'type InvoiceOrder = OrderRow & { courier_consignment?: string | null; courier_display_name?: string | null };')
+          o = o.replace('.invtitle .num{color:#8b0000}', '.invtitle .num{color:#8b0000}\n    .invtitle .courier{display:block;font-size:11px;font-weight:700;letter-spacing:.5px;color:#64748b;margin-top:6px;text-transform:none}')
+          old_title = '<div class="invtitle">${invHtml}</div>'
+          new_title = '<div class="invtitle">${invHtml}${o.courier_display_name ? `<span class="courier">${escapeHtml(o.courier_display_name)}</span>` : ""}</div>'
+          if old_title in o and 'class="courier">${escapeHtml(o.courier_display_name)}' not in o:
+              o = o.replace(old_title, new_title, 1)
           orders.write_text(o)
+
+          courier = Path('src/lib/courier-test.functions.ts')
+          c = courier.read_text()
+          c = c.replace('await supabaseAdmin.from("orders").update({ courier_consignment: existing || invoice, courier_status: dstatus || "in_review" }).eq("id", o.id);', 'await supabaseAdmin.from("orders").update({ courier_consignment: existing || invoice, courier_status: dstatus || "in_review", courier_display_name: (cfg.display_name || "").trim() || `Courier ${account}` }).eq("id", o.id);')
+          c = c.replace('await supabaseAdmin.from("orders").update({ courier_consignment: consignment, courier_status: "in_review" }).eq("id", o.id);', 'await supabaseAdmin.from("orders").update({ courier_consignment: consignment, courier_status: "in_review", courier_display_name: (cfg.display_name || "").trim() || `Courier ${account}` }).eq("id", o.id);')
+          courier.write_text(c)
+
+          # Persist a snapshot so changing the API display name later does not rewrite old invoices.
+          migration = Path('supabase/migrations/20260819210000_add_courier_display_name_to_orders.sql')
+          if not migration.exists():
+              migration.write_text('''ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS courier_display_name text;\n''')
+
           PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/routes/admin/all-api.tsx src/routes/admin/orders.tsx
+          git add src/routes/admin/all-api.tsx src/routes/admin/orders.tsx src/lib/courier-test.functions.ts supabase/migrations/20260819210000_add_courier_display_name_to_orders.sql
           git diff --cached --check
-          git commit -m "Add configurable courier display names"
-          git push origin HEAD:main
+          if git diff --cached --quiet; then
+            echo "No changes needed"
+          else
+            git commit -m "Show sent courier display name on printed invoices"
+            git push origin HEAD:main
+          fi
