@@ -28,7 +28,7 @@ export const getAssignedOrders = createServerFn({ method: "POST" }).middleware([
   await assertAdmin(context.userId);
   const { data: orders, error } = await supabaseAdmin
     .from("orders")
-    .select("id,invoice_id,customer_name,phone,total,status,created_at,assigned_to")
+    .select("id,customer_name,total,status,created_at,assigned_to")
     .eq("assigned_to", data.userId)
     .eq("status", PROCESSING_STATUS)
     .order("created_at", { ascending: false })
