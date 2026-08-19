@@ -7,7 +7,7 @@ permissions:
   contents: write
 jobs:
   patch:
-    if: github.actor != 'github-actions[bot]' && contains(github.event.head_commit.message, '[rts-courier-name-fix]')
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,7 +20,6 @@ jobs:
           if 'courier-display-names-rts' in s:
               print('RTS courier display-name patch already present')
               raise SystemExit(0)
-
           marker = '  const qc = useQueryClient();\n  const sendBulk = useServerFn(sendOrdersToSteadfast);'
           insert = '''  const qc = useQueryClient();
   const sendBulk = useServerFn(sendOrdersToSteadfast);
@@ -28,10 +27,7 @@ jobs:
   useEffect(() => {
     let alive = true;
     (async () => {
-      const { data } = await supabase
-        .from("integrations")
-        .select("name,config")
-        .in("name", ["all_api_steadfast", "all_api_steadfast_2"]);
+      const { data } = await supabase.from("integrations").select("name,config").in("name", ["all_api_steadfast", "all_api_steadfast_2"]);
       if (!alive) return;
       const next: Record<1 | 2, string> = { 1: "Courier 1", 2: "Courier 2" };
       for (const row of data ?? []) {
@@ -45,14 +41,11 @@ jobs:
   }, []);
   const courier1Name = courierDisplayNames[1];
   const courier2Name = courierDisplayNames[2];'''
-          if marker not in s:
-              raise SystemExit('ERROR: OrdersTable marker not found')
+          if marker not in s: raise SystemExit('ERROR: OrdersTable marker not found')
           s = s.replace(marker, insert, 1)
-
           old1 = 'কুরিয়ার ১ এ পাঠান (Steadfast)'
           old2 = 'কুরিয়ার ২ এ পাঠান (Steadfast)'
-          if old1 not in s or old2 not in s:
-              raise SystemExit(f'ERROR: RTS labels not found: old1={old1 in s}, old2={old2 in s}')
+          if old1 not in s or old2 not in s: raise SystemExit(f'ERROR: RTS labels not found: old1={old1 in s}, old2={old2 in s}')
           s = s.replace(old1, '{courier1Name} এ পাঠান', 1)
           s = s.replace(old2, '{courier2Name} এ পাঠান', 1)
           s = s.replace('  const courier1Name = courierDisplayNames[1];', '  const courier1Name = courierDisplayNames[1]; // courier-display-names-rts')
