@@ -3,23 +3,33 @@ import { supabase } from "@/lib/personal-supabase/client";
 import { toast } from "sonner";
 import { UsersRound, Save, RefreshCw } from "lucide-react";
 
+type Member = { user_id: string; name: string; enabled: boolean; position: number };
+
 export function OrderDistributionSettings() {
   const [enabled, setEnabled] = useState(false);
   const [includeIncomplete, setIncludeIncomplete] = useState(true);
-  const [members, setMembers] = useState<Array<{ user_id: string; name: string; enabled: boolean; position: number }>>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
     setLoading(true);
-    const [{ data: settings }, { data: rows }] = await Promise.all([
+    const [{ data: settings }, { data: rows }, { data: employees }] = await Promise.all([
       supabase.from("site_settings").select("settings").maybeSingle(),
       supabase.from("order_distribution_members").select("user_id,name,enabled,position").order("position", { ascending: true }),
+      supabase.from("employees").select("user_id,name,is_active").eq("is_active", true).not("user_id", "is", null).order("name"),
     ]);
     const s = (settings?.settings ?? {}) as Record<string, unknown>;
     setEnabled(s.order_distribution_enabled === true);
     setIncludeIncomplete(s.order_distribution_include_incomplete !== false);
-    setMembers((rows ?? []) as typeof members);
+    if ((rows ?? []).length) setMembers(rows as Member[]);
+    else {
+      const initial = (employees ?? []).filter(e => e.user_id).map((e, i) => ({ user_id: e.user_id as string, name: e.name, enabled: true, position: i }));
+      if (initial.length) {
+        await supabase.from("order_distribution_members").upsert(initial);
+        setMembers(initial);
+      } else setMembers([]);
+    }
     setLoading(false);
   };
 
@@ -35,7 +45,7 @@ export function OrderDistributionSettings() {
         : await supabase.from("site_settings").insert({ settings: settings as never });
       if (result.error) throw result.error;
       for (const member of members) {
-        const { error } = await supabase.from("order_distribution_members").update({ enabled: member.enabled, position: member.position }).eq("user_id", member.user_id);
+        const { error } = await supabase.from("order_distribution_members").update({ enabled: member.enabled, position: member.position, updated_at: new Date().toISOString() }).eq("user_id", member.user_id);
         if (error) throw error;
       }
       toast.success("Order Division settings saved");
@@ -51,7 +61,7 @@ export function OrderDistributionSettings() {
     </div>
     <label className="flex items-center justify-between rounded-xl border bg-slate-50 p-4"><span><b className="text-sm">Enable Order Division</b><span className="block text-xs text-slate-500 mt-1">New Processing orders are assigned automatically.</span></span><input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} className="h-5 w-5" /></label>
     <label className="flex items-center justify-between rounded-xl border p-4"><span><b className="text-sm">Include Incomplete → Processing</b><span className="block text-xs text-slate-500 mt-1">When an incomplete order becomes Processing, it joins the same queue.</span></span><input type="checkbox" checked={includeIncomplete} onChange={e => setIncludeIncomplete(e.target.checked)} className="h-5 w-5" /></label>
-    <div><h3 className="text-sm font-bold mb-2">Active assignment order</h3><div className="space-y-2">{members.map((m, i) => <label key={m.user_id} className="flex items-center gap-3 rounded-xl border p-3"><input type="checkbox" checked={m.enabled} onChange={e => setMembers(prev => prev.map(x => x.user_id === m.user_id ? { ...x, enabled: e.target.checked } : x))} className="h-4 w-4"/><span className="grid h-7 w-7 place-items-center rounded-full bg-slate-100 text-xs font-bold">{i + 1}</span><span className="font-semibold text-sm">{m.name}</span></label>)}</div></div>
-    <button type="button" disabled={saving} onClick={() => void save()} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"><Save className="h-4 w-4" />{saving ? "Saving…" : "Save Order Division"}</button>
+    <div><h3 className="text-sm font-bold mb-2">Employees in round-robin queue</h3><div className="space-y-2">{members.map((m, i) => <label key={m.user_id} className="flex items-center gap-3 rounded-xl border p-3"><input type="checkbox" checked={m.enabled} onChange={e => setMembers(prev => prev.map(x => x.user_id === m.user_id ? { ...x, enabled: e.target.checked } : x))} className="h-4 w-4"/><span className="grid h-7 w-7 place-items-center rounded-full bg-slate-100 text-xs font-bold">{i + 1}</span><span className="font-semibold text-sm">{m.name}</span></label>)}</div>{!members.length && <p className="text-xs text-amber-700 mt-2">No active employees with a linked user account were found.</p>}</div>
+    <button type="button" disabled={saving || !members.length} onClick={() => void save()} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"><Save className="h-4 w-4" />{saving ? "Saving…" : "Save Order Division"}</button>
   </div>;
 }
