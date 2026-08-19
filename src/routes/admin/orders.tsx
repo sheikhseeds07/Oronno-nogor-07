@@ -706,7 +706,7 @@ useEffect(() => {
   });
 
   // Live locks for visible rows
-  const { user: meUser } = useAuth();
+  const { user: meUser, isAdmin } = useAuth();
   const currentUserId = meUser?.id ?? null;
   const fetchLocks = useServerFn(listOrderLocks);
   const orderIds = (orders ?? []).map((o) => o.id);
@@ -1729,7 +1729,6 @@ function OrdersTableRows({
                             <span className="text-[10px] font-normal text-red-600 max-w-[140px] truncate">{lock.user_name}</span>
                           </Link>
                           {isAdmin && assignedName && <span className="text-[10px] text-slate-600 font-semibold mt-1 max-w-[150px] truncate">Assigned to: {assignedName}</span>}
-                          {isAdmin && assignedName && <span className="text-[10px] text-slate-600 font-semibold mt-1 max-w-[150px] truncate">Assigned to: {assignedName}</span>}
                         {creatorName && <span className="text-[10px] text-red-600 font-semibold mt-1 max-w-[150px] truncate">Created by: {creatorName}</span>}
                         </div>
                       );
@@ -1739,6 +1738,7 @@ function OrdersTableRows({
                         <Link to="/admin/orders" search={linkSearch} onClick={handleClick} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded border border-blue-200 bg-blue-50 text-blue-700 text-xs font-semibold hover:bg-blue-100" title="অর্ডার ওপেন (রাইট ক্লিক / নতুন ট্যাবে খুলুন)">
                           Open <ExternalLink className="w-3 h-3" />
                         </Link>
+                        {isAdmin && assignedName && <span className="text-[10px] text-slate-600 font-semibold mt-1 max-w-[150px] truncate">Assigned to: {assignedName}</span>}
                         {creatorName && <span className="text-[10px] text-red-600 font-semibold mt-1 max-w-[150px] truncate">Created by: {creatorName}</span>}
                       </div>
                     );
