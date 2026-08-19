@@ -1,13 +1,16 @@
 name: Optimize Orders V1
-# trigger optimization after workflow creation
 on:
   push:
     paths:
       - '.github/workflows/optimize-orders-v1.yml'
+  issues:
+    types: [opened]
 permissions:
   contents: write
+  issues: write
 jobs:
   optimize:
+    if: github.event_name == 'issues' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -98,7 +101,9 @@ jobs:
         run: |
           bun install --frozen-lockfile
           bun run build
-      - name: Commit optimization and remove temporary workflows
+      - name: Commit optimization and clean temporary workflows
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
@@ -107,3 +112,4 @@ jobs:
           git rm .github/workflows/optimize-orders-v1.yml .github/workflows/inspect-orders-optimization.yml
           git commit --amend --no-edit
           git push origin main
+          if [ -n "${{ github.event.issue.number }}" ]; then gh issue close "${{ github.event.issue.number }}" --repo "${{ github.repository }}"; fi
