@@ -1,0 +1,69 @@
+name: Fix RTS courier display names
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]' && contains(github.event.head_commit.message, '[rts-courier-name-fix]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch orders.tsx
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          p = Path('src/routes/admin/orders.tsx')
+          s = p.read_text()
+          if 'courier-display-names-rts' in s:
+              print('RTS courier display-name patch already present')
+              raise SystemExit(0)
+
+          marker = '  const qc = useQueryClient();\n  const sendBulk = useServerFn(sendOrdersToSteadfast);'
+          insert = '''  const qc = useQueryClient();
+  const sendBulk = useServerFn(sendOrdersToSteadfast);
+  const [courierDisplayNames, setCourierDisplayNames] = useState<Record<1 | 2, string>>({ 1: "Courier 1", 2: "Courier 2" });
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const { data } = await supabase
+        .from("integrations")
+        .select("name,config")
+        .in("name", ["all_api_steadfast", "all_api_steadfast_2"]);
+      if (!alive) return;
+      const next: Record<1 | 2, string> = { 1: "Courier 1", 2: "Courier 2" };
+      for (const row of data ?? []) {
+        const cfg = (row.config ?? {}) as { display_name?: string };
+        if (row.name === "all_api_steadfast" && cfg.display_name?.trim()) next[1] = cfg.display_name.trim();
+        if (row.name === "all_api_steadfast_2" && cfg.display_name?.trim()) next[2] = cfg.display_name.trim();
+      }
+      setCourierDisplayNames(next);
+    })();
+    return () => { alive = false; };
+  }, []);
+  const courier1Name = courierDisplayNames[1];
+  const courier2Name = courierDisplayNames[2];'''
+          if marker not in s:
+              raise SystemExit('ERROR: OrdersTable marker not found')
+          s = s.replace(marker, insert, 1)
+
+          old1 = 'কুরিয়ার ১ এ পাঠান (Steadfast)'
+          old2 = 'কুরিয়ার ২ এ পাঠান (Steadfast)'
+          if old1 not in s or old2 not in s:
+              raise SystemExit(f'ERROR: RTS labels not found: old1={old1 in s}, old2={old2 in s}')
+          s = s.replace(old1, '{courier1Name} এ পাঠান', 1)
+          s = s.replace(old2, '{courier2Name} এ পাঠান', 1)
+          s = s.replace('  const courier1Name = courierDisplayNames[1];', '  const courier1Name = courierDisplayNames[1]; // courier-display-names-rts')
+          p.write_text(s)
+          PY
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/routes/admin/orders.tsx
+          git commit -m 'Fix RTS courier display names'
+          git push origin HEAD:main
+          git rm .github/workflows/fix-rtsp-courier-names.yml
+          git commit -m 'Remove temporary RTS courier-name workflow'
+          git push origin HEAD:main
