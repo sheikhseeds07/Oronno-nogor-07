@@ -49,6 +49,18 @@ async function getMetaProfitData(db:any,from:string,to:string){
  }catch{return {dollarRate,courierCostPerOrder,cancelRate,adSpendUsd:0,adSpendBdt:0,connected:true,accountName:cfg.account_name||"Meta Ad Account",error:"Meta spend unavailable"};}
 }
 
+async function fetchOrderItemsByIds(db:any,ids:string[]){
+ const rows:any[]=[];
+ const chunkSize=200;
+ for(let i=0;i<ids.length;i+=chunkSize){
+  const chunk=ids.slice(i,i+chunkSize);
+  const r=await db.from("order_items").select("order_id,product_id,product_name,quantity,subtotal").in("order_id",chunk).limit(50000);
+  if(r.error)throw new Error(r.error.message);
+  rows.push(...(r.data??[]));
+ }
+ return rows;
+}
+
 export const getPremiumDashboardReport=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(input=>RangeSchema.parse(input)).handler(async({data,context})=>{
  await assertStaff(context.supabase,context.userId); const db=supabaseAdmin as any;
  const todayStart=bdTodayStart(); const tomorrowStart=bdTomorrowStart();
@@ -79,11 +91,10 @@ export const getPremiumDashboardReport=createServerFn({method:"POST"}).middlewar
  const orderIds=confirmedOrders.map((o:any)=>o.id);
  let productCost=0;
  if(orderIds.length){
-  const itemsR=await db.from("order_items").select("order_id,product_id,product_name,quantity,subtotal").in("order_id",orderIds).limit(50000);
-  if(itemsR.error)throw new Error(itemsR.error.message);
+  const items=await fetchOrderItemsByIds(db,orderIds);
   const costById=new Map(products.map((p:any)=>[String(p.id),Number(p.cost||0)]));
   const costByName=new Map(products.map((p:any)=>[String(p.name||"").trim().toLowerCase(),Number(p.cost||0)]));
-  for(const i of itemsR.data??[]){const cost=i.product_id!=null?costById.get(String(i.product_id)):costByName.get(String(i.product_name||"").trim().toLowerCase());productCost+=Number(i.quantity||0)*Number(cost||0);}
+  for(const i of items){const cost=i.product_id!=null?costById.get(String(i.product_id)):costByName.get(String(i.product_name||"").trim().toLowerCase());productCost+=Number(i.quantity||0)*Number(cost||0);}
  }
  const courierCost=confirmedOrders.length*profitSettings.courierCostPerOrder;
  const cancellationAdjustment=confirmedRevenue*(profitSettings.cancelRate/100);
@@ -95,7 +106,7 @@ export const getPremiumDashboardReport=createServerFn({method:"POST"}).middlewar
  const dayMap=new Map<string,{day:string;created:number;processing:number;confirmed:number;cancelled:number}>();for(const o of webOrders){const day=bdDay(o.created_at),e=dayMap.get(day)??{day,created:0,processing:0,confirmed:0,cancelled:0};e.created++;if(isWebPending(o.status))e.processing++;if(isConfirmed(o.status))e.confirmed++;if(isCancelled(o.status))e.cancelled++;dayMap.set(day,e)}
  const hourly=Array.from({length:24},(_,hour)=>({hour,label:`${hour===0?12:hour>12?hour-12:hour}${hour<12?"AM":"PM"}`,orders:0}));for(const o of webOrders){const h=bdHour(o.created_at);if(h>=0&&h<24)hourly[h].orders++}
  const earningsMap=new Map<string,{month:string;orders:number;revenue:number;confirmed:number}>();for(const o of webOrders){const month=bdMonth(o.created_at),e=earningsMap.get(month)??{month,orders:0,revenue:0,confirmed:0};e.orders++;e.revenue+=Number(o.total||0);if(isConfirmed(o.status))e.confirmed++;earningsMap.set(month,e)}
- let bestSelling:any[]=[];if(orderIds.length){const itemsR=await db.from("order_items").select("order_id,product_id,product_name,quantity,subtotal").in("order_id",realOrders.map((o:any)=>o.id)).limit(50000);if(itemsR.error)throw new Error(itemsR.error.message);const confirmedIds=new Set(confirmedOrders.map(o=>o.id)),sales=new Map<string,{product_id:string|null;name:string;units:number;revenue:number}>();for(const i of itemsR.data??[]){if(!confirmedIds.has(i.order_id))continue;const key=i.product_id??i.product_name,e=sales.get(key)??{product_id:i.product_id,name:i.product_name,units:0,revenue:0};e.units+=Number(i.quantity||0);e.revenue+=Number(i.subtotal||0);sales.set(key,e)}bestSelling=Array.from(sales.values()).sort((a,b)=>b.units-a.units).slice(0,10).map(x=>({...x,landingPages:landingPages.filter(p=>p.product_id===x.product_id).map(p=>({title:p.title,slug:p.slug}))}))}
+ let bestSelling:any[]=[];if(orderIds.length){const items=await fetchOrderItemsByIds(db,realOrders.map((o:any)=>o.id));const confirmedIds=new Set(confirmedOrders.map(o=>o.id)),sales=new Map<string,{product_id:string|null;name:string;units:number;revenue:number}>();for(const i of items){if(!confirmedIds.has(i.order_id))continue;const key=i.product_id??i.product_name,e=sales.get(key)??{product_id:i.product_id,name:i.product_name,units:0,revenue:0};e.units+=Number(i.quantity||0);e.revenue+=Number(i.subtotal||0);sales.set(key,e)}bestSelling=Array.from(sales.values()).sort((a,b)=>b.units-a.units).slice(0,10).map(x=>({...x,landingPages:landingPages.filter(p=>p.product_id===x.product_id).map(p=>({title:p.title,slug:p.slug}))}))}
  const lowStock=activeProducts.filter(p=>(p.stock??0)<=5).slice(0,10).map(p=>({id:p.id,name:p.name,stock:p.stock??0})),stockSummary={total:activeProducts.length,low:activeProducts.filter(p=>(p.stock??0)>0&&(p.stock??0)<=5).length,out:activeProducts.filter(p=>(p.stock??0)<=0).length};
  const employeeMap=new Map<string,{user_id:string|null;name:string;confirmed:number;cancelled:number;total:number}>();for(const e of employeesR.data??[])employeeMap.set(String(e.user_id||e.id),{user_id:e.user_id,name:e.name,confirmed:0,cancelled:0,total:0});
  for(const o of orders){const cancelActor=isCancelled(o.status)?String(o.assigned_to||""):"";const cancelEmployee=employeeMap.get(cancelActor);if(isCancelled(o.status)&&cancelEmployee)cancelEmployee.cancelled++;const confirmActor=String(o.created_by||"");const confirmEmployee=employeeMap.get(confirmActor);if(isConfirmed(o.status)&&confirmEmployee){confirmEmployee.confirmed++;confirmEmployee.total++;}}
