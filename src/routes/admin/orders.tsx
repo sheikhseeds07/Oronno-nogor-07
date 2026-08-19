@@ -642,7 +642,7 @@ useEffect(() => {
       const list = (filter === "all" ? statuses : [filter]).filter((s) => s !== "incomplete");
       const { data: ords } = await supabase
         .from("orders")
-        .select("id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment,courier_display_name,printed_at,created_at,updated_at,created_by,order_items(id,product_name,quantity,price,product_id)")
+        .select("id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment,courier_display_name,printed_at,created_at,updated_at,created_by,assigned_to,order_items(id,product_name,quantity,price,product_id)")
         .in("status", list as Exclude<OrderStatus, "incomplete">[])
         .order("created_at", { ascending: false })
         .limit(1000);
@@ -650,7 +650,7 @@ useEffect(() => {
     },
   });
 
-  const creatorIds = Array.from(new Set((orders ?? []).map((o) => o.created_by).filter((x): x is string => !!x)));
+  const creatorIds = Array.from(new Set((orders ?? []).flatMap((o) => [o.created_by, o.assigned_to]).filter((x): x is string => !!x)));
   const { data: creatorProfiles } = useQuery({
     queryKey: ["order-creators", creatorIds.join(",")],
     enabled: creatorIds.length > 0,
@@ -1637,6 +1637,7 @@ function OrdersTableRows({
 }) {
   const isWeb = mode === "web";
   const isList = mode === "list";
+  const { isAdmin } = useAuth();
   const showCheckbox = !!selectedIds && !!onToggleOne && (isWeb || isList);
   const colCount = (showCheckbox ? 1 : 0) + 5; // created, customer, items, courier, action
 
@@ -1719,6 +1720,7 @@ function OrdersTableRows({
                       if (!e.metaKey && !e.ctrlKey && e.button === 0) { e.preventDefault(); onOpen(o.id); }
                     };
                     const creatorName = o.created_by ? creatorMap?.get(o.created_by) : undefined;
+                    const assignedName = o.assigned_to ? creatorMap?.get(o.assigned_to) : undefined;
                     if (lockedByOther) {
                       return (
                         <div className="flex flex-col items-end">
@@ -1726,7 +1728,9 @@ function OrdersTableRows({
                             <span className="inline-flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-red-500" />লকড · Open</span>
                             <span className="text-[10px] font-normal text-red-600 max-w-[140px] truncate">{lock.user_name}</span>
                           </Link>
-                          {creatorName && <span className="text-[10px] text-red-600 font-semibold mt-1 max-w-[150px] truncate">Created by: {creatorName}</span>}
+                          {isAdmin && assignedName && <span className="text-[10px] text-slate-600 font-semibold mt-1 max-w-[150px] truncate">Assigned to: {assignedName}</span>}
+                          {isAdmin && assignedName && <span className="text-[10px] text-slate-600 font-semibold mt-1 max-w-[150px] truncate">Assigned to: {assignedName}</span>}
+                        {creatorName && <span className="text-[10px] text-red-600 font-semibold mt-1 max-w-[150px] truncate">Created by: {creatorName}</span>}
                         </div>
                       );
                     }
