@@ -560,6 +560,24 @@ useEffect(() => {
   const [dupModal, setDupModal] = useState<{ loading: boolean; rows: DupRow[] } | null>(null);
   const qc = useQueryClient();
   const sendBulk = useServerFn(sendOrdersToSteadfast);
+  const [courierDisplayNames, setCourierDisplayNames] = useState<Record<1 | 2, string>>({ 1: "কুরিয়ার ১", 2: "কুরিয়ার ২" });
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const { data } = await supabase.from("integrations").select("name,config").in("name", ["all_api_steadfast", "all_api_steadfast_2"]);
+      if (!alive) return;
+      const next: Record<1 | 2, string> = { 1: "কুরিয়ার ১", 2: "কুরিয়ার ২" };
+      for (const row of data ?? []) {
+        const cfg = (row.config ?? {}) as { display_name?: string };
+        if (row.name === "all_api_steadfast" && cfg.display_name?.trim()) next[1] = cfg.display_name.trim();
+        if (row.name === "all_api_steadfast_2" && cfg.display_name?.trim()) next[2] = cfg.display_name.trim();
+      }
+      if (alive) setCourierDisplayNames(next);
+    })();
+    return () => { alive = false; };
+  }, []);
+  const courier1Name = courierDisplayNames[1];
+  const courier2Name = courierDisplayNames[2];
   const ensureInvoices = useServerFn(ensureOrderInvoices);
   const markPrinted = useServerFn(markOrdersPrinted);
   const deleteOrdersFn = useServerFn(deleteOrders);
@@ -1098,8 +1116,8 @@ useEffect(() => {
           
           {isRtsFilter && (
             <>
-              <ActionBtn onClick={() => bulkSendCourier(1)} icon={Send} tone="emerald">কুরিয়ার ১ এ পাঠান (Steadfast)</ActionBtn>
-              <ActionBtn onClick={() => bulkSendCourier(2)} icon={Send} tone="emerald">কুরিয়ার ২ এ পাঠান (Steadfast)</ActionBtn>
+              <ActionBtn onClick={() => bulkSendCourier(1)} icon={Send} tone="emerald">{courier1Name} এ পাঠান</ActionBtn>
+              <ActionBtn onClick={() => bulkSendCourier(2)} icon={Send} tone="emerald">{courier2Name} এ পাঠান</ActionBtn>
 
               <ActionBtn onClick={bulkPrintInvoice} icon={Printer} tone="blue">ইনভয়েস প্রিন্ট</ActionBtn>
               <ActionBtn onClick={bulkDuplicateCheck} icon={Copy} tone="purple">ডুবলিকেট চেক</ActionBtn>
