@@ -23,11 +23,9 @@ const RangeSchema = z.object({
 /**
  * Status counts grouped by status, optionally restricted to a status set + date range.
  *
- * IMPORTANT: Do not fetch order rows and count them client/server-side. Supabase's
- * Data API row limit can cap the returned rows (commonly at 1000), which makes a
- * badge show an incorrect count even though the order list itself contains more.
- * Use exact HEAD counts per status so the badge is independent of pagination/API
- * row limits and always reflects the database count.
+ * Use an exact count query while returning a tiny data payload. Some PostgREST/Supabase
+ * deployments can behave inconsistently with HEAD-only count requests, even though the
+ * identical normal SELECT used by the order list returns the rows correctly.
  */
 export const getOrderStatusCounts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -56,8 +54,9 @@ export const getOrderStatusCounts = createServerFn({ method: "POST" })
       wanted.map(async (status) => {
         let q = db
           .from("orders")
-          .select("id", { count: "exact", head: true })
-          .eq("status", status as any);
+          .select("id", { count: "exact", head: false })
+          .eq("status", status as any)
+          .limit(1);
         if (data.from) q = q.gte("created_at", data.from);
         if (data.to) q = q.lte("created_at", data.to);
         const { count, error } = await q;
