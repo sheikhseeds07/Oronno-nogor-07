@@ -8,9 +8,11 @@ const MemberId = z.object({ userId: z.string().uuid() });
 const Members = z.object({ members: z.array(z.object({ user_id: z.string().uuid(), name: z.string().min(1), enabled: z.boolean(), position: z.number().int().min(0) })).max(100) });
 
 async function assertAdmin(userId: string) {
-  const { data } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", userId);
+  const { data } = await supabaseAdmin.from("user_roles").select("role");
   if (!(data ?? []).some(r => r.role === "admin" || r.role === "super_admin")) throw new Error("Admin only");
 }
+
+const PROCESSING_STATUSES = ["web_pending", "pending"] as const;
 
 export const bulkAssignOrders = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator(Ids.parse).handler(async ({ data, context }) => {
   await assertAdmin(context.userId);
@@ -24,7 +26,13 @@ export const bulkAssignOrders = createServerFn({ method: "POST" }).middleware([r
 
 export const getAssignedOrders = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator(MemberId).handler(async ({ data, context }) => {
   await assertAdmin(context.userId);
-  const { data: orders, error } = await supabaseAdmin.from("orders").select("id,invoice_id,customer_name,phone,total,status,created_at,assigned_to").eq("assigned_to", data.userId).eq("status", "web_pending").order("created_at", { ascending: false }).limit(500);
+  const { data: orders, error } = await supabaseAdmin
+    .from("orders")
+    .select("id,invoice_id,customer_name,phone,total,status,created_at,assigned_to")
+    .eq("assigned_to", data.userId)
+    .in("status", PROCESSING_STATUSES)
+    .order("created_at", { ascending: false })
+    .limit(500);
   if (error) throw new Error(error.message);
   return orders ?? [];
 });
@@ -48,7 +56,11 @@ export const getOrderAssignmentCounts = createServerFn({ method: "POST" })
     await assertAdmin(context.userId);
     const counts: Record<string, number> = {};
     await Promise.all(data.members.map(async (member) => {
-      const { count, error } = await supabaseAdmin.from("orders").select("id", { count: "exact", head: true }).eq("assigned_to", member.user_id).eq("status", "web_pending");
+      const { count, error } = await supabaseAdmin
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .eq("assigned_to", member.user_id)
+        .in("status", PROCESSING_STATUSES);
       if (error) throw new Error(error.message);
       counts[member.user_id] = count ?? 0;
     }));
