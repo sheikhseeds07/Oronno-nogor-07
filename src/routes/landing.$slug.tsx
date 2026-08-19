@@ -14,15 +14,7 @@ export const Route = createFileRoute("/landing/$slug")({ component: LandingPage 
 const seedComboCheckoutCss = `
 #order { scroll-margin-top: 76px !important; margin-top: -34px !important; padding-top: 0 !important; }
 #order > .mb-4.text-center { margin-bottom: 10px !important; }
-#order #lp-order-form {
-  position: relative;
-  overflow: hidden;
-  border: 1px solid rgba(21,128,61,.16) !important;
-  border-radius: 26px !important;
-  padding: 12px !important;
-  background: linear-gradient(145deg,#ffffff 0%,#f7fff9 48%,#ffffff 100%) !important;
-  box-shadow: 0 20px 55px -30px rgba(6,78,59,.45), 0 0 0 1px rgba(255,255,255,.8) inset !important;
-}
+#order #lp-order-form { position: relative; overflow: hidden; border: 1px solid rgba(21,128,61,.16) !important; border-radius: 26px !important; padding: 12px !important; background: linear-gradient(145deg,#ffffff 0%,#f7fff9 48%,#ffffff 100%) !important; box-shadow: 0 20px 55px -30px rgba(6,78,59,.45), 0 0 0 1px rgba(255,255,255,.8) inset !important; }
 #order #lp-order-form::before { content: ""; position:absolute; top:0; left:0; right:0; height:4px; background:linear-gradient(90deg,#16a34a,#f59e0b,#22c55e,#0ea5e9,#16a34a); background-size:220% 100%; animation:seedComboGradient 4s linear infinite; }
 #order #lp-order-form::after { content:""; position:absolute; width:180px; height:180px; right:-90px; top:20px; border-radius:999px; background:radial-gradient(circle,rgba(34,197,94,.11),transparent 68%); pointer-events:none; }
 @keyframes seedComboGradient { to { background-position:220% 0; } }
@@ -67,10 +59,12 @@ function LandingPopupBehavior({ enabled, hideReviews }: { enabled: boolean; hide
 function LandingPage() {
   const { slug } = useParams({ from: "/landing/$slug" });
   const isLegacySlug = LEGACY_SLUGS.has(slug);
-  const { data, isLoading } = useQuery({ enabled: !isLegacySlug, staleTime: 5 * 60_000, gcTime: 30 * 60_000, queryKey: ["landing-template", slug], queryFn: async () => (await supabase.from("landing_pages").select("planting_steps").eq("slug", slug).maybeSingle()).data ?? null });
-  const popupBehaviorEnabled = slug === "seedcombo" || slug === "seeds-combo-24";
-  const hideReviews = slug === "seedcombo";
+  const isSeedCombo = slug === "seedcombo";
+  const { data, isLoading } = useQuery({ enabled: !isLegacySlug && !isSeedCombo, staleTime: 5 * 60_000, gcTime: 30 * 60_000, queryKey: ["landing-template", slug], queryFn: async () => (await supabase.from("landing_pages").select("planting_steps").eq("slug", slug).maybeSingle()).data ?? null });
+  const popupBehaviorEnabled = isSeedCombo || slug === "seeds-combo-24";
+  const hideReviews = isSeedCombo;
   if (isLegacySlug) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} /><LegacyLandingPage slug={slug} /></>;
+  if (isSeedCombo) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} /><CleanLandingPage slug={slug} /></>;
   const template = mergeContent(data?.planting_steps).template as string;
   if (template === "product") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} /><ProductStyleLandingPage slug={slug} /></>;
   if (template === "premium") return <ProfessionalLandingPage slug={slug} variant="premium" />;
