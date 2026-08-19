@@ -1,0 +1,137 @@
+name: Instant Web Order Confirm Fix
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.event.head_commit.message != 'fix: instant web order confirmation ui'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch orders UI
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('src/routes/admin/orders.tsx')
+          s = p.read_text()
+
+          old_parent = '''          onConfirmed={() => { setSelected(null); qc.invalidateQueries({ queryKey: ["admin-orders"] }); }}'''
+          new_parent = '''          onConfirmed={() => {
+            // Close the modal without losing the user's current scroll position.
+            const scrollY = window.scrollY;
+            setSelected(null);
+            requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: "auto" }));
+          }}'''
+          if old_parent not in s:
+              raise SystemExit('parent confirmation handler not found; refusing to modify')
+          s = s.replace(old_parent, new_parent, 1)
+
+          old_save = '''      await updateOrder({
+        data: {
+          id: detail.id,
+          confirm,
+          customer_name: name,
+          customer_phone: phoneVal,
+          customer_address: address,
+          thana: detail.thana,
+          district: detail.district,
+          notes: shippingNote,
+          subtotal,
+          delivery_fee: deliveryCharge,
+          discount,
+          total: grand,
+          items: items.map((i) => ({ product_id: i.product_id, product_name: i.product_name, price: Number(i.price), quantity: i.quantity })),
+        },
+      });
+      toast.success(confirm ? "অর্ডার তৈরি হয়েছে — অর্ডার লিস্টে গেছে" : "অর্ডার আপডেট হয়েছে");
+      qc.invalidateQueries({ queryKey: ["order-detail", id] });
+      qc.invalidateQueries({ queryKey: ["admin-orders"] });
+      if (confirm) onConfirmed?.();'''
+          new_save = '''      await updateOrder({
+        data: {
+          id: detail.id,
+          confirm,
+          customer_name: name,
+          customer_phone: phoneVal,
+          customer_address: address,
+          thana: detail.thana,
+          district: detail.district,
+          notes: shippingNote,
+          subtotal,
+          delivery_fee: deliveryCharge,
+          discount,
+          total: grand,
+          items: items.map((i) => ({ product_id: i.product_id, product_name: i.product_name, price: Number(i.price), quantity: i.quantity })),
+        },
+      });
+
+      if (confirm) {
+        // Optimistically move the confirmed order from Web Order -> Pending
+        // without refetching/reloading the page. Realtime remains the source of truth.
+        const confirmedRow: OrderRow = {
+          id: detail.id,
+          invoice_no: detail.invoice_no,
+          status: "pending",
+          customer_name: name,
+          customer_phone: phoneVal,
+          customer_address: address || null,
+          thana: detail.thana,
+          district: detail.district,
+          created_at: detail.created_at,
+          updated_at: new Date().toISOString(),
+          total: grand,
+          courier_consignment: null,
+          printed_at: null,
+          created_by: undefined,
+          order_items: items.map((i) => ({
+            id: i.id,
+            product_id: i.product_id,
+            product_name: i.product_name,
+            quantity: i.quantity,
+            price: Number(i.price),
+          })),
+        };
+
+        qc.setQueryData<OrderRow[] | undefined>(["admin-orders", "web", "web_pending"], (old) =>
+          old ? old.filter((o) => o.id !== detail.id) : old,
+        );
+        qc.setQueryData<OrderRow[] | undefined>(["admin-orders", "list", "pending"], (old) => {
+          if (!old) return [confirmedRow];
+          if (old.some((o) => o.id === confirmedRow.id)) {
+            return old.map((o) => o.id === confirmedRow.id ? confirmedRow : o);
+          }
+          return [...old, confirmedRow];
+        });
+        qc.invalidateQueries({ queryKey: ["order-status-counts"] });
+        toast.success("অর্ডার তৈরি হয়েছে — Pending এ চলে গেছে");
+        onConfirmed?.();
+      } else {
+        toast.success("অর্ডার আপডেট হয়েছে");
+        qc.invalidateQueries({ queryKey: ["order-detail", id] });
+        qc.invalidateQueries({ queryKey: ["admin-orders"] });
+      }'''
+          if old_save not in s:
+              raise SystemExit('detail save block not found; refusing to modify')
+          s = s.replace(old_save, new_save, 1)
+
+          p.write_text(s)
+
+      - name: Verify build
+        run: |
+          npm install -g bun@1.2.15
+          bun install --frozen-lockfile
+          bun run build
+
+      - name: Commit and self-remove
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/instant-web-order-confirm.yml
+          git add src/routes/admin/orders.tsx
+          git commit -m 'fix: instant web order confirmation ui'
+          git push
