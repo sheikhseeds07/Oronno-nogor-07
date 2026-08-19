@@ -1,4 +1,5 @@
 name: Optimize Orders V1
+# trigger optimization after workflow creation
 on:
   push:
     paths:
@@ -20,25 +21,21 @@ jobs:
           p=Path('src/routes/admin/orders.tsx')
           s=p.read_text()
           original=s
-
           marker='function OrdersTable({'
           start=s.find(marker)
           if start < 0: raise SystemExit('OrdersTable marker not found')
           end=s.find('function confirmWindow(', start)
           if end < 0: raise SystemExit('OrdersTable end marker not found')
           block=s[start:end]
-
           old='''  const [rtsPage, setRtsPage] = useState(1);'''
           new='''  const [rtsPage, setRtsPage] = useState(1);
   const [serverTotal, setServerTotal] = useState(0);'''
           if old not in block: raise SystemExit('page state marker not found')
           block=block.replace(old,new,1)
-
           old='''queryKey: ["admin-orders", mode, filter],'''
           new='''queryKey: ["admin-orders", mode, filter, search.trim(), rtsPage, rtsPageSize],'''
           if old not in block: raise SystemExit('query key marker not found')
           block=block.replace(old,new,1)
-
           old='''      const list = (filter === "all" ? statuses : [filter]).filter((s) => s !== "incomplete");
       const { data: ords } = await supabase
         .from("orders")
@@ -71,7 +68,6 @@ jobs:
       return await attachProductImages((ords ?? []) as unknown as OrderRow[]);'''
           if old not in block: raise SystemExit('orders query marker not found')
           block=block.replace(old,new,1)
-
           old='''  const searchTerm = search.trim().toLowerCase();
   const rows = searchTerm
     ? baseRows.filter((o) => {
@@ -89,12 +85,10 @@ jobs:
   const displayRows = rows;'''
           if old not in block: raise SystemExit('client pagination/search marker not found')
           block=block.replace(old,new,1)
-
           old='''            <span>অর্ডার · মোট {rows.length}</span>'''
           new='''            <span>অর্ডার · মোট {serverTotal}</span>'''
           if old not in block: raise SystemExit('pagination total marker not found')
           block=block.replace(old,new,1)
-
           s=s[:start]+block+s[end:]
           if s==original: raise SystemExit('No changes made')
           p.write_text(s)
