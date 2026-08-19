@@ -20,26 +20,53 @@ const RangeSchema = z.object({
   statuses: z.array(z.string().max(40)).max(20).optional(),
 });
 
-/** Status counts grouped by status, optionally restricted to a status set + date range. */
+/**
+ * Status counts grouped by status, optionally restricted to a status set + date range.
+ *
+ * IMPORTANT: Do not fetch order rows and count them client/server-side. Supabase's
+ * Data API row limit can cap the returned rows (commonly at 1000), which makes a
+ * badge show an incorrect count even though the order list itself contains more.
+ * Use exact HEAD counts per status so the badge is independent of pagination/API
+ * row limits and always reflects the database count.
+ */
 export const getOrderStatusCounts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => RangeSchema.parse(input))
   .handler(async ({ data, context }) => {
     const db = context.supabase;
     await assertStaff(db, context.userId);
-    let q = db.from("orders").select("status", { count: "exact" });
-    if (data.from) q = q.gte("created_at", data.from);
-    if (data.to) q = q.lte("created_at", data.to);
-    const { data: rows, error } = await q.limit(10000);
-    if (error) throw new Error(error.message);
-    const counts: Record<string, number> = {};
-    const wanted = data.statuses?.length ? new Set(data.statuses) : null;
-    for (const r of rows ?? []) {
-      const status = r.status as string;
-      if (wanted && !wanted.has(status)) continue;
-      counts[status] = (counts[status] ?? 0) + 1;
-    }
-    return counts;
+
+    const wanted = data.statuses?.length
+      ? Array.from(new Set(data.statuses))
+      : [
+          "web_pending",
+          "incomplete",
+          "pending",
+          "rts",
+          "shipped",
+          "delivered",
+          "pending_return",
+          "returned",
+          "partial",
+          "cancelled",
+          "hold",
+        ];
+
+    const results = await Promise.all(
+      wanted.map(async (status) => {
+        let q = db
+          .from("orders")
+          .select("id", { count: "exact", head: true })
+          .eq("status", status as any);
+        if (data.from) q = q.gte("created_at", data.from);
+        if (data.to) q = q.lte("created_at", data.to);
+        const { count, error } = await q;
+        if (error) throw new Error(error.message);
+        return [status, count ?? 0] as const;
+      }),
+    );
+
+    return Object.fromEntries(results) as Record<string, number>;
   });
 
 /** Sales report — daily revenue + status breakdown for a date range. */
