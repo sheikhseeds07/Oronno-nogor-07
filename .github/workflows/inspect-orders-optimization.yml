@@ -1,0 +1,29 @@
+name: Inspect Orders Optimization
+on:
+  push:
+    paths:
+      - '.github/workflows/inspect-orders-optimization.yml'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect OrdersTable query
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/routes/admin/orders.tsx')
+          s=p.read_text()
+          start=s.find('function OrdersTable(')
+          end=s.find('function DetailModal(', start)
+          if start < 0: raise SystemExit('OrdersTable marker not found')
+          block=s[start:end if end>start else len(s)]
+          lines=block.splitlines()
+          for i,line in enumerate(lines,1):
+              if any(x in line for x in ['limit(', 'range(', 'pageSize', 'pageIndex', 'currentPage', 'slice(', 'order_items', '.select(', '.order(']):
+                  lo=max(1,i-3); hi=min(len(lines),i+5)
+                  print(f'--- lines {lo}-{hi} ---')
+                  for j in range(lo,hi+1): print(f'{j}: {lines[j-1]}')
+          PY
