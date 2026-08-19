@@ -1,0 +1,57 @@
+name: Fix Web Order Scroll Position
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Patch orders route
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const path = 'src/routes/admin/orders.tsx';
+            const ref = 'main';
+            const file = await github.rest.repos.getContent({ owner, repo, path, ref });
+            const content = Buffer.from(file.data.content, 'base64').toString('utf8');
+            const oldText = `  const setSelected = (id: string | null) =>\n    navigate({ search: (p: typeof search) => ({ ...p, selected: id ?? undefined }) });`;
+            const newText = `  const setSelected = (id: string | null) =>\n    navigate({\n      search: (p: typeof search) => ({ ...p, selected: id ?? undefined }),\n      resetScroll: false,\n    });`;
+            if (!content.includes(oldText)) {
+              core.setFailed('Target setSelected block was not found; refusing to modify the file.');
+              return;
+            }
+            const next = content.replace(oldText, newText);
+            await github.rest.repos.createOrUpdateFileContents({
+              owner,
+              repo,
+              path,
+              message: 'fix: preserve orders scroll when closing order detail',
+              content: Buffer.from(next, 'utf8').toString('base64'),
+              sha: file.data.sha,
+              branch: ref,
+            });
+            core.info('Patched orders route with resetScroll: false');
+      - name: Remove one-time workflow
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const path = '.github/workflows/fix-web-order-scroll-position.yml';
+            const file = await github.rest.repos.getContent({ owner, repo, path, ref: 'main' });
+            await github.rest.repos.deleteFile({
+              owner,
+              repo,
+              path,
+              message: 'chore: remove one-time scroll fix workflow',
+              sha: file.data.sha,
+              branch: 'main',
+            });
