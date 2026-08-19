@@ -1,0 +1,115 @@
+name: Optimize Orders V1
+on:
+  push:
+    paths:
+      - '.github/workflows/optimize-orders-v1.yml'
+permissions:
+  contents: write
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.2.15'
+      - name: Apply safe Orders V1 optimization
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/routes/admin/orders.tsx')
+          s=p.read_text()
+          original=s
+
+          marker='function OrdersTable({'
+          start=s.find(marker)
+          if start < 0: raise SystemExit('OrdersTable marker not found')
+          end=s.find('function confirmWindow(', start)
+          if end < 0: raise SystemExit('OrdersTable end marker not found')
+          block=s[start:end]
+
+          old='''  const [rtsPage, setRtsPage] = useState(1);'''
+          new='''  const [rtsPage, setRtsPage] = useState(1);
+  const [serverTotal, setServerTotal] = useState(0);'''
+          if old not in block: raise SystemExit('page state marker not found')
+          block=block.replace(old,new,1)
+
+          old='''queryKey: ["admin-orders", mode, filter],'''
+          new='''queryKey: ["admin-orders", mode, filter, search.trim(), rtsPage, rtsPageSize],'''
+          if old not in block: raise SystemExit('query key marker not found')
+          block=block.replace(old,new,1)
+
+          old='''      const list = (filter === "all" ? statuses : [filter]).filter((s) => s !== "incomplete");
+      const { data: ords } = await supabase
+        .from("orders")
+        .select("id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment,printed_at,created_at,updated_at,created_by,order_items(id,product_name,quantity,price,product_id)")
+        .in("status", list as Exclude<OrderStatus, "incomplete">[])
+        .order("created_at", { ascending: false })
+        .limit(1000);
+      return await attachProductImages((ords ?? []) as unknown as OrderRow[]);'''
+          new='''      const list = (filter === "all" ? statuses : [filter]).filter((s) => s !== "incomplete");
+      let q = supabase
+        .from("orders")
+        .select("id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment,printed_at,created_at,updated_at,created_by,order_items(id,product_name,quantity,price,product_id)", { count: "exact" })
+        .in("status", list as Exclude<OrderStatus, "incomplete">[]);
+      const term = search.trim();
+      if (term) {
+        q = q.or(`invoice_no.ilike.%${term}%,customer_phone.ilike.%${term}%,customer_name.ilike.%${term}%,courier_consignment.ilike.%${term}%`);
+      }
+      q = isPendingFilter
+        ? q.order("invoice_no", { ascending: true })
+        : q.order("created_at", { ascending: false });
+      if (mode === "list") {
+        const from = (rtsPage - 1) * rtsPageSize;
+        q = q.range(from, from + rtsPageSize - 1);
+      } else {
+        q = q.limit(1000);
+      }
+      const { data: ords, count, error } = await q;
+      if (error) throw new Error(error.message);
+      setServerTotal(count ?? 0);
+      return await attachProductImages((ords ?? []) as unknown as OrderRow[]);'''
+          if old not in block: raise SystemExit('orders query marker not found')
+          block=block.replace(old,new,1)
+
+          old='''  const searchTerm = search.trim().toLowerCase();
+  const rows = searchTerm
+    ? baseRows.filter((o) => {
+        const inv = (o.invoice_no ?? o.id).toLowerCase();
+        const phone = (o.customer_phone ?? "").toLowerCase();
+        const name = (o.customer_name ?? "").toLowerCase();
+        const cn = (o.courier_consignment ?? "").toLowerCase();
+        return inv.includes(searchTerm) || phone.includes(searchTerm) || name.includes(searchTerm) || cn.includes(searchTerm);
+      })
+    : baseRows;
+  const rtsTotalPages = Math.max(1, Math.ceil(rows.length / rtsPageSize));
+  const displayRows = mode === "list" ? rows.slice((rtsPage - 1) * rtsPageSize, rtsPage * rtsPageSize) : rows;'''
+          new='''  const rows = baseRows;
+  const rtsTotalPages = Math.max(1, Math.ceil((mode === "list" ? serverTotal : rows.length) / rtsPageSize));
+  const displayRows = rows;'''
+          if old not in block: raise SystemExit('client pagination/search marker not found')
+          block=block.replace(old,new,1)
+
+          old='''            <span>অর্ডার · মোট {rows.length}</span>'''
+          new='''            <span>অর্ডার · মোট {serverTotal}</span>'''
+          if old not in block: raise SystemExit('pagination total marker not found')
+          block=block.replace(old,new,1)
+
+          s=s[:start]+block+s[end:]
+          if s==original: raise SystemExit('No changes made')
+          p.write_text(s)
+          print('Orders V1 optimization applied')
+          PY
+      - name: Validate build
+        run: |
+          bun install --frozen-lockfile
+          bun run build
+      - name: Commit optimization and remove temporary workflows
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/routes/admin/orders.tsx .github/workflows/optimize-orders-v1.yml .github/workflows/inspect-orders-optimization.yml
+          git commit -m 'perf: server-side paginate and search admin orders'
+          git rm .github/workflows/optimize-orders-v1.yml .github/workflows/inspect-orders-optimization.yml
+          git commit --amend --no-edit
+          git push origin main
