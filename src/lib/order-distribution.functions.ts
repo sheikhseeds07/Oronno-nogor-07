@@ -1,0 +1,31 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
+import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
+
+const Ids = z.object({ ids: z.array(z.string().uuid()).min(1).max(500), userId: z.string().uuid() });
+const Members = z.object({ members: z.array(z.object({ user_id: z.string().uuid(), name: z.string().min(1), enabled: z.boolean(), position: z.number().int().min(0) })).max(100) });
+
+async function assertAdmin(userId: string) {
+  const { data } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", userId);
+  if (!(data ?? []).some(r => r.role === "admin" || r.role === "super_admin")) throw new Error("Admin only");
+}
+
+export const bulkAssignOrders = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator(Ids.parse).handler(async ({ data, context }) => {
+  await assertAdmin(context.userId);
+  const { error } = await supabaseAdmin.from("orders").update({ assigned_to: data.userId, updated_at: new Date().toISOString() }).in("id", data.ids);
+  if (error) throw new Error(error.message);
+  return { ok: true, count: data.ids.length };
+});
+
+export const saveOrderDistributionMembers = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator(Members.parse).handler(async ({ data, context }) => {
+  await assertAdmin(context.userId);
+  const { data: employees } = await supabaseAdmin.from("employees").select("user_id,name").not("user_id", "is", null);
+  const allowed = new Set((employees ?? []).map(e => e.user_id).filter(Boolean));
+  for (const m of data.members) {
+    if (!allowed.has(m.user_id)) continue;
+    const { error } = await supabaseAdmin.from("order_distribution_members").upsert({ user_id: m.user_id, name: m.name, enabled: m.enabled, position: m.position, updated_at: new Date().toISOString() });
+    if (error) throw new Error(error.message);
+  }
+  return { ok: true };
+});
