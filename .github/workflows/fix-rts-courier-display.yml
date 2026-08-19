@@ -1,4 +1,4 @@
-name: Fix RTS courier display
+name: Fix courier display on invoice
 on:
   push:
     branches: [main]
@@ -10,30 +10,90 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch RTS labels
+      - name: Apply courier invoice patch
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
+
           p = Path('src/routes/admin/orders.tsx')
           s = p.read_text()
-          # Replace the visible labels with expressions using display names.
+
+          # Add courier display name to the orders query used by invoice printing.
+          old = 'courier_consignment,printed_at,created_at,updated_at,created_by,order_items('
+          new = 'courier_consignment,courier_display_name,printed_at,created_at,updated_at,created_by,order_items('
+          if 'courier_consignment,courier_display_name,printed_at' not in s:
+              if old not in s:
+                  raise SystemExit('orders query marker not found')
+              s = s.replace(old, new, 1)
+
+          # Add the field to the row type.
+          old = 'courier_consignment?: string | null; printed_at?: string | null;'
+          new = 'courier_consignment?: string | null; courier_display_name?: string | null; printed_at?: string | null;'
+          if 'courier_display_name?: string | null' not in s:
+              if old not in s:
+                  raise SystemExit('OrderRow type marker not found')
+              s = s.replace(old, new, 1)
+
+          # Add display name under the Invoice ID in the print template.
+          old = '    .invtitle .num{color:#8b0000}\n'
+          new = old + '    .invtitle .courier{display:block;font-size:11px;font-weight:700;letter-spacing:.5px;color:#64748b;margin-top:6px;text-transform:none}\n'
+          if '.invtitle .courier{' not in s:
+              if old not in s:
+                  raise SystemExit('invoice CSS marker not found')
+              s = s.replace(old, new, 1)
+
+          old = 'type InvoiceOrder = OrderRow & { courier_consignment?: string | null };'
+          new = 'type InvoiceOrder = OrderRow & { courier_consignment?: string | null; courier_display_name?: string | null };'
+          if 'type InvoiceOrder = OrderRow & { courier_consignment?: string | null; courier_display_name?' not in s:
+              if old not in s:
+                  raise SystemExit('InvoiceOrder type marker not found')
+              s = s.replace(old, new, 1)
+
+          old = '<div class="invtitle">${invHtml}</div>'
+          new = '<div class="invtitle">${invHtml}${o.courier_display_name ? `<span class="courier">${escapeHtml(o.courier_display_name)}</span>` : ""}</div>'
+          if 'o.courier_display_name ?' not in s:
+              if old not in s:
+                  raise SystemExit('invoice title marker not found')
+              s = s.replace(old, new, 1)
+
+          # Show the configured Display Name on the two RTS courier buttons.
           s = s.replace('কুরিয়ার ১ এ পাঠান (Steadfast)', '{courier1Name} এ পাঠান')
           s = s.replace('কুরিয়ার ২ এ পাঠান (Steadfast)', '{courier2Name} এ পাঠান')
-          # If the state/fetch block is absent, insert it next to sendBulk.
-          if 'const courier1Name' not in s:
+
+          # Add exactly one display-name state/effect block if it is not already present.
+          if 'const [courierDisplayNames, setCourierDisplayNames]' not in s:
               marker = '  const sendBulk = useServerFn(sendOrdersToSteadfast);'
-              insert = '''  const sendBulk = useServerFn(sendOrdersToSteadfast);\n  const [courierDisplayNames, setCourierDisplayNames] = useState<Record<1 | 2, string>>({ 1: "কুরিয়ার ১", 2: "কুরিয়ার ২" });\n  useEffect(() => {\n    let alive = true;\n    (async () => {\n      const { data } = await supabase.from("integrations").select("name,config").in("name", ["all_api_steadfast", "all_api_steadfast_2"]);\n      if (!alive) return;\n      const next: Record<1 | 2, string> = { 1: "কুরিয়ার ১", 2: "কুরিয়ার ২" };\n      for (const row of data ?? []) {\n        const cfg = (row.config ?? {}) as { display_name?: string };\n        if (row.name === "all_api_steadfast" && cfg.display_name?.trim()) next[1] = cfg.display_name.trim();\n        if (row.name === "all_api_steadfast_2" && cfg.display_name?.trim()) next[2] = cfg.display_name.trim();\n      }\n      if (alive) setCourierDisplayNames(next);\n    })();\n    return () => { alive = false; };\n  }, []);\n  const courier1Name = courierDisplayNames[1];\n  const courier2Name = courierDisplayNames[2];'''
+              block = '''  const sendBulk = useServerFn(sendOrdersToSteadfast);\n  const [courierDisplayNames, setCourierDisplayNames] = useState<Record<1 | 2, string>>({ 1: "কুরিয়ার ১", 2: "কুরিয়ার ২" });\n  useEffect(() => {\n    let alive = true;\n    (async () => {\n      const { data } = await supabase.from("integrations").select("name,config").in("name", ["all_api_steadfast", "all_api_steadfast_2"]);\n      if (!alive) return;\n      const next: Record<1 | 2, string> = { 1: "কুরিয়ার ১", 2: "কুরিয়ার ২" };\n      for (const row of data ?? []) {\n        const cfg = (row.config ?? {}) as { display_name?: string };\n        if (row.name === "all_api_steadfast" && cfg.display_name?.trim()) next[1] = cfg.display_name.trim();\n        if (row.name === "all_api_steadfast_2" && cfg.display_name?.trim()) next[2] = cfg.display_name.trim();\n      }\n      if (alive) setCourierDisplayNames(next);\n    })();\n    return () => { alive = false; };\n  }, []);\n  const courier1Name = courierDisplayNames[1];\n  const courier2Name = courierDisplayNames[2];'''
               if marker not in s:
                   raise SystemExit('sendBulk marker not found')
-              s = s.replace(marker, insert, 1)
+              s = s.replace(marker, block, 1)
+
           p.write_text(s)
+
+          # Save the exact All API Display Name at the moment an order is sent.
+          p = Path('src/lib/courier-test.functions.ts')
+          s = p.read_text()
+          old = 'courier_consignment: existing || invoice, courier_status: dstatus || "in_review"'
+          new = 'courier_consignment: existing || invoice, courier_status: dstatus || "in_review", courier_display_name: (cfg.display_name || "").trim() || `Courier ${account}`'
+          if 'courier_display_name:' not in s:
+              if old not in s:
+                  raise SystemExit('already-entry courier update marker not found')
+              s = s.replace(old, new, 1)
+              old2 = 'courier_consignment: consignment, courier_status: "in_review"'
+              new2 = 'courier_consignment: consignment, courier_status: "in_review", courier_display_name: (cfg.display_name || "").trim() || `Courier ${account}`'
+              if old2 not in s:
+                  raise SystemExit('successful-send courier update marker not found')
+              s = s.replace(old2, new2, 1)
+          p.write_text(s)
+
+          Path('supabase/migrations/20260819210000_add_courier_display_name_to_orders.sql').write_text(
+              'ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS courier_display_name text;\n'
+          )
           PY
-          grep -n "courier1Name\|courier2Name" src/routes/admin/orders.tsx
           git diff --check
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/routes/admin/orders.tsx
-          if git diff --cached --quiet; then echo 'No RTS patch needed'; exit 0; fi
-          git commit -m 'Fix RTS buttons to use configured courier names'
+          git add src/routes/admin/orders.tsx src/lib/courier-test.functions.ts supabase/migrations/20260819210000_add_courier_display_name_to_orders.sql
+          git commit -m 'fix: save courier display name and print it on invoice'
           git push origin HEAD:main
