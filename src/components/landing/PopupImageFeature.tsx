@@ -1,7 +1,18 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 
-export function PopupImageFeature({ delay, image, title }: { delay: number; image?: string; title?: string }) {
+type PopupImageFeatureProps = {
+  delay: number;
+  image?: string;
+  title?: string;
+  themeColor?: string;
+  logo?: string;
+  brand?: string;
+  text?: string;
+  cta?: string;
+};
+
+export function PopupImageFeature({ delay, image, title }: PopupImageFeatureProps) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setOpen(true), delay);
