@@ -27,6 +27,24 @@ function belongsToList(mode: string, filter: string, status: string) {
   return false;
 }
 
+function invoiceSequence(value: unknown) {
+  const match = String(value ?? "").match(/(\d+)$/);
+  return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
+}
+
+function sortInvoiceQueue(rows: any[]) {
+  return [...rows].sort((a, b) => {
+    const diff = invoiceSequence(a?.invoice_no) - invoiceSequence(b?.invoice_no);
+    if (diff !== 0) return diff;
+    const text = String(a?.invoice_no ?? "").localeCompare(String(b?.invoice_no ?? ""), undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
+    if (text !== 0) return text;
+    return String(a?.created_at ?? "").localeCompare(String(b?.created_at ?? ""));
+  });
+}
+
 const SCROLL_STORAGE_KEY = "admin-orders-scroll-y";
 const ORDER_STABLE_QUERY_KEYS = [
   "admin-orders",
@@ -72,6 +90,40 @@ export function AdminOrderStability() {
       refetchIntervalInBackground: false,
     });
   }, [qc]);
+
+  // Pending and RTS are operational queues and must always be displayed by
+  // invoice sequence (AA100, AA101, AA102...), not by created_at. The Orders
+  // page still fetches normally; this cache guard only normalizes the two queue
+  // views and leaves every other status/courier flow untouched.
+  useEffect(() => {
+    if (location.pathname !== "/admin/orders") return;
+
+    let applying = false;
+    const normalize = (query: any) => {
+      if (applying || !query) return;
+      const key = query.queryKey;
+      if (!Array.isArray(key) || key[0] !== "admin-orders" || key[1] !== "list") return;
+      const filter = String(key[2] ?? "");
+      if (filter !== "pending" && filter !== "rts") return;
+      const current = query.state?.data;
+      if (!Array.isArray(current) || current.length < 2) return;
+
+      const sorted = sortInvoiceQueue(current);
+      const changed = sorted.some((row, index) => row?.id !== current[index]?.id);
+      if (!changed) return;
+
+      applying = true;
+      try {
+        qc.setQueryData(key, sorted);
+      } finally {
+        applying = false;
+      }
+    };
+
+    for (const query of qc.getQueryCache().findAll({ queryKey: ["admin-orders"] })) normalize(query);
+    const unsubscribe = qc.getQueryCache().subscribe((event) => normalize(event?.query));
+    return unsubscribe;
+  }, [qc, location.pathname]);
 
   // Save only the last known visible position. While the browser tab is hidden,
   // some browsers can emit a scroll=0 event during tab suspension; that must
@@ -215,11 +267,14 @@ export function AdminOrderStability() {
             return current.filter((row) => row?.id !== id);
           }
 
-          return current.map((row) =>
+          const next = current.map((row) =>
             row?.id === id
               ? { ...row, status, updated_at: payload?.new?.updated_at ?? row.updated_at }
               : row,
           );
+          return mode === "list" && (filter === "pending" || filter === "rts")
+            ? sortInvoiceQueue(next)
+            : next;
         });
       }
 
