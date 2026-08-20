@@ -15,10 +15,10 @@ export const lookupCustomerByPhone = createServerFn({ method: "POST" }).inputVal
 });
 
 // Save the checkout snapshot as soon as the customer has entered a full 11-digit phone.
-// The DB RPC keeps one latest record per phone/IP. A successful placeOrder removes it.
+// This is auxiliary telemetry; it must never block the real checkout.
 export const saveIncompleteCheckout = createServerFn({ method: "POST" }).inputValidator((input) => IncompleteInputSchema.parse(input)).handler(async ({ data }) => {
   const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
-  const { data: result, error } = await supabaseAdmin.rpc("upsert_incomplete_checkout", {
+  const rpcArgs = {
     p_phone: data.customer_phone,
     p_ip: clientIp,
     p_customer_name: data.customer_name ?? null,
@@ -29,12 +29,23 @@ export const saveIncompleteCheckout = createServerFn({ method: "POST" }).inputVa
     p_total: data.total,
     p_note: data.note ?? null,
     p_items: data.items,
-  });
-  if (error) throw new Error(error.message);
-  return result;
+  };
+  const { data: result, error } = await supabaseAdmin.rpc("upsert_incomplete_checkout", rpcArgs);
+  if (!error) return result;
+
+  // Autosave requests can race each other. The DB has a unique active-phone
+  // constraint, so recover the row created by the winning concurrent request.
+  if (/duplicate key value violates unique constraint.*incomplete_orders_phone_active_uq/i.test(error.message ?? "")) {
+    const { data: existing } = await supabaseAdmin.from("incomplete_orders").select("id").eq("phone", data.customer_phone).order("updated_at", { ascending: false }).limit(1).maybeSingle();
+    return existing?.id ?? null;
+  }
+
+  // Never surface auxiliary autosave failures as checkout failures.
+  console.error("[saveIncompleteCheckout] snapshot failed:", error.message);
+  return null;
 });
 
-export const placeOrder = createServerFn({ method: "POST" }).inputValidator((input) => InputSchema.parse(input)).handler(async ({ data }) => {
+export const placeOrder = createServerFn({ method: "POST" }).inputValidator((input: Input) => InputSchema.parse(input)).handler(async ({ data }) => {
   const customerPhone = data.customer_phone;
   const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
   const { data: siteSettings, error: settingsError } = await supabaseAdmin.from("site_settings").select("settings").maybeSingle();
