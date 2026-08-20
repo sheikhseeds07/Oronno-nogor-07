@@ -1,0 +1,191 @@
+name: Fix seedcombo popup media
+
+on:
+  push:
+    branches:
+      - fix/seedcombo-popup-media
+    paths:
+      - .trigger-seedcombo-popup-media
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/seedcombo-popup-media
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.15
+      - name: Apply focused popup control fix
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          content_path = Path('src/lib/landing-content.ts')
+          content = content_path.read_text()
+          old = '  popup_cta: string;\n  popup_delay: number;'
+          new = '  popup_cta: string;\n  popup_mode: "text" | "image";\n  popup_image: string;\n  popup_delay: number;'
+          if old not in content:
+              raise SystemExit('landing-content type marker not found')
+          content = content.replace(old, new, 1)
+          old = '  popup_cta: "এখনই অর্ডার করুন",\n  popup_delay: 1200,'
+          new = '  popup_cta: "এখনই অর্ডার করুন",\n  popup_mode: "text",\n  popup_image: "",\n  popup_delay: 1200,'
+          if old not in content:
+              raise SystemExit('landing-content default marker not found')
+          content = content.replace(old, new, 1)
+          content_path.write_text(content)
+
+          page_path = Path('src/components/landing/CleanLandingPage.tsx')
+          page = page_path.read_text()
+          old_call = '{C.show_popup&&<WelcomePopup themeColor={themeColor} logo={brandLogo} brand={brandName} title={C.popup_title} text={C.popup_text} cta={C.popup_cta} delay={Number(C.popup_delay)||0}/>}'
+          new_call = '{C.show_popup&&<WelcomePopup themeColor={themeColor} logo={brandLogo} brand={brandName} title={C.popup_title} text={C.popup_text} cta={C.popup_cta} mode={slug==="seedcombo"?C.popup_mode:"text"} image={slug==="seedcombo"?C.popup_image:""} delay={Number(C.popup_delay)||0}/>}'
+          if old_call not in page:
+              raise SystemExit('WelcomePopup call marker not found')
+          page = page.replace(old_call, new_call, 1)
+          start = page.find('function WelcomePopup(')
+          if start < 0:
+              raise SystemExit('WelcomePopup function marker not found')
+          new_popup = r'''function WelcomePopup({themeColor,logo,brand,title,text,cta,mode,image,delay}:{themeColor:string;logo:string;brand:string;title:string;text:string;cta:string;mode:"text"|"image";image:string;delay:number}){
+ const[open,setOpen]=useState(false);
+ useEffect(()=>{const t=setTimeout(()=>setOpen(true),delay);return()=>clearTimeout(t)},[delay]);
+ if(!open)return null;
+ const imageMode=mode==="image"&&!!image;
+ return <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+  <button aria-label="close" onClick={()=>setOpen(false)} className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm animate-fade-in"/>
+  {imageMode?
+   <div className="relative w-full max-w-sm animate-scale-in">
+    <button onClick={()=>setOpen(false)} aria-label="বন্ধ করুন" className="absolute right-2 top-2 z-10 grid h-9 w-9 place-items-center rounded-full bg-black/60 text-white shadow-lg hover:bg-black/75"><X className="w-5 h-5" strokeWidth={3}/></button>
+    <img src={image} alt={title||brand} className="block max-h-[78vh] w-full rounded-2xl bg-white object-contain shadow-2xl"/>
+   </div>
+  :<div className="relative w-full max-w-sm rounded-3xl border-2 p-6 text-center shadow-2xl animate-scale-in overflow-hidden" style={{borderColor:"#facc15",background:`linear-gradient(160deg, ${themeColor}, color-mix(in oklab, ${themeColor} 55%, #052e16))`}}>
+    <Leaf className="absolute -left-4 -top-4 w-24 h-24 text-white/10"/><Sprout className="absolute -right-5 -bottom-6 w-28 h-28 text-white/10"/>
+    <button onClick={()=>setOpen(false)} aria-label="বন্ধ করুন" className="absolute right-3 top-3 text-yellow-300 hover:text-yellow-200"><X className="w-5 h-5" strokeWidth={3}/></button>
+    <div className="relative flex flex-col items-center gap-3">
+     <span className="grid place-items-center w-16 h-16 rounded-full bg-white/15 ring-2 ring-white/30"><img src={logo} alt={brand} className="w-12 h-12 rounded-full object-cover"/></span>
+     <h3 className="text-[22px] font-extrabold text-white tracking-tight">{title}</h3>
+     <p className="text-[14px] leading-relaxed text-white/85">{text}</p>
+     <button onClick={()=>setOpen(false)} className="mt-1 w-full rounded-full bg-white/15 ring-1 ring-white/30 px-6 py-3 font-extrabold text-white text-[16px] transition hover:bg-white/25">{cta}</button>
+     <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-yellow-300"><ShieldCheck className="w-3.5 h-3.5"/> ১০০% অরিজিনাল বীজের নিশ্চয়তা</div>
+    </div>
+   </div>}
+ </div>
+}
+'''
+          page = page[:start] + new_popup
+          page_path.write_text(page)
+
+          admin_path = Path('src/routes/admin/landing-pages.tsx')
+          admin = admin_path.read_text()
+          marker = '''                  <div className="rounded-lg border p-3 space-y-3">\n                    <label className="flex items-center gap-2 text-sm font-semibold">\n                      <input\n                        type="checkbox"\n                        checked={!!C.show_popup}'''
+          start = admin.find(marker)
+          if start < 0:
+              raise SystemExit('admin popup block marker not found')
+          end_marker = '\n\n\n                  <Field label="উপরের স্ক্রলিং টেক্সট (এক লাইনে একটি)">'
+          end = admin.find(end_marker, start)
+          if end < 0:
+              raise SystemExit('admin popup block end marker not found')
+          block = r'''                  <div className="rounded-lg border p-3 space-y-3">
+                    <label className="flex items-center gap-2 text-sm font-semibold">
+                      <input
+                        type="checkbox"
+                        checked={!!C.show_popup}
+                        onChange={(e) => setC({ show_popup: e.target.checked })}
+                      />
+                      সাইটে ঢোকার সাথে সাথে পপআপ দেখাবে
+                    </label>
+
+                    {editing.slug === "seedcombo" && (
+                      <Field label="পপআপ কনটেন্ট টাইপ">
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setC({ popup_mode: "text" })}
+                            className={`rounded-lg border px-3 py-2 text-sm font-semibold ${C.popup_mode !== "image" ? "border-brand bg-brand/5 text-brand" : "hover:bg-muted"}`}
+                          >
+                            টেক্সট
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setC({ popup_mode: "image" })}
+                            className={`rounded-lg border px-3 py-2 text-sm font-semibold ${C.popup_mode === "image" ? "border-brand bg-brand/5 text-brand" : "hover:bg-muted"}`}
+                          >
+                            ইমেজ
+                          </button>
+                        </div>
+                      </Field>
+                    )}
+
+                    {editing.slug === "seedcombo" && C.popup_mode === "image" ? (
+                      <Field label="পপআপ ইমেজ">
+                        <input type="file" accept="image/*" onChange={async (e) => {
+                          const f = e.target.files?.[0]; if (!f) return;
+                          const url = await uploadImage(f);
+                          if (url) setC({ popup_image: url, popup_mode: "image" });
+                        }} />
+                        <input
+                          value={C.popup_image}
+                          onChange={(e) => setC({ popup_image: e.target.value, popup_mode: "image" })}
+                          placeholder="অথবা ইমেজ URL পেস্ট করুন"
+                          className="w-full border rounded-lg px-3 py-2 text-sm mt-2"
+                        />
+                        {C.popup_image && (
+                          <div className="mt-2 space-y-2">
+                            <img src={C.popup_image} className="w-full max-h-64 object-contain rounded-lg border bg-muted/20" alt="পপআপ প্রিভিউ" />
+                            <button type="button" onClick={() => setC({ popup_image: "" })} className="text-xs font-semibold text-destructive hover:underline">
+                              ইমেজ সরান
+                            </button>
+                          </div>
+                        )}
+                      </Field>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-2 gap-3">
+                          <Field label="পপআপ টাইটেল">
+                            <input value={C.popup_title} onChange={(e) => setC({ popup_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
+                          </Field>
+                          <Field label="পপআপ বাটন টেক্সট">
+                            <input value={C.popup_cta} onChange={(e) => setC({ popup_cta: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
+                          </Field>
+                        </div>
+                        <Field label="পপআপ টেক্সট">
+                          <textarea
+                            rows={3}
+                            value={C.popup_text}
+                            onChange={(e) => setC({ popup_text: e.target.value })}
+                            className="w-full border rounded-lg px-3 py-2 text-sm"
+                          />
+                        </Field>
+                      </>
+                    )}
+
+                    <Field label="কত মিলিসেকেন্ড পরে দেখাবে">
+                      <input
+                        type="number"
+                        value={C.popup_delay}
+                        onChange={(e) => setC({ popup_delay: Number(e.target.value) })}
+                        className="w-full border rounded-lg px-3 py-2"
+                      />
+                    </Field>
+                  </div>'''
+          admin = admin[:start] + block + admin[end:]
+          admin_path.write_text(admin)
+          PY
+      - name: Verify diff and build
+        run: |
+          git diff --check
+          bun install --frozen-lockfile
+          bun run build
+      - name: Commit focused fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- src/lib/landing-content.ts src/components/landing/CleanLandingPage.tsx src/routes/admin/landing-pages.tsx
+          git commit -m "fix: restore seedcombo popup text and image controls"
+          git push origin HEAD:fix/seedcombo-popup-media
