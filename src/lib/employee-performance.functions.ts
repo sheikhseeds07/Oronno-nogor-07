@@ -31,19 +31,20 @@ export const getEmployeePerformance = createServerFn({ method: "POST" })
       supabaseAdmin.from("user_roles").select("user_id,role").in("role", ["admin", "super_admin"]),
     ]);
 
-    // Admins/owners are never part of employee performance ranking.
     const adminIds = new Set((roles ?? []).map((r) => r.user_id).filter(Boolean));
     const employeeRows = (employees ?? []).filter((e) => e.user_id && !adminIds.has(e.user_id));
     const userIds = employeeRows.map((e) => e.user_id).filter(Boolean) as string[];
 
     let orders: any[] = [];
     try {
+      // Use both assignment and creator. In this system an employee can confirm an
+      // assigned web order and the confirmation action may update created_by while
+      // leaving/clearing assigned_to. We therefore resolve ownership to an active
+      // employee from assigned_to first, then created_by as a safe fallback.
       const { data: rows, error } = await supabaseAdmin
         .from("orders")
-        .select("id,status,source,created_at,assigned_to")
-        .not("assigned_to", "is", null)
-        .gte("created_at", start)
-        .lte("created_at", end)
+        .select("id,status,source,created_at,updated_at,assigned_to,created_by")
+        .or(`and(created_at.gte.${start},created_at.lte.${end}),and(updated_at.gte.${start},updated_at.lte.${end})`)
         .limit(20000);
       if (!error) orders = rows ?? [];
     } catch {}
@@ -51,14 +52,18 @@ export const getEmployeePerformance = createServerFn({ method: "POST" })
     const stats = new Map<string, { confirmed: number; cancelled: number; handled: number; hours: number; present: number; streak: number }>();
     for (const id of userIds) stats.set(id, { confirmed: 0, cancelled: 0, handled: 0, hours: 0, present: 0, streak: 0 });
 
-    // Only orders actually assigned to the employee count. web_pending means the order
-    // is still waiting for confirmation, so it is not counted as confirmed/handled yet.
     for (const o of orders) {
-      const uid = String(o.assigned_to ?? "");
-      const s = stats.get(uid);
-      if (!s) continue;
       const status = String(o.status ?? "").toLowerCase();
       if (status === "web_pending") continue;
+
+      const assignedId = String(o.assigned_to ?? "");
+      const createdById = String(o.created_by ?? "");
+      // Prefer the actual assignment; fallback to the employee who performed the
+      // confirmation/update when assignment is no longer present.
+      const uid = stats.has(assignedId) ? assignedId : stats.has(createdById) ? createdById : "";
+      if (!uid) continue;
+
+      const s = stats.get(uid)!;
       s.handled++;
       if (["cancelled", "canceled", "returned"].includes(status)) s.cancelled++;
       else s.confirmed++;
