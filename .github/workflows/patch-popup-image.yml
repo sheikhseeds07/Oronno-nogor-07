@@ -1,0 +1,116 @@
+name: Patch popup image upload
+
+on:
+  push:
+    branches: [popup-image-upload]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch landing page admin
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/routes/admin/landing-pages.tsx')
+          s = p.read_text()
+          old = '''                  <div className="rounded-lg border p-3 space-y-3">
+                    <label className="flex items-center gap-2 text-sm font-semibold">
+                      <input
+                        type="checkbox"
+                        checked={!!C.show_popup}
+                        onChange={(e) => setC({ show_popup: e.target.checked })}
+                      />
+                      সাইটে ঢোকার সাথে সাথে পপআপ দেখাবে
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="পপআপ টাইটেল">
+                        <input value={C.popup_title} onChange={(e) => setC({ popup_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
+                      </Field>
+                      <Field label="পপআপ বাটন টেক্সট">
+                        <input value={C.popup_cta} onChange={(e) => setC({ popup_cta: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
+                      </Field>
+                    </div>
+                    <Field label="পপআপ টেক্সট">
+                      <textarea
+                        rows={3}
+                        value={C.popup_text}
+                        onChange={(e) => setC({ popup_text: e.target.value })}
+                        className="w-full border rounded-lg px-3 py-2 text-sm"
+                      />
+                    </Field>
+                    <Field label="কত মিলিসেকেন্ড পরে দেখাবে">
+                      <input
+                        type="number"
+                        value={C.popup_delay}
+                        onChange={(e) => setC({ popup_delay: Number(e.target.value) })}
+                        className="w-full border rounded-lg px-3 py-2"
+                      />
+                    </Field>
+                  </div>'''
+          new = '''                  <div className="rounded-lg border p-3 space-y-3">
+                    <label className="flex items-center gap-2 text-sm font-semibold">
+                      <input
+                        type="checkbox"
+                        checked={!!C.show_popup}
+                        onChange={(e) => setC({ show_popup: e.target.checked })}
+                      />
+                      সাইটে ঢোকার সাথে সাথে পপআপ দেখাবে
+                    </label>
+                    <Field label="পপআপ ইমেজ">
+                      <input type="file" accept="image/*" onChange={async (e) => {
+                        const f = e.target.files?.[0]; if (!f) return;
+                        const url = await uploadImage(f);
+                        if (url) setC({ popup_image: url });
+                        e.target.value = "";
+                      }} />
+                      <input value={C.popup_image ?? ""} onChange={(e) => setC({ popup_image: e.target.value })} placeholder="অথবা Image URL পেস্ট" className="w-full border rounded-lg px-3 py-2 text-sm mt-2" />
+                      {C.popup_image && <img src={C.popup_image} className="mt-2 w-full max-h-64 object-contain rounded-lg bg-muted" alt="Popup preview" />}
+                    </Field>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="পপআপ টাইটেল">
+                        <input value={C.popup_title} onChange={(e) => setC({ popup_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
+                      </Field>
+                      <Field label="পপআপ বাটন টেক্সট">
+                        <input value={C.popup_cta} onChange={(e) => setC({ popup_cta: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
+                      </Field>
+                    </div>
+                    <Field label="পপআপ টেক্সট">
+                      <textarea
+                        rows={3}
+                        value={C.popup_text}
+                        onChange={(e) => setC({ popup_text: e.target.value })}
+                        className="w-full border rounded-lg px-3 py-2 text-sm"
+                      />
+                    </Field>
+                    <Field label="কত মিলিসেকেন্ড পরে দেখাবে">
+                      <input
+                        type="number"
+                        value={C.popup_delay}
+                        onChange={(e) => setC({ popup_delay: Number(e.target.value) })}
+                        className="w-full border rounded-lg px-3 py-2"
+                      />
+                    </Field>
+                  </div>'''
+          if old not in s:
+              raise SystemExit('Expected popup editor block not found; aborting without changes')
+          p.write_text(s.replace(old, new, 1))
+          PY
+      - name: Verify build
+        run: |
+          corepack enable || true
+          bun install --frozen-lockfile || bun install
+          bun run build
+      - name: Commit patch and remove temporary workflow
+        run: |
+          rm .github/workflows/patch-popup-image.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routes/admin/landing-pages.tsx .github/workflows/patch-popup-image.yml
+          git diff --cached --quiet && exit 0
+          git commit -m "Add popup image upload option"
+          git push
