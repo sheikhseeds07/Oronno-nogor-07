@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 const ALLOWED_SUPABASE_HOST = "bvuhvzccziuniujeogng.supabase.co";
-const EDGE_TTL_SECONDS = 60 * 60 * 24 * 30;
-const BROWSER_TTL_SECONDS = 60 * 60 * 24 * 7;
+const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 
 type CloudflareCache = {
   match(request: Request): Promise<Response | undefined>;
@@ -34,16 +33,12 @@ function getSafeSource(request: Request): URL | null {
 }
 
 function makeCacheKey(request: Request, source: URL): Request {
-  // Signed URLs contain a long-lived token. It is required for the origin fetch,
-  // but it must not fragment the Cloudflare cache when the same file gets a new
-  // signed URL later. Width/quality/format params are intentionally preserved.
-  const normalized = new URL(source.toString());
-  normalized.searchParams.delete("token");
-  normalized.searchParams.sort();
-
+  // The object path is the stable asset identity. Signed tokens/query strings
+  // are required only for the origin fetch and must not create duplicate cache
+  // entries for the same stored file.
   const key = new URL(request.url);
   key.search = "";
-  key.searchParams.set("asset", `${normalized.pathname}?${normalized.searchParams.toString()}`);
+  key.searchParams.set("asset", source.pathname);
   return new Request(key.toString(), { method: "GET" });
 }
 
@@ -58,7 +53,7 @@ function cacheableResponse(origin: Response, body: ArrayBuffer, cacheState: "HIT
   if (lastModified) headers.set("Last-Modified", lastModified);
   headers.set(
     "Cache-Control",
-    `public, max-age=${BROWSER_TTL_SECONDS}, s-maxage=${EDGE_TTL_SECONDS}, immutable`,
+    `public, max-age=${ONE_YEAR_SECONDS}, s-maxage=${ONE_YEAR_SECONDS}, immutable`,
   );
   headers.set("X-Oronno-Media-Cache", cacheState);
 
@@ -94,8 +89,8 @@ export const Route = createFileRoute("/media")({
           signal: request.signal,
         });
 
-        // Do not cache errors. The image element's onError handler will retry
-        // through the same proxy using the raw Supabase object URL.
+        // Never cache failures. Existing data remains untouched and callers can
+        // retry later; this proxy is an optimization layer, not a data migration.
         if (!origin.ok) {
           return new Response(origin.body, {
             status: origin.status,
@@ -112,7 +107,7 @@ export const Route = createFileRoute("/media")({
             const cached = cacheableResponse(origin, body.slice(0), "HIT");
             await cache.put(cacheKey, cached);
           } catch {
-            // Cache API is an optimization only; never break image delivery.
+            // Cache API failure must never break live image delivery.
           }
         }
 
