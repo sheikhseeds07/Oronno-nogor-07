@@ -1,0 +1,96 @@
+name: Apply public media egress fix
+
+on:
+  push:
+    branches: [fix/public-media-egress-leaks]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-build:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/public-media-egress-leaks
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.15
+      - name: Patch remaining public Supabase image leaks
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new, expected_min=1):
+              p = Path(path)
+              s = p.read_text()
+              count = s.count(old)
+              if count < expected_min:
+                  raise SystemExit(f"Expected {expected_min}+ occurrences in {path}, found {count}: {old[:80]}")
+              p.write_text(s.replace(old, new))
+              print(path, count)
+
+          # Category images were still bypassing the shared media proxy.
+          replace(
+              'src/routes/category.$slug.tsx',
+              'import { supabase } from "@/lib/personal-supabase/client";\nimport { Leaf, ChevronRight } from "lucide-react";',
+              'import { supabase } from "@/lib/personal-supabase/client";\nimport { toImg } from "@/lib/img";\nimport { Leaf, ChevronRight } from "lucide-react";'
+          )
+          replace('src/routes/category.$slug.tsx', 'src={c.image_url}', 'src={toImg(c.image_url)}')
+          replace('src/routes/category.$slug.tsx', 'src={cat.image_url}', 'src={toImg(cat.image_url)}', 2)
+
+          # Modern landing hero used the signed Storage URL directly.
+          replace(
+              'src/components/landing/ModernProductLanding.tsx',
+              'import type { LandingContent } from "@/lib/landing-content";',
+              'import type { LandingContent } from "@/lib/landing-content";\nimport { toImg } from "@/lib/img";'
+          )
+          replace(
+              'src/components/landing/ModernProductLanding.tsx',
+              'src={content.hero_image || content.hero_image_2}',
+              'src={toImg(content.hero_image || content.hero_image_2)}'
+          )
+
+          # Site logo in footer is public on nearly every page.
+          replace(
+              'src/components/layout/Footer.tsx',
+              'import logo from "@/assets/logo.jpg";',
+              'import logo from "@/assets/logo.jpg";\nimport { toImg } from "@/lib/img";'
+          )
+          replace('src/components/layout/Footer.tsx', 'src={logoSrc}', 'src={toImg(logoSrc)}')
+
+          # Homepage OG/Twitter image must be an absolute same-domain cached URL.
+          replace(
+              'src/components/layout/SeoFromSettings.tsx',
+              'import { supabase } from "@/lib/personal-supabase/client";',
+              'import { supabase } from "@/lib/personal-supabase/client";\nimport { toImg } from "@/lib/img";'
+          )
+          replace(
+              'src/components/layout/SeoFromSettings.tsx',
+              '    const url = base ? `${base}${path}` : undefined;\n\n    setMeta("name", "robots", s.seo_robots);',
+              '    const url = base ? `${base}${path}` : undefined;\n    const ogImage = s.seo_og_image ? new URL(toImg(s.seo_og_image), window.location.origin).toString() : undefined;\n\n    setMeta("name", "robots", s.seo_robots);'
+          )
+          replace('src/components/layout/SeoFromSettings.tsx', 'setMeta("property", "og:image", s.seo_og_image);', 'setMeta("property", "og:image", ogImage);')
+          replace('src/components/layout/SeoFromSettings.tsx', 'setMeta("name", "twitter:image", s.seo_og_image);', 'setMeta("name", "twitter:image", ogImage);')
+
+          # Landing templates already use toImg for main media, but a few logos/popup images bypassed it.
+          replace('src/components/landing/CleanLandingPage.tsx', 'src={brandLogo}', 'src={toImg(brandLogo)}')
+          replace('src/components/landing/CleanLandingPage.tsx', 'src={image}', 'src={toImg(image)}')
+          replace('src/components/landing/LegacyLandingPage.tsx', 'src={brandLogo}', 'src={toImg(brandLogo)}')
+          replace('src/components/landing/ProfessionalLandingPage.tsx', 'src={logo}', 'src={toImg(logo)}')
+          PY
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Production build
+        run: bun run build
+      - name: Remove one-time workflow and commit
+        run: |
+          rm .github/workflows/apply-public-media-egress-fix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src .github/workflows/apply-public-media-egress-fix.yml
+          git commit -m "Route all public storage images through Cloudflare cache"
+          git push origin HEAD:fix/public-media-egress-leaks
