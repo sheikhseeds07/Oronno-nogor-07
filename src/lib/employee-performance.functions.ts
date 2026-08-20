@@ -18,6 +18,13 @@ function streakDays(rows: Array<{ check_in: string }>) {
   return count;
 }
 
+const norm = (value: number, max: number) => max > 0 ? value / max : 0;
+const statusOf = (o: any) => String(o?.status ?? "").toLowerCase();
+const isDelivered = (o: any) => statusOf(o) === "delivered";
+const isReturned = (o: any) => ["returned", "rts", "pending_return"].includes(statusOf(o));
+const isShipped = (o: any) => ["shipped", "delivered", "pending_return", "returned", "rts"].includes(statusOf(o));
+const isCancelled = (o: any) => ["cancelled", "canceled"].includes(statusOf(o));
+
 export const getEmployeePerformance = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ user_id: z.string().uuid(), start: z.string(), end: z.string() }).parse(input))
@@ -32,36 +39,113 @@ export const getEmployeePerformance = createServerFn({ method: "POST" })
       context: context as any,
     } as any);
 
-    const rows = Array.isArray((dashboard as any)?.employeePerformance) ? (dashboard as any).employeePerformance : [];
+    const dashboardRows = Array.isArray((dashboard as any)?.employeePerformance) ? (dashboard as any).employeePerformance : [];
+    const { data: employees, error: employeeError } = await supabaseAdmin
+      .from("employees")
+      .select("id,name,user_id,is_active")
+      .eq("is_active", true)
+      .order("name");
+    if (employeeError) throw new Error(employeeError.message);
 
-    // Monthly ranking is employee-only. Explicitly exclude every admin/super_admin
-    // account even if an admin account happens to exist in the employees table.
-    const userIds = rows.map((r: any) => String(r?.user_id ?? "")).filter(Boolean);
-    const { data: roleRows, error: roleError } = userIds.length
-      ? await supabaseAdmin.from("user_roles").select("user_id,role").in("user_id", userIds)
+    const employeeIds = (employees ?? []).map((e: any) => String(e.user_id ?? e.id)).filter(Boolean);
+    const { data: roleRows, error: roleError } = employeeIds.length
+      ? await supabaseAdmin.from("user_roles").select("user_id,role").in("user_id", employeeIds)
       : { data: [], error: null };
     if (roleError) throw new Error(roleError.message);
-    const adminIds = new Set((roleRows ?? []).filter((r: any) => ["admin", "super_admin"].includes(String(r.role).toLowerCase())).map((r: any) => String(r.user_id)));
+    const adminIds = new Set((roleRows ?? [])
+      .filter((r: any) => ["admin", "super_admin"].includes(String(r.role).toLowerCase()))
+      .map((r: any) => String(r.user_id)));
 
-    const leaderboard = rows.map((r: any) => {
-      const confirmed = Number(r?.confirmed ?? 0);
-      const cancelled = Number(r?.cancelled ?? 0);
-      const handled = confirmed + cancelled;
-      const confirmationRate = handled ? (confirmed / handled) * 100 : 0;
-      const cancellationRate = handled ? (cancelled / handled) * 100 : 0;
-      const score = handled ? Math.max(0, Math.min(100, Math.round(confirmationRate * 0.8 + (100 - cancellationRate) * 0.2))) : 0;
-      return { ...r, confirmed, cancelled, handled, confirmationRate, cancellationRate, score };
-    }).filter((r: any) => r.user_id && !adminIds.has(String(r.user_id))).sort((a: any, b: any) => {
+    const eligibleEmployees = (employees ?? []).filter((e: any) => {
+      const id = String(e.user_id ?? e.id);
+      return id && !adminIds.has(id);
+    });
+    const eligibleIds = new Set(eligibleEmployees.map((e: any) => String(e.user_id ?? e.id)));
+
+    const { data: orders, error: ordersError } = await supabaseAdmin
+      .from("orders")
+      .select("id,status,created_at,updated_at,created_by,assigned_to")
+      .gte("created_at", new Date(`${data.start}T00:00:00`).toISOString())
+      .lte("created_at", new Date(`${data.end}T23:59:59.999`).toISOString())
+      .limit(30000);
+    if (ordersError) throw new Error(ordersError.message);
+
+    const metrics = new Map<string, any>();
+    for (const e of eligibleEmployees) {
+      const id = String(e.user_id ?? e.id);
+      metrics.set(id, {
+        user_id: e.user_id ?? e.id,
+        name: e.name,
+        confirmed: 0,
+        cancelled: 0,
+        delivered: 0,
+        returned: 0,
+        shipped: 0,
+        total: 0,
+      });
+    }
+
+    // Confirmation/cancellation counts stay aligned with the Dashboard source of truth.
+    for (const row of dashboardRows) {
+      const id = String(row?.user_id ?? "");
+      const m = metrics.get(id);
+      if (!m) continue;
+      m.confirmed = Number(row?.confirmed ?? 0);
+      m.cancelled = Number(row?.cancelled ?? 0);
+    }
+
+    // Delivery/return/shipping are outcome metrics tied to the employee handling the order.
+    for (const order of orders ?? []) {
+      const id = String(order?.assigned_to ?? "");
+      if (!eligibleIds.has(id)) continue;
+      const m = metrics.get(id);
+      if (!m) continue;
+      if (isDelivered(order)) m.delivered++;
+      if (isReturned(order)) m.returned++;
+      if (isShipped(order)) m.shipped++;
+    }
+
+    for (const m of metrics.values()) m.total = m.confirmed + m.cancelled;
+
+    const all = Array.from(metrics.values());
+    const maxConfirmed = Math.max(0, ...all.map((m) => m.confirmed));
+    const maxDelivered = Math.max(0, ...all.map((m) => m.delivered));
+    const maxShipped = Math.max(0, ...all.map((m) => m.shipped));
+    const maxCancelled = Math.max(0, ...all.map((m) => m.cancelled));
+    const maxReturned = Math.max(0, ...all.map((m) => m.returned));
+
+    // Overall score: successful outcomes carry the most weight; cancellations/returns reduce it.
+    for (const m of all) {
+      const positive =
+        norm(m.confirmed, maxConfirmed) * 35 +
+        norm(m.delivered, maxDelivered) * 35 +
+        norm(m.shipped, maxShipped) * 10;
+      const negative =
+        norm(m.cancelled, maxCancelled) * 10 +
+        norm(m.returned, maxReturned) * 10;
+      m.score = Math.max(0, Math.min(100, Math.round(positive - negative)));
+      const handled = m.confirmed + m.cancelled;
+      m.handled = handled;
+      m.confirmationRate = handled ? (m.confirmed / handled) * 100 : 0;
+      m.cancellationRate = handled ? (m.cancelled / handled) * 100 : 0;
+    }
+
+    const leaderboard = all.sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
+      if (b.delivered !== a.delivered) return b.delivered - a.delivered;
       if (b.confirmed !== a.confirmed) return b.confirmed - a.confirmed;
       if (a.cancelled !== b.cancelled) return a.cancelled - b.cancelled;
+      if (a.returned !== b.returned) return a.returned - b.returned;
       return String(a.name ?? "").localeCompare(String(b.name ?? ""));
     });
 
-    const rankedIndex = leaderboard.findIndex((r: any) => String(r.user_id) === data.user_id);
+    const rankedIndex = leaderboard.findIndex((r) => String(r.user_id) === data.user_id);
     const row = rankedIndex >= 0 ? leaderboard[rankedIndex] : null;
     const confirmed = Number(row?.confirmed ?? 0);
     const cancelled = Number(row?.cancelled ?? 0);
+    const delivered = Number(row?.delivered ?? 0);
+    const returned = Number(row?.returned ?? 0);
+    const shipped = Number(row?.shipped ?? 0);
     const handled = confirmed + cancelled;
 
     const [{ data: attendance }, { data: employee }] = await Promise.all([
@@ -86,6 +170,9 @@ export const getEmployeePerformance = createServerFn({ method: "POST" })
     return {
       confirmed,
       cancelled,
+      delivered,
+      returned,
+      shipped,
       totalOrders: handled,
       confirmationRate,
       cancellationRate,
