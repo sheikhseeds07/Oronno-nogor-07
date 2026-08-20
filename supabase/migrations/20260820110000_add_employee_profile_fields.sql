@@ -1,0 +1,3 @@
+ALTER TABLE public.employees
+  ADD COLUMN IF NOT EXISTS join_date DATE,
+  ADD COLUMN IF NOT EXISTS salary NUMERIC(12,2);

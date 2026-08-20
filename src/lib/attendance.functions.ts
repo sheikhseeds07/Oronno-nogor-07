@@ -50,7 +50,7 @@ export const getEmployeeProfile = createServerFn({ method: "POST" }).middleware(
   try { const { data: orders } = await supabaseAdmin.from("orders").select("id,status,created_at").or(`assigned_to.eq.${targetId},created_by.eq.${targetId}`).gte("created_at", since.toISOString()); const ords = orders ?? []; total = ords.length; delivered = ords.filter((o) => o.status === "delivered").length; cancelled = ords.filter((o) => ["cancelled", "returned"].includes(o.status as string)).length; } catch {}
   let totalHours = 0, activeId: string | null = null;
   (att ?? []).forEach((a) => { if (!a.check_out) { activeId = a.id; return; } const ms = new Date(a.check_out).getTime() - new Date(a.check_in).getTime(); if (ms > 0) totalHours += ms / 3600000; });
-  return { profile, employee: emp, attendance: att ?? [], activeAttendanceId: activeId, stats: { totalOrders: total, delivered, cancelled, score: Math.max(0, Math.min(100, delivered * 10 + (total - delivered - cancelled) * 2 - cancelled * 3)), totalHours: Math.round(totalHours * 10) / 10 } };
+  return { profile, employee: emp as any, attendance: att ?? [], activeAttendanceId: activeId, stats: { totalOrders: total, delivered, cancelled, score: Math.max(0, Math.min(100, delivered * 10 + (total - delivered - cancelled) * 2 - cancelled * 3)), totalHours: Math.round(totalHours * 10) / 10 } };
 });
 
 export const listAttendanceOverview = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator((input) => z.object({ days: z.number().min(1).max(90).default(30) }).optional().parse(input)).handler(async ({ data, context }) => {
