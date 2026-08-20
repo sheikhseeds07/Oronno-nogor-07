@@ -2,7 +2,6 @@ import { TopBar } from "./TopBar";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
 import { FloatingContact } from "./FloatingContact";
-import { FacebookPixel } from "./FacebookPixel";
 import { VisitTracker } from "./VisitTracker";
 import { SeoFromSettings } from "./SeoFromSettings";
 
@@ -14,7 +13,6 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
       <main className="flex-1">{children}</main>
       <Footer />
       <FloatingContact />
-      <FacebookPixel />
       <VisitTracker />
       <SeoFromSettings />
     </div>
