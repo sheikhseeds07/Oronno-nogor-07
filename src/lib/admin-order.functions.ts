@@ -15,12 +15,12 @@ export const deleteOrders = createServerFn({ method: "POST" }).middleware([requi
 
 export const cancelOrders = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator((input) => IdsSchema.parse(input)).handler(async ({ data, context }) => {
   await assertCanManageOrders(context.userId);
-  // Persist the actual cancellation actor. Dashboard uses this field so a
-  // cancellation is credited to the employee who pressed Cancel, not the
-  // employee who originally created/confirmed the order.
-  const { error } = await supabaseAdmin.from("orders").update({ status: "cancelled", assigned_to: context.userId }).in("id", data.ids);
+  // Cancellation goes through a permission-checked DB function so authorized
+  // employees can cancel the selected order even when row visibility is narrower.
+  // The DB function only changes status + cancellation actor; courier fields stay intact.
+  const { data: cancelled, error } = await (supabaseAdmin as any).rpc("cancel_orders", { p_ids: data.ids });
   if (error) throw new Error(error.message);
-  return { ok: true, cancelled: data.ids.length };
+  return { ok: true, cancelled: Number(cancelled ?? 0) };
 });
 
 async function assertCanManageOrders(userId: string) {
