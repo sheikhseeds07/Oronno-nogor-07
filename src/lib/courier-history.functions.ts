@@ -19,11 +19,12 @@ type CourierHistoryResult = {
 // Short-lived server-side cache: refreshing an order section must not call
 // the external courier API again for the same phone every time.
 const CACHE_TTL_MS = 5 * 60 * 1000;
+const CACHE_VERSION = "steadfast-fallback-v2";
 const courierCache = new Map<string, { expiresAt: number; result: CourierHistoryResult }>();
 const inFlight = new Map<string, Promise<CourierHistoryResult>>();
 
-// Sensitive Hoorin API credentials stay inside the protected Supabase Edge
-// Function. The browser/server action only receives the aggregated courier stats.
+// Sensitive Hoorin / courier credentials stay inside the protected Supabase
+// Edge Function. The browser/server action only receives aggregated stats.
 export const fetchCourierHistory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ phone: z.string().min(6).max(20) }))
@@ -31,10 +32,11 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
     await assertCanManageOrders(context.userId);
 
     const phone = data.phone.replace(/\D/g, "");
-    const cached = courierCache.get(phone);
+    const cacheKey = `${CACHE_VERSION}:${phone}`;
+    const cached = courierCache.get(cacheKey);
     if (cached && cached.expiresAt > Date.now()) return cached.result;
 
-    const existing = inFlight.get(phone);
+    const existing = inFlight.get(cacheKey);
     if (existing) return existing;
 
     const request = (async (): Promise<CourierHistoryResult> => {
@@ -52,14 +54,16 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
       };
     })();
 
-    inFlight.set(phone, request);
+    inFlight.set(cacheKey, request);
     try {
       const result = await request;
+      // Provider failures are returned with `error`, so transient 429/Packzy
+      // failures are never cached as a misleading Steadfast 0% score.
       if (result.configured && !result.error) {
-        courierCache.set(phone, { expiresAt: Date.now() + CACHE_TTL_MS, result });
+        courierCache.set(cacheKey, { expiresAt: Date.now() + CACHE_TTL_MS, result });
       }
       return result;
     } finally {
-      inFlight.delete(phone);
+      inFlight.delete(cacheKey);
     }
   });
