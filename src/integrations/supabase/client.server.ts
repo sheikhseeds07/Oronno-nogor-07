@@ -1,77 +1,55 @@
-// Server-only Supabase admin client. Never import this module into client code.
+// Server-only Supabase client used by request-scoped server functions.
+//
+// Important: do not keep a user-authenticated client in a module-level cache.
+// Cloudflare isolates can serve multiple requests, so a cached Authorization header
+// could leak one user's session into another request. A fresh client is created for
+// every top-level access instead.
 import "@/lib/crypto-polyfill";
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from './types';
+import { createClient } from "@supabase/supabase-js";
+import { getRequestHeader } from "@tanstack/react-start/server";
+import type { Database } from "./types";
+import {
+  createSupabaseFetch,
+  resolveSupabasePublishableKey,
+  resolveSupabaseUrl,
+} from "./public-env";
 
-function getServerEnv(name: string): string | undefined {
-  if (typeof process !== 'undefined' && process.env?.[name]) return process.env[name];
+function currentAuthorization(): string | undefined {
   try {
-    const meta = (import.meta as unknown as { env?: Record<string, string> }).env;
-    return meta?.[name];
+    const value = getRequestHeader("authorization")?.trim();
+    return value?.startsWith("Bearer ") ? value : undefined;
   } catch {
+    // Background/non-request code has no incoming Authorization header.
     return undefined;
   }
 }
 
-function isNewSupabaseApiKey(value: string): boolean {
-  return value.startsWith('sb_publishable_') || value.startsWith('sb_secret_');
-}
+function createRequestScopedSupabaseClient() {
+  const url = resolveSupabaseUrl();
+  const publishableKey = resolveSupabasePublishableKey();
+  const authorization = currentAuthorization();
 
-function createSupabaseFetch(supabaseKey: string): typeof fetch {
-  return (input, init) => {
-    const headers = new Headers(
-      typeof Request !== 'undefined' && input instanceof Request ? input.headers : undefined,
-    );
-
-    if (init?.headers) {
-      new Headers(init.headers).forEach((value, key) => headers.set(key, value));
-    }
-
-    if (isNewSupabaseApiKey(supabaseKey) && headers.get('Authorization') === `Bearer ${supabaseKey}`) {
-      headers.delete('Authorization');
-    }
-
-    headers.set('apikey', supabaseKey);
-    return fetch(input, { ...init, headers });
-  };
-}
-
-function firstEnv(...names: string[]): string | undefined {
-  for (const n of names) {
-    const v = getServerEnv(n);
-    if (v) return v;
-  }
-  return undefined;
-}
-
-const LIVE_SUPABASE_URL = 'https://bvuhvzccziuniujeogng.supabase.co';
-const LIVE_SUPABASE_SECRET_KEY = 'sb_secret_GI6LYYrsGCYDw94b6G3ebA_QUXAOr0k';
-
-function createSupabaseAdminClient() {
-  const SUPABASE_URL = firstEnv('SUPABASE_URL', 'VITE_SUPABASE_URL') ?? LIVE_SUPABASE_URL;
-  const SUPABASE_SERVICE_ROLE_KEY =
-    firstEnv('LIVE_DB_SECRET_KEY', 'SUPABASE_SECRET_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'SERVICE_ROLE_KEY') ??
-    (SUPABASE_URL === LIVE_SUPABASE_URL ? LIVE_SUPABASE_SECRET_KEY : undefined);
-
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    const missing = [
-      ...(!SUPABASE_URL ? ['SUPABASE_URL'] : []),
-      ...(!SUPABASE_SERVICE_ROLE_KEY ? ['SUPABASE_SERVICE_ROLE_KEY'] : []),
-    ];
-    throw new Error(`Missing Supabase server environment variable(s): ${missing.join(', ')}. Configure them as Cloudflare runtime variables/secrets.`);
-  }
-
-  return createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-    global: { fetch: createSupabaseFetch(SUPABASE_SERVICE_ROLE_KEY) },
-    auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
+  return createClient<Database>(url, publishableKey, {
+    global: {
+      fetch: createSupabaseFetch(publishableKey),
+      ...(authorization ? { headers: { Authorization: authorization } } : {}),
+    },
+    auth: {
+      storage: undefined,
+      persistSession: false,
+      autoRefreshToken: false,
+    },
   });
 }
 
-let _supabaseAdmin: ReturnType<typeof createSupabaseAdminClient> | undefined;
-
-export const supabaseAdmin = new Proxy({} as ReturnType<typeof createSupabaseAdminClient>, {
-  get(_, prop, receiver) {
-    if (!_supabaseAdmin) _supabaseAdmin = createSupabaseAdminClient();
-    return Reflect.get(_supabaseAdmin, prop, receiver);
+// Backward-compatible name. Request-driven admin/employee operations now run as
+// the signed-in user and therefore respect the existing RLS + permission model.
+// Truly privileged Auth Admin operations are routed through the protected
+// `admin-bridge` Edge Function instead of embedding a service key in the repo.
+export const supabaseAdmin = new Proxy({} as ReturnType<typeof createRequestScopedSupabaseClient>, {
+  get(_, prop) {
+    const client = createRequestScopedSupabaseClient();
+    const value = Reflect.get(client, prop, client);
+    return typeof value === "function" ? value.bind(client) : value;
   },
 });
