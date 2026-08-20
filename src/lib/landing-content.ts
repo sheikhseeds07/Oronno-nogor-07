@@ -53,6 +53,8 @@ export type LandingContent = {
   popup_title: string;
   popup_text: string;
   popup_cta: string;
+  popup_mode: "text" | "image";
+  popup_image: string;
   popup_delay: number;
 };
 
@@ -130,6 +132,8 @@ export const DEFAULT_CONTENT: LandingContent = {
   popup_title: "গ্যারান্টি কার্ড",
   popup_text: "আমাদের বীজ কিনলেই ১ প্যাকেট বিদেশি বীজ ফ্রী পাবেন, সাথে গ্যারান্টি কার্ড এবং বীজ থেকে চারা তৈরির সম্পূর্ণ নির্দেশনা।",
   popup_cta: "এখনই অর্ডার করুন",
+  popup_mode: "text",
+  popup_image: "",
   popup_delay: 1200,
 };
 
