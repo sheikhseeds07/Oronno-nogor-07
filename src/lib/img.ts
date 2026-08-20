@@ -1,6 +1,25 @@
-// Supabase Storage on-the-fly image transformer → WebP + resize.
-// Rewrites public object URLs to the render endpoint with width + format.
-// Non-Supabase URLs and data: URIs pass through untouched.
+// Supabase Storage image optimization + same-domain Cloudflare cache proxy.
+// The database keeps the original Supabase URLs and uploads stay unchanged.
+// Public page views use /media so repeat image traffic is served from Cloudflare
+// instead of repeatedly consuming Supabase Cached Egress.
+
+const SUPABASE_STORAGE_HOST = "bvuhvzccziuniujeogng.supabase.co";
+
+function throughMediaCache(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (
+      parsed.protocol === "https:" &&
+      parsed.hostname === SUPABASE_STORAGE_HOST &&
+      parsed.pathname.startsWith("/storage/v1/")
+    ) {
+      return `/media?src=${encodeURIComponent(url)}`;
+    }
+  } catch {
+    // Relative/non-standard URLs should keep their previous behavior.
+  }
+  return url;
+}
 
 export function toImg(
   url: string | null | undefined,
@@ -10,10 +29,10 @@ export function toImg(
   if (url.startsWith("data:") || url.startsWith("blob:")) return url;
 
   // Match Supabase storage object URL → render/image equivalent.
-  // Keep the access kind (public / sign / authenticated) and any existing
-  // query string (signed URLs carry a ?token=... that must be preserved).
+  // Keep the access kind (public / sign / authenticated) and the existing
+  // token, then send the optimized result through our Cloudflare cache route.
   const m = url.match(/^(https?:\/\/[^/]+\/storage\/v1)\/object\/(public|sign|authenticated)\/([^?]+)(\?.*)?$/);
-  if (!m) return url;
+  if (!m) return throughMediaCache(url);
 
   const base = m[1];
   const kind = m[2];
@@ -25,11 +44,10 @@ export function toImg(
   params.set("format", "webp");
   params.set("resize", "cover");
 
-  return `${base}/render/image/${kind}/${rest}?${params.toString()}`;
+  return throughMediaCache(`${base}/render/image/${kind}/${rest}?${params.toString()}`);
 }
 
-
-// Build a srcset for responsive product images
+// Build a srcset for responsive product images.
 export function imgSrcSet(url: string | null | undefined, widths: number[], q = 75): string {
   if (!url) return "";
   return widths
@@ -37,9 +55,9 @@ export function imgSrcSet(url: string | null | undefined, widths: number[], q = 
     .join(", ");
 }
 
-// If the transform endpoint can't serve an image (e.g. image transformation
-// disabled, or a signed URL it won't render), fall back to the raw object URL
-// once so the picture still shows up.
+// If the transform endpoint cannot serve an image, retry the original object
+// through the same Cloudflare cache proxy. We never fall back to direct public
+// Supabase delivery unless the URL is not from this project's Storage host.
 export function imgFallback(
   e: { currentTarget: HTMLImageElement },
   original: string | null | undefined,
@@ -48,5 +66,5 @@ export function imgFallback(
   if (!original || el.dataset["fallback"] === "1") return;
   el.dataset["fallback"] = "1";
   el.removeAttribute("srcset");
-  el.src = original;
+  el.src = throughMediaCache(original);
 }
