@@ -85,7 +85,7 @@ export function ProfessionalLandingPage({ slug, variant }: Props) {
     {C.show_popup && <div className="hidden" aria-hidden="true" />}
     <div className="sticky top-0 z-40 border-b bg-white/95 backdrop-blur">
       <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5 min-w-0"><img src={logo} alt={brand} className="w-9 h-9 rounded-full object-cover"/><div className="min-w-0"><div className="font-black truncate">{brand}</div>{settings.tagline && <div className="text-[10px] text-slate-500 truncate">{settings.tagline}</div>}</div></div>
+        <div className="flex items-center gap-2.5 min-w-0"><img src={toImg(logo)} alt={brand} className="w-9 h-9 rounded-full object-cover"/><div className="min-w-0"><div className="font-black truncate">{brand}</div>{settings.tagline && <div className="text-[10px] text-slate-500 truncate">{settings.tagline}</div>}</div></div>
         <button onClick={() => document.getElementById("lp-order")?.scrollIntoView({ behavior: "smooth" })} className="rounded-xl px-4 py-2 text-sm font-extrabold text-white" style={{ background: theme }}>{C.header_cta_text || page.cta_text || "অর্ডার করুন"}</button>
       </div>
     </div>
