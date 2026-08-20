@@ -5,16 +5,28 @@ import { supabase } from "@/lib/personal-supabase/client";
 const SESSION_KEY = "sk_visit_sid";
 const SENT_KEY = "sk_visit_sent";
 
+function createSessionId(): string {
+  try {
+    const cryptoApi = globalThis.crypto as Crypto & { randomUUID?: unknown } | undefined;
+    if (cryptoApi && typeof cryptoApi.randomUUID === "function") {
+      return cryptoApi.randomUUID() as string;
+    }
+  } catch {
+    // Fall through to a browser-safe identifier.
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+}
+
 function getSessionId(): string {
   try {
     let id = sessionStorage.getItem(SESSION_KEY);
     if (!id) {
-      id = (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      id = createSessionId();
       sessionStorage.setItem(SESSION_KEY, id);
     }
     return id;
   } catch {
-    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return createSessionId();
   }
 }
 
