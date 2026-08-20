@@ -54,6 +54,7 @@ export type LandingContent = {
   popup_text: string;
   popup_cta: string;
   popup_delay: number;
+  popup_image?: string;
 };
 
 export const DEFAULT_SEEDS: SeedRow[] = [
@@ -131,6 +132,7 @@ export const DEFAULT_CONTENT: LandingContent = {
   popup_text: "আমাদের বীজ কিনলেই ১ প্যাকেট বিদেশি বীজ ফ্রী পাবেন, সাথে গ্যারান্টি কার্ড এবং বীজ থেকে চারা তৈরির সম্পূর্ণ নির্দেশনা।",
   popup_cta: "এখনই অর্ডার করুন",
   popup_delay: 1200,
+  popup_image: "",
 };
 
 export function mergeContent(raw: unknown): LandingContent {
