@@ -2,7 +2,7 @@ name: Temporary Invoice Sort Patch
 
 on:
   push:
-    branches: [fix/invoice-desc-order-list]
+    branches: [main]
 
 permissions:
   contents: write
@@ -52,11 +52,12 @@ jobs:
           npm install -g bun@1.2.15
           bun install --frozen-lockfile
           bun run build
-      - name: Commit patch
+      - name: Commit patch and remove temporary workflow
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -- src/routes/admin/orders.tsx
+          rm .github/workflows/tmp-fix-invoice-sort.yml
+          git add -- src/routes/admin/orders.tsx .github/workflows/tmp-fix-invoice-sort.yml
           git diff --cached --quiet && exit 0
           git commit -m 'fix: sort order list invoices descending'
           git push
