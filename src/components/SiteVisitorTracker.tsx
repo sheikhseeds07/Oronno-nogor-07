@@ -2,6 +2,18 @@ import { useEffect } from "react";
 import { useLocation } from "@tanstack/react-router";
 import { supabase } from "@/lib/personal-supabase/client";
 
+function createVisitorId(): string {
+  try {
+    const cryptoApi = globalThis.crypto as Crypto & { randomUUID?: unknown } | undefined;
+    if (cryptoApi && typeof cryptoApi.randomUUID === "function") {
+      return cryptoApi.randomUUID() as string;
+    }
+  } catch {
+    // Fall through to a non-crypto browser-safe identifier.
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+}
+
 export function SiteVisitorTracker() {
   const location = useLocation();
   useEffect(() => {
@@ -10,7 +22,7 @@ export function SiteVisitorTracker() {
       const key = "site-visitor-id";
       const old = localStorage.getItem(key);
       if (old) return old;
-      const id = crypto.randomUUID();
+      const id = createVisitorId();
       localStorage.setItem(key, id);
       return id;
     })();
@@ -32,8 +44,8 @@ export function SiteVisitorTracker() {
       }
       await (supabase as any).rpc("heartbeat_site_visitor", { p_id: visitorId, p_path: path, p_landing_page_id: landingPageId, p_product_id: productId });
     };
-    heartbeat();
-    const timer = window.setInterval(heartbeat, 30000);
+    heartbeat().catch(() => { /* visitor tracking must never break the page */ });
+    const timer = window.setInterval(() => { void heartbeat().catch(() => {}); }, 30000);
     return () => { active = false; window.clearInterval(timer); };
   }, [location.pathname]);
   return null;
