@@ -17,11 +17,16 @@ function streakDays(rows: Array<{ check_in: string }>) {
   return count;
 }
 
+const CONFIRMED = new Set(["pending", "rts", "shipped", "delivered", "pending_return", "returned", "partial"]);
+const isConfirmed = (status: unknown) => CONFIRMED.has(String(status ?? "").toLowerCase());
+const isCancelled = (status: unknown) => ["cancelled", "canceled"].includes(String(status ?? "").toLowerCase());
+
 export const getEmployeePerformance = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ user_id: z.string().uuid(), start: z.string(), end: z.string() }).parse(input))
   .handler(async ({ data, context }) => {
     if (data.user_id !== context.userId && !(await isAdmin(context.userId))) throw new Error("Unauthorized");
+
     const start = new Date(`${data.start}T00:00:00`).toISOString();
     const end = new Date(`${data.end}T23:59:59.999`).toISOString();
 
@@ -31,42 +36,47 @@ export const getEmployeePerformance = createServerFn({ method: "POST" })
       supabaseAdmin.from("user_roles").select("user_id,role").in("role", ["admin", "super_admin"]),
     ]);
 
+    // The Dashboard is the single source of truth for employee confirmation metrics.
+    // Keep the same employee population and actor/status rules here so Profile and
+    // Dashboard can never show different confirmation/cancellation numbers.
     const adminIds = new Set((roles ?? []).map((r) => r.user_id).filter(Boolean));
     const employeeRows = (employees ?? []).filter((e) => e.user_id && !adminIds.has(e.user_id));
     const userIds = employeeRows.map((e) => e.user_id).filter(Boolean) as string[];
 
-    let orders: any[] = [];
-    try {
-      // Use both assignment and creator. In this system an employee can confirm an
-      // assigned web order and the confirmation action may update created_by while
-      // leaving/clearing assigned_to. We therefore resolve ownership to an active
-      // employee from assigned_to first, then created_by as a safe fallback.
-      const { data: rows, error } = await supabaseAdmin
-        .from("orders")
-        .select("id,status,source,created_at,updated_at,assigned_to,created_by")
-        .or(`and(created_at.gte.${start},created_at.lte.${end}),and(updated_at.gte.${start},updated_at.lte.${end})`)
-        .limit(20000);
-      if (!error) orders = rows ?? [];
-    } catch {}
+    const { data: orders, error: ordersError } = await supabaseAdmin
+      .from("orders")
+      .select("id,status,source,created_at,updated_at,created_by,assigned_to")
+      .gte("created_at", start)
+      .lte("created_at", end)
+      .limit(30000);
+    if (ordersError) throw new Error(ordersError.message);
 
     const stats = new Map<string, { confirmed: number; cancelled: number; handled: number; hours: number; present: number; streak: number }>();
     for (const id of userIds) stats.set(id, { confirmed: 0, cancelled: 0, handled: 0, hours: 0, present: 0, streak: 0 });
 
-    for (const o of orders) {
+    // EXACT Dashboard actor logic:
+    // - confirmed order -> created_by employee
+    // - cancelled order -> assigned_to employee
+    // - no assigned_to fallback for confirmations
+    // - no web_pending/processing confirmation; only Dashboard's CONFIRMED set
+    // - incomplete orders are included because Dashboard's employee section uses all orders
+    for (const o of orders ?? []) {
       const status = String(o.status ?? "").toLowerCase();
-      if (status === "web_pending") continue;
-
-      const assignedId = String(o.assigned_to ?? "");
-      const createdById = String(o.created_by ?? "");
-      // Prefer the actual assignment; fallback to the employee who performed the
-      // confirmation/update when assignment is no longer present.
-      const uid = stats.has(assignedId) ? assignedId : stats.has(createdById) ? createdById : "";
-      if (!uid) continue;
-
-      const s = stats.get(uid)!;
-      s.handled++;
-      if (["cancelled", "canceled", "returned"].includes(status)) s.cancelled++;
-      else s.confirmed++;
+      if (isConfirmed(status)) {
+        const uid = String(o.created_by ?? "");
+        const s = stats.get(uid);
+        if (s) {
+          s.confirmed++;
+          s.handled++;
+        }
+      } else if (isCancelled(status)) {
+        const uid = String(o.assigned_to ?? "");
+        const s = stats.get(uid);
+        if (s) {
+          s.cancelled++;
+          s.handled++;
+        }
+      }
     }
 
     for (const id of userIds) {
@@ -81,20 +91,24 @@ export const getEmployeePerformance = createServerFn({ method: "POST" })
       }
     }
 
+    // Ranking uses the same real confirmation/cancellation counts, with attendance
+    // as the only additional factor for the profile score.
     const scored = userIds.map((id) => {
       const s = stats.get(id)!;
-      const rate = s.handled ? (s.confirmed / s.handled) * 100 : 0;
-      const cancelRate = s.handled ? (s.cancelled / s.handled) * 100 : 0;
+      const decisions = s.confirmed + s.cancelled;
+      const confirmationRate = decisions ? (s.confirmed / decisions) * 100 : 0;
+      const cancellationRate = decisions ? (s.cancelled / decisions) * 100 : 0;
       const attendanceScore = Math.min(100, (s.present / 26) * 100);
-      return { id, score: Math.max(0, Math.min(100, Math.round(rate * 0.65 + (100 - cancelRate) * 0.2 + attendanceScore * 0.15))) };
+      return { id, score: Math.max(0, Math.min(100, Math.round(confirmationRate * 0.65 + (100 - cancellationRate) * 0.2 + attendanceScore * 0.15))) };
     }).sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
 
     const rankIndex = scored.findIndex((x) => x.id === data.user_id);
     const rank = rankIndex >= 0 ? rankIndex + 1 : 0;
     const me = stats.get(data.user_id) ?? { confirmed: 0, cancelled: 0, handled: 0, hours: 0, present: 0, streak: 0 };
     const employee: any = employeeRows.find((e) => e.user_id === data.user_id) ?? {};
-    const confirmationRate = me.handled ? Math.round((me.confirmed / me.handled) * 100) : 0;
-    const cancellationRate = me.handled ? Math.round((me.cancelled / me.handled) * 100) : 0;
+    const decisions = me.confirmed + me.cancelled;
+    const confirmationRate = decisions ? Math.round((me.confirmed / decisions) * 100) : 0;
+    const cancellationRate = decisions ? Math.round((me.cancelled / decisions) * 100) : 0;
     const score = rankIndex >= 0 ? scored[rankIndex].score : 0;
     const level = score >= 90 ? "Elite" : score >= 80 ? "Gold" : score >= 65 ? "Silver" : "Bronze";
 
