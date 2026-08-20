@@ -24,8 +24,6 @@ export const getEmployeePerformance = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     if (data.user_id !== context.userId && !(await isAdmin(context.userId))) throw new Error("Unauthorized");
 
-    // Dashboard is the single source of truth. Profile no longer has its own
-    // order-attribution query, so the two screens cannot drift apart.
     const dashboard = await getPremiumDashboardReport({
       data: {
         from: new Date(`${data.start}T00:00:00`).toISOString(),
@@ -34,7 +32,27 @@ export const getEmployeePerformance = createServerFn({ method: "POST" })
       context: context as any,
     } as any);
 
-    const row = ((dashboard as any)?.employeePerformance ?? []).find((r: any) => String(r.user_id ?? "") === data.user_id);
+    const rows = Array.isArray((dashboard as any)?.employeePerformance) ? (dashboard as any).employeePerformance : [];
+
+    // Build the monthly leaderboard from the same Dashboard source of truth.
+    // Admin/super-admin are never part of employeesR, so they cannot take a rank.
+    const leaderboard = rows.map((r: any) => {
+      const confirmed = Number(r?.confirmed ?? 0);
+      const cancelled = Number(r?.cancelled ?? 0);
+      const handled = confirmed + cancelled;
+      const confirmationRate = handled ? (confirmed / handled) * 100 : 0;
+      const cancellationRate = handled ? (cancelled / handled) * 100 : 0;
+      const score = handled ? Math.max(0, Math.min(100, Math.round(confirmationRate * 0.8 + (100 - cancellationRate) * 0.2))) : 0;
+      return { ...r, confirmed, cancelled, handled, confirmationRate, cancellationRate, score };
+    }).filter((r: any) => r.user_id).sort((a: any, b: any) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (b.confirmed !== a.confirmed) return b.confirmed - a.confirmed;
+      if (a.cancelled !== b.cancelled) return a.cancelled - b.cancelled;
+      return String(a.name ?? "").localeCompare(String(b.name ?? ""));
+    });
+
+    const rankedIndex = leaderboard.findIndex((r: any) => String(r.user_id) === data.user_id);
+    const row = rankedIndex >= 0 ? leaderboard[rankedIndex] : null;
     const confirmed = Number(row?.confirmed ?? 0);
     const cancelled = Number(row?.cancelled ?? 0);
     const handled = confirmed + cancelled;
@@ -55,7 +73,7 @@ export const getEmployeePerformance = createServerFn({ method: "POST" })
 
     const confirmationRate = handled ? Math.round((confirmed / handled) * 100) : 0;
     const cancellationRate = handled ? Math.round((cancelled / handled) * 100) : 0;
-    const score = Number(row?.score ?? (handled ? Math.max(0, Math.min(100, Math.round(confirmationRate * 0.8 + (100 - cancellationRate) * 0.2))) : 0));
+    const score = Number(row?.score ?? 0);
     const level = score >= 90 ? "Elite" : score >= 80 ? "Gold" : score >= 65 ? "Silver" : "Bronze";
 
     return {
@@ -69,8 +87,10 @@ export const getEmployeePerformance = createServerFn({ method: "POST" })
       presentDays,
       streak: streakDays(attendanceRows),
       score,
-      rank: Number(row?.rank ?? 0),
-      teamSize: Number(row?.teamSize ?? 0),
+      rank: rankedIndex >= 0 ? rankedIndex + 1 : 0,
+      teamSize: leaderboard.length,
+      isBest: rankedIndex === 0 && leaderboard.length > 0,
+      bestPerformer: leaderboard[0]?.name ?? null,
       level,
       monthlyBonus: Number(employee?.monthly_bonus ?? 0),
       leaveBalance: Number(employee?.leave_balance ?? 0),
