@@ -221,7 +221,7 @@ export function LegacyLandingPage({ slug }: { slug: string }) {
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             {brandLogo ? (
-              <img src={brandLogo} alt={brandName} width={40} height={40} decoding="async" className="h-10 w-10 rounded-full object-contain ring-2 ring-offset-1 bg-white" style={{ ["--tw-ring-color" as string]: themeColor }} />
+              <img src={toImg(brandLogo)} alt={brandName} width={40} height={40} decoding="async" className="h-10 w-10 rounded-full object-contain ring-2 ring-offset-1 bg-white" style={{ ["--tw-ring-color" as string]: themeColor }} />
             ) : (
               <div className="h-10 w-10 rounded-full grid place-items-center text-white shadow" style={{ background: themeColor }}>
                 <Leaf className="w-5 h-5" />

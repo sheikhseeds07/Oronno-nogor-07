@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { ProductCard, type Product } from "@/components/shop/ProductCard";
 import { supabase } from "@/lib/personal-supabase/client";
+import { toImg } from "@/lib/img";
 import { Leaf, ChevronRight } from "lucide-react";
 
 export const Route = createFileRoute("/category/$slug")({ component: CategoryPage });
@@ -90,7 +91,7 @@ function CategoryPage() {
                 className={`group shrink-0 flex items-center gap-2 rounded-2xl border px-2.5 py-2 transition-all ${c.slug === slug ? "border-brand bg-brand text-white shadow-md" : "border-border bg-white text-foreground hover:border-brand/30 hover:bg-brand-light/30"}`}
               >
                 <span className="h-9 w-9 sm:h-10 sm:w-10 shrink-0 overflow-hidden rounded-xl bg-brand-light/50 ring-1 ring-black/5">
-                  {c.image_url ? <img src={c.image_url} alt="" className="h-full w-full object-cover" loading="lazy" /> : <span className="flex h-full w-full items-center justify-center text-brand">🌱</span>}
+                  {c.image_url ? <img src={toImg(c.image_url)} alt="" className="h-full w-full object-cover" loading="lazy" /> : <span className="flex h-full w-full items-center justify-center text-brand">🌱</span>}
                 </span>
                 <span className="pr-1 text-sm font-bold">{c.name}</span>
               </Link>
@@ -103,7 +104,7 @@ function CategoryPage() {
           <section className="mt-5 rounded-2xl border border-brand/15 bg-brand-light/15 p-3.5 sm:p-4">
             <div className="flex items-center gap-3 mb-3">
               <div className="h-12 w-12 sm:h-14 sm:w-14 shrink-0 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-brand/10">
-                {cat.image_url ? <img src={cat.image_url} alt={cat.name} className="h-full w-full object-cover" loading="eager" /> : <div className="flex h-full w-full items-center justify-center text-brand text-xl">🌱</div>}
+                {cat.image_url ? <img src={toImg(cat.image_url)} alt={cat.name} className="h-full w-full object-cover" loading="eager" /> : <div className="flex h-full w-full items-center justify-center text-brand text-xl">🌱</div>}
               </div>
               <h1 className="text-lg sm:text-xl font-extrabold text-brand-dark">{cat.name}</h1>
             </div>
@@ -126,7 +127,7 @@ function CategoryPage() {
         {cat && children.length === 0 && (
           <header className="mt-5 mb-5 flex items-center gap-3">
             <div className="h-12 w-12 sm:h-14 sm:w-14 shrink-0 overflow-hidden rounded-2xl bg-brand-light/30 ring-1 ring-brand/10">
-              {cat.image_url ? <img src={cat.image_url} alt={cat.name} className="h-full w-full object-cover" loading="eager" /> : <div className="flex h-full w-full items-center justify-center text-brand text-xl">🌱</div>}
+              {cat.image_url ? <img src={toImg(cat.image_url)} alt={cat.name} className="h-full w-full object-cover" loading="eager" /> : <div className="flex h-full w-full items-center justify-center text-brand text-xl">🌱</div>}
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-brand-dark">{cat.name}</h1>
           </header>

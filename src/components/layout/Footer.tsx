@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Phone, Mail, MapPin } from "lucide-react";
 import { supabase } from "@/lib/personal-supabase/client";
 import logo from "@/assets/logo.jpg";
+import { toImg } from "@/lib/img";
 
 type Settings = {
   site_name?: string; tagline?: string; phone?: string; email?: string; address?: string;
@@ -47,7 +48,7 @@ export function Footer() {
   return (
     <footer className="bg-[#1a1a1a] text-white mt-12">
       <div className="container mx-auto px-4 py-10 text-center">
-        <img src={logoSrc} alt={name} width={64} height={64} loading="lazy" decoding="async" className="w-16 h-16 rounded-full mx-auto mb-3 object-cover" />
+        <img src={toImg(logoSrc)} alt={name} width={64} height={64} loading="lazy" decoding="async" className="w-16 h-16 rounded-full mx-auto mb-3 object-cover" />
         <p className="text-sm text-white/85 mb-5">{s.tagline || "দেশী ও বিদেশী বীজ এর একটি বিশ্বস্ত প্রতিষ্ঠান"}</p>
 
         <div className="flex flex-row flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs sm:text-sm text-white/85 mb-4">

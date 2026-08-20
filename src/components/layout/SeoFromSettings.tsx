@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/personal-supabase/client";
+import { toImg } from "@/lib/img";
 
 export type SeoSettings = {
   seo_title?: string;
@@ -55,6 +56,7 @@ export function SeoFromSettings() {
     if (typeof document === "undefined") return;
     const base = (s.seo_site_url || "").replace(/\/$/, "");
     const url = base ? `${base}${path}` : undefined;
+    const ogImage = s.seo_og_image ? new URL(toImg(s.seo_og_image), window.location.origin).toString() : undefined;
 
     setMeta("name", "robots", s.seo_robots);
     setMeta("name", "google-site-verification", s.seo_google_verification);
@@ -70,8 +72,8 @@ export function SeoFromSettings() {
     setMeta("property", "og:description", s.seo_description);
     setMeta("name", "twitter:description", s.seo_description);
     setMeta("name", "keywords", s.seo_keywords);
-    setMeta("property", "og:image", s.seo_og_image);
-    setMeta("name", "twitter:image", s.seo_og_image);
+    setMeta("property", "og:image", ogImage);
+    setMeta("name", "twitter:image", ogImage);
     setMeta("property", "og:url", url);
   }, [s.seo_title, s.seo_description, s.seo_keywords, s.seo_og_image, s.seo_site_url, s.seo_google_verification, s.seo_robots, path, isHome]);
 
