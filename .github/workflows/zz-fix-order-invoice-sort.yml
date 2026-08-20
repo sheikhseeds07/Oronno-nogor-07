@@ -1,0 +1,52 @@
+name: One-time invoice sort patch
+on:
+  push:
+    branches: [fix/order-list-thankyou-courier-rate]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/order-list-thankyou-courier-rate
+      - name: Patch Pending and RTS invoice ordering
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/routes/admin/orders.tsx')
+          s = p.read_text()
+          old = '''      return await attachProductImages((ords ?? []) as unknown as OrderRow[]);'''
+          new = '''      const withImages = await attachProductImages((ords ?? []) as unknown as OrderRow[]);
+      // Pending and RTS are operational queues: keep them in invoice sequence
+      // (AA100, AA101, AA102...) instead of creation-time order.
+      if (mode === "list" && (filter === "pending" || filter === "rts")) {
+        const invoiceNumber = (value: string | null) => {
+          const match = String(value ?? "").match(/(\\d+)$/);
+          return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
+        };
+        return withImages.sort((a, b) => {
+          const diff = invoiceNumber(a.invoice_no) - invoiceNumber(b.invoice_no);
+          if (diff !== 0) return diff;
+          return String(a.invoice_no ?? "").localeCompare(String(b.invoice_no ?? ""), undefined, { numeric: true, sensitivity: "base" });
+        });
+      }
+      return withImages;'''
+          if new in s:
+              print('already patched')
+          elif old in s:
+              p.write_text(s.replace(old, new, 1))
+              print('patched')
+          else:
+              raise SystemExit('target snippet not found')
+          PY
+      - name: Commit patch and remove one-time workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/zz-fix-order-invoice-sort.yml
+          git add src/routes/admin/orders.tsx
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Restore invoice sequence in Pending and RTS"
+          git push origin HEAD:fix/order-list-thankyou-courier-rate
