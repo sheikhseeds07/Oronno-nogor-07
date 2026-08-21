@@ -1626,7 +1626,7 @@ function CourierSuccessCell({ phone }: { phone: string }) {
   const { data, isFetching } = useQuery({
     queryKey: ["courier-rate", digits],
     enabled: enabled && nearViewport,
-    queryFn: () => fn({ data: { phone: digits, cacheOnly: true } }),
+    queryFn: () => fn({ data: { phone: digits } }),
     staleTime: 10 * 60_000,
   });
 
