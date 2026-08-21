@@ -112,7 +112,14 @@ export const listOrderLocks = createServerFn({ method: "POST" })
         .select("order_id,user_id,user_name,heartbeat_at")
         .in("order_id", data.order_ids);
       const cutoff = Date.now() - STALE_MS;
-      return ((rows ?? []) as LockRow[]).filter((r) => new Date(r.heartbeat_at).getTime() >= cutoff);
+      return (rows ?? [])
+        .filter((r) => Boolean(r.order_id && r.user_id && r.heartbeat_at) && new Date(r.heartbeat_at).getTime() >= cutoff)
+        .map((r) => ({
+          order_id: String(r.order_id),
+          user_id: String(r.user_id),
+          user_name: r.user_name ?? "Staff",
+          heartbeat_at: String(r.heartbeat_at),
+        }));
     })();
 
     lockListInFlight.set(key, request);
