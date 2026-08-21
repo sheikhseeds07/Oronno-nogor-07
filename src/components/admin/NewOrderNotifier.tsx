@@ -118,7 +118,6 @@ export function NewOrderNotifier() {
   const startedAt = useRef<number>(Date.now());
 
   useEffect(() => {
-    // Browser notification permission
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission().catch(() => {});
     }
@@ -130,7 +129,6 @@ export function NewOrderNotifier() {
         { event: "INSERT", schema: "public", table: "orders" },
         (payload) => {
           const row: any = payload.new;
-          // Ignore rows older than mount (initial backfill safety)
           if (row?.created_at && new Date(row.created_at).getTime() < startedAt.current - 5000) return;
 
           const title = `নতুন অর্ডার: ${row?.customer_name ?? ""}`;
@@ -138,48 +136,32 @@ export function NewOrderNotifier() {
 
           toast.custom(
             (id) => (
-              <div className="w-[min(390px,calc(100vw-24px))] overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.18)] ring-1 ring-black/5">
-                <div className="flex items-start gap-3 p-4">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/20">
-                    <ShoppingBag className="h-5 w-5" strokeWidth={2.2} />
+              <div className="w-[min(430px,calc(100vw-20px))] rounded-xl border border-slate-200/80 bg-white/95 px-2.5 py-2 shadow-[0_12px_35px_rgba(15,23,42,0.18)] ring-1 ring-black/5 backdrop-blur-xl">
+                <div className="flex h-9 items-center gap-2.5">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500 text-white shadow-sm">
+                    <ShoppingBag className="h-4 w-4" strokeWidth={2.4} />
                   </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-emerald-600">
-                        New Order
-                      </div>
-                      <button
-                        type="button"
-                        aria-label="Close notification"
-                        onClick={() => toast.dismiss(id)}
-                        className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <div className="mt-0.5 truncate text-[15px] font-extrabold text-slate-900">
-                      {row?.customer_name || "New customer"}
-                    </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] font-medium text-slate-500">
-                      <span>{row?.customer_phone || "No phone"}</span>
-                      <span className="text-slate-300">•</span>
-                      <span className="font-extrabold text-slate-800">৳{row?.total ?? 0}</span>
-                    </div>
+                  <div className="min-w-0 flex-1 flex items-center gap-2">
+                    <span className="shrink-0 text-[10px] font-black uppercase tracking-wider text-emerald-600">New Order</span>
+                    <span className="h-3 w-px shrink-0 bg-slate-200" />
+                    <span className="min-w-0 truncate text-[12px] font-extrabold text-slate-900">{row?.customer_name || "New customer"}</span>
+                    <span className="hidden sm:inline shrink-0 text-[10px] text-slate-400">{row?.customer_phone || ""}</span>
+                    <span className="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-black text-slate-800">৳{row?.total ?? 0}</span>
                   </div>
-                </div>
-
-                <div className="flex items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/80 px-4 py-3">
-                  <span className="text-[10px] font-semibold text-slate-400">Order received just now</span>
                   <button
                     type="button"
-                    onClick={() => {
-                      toast.dismiss(id);
-                      navigate({ to: "/admin/orders" });
-                    }}
-                    className="rounded-lg bg-slate-900 px-3.5 py-2 text-[11px] font-extrabold text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.98]"
+                    onClick={() => { toast.dismiss(id); navigate({ to: "/admin/orders" }); }}
+                    className="shrink-0 rounded-md bg-slate-900 px-2.5 py-1.5 text-[10px] font-extrabold text-white transition hover:bg-slate-800 active:scale-95"
                   >
-                    View Order →
+                    View
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Close notification"
+                    onClick={() => toast.dismiss(id)}
+                    className="shrink-0 rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                  >
+                    <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
               </div>
