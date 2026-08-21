@@ -1,14 +1,33 @@
 import { supabase } from "@/lib/personal-supabase/client";
 
 // Buckets in this workspace are private, so a "public URL" would 400.
-// Upload, then hand back a long-lived signed URL (10 years) that any
-// visitor can load.
+// Upload, then create a long-lived signed origin URL. The returned URL is
+// wrapped by the same-domain Cloudflare /media cache so public visitors do
+// not fetch images directly from Supabase Storage.
 const TEN_YEARS = 60 * 60 * 24 * 365 * 10;
 const ONE_YEAR = 60 * 60 * 24 * 365;
 const IMAGE_OPTIMIZE_THRESHOLD = 250 * 1024;
 const MAX_IMAGE_DIMENSION = 1920;
 const WEBP_QUALITY = 0.84;
 const OPTIMIZABLE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+const SUPABASE_STORAGE_HOST = "bvuhvzccziuniujeogng.supabase.co";
+
+function throughMediaCache(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (
+      parsed.protocol === "https:" &&
+      parsed.hostname === SUPABASE_STORAGE_HOST &&
+      parsed.pathname.startsWith("/storage/v1/")
+    ) {
+      return `/media?src=${encodeURIComponent(url)}`;
+    }
+  } catch {
+    // Keep the original URL if it is not a standard absolute URL.
+  }
+  return url;
+}
 
 type PreparedUpload = {
   path: string;
@@ -91,7 +110,11 @@ export async function uploadToBucket(
     .from(bucket)
     .createSignedUrl(prepared.path, TEN_YEARS);
   if (signErr || !data?.signedUrl) throw new Error(signErr?.message || "URL তৈরি হয়নি");
-  return data.signedUrl;
+
+  // Critical egress fix: never hand the raw Supabase Storage URL to the app.
+  // The signed URL remains the private origin for the Worker, while browsers,
+  // crawlers and Meta's in-app browser all hit the same Cloudflare cache key.
+  return throughMediaCache(data.signedUrl);
 }
 
 export function safeFileName(name: string) {
