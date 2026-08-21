@@ -27,3 +27,5 @@ bun run dev
 ```bash
 bun run build
 ```
+
+Deployment is handled by the Cloudflare Workers Git integration from the `main` branch.
