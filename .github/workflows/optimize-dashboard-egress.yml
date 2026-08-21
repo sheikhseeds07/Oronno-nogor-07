@@ -1,0 +1,82 @@
+name: Optimize Dashboard Egress
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/optimize-dashboard-egress.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  optimize:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply safe dashboard egress optimizations
+        shell: python
+        run: |
+          from pathlib import Path
+
+          dashboard = Path('src/components/admin/PremiumDashboard.tsx')
+          text = dashboard.read_text(encoding='utf-8')
+
+          replacements = [
+              ('window.setTimeout(()=>{scheduled=null;qc.invalidateQueries({queryKey:["business-dashboard"],refetchType:"active"})},5000)',
+               'window.setTimeout(()=>{scheduled=null;qc.invalidateQueries({queryKey:["business-dashboard"],refetchType:"active"})},300000)'),
+              ('const t=window.setInterval(()=>{if(!document.hidden)qc.invalidateQueries({queryKey:["business-dashboard"],refetchType:"active"})},120000);',
+               'const t=window.setInterval(()=>{if(!document.hidden)qc.invalidateQueries({queryKey:["business-dashboard"],refetchType:"active"})},300000);'),
+          ]
+          for old, new in replacements:
+              if old not in text:
+                  raise SystemExit(f'Expected dashboard pattern not found: {old[:80]}')
+              text = text.replace(old, new, 1)
+          dashboard.write_text(text, encoding='utf-8')
+
+          server = Path('src/lib/dashboard.functions.ts')
+          text = server.read_text(encoding='utf-8')
+
+          replacements = [
+              ('const DASHBOARD_CACHE_TTL_MS=60_000;', 'const DASHBOARD_CACHE_TTL_MS=300_000;'),
+          ]
+          for old, new in replacements:
+              if old not in text:
+                  raise SystemExit(f'Expected server pattern not found: {old}')
+              text = text.replace(old, new, 1)
+          server.write_text(text, encoding='utf-8')
+
+      - name: Build verification
+        shell: bash
+        run: |
+          if [ -f bun.lockb ] || [ -f bun.lock ]; then
+            corepack enable || true
+            bun install --frozen-lockfile
+            bun run build
+          elif [ -f pnpm-lock.yaml ]; then
+            corepack enable
+            pnpm install --frozen-lockfile
+            pnpm run build
+          elif [ -f package-lock.json ]; then
+            npm ci
+            npm run build
+          else
+            npm install
+            npm run build
+          fi
+
+      - name: Commit optimized dashboard
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/components/admin/PremiumDashboard.tsx src/lib/dashboard.functions.ts
+          if git diff --cached --quiet; then
+            echo 'No dashboard optimization changes were necessary.'
+            exit 0
+          fi
+          git commit -m 'perf: reduce dashboard Supabase egress'
+          git push
