@@ -79,7 +79,6 @@ export const heartbeatOrderLock = createServerFn({ method: "POST" })
       .update({ heartbeat_at: new Date().toISOString() })
       .eq("order_id", data.order_id)
       .eq("user_id", context.userId);
-    clearLockListCache();
     return { ok: true };
   });
 
