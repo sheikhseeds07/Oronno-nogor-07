@@ -23,9 +23,14 @@ const newDisplay = `  const displayRows = mode === "list"
         .slice((rtsPage - 1) * rtsPageSize, rtsPage * rtsPageSize)
     : rows;`;
 
+const serverPagedDisplay = "  const displayRows = isIncomplete ? rows.slice((page - 1) * pageSize, page * pageSize) : rows;";
+const serverInvoiceOrder = 'query.order("invoice_no", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false })';
+
 if (source.includes(oldDisplay)) {
   source = source.replace(oldDisplay, newDisplay);
   changed = true;
+} else if (source.includes(serverPagedDisplay) && source.includes(serverInvoiceOrder)) {
+  console.log("Server-paginated Order List already uses highest-invoice-first ordering.");
 } else if (!source.includes(newDisplay)) {
   throw new Error("Order List display sorting block not found; refusing to build with an unknown layout.");
 }
