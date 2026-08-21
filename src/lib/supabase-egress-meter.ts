@@ -12,6 +12,7 @@ const FLUSH_INTERVAL_MS = 60_000;
 const MAX_BATCH = 100;
 let flushTimer: ReturnType<typeof setTimeout> | undefined;
 let flushing = false;
+let sendMetrics: ((rows: EgressMetric[]) => Promise<void>) | undefined;
 
 function readQueue(): EgressMetric[] {
   try {
@@ -36,9 +37,8 @@ function normalizeEndpoint(input: RequestInfo | URL): string | null {
     const url = new URL(raw, typeof window !== "undefined" ? window.location.origin : undefined);
     if (!url.hostname.includes("supabase.co")) return null;
 
-    const path = url.pathname.replace(/\/+/g, "/");
-    if (path.includes("/auth/v1/") || path.includes("/functions/v1/record_endpoint_egress")) return null;
-
+    const path = url.pathname.replace(/\\+/g, "/");
+    if (path.includes("/auth/v1/") || path.includes("endpoint_egress")) return null;
     if (path.startsWith("/rest/v1/rpc/")) return `/rpc/${path.slice("/rest/v1/rpc/".length)}`;
     if (path.startsWith("/rest/v1/")) return `/rest/${path.slice("/rest/v1/".length)}`;
     if (path.startsWith("/storage/v1/")) return `/storage/${path.slice("/storage/v1/".length)}`;
@@ -46,6 +46,11 @@ function normalizeEndpoint(input: RequestInfo | URL): string | null {
   } catch {
     return null;
   }
+}
+
+export function setSupabaseEgressSender(sender: (rows: EgressMetric[]) => Promise<void>) {
+  sendMetrics = sender;
+  scheduleEgressFlush(0);
 }
 
 export function recordSupabaseEgress(
@@ -56,18 +61,19 @@ export function recordSupabaseEgress(
 ) {
   if (typeof window === "undefined") return;
   const endpoint = normalizeEndpoint(input);
-  if (!endpoint || endpoint.includes("endpoint_egress")) return;
+  if (!endpoint) return;
 
   const bucket = new Date();
   bucket.setMinutes(0, 0, 0);
   const bucketHour = bucket.toISOString();
   const statusClass = Math.floor(status / 100);
   const rows = readQueue();
+  const methodUpper = method.toUpperCase();
   const existing = rows.find(
     (row) =>
       row.bucket_hour === bucketHour &&
       row.endpoint === endpoint &&
-      row.method === method.toUpperCase() &&
+      row.method === methodUpper &&
       row.status_class === statusClass,
   );
 
@@ -78,7 +84,7 @@ export function recordSupabaseEgress(
     rows.push({
       bucket_hour: bucketHour,
       endpoint,
-      method: method.toUpperCase(),
+      method: methodUpper,
       status_class: statusClass,
       request_count: 1,
       response_bytes: Math.max(0, responseBytes || 0),
@@ -90,33 +96,30 @@ export function recordSupabaseEgress(
 }
 
 async function flushEgressMetrics() {
-  if (flushing || typeof window === "undefined") return;
+  if (flushing || !sendMetrics || typeof window === "undefined") return;
   const rows = readQueue();
   if (!rows.length) return;
 
   const batch = rows.slice(0, MAX_BATCH);
   flushing = true;
   try {
-    const url = `${window.location.origin}/__supabase_egress_metrics`;
-    // The application fetch wrapper replaces this with a Supabase RPC request.
-    // This fallback is intentionally a no-op until the client wires the RPC.
-    void url;
+    await sendMetrics(batch);
+    writeQueue(rows.slice(batch.length));
+  } catch {
+    // Keep metrics queued so a temporary network failure does not lose them.
   } finally {
     flushing = false;
   }
 }
 
-export function scheduleEgressFlush() {
+export function scheduleEgressFlush(delay = FLUSH_INTERVAL_MS) {
   if (flushTimer) return;
   flushTimer = setTimeout(() => {
     flushTimer = undefined;
     void flushEgressMetrics();
-  }, FLUSH_INTERVAL_MS);
+  }, delay);
 }
 
-export function takeSupabaseEgressMetrics(): EgressMetric[] {
-  const rows = readQueue();
-  if (!rows.length) return [];
-  writeQueue([]);
-  return rows.slice(0, MAX_BATCH);
+export function flushSupabaseEgressNow() {
+  void flushEgressMetrics();
 }
