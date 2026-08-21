@@ -6,9 +6,9 @@ import { supabase } from "@/lib/personal-supabase/client";
 // not fetch images directly from Supabase Storage.
 const TEN_YEARS = 60 * 60 * 24 * 365 * 10;
 const ONE_YEAR = 60 * 60 * 24 * 365;
-const IMAGE_OPTIMIZE_THRESHOLD = 250 * 1024;
-const MAX_IMAGE_DIMENSION = 1920;
-const WEBP_QUALITY = 0.84;
+const IMAGE_OPTIMIZE_THRESHOLD = 120 * 1024;
+const MAX_IMAGE_DIMENSION = 1400;
+const WEBP_QUALITY = 0.76;
 const OPTIMIZABLE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 const SUPABASE_STORAGE_HOST = "bvuhvzccziuniujeogng.supabase.co";
@@ -73,7 +73,7 @@ async function optimizeImageUpload(path: string, file: File): Promise<PreparedUp
     // Only replace the upload when it materially reduces bytes. This preserves
     // already-efficient images while preventing multi-megabyte PNG/JPEG uploads
     // from becoming a recurring Storage egress cost.
-    if (!blob || blob.size >= file.size * 0.9) return { path, file };
+    if (!blob || blob.size >= file.size * 0.95) return { path, file };
 
     const optimizedName = replaceExtension(file.name, "webp");
     return {

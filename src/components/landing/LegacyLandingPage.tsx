@@ -531,7 +531,7 @@ export function LegacyLandingPage({ slug }: { slug: string }) {
                         <button type="button" key={i} onClick={() => setSelectedPkg(i)}
                           className="w-full flex items-center gap-3 rounded-xl p-2.5 border-2 text-left transition"
                           style={active ? { borderColor: themeColor, background: themeBg05 } : { borderColor: "#e5e7eb", background: "#fff" }}>
-                          {p.image && <img src={p.image} alt="" width={56} height={56} loading="lazy" decoding="async" className="w-14 h-14 rounded-lg object-contain bg-white shrink-0" />}
+                          {p.image && <img src={toImg(p.image)} alt="" width={56} height={56} loading="lazy" decoding="async" className="w-14 h-14 rounded-lg object-contain bg-white shrink-0" />}
                           <div className="flex-1 min-w-0">
                             <div className="font-semibold text-sm leading-tight">{p.label}</div>
                             {p.badge && <span className="inline-block mt-1 text-[11px] px-2 py-0.5 rounded-full font-medium" style={{ background: themeBg10, color: themeColor }}>{p.badge}</span>}

@@ -2,13 +2,25 @@ import { createFileRoute } from "@tanstack/react-router";
 
 const ALLOWED_SUPABASE_HOST = "bvuhvzccziuniujeogng.supabase.co";
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
-const OPTIMIZED_WIDTH = 1920;
-const OPTIMIZED_QUALITY = 82;
+const OPTIMIZED_WIDTH = 1280;
+const OPTIMIZED_QUALITY = 74;
 const NO_STORE = "private, no-store";
 
 // Only these catalog/marketing buckets are intentionally exposed through the
 // public /media delivery path. Other signed Storage assets remain private.
-const PUBLIC_MEDIA_BUCKETS = new Set(["product-images", "category-images", "banners"]);
+const PUBLIC_MEDIA_BUCKETS = new Set([
+  "product-images",
+  "category-images",
+  "banners",
+  // Landing/marketing artwork lives here. It was previously excluded, which
+  // meant every single page view pulled the full multi-megabyte original from
+  // Supabase Storage instead of being served from the Cloudflare cache.
+  "site-assets",
+  "landing-images",
+  "review-images",
+  "blog-images",
+  "public-assets",
+]);
 
 type CloudflareCache = {
   match(request: Request): Promise<Response | undefined>;
@@ -204,3 +216,4 @@ export const Route = createFileRoute("/media")({
     },
   },
 });
+
