@@ -27,7 +27,7 @@ jobs:
           text = text.replace('import { getPremiumDashboardReport } from "@/lib/dashboard.functions";', 'import { getOptimizedDashboardReport } from "@/lib/dashboard-optimized.functions";')
           text = text.replace('const fetchReport=useServerFn(getPremiumDashboardReport);', 'const fetchReport=useServerFn(getOptimizedDashboardReport);')
           text = text.replace('window.setTimeout(()=>{scheduled=null;qc.invalidateQueries({queryKey:["business-dashboard"],refetchType:"active"})},5000)', 'window.setTimeout(()=>{scheduled=null;qc.invalidateQueries({queryKey:["business-dashboard"],refetchType:"active"})},300000)')
-          text = text.replace('const t=window.setInterval(()=>{if(!document.hidden)qc.invalidateQueries({queryKey:["business-dashboard"],refetchType:"active"})},120000);', 'const t=window.setInterval(()=>{if(!document.hidden)qc.invalidateQueries({queryKey:["business-dashboard"],refetchType:"active"]),refetchType:"active"})},300000);')
+          text = text.replace('const t=window.setInterval(()=>{if(!document.hidden)qc.invalidateQueries({queryKey:["business-dashboard"],refetchType:"active"})},120000);', 'const t=window.setInterval(()=>{if(!document.hidden)qc.invalidateQueries({queryKey:["business-dashboard"],refetchType:"active"})},300000);')
           dashboard.write_text(text, encoding='utf-8')
 
           server = Path('src/lib/dashboard.functions.ts')
