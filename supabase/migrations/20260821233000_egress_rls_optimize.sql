@@ -1,0 +1,51 @@
+-- Egress/performance optimization: auth init-plan fixes + exact duplicate index cleanup.
+-- Safe to apply after the matching production migration; statements are idempotent.
+
+DROP INDEX IF EXISTS public.idx_products_active_created_at;
+DROP INDEX IF EXISTS public.products_popular_home_idx;
+
+ALTER POLICY "attendance_admin_delete" ON public.attendance USING (is_admin((select auth.uid())));
+ALTER POLICY "attendance_self_insert" ON public.attendance WITH CHECK ((user_id = (select auth.uid())) OR is_admin((select auth.uid())));
+ALTER POLICY "attendance_self_read" ON public.attendance USING ((user_id = (select auth.uid())) OR is_admin((select auth.uid())));
+ALTER POLICY "attendance_self_update" ON public.attendance USING ((user_id = (select auth.uid())) OR is_admin((select auth.uid()))) WITH CHECK ((user_id = (select auth.uid())) OR is_admin((select auth.uid())));
+ALTER POLICY "banners_admin_write" ON public.banners USING (has_permission((select auth.uid()), 'marketing')) WITH CHECK (has_permission((select auth.uid()), 'marketing'));
+ALTER POLICY "banners_public_read" ON public.banners USING ((is_active = true) OR is_staff((select auth.uid())));
+ALTER POLICY "categories_admin_write" ON public.categories USING (has_permission((select auth.uid()), 'categories')) WITH CHECK (has_permission((select auth.uid()), 'categories'));
+ALTER POLICY "coupons_admin_write" ON public.coupons USING (has_permission((select auth.uid()), 'marketing')) WITH CHECK (has_permission((select auth.uid()), 'marketing'));
+ALTER POLICY "coupons_staff_read" ON public.coupons USING (has_permission((select auth.uid()), 'marketing') OR is_admin((select auth.uid())));
+ALTER POLICY "emp_perms_admin_write" ON public.employee_permissions USING (is_admin((select auth.uid()))) WITH CHECK (is_admin((select auth.uid())));
+ALTER POLICY "emp_perms_self_read" ON public.employee_permissions USING ((user_id = (select auth.uid())) OR is_admin((select auth.uid())));
+ALTER POLICY "employees_admin" ON public.employees USING (is_admin((select auth.uid()))) WITH CHECK (is_admin((select auth.uid())));
+ALTER POLICY "employees_self_read" ON public.employees USING ((user_id = (select auth.uid())) OR is_admin((select auth.uid())));
+ALTER POLICY "staff_read_fb_comments" ON public.fb_comments USING (is_staff((select auth.uid())));
+ALTER POLICY "staff_read_fb_conversations" ON public.fb_conversations USING (is_staff((select auth.uid())));
+ALTER POLICY "staff_write_fb_conversations" ON public.fb_conversations USING (is_staff((select auth.uid()))) WITH CHECK (is_staff((select auth.uid())));
+ALTER POLICY "staff_read_fb_messages" ON public.fb_messages USING (is_staff((select auth.uid())));
+ALTER POLICY "Staff manage trainer chat" ON public.fb_trainer_messages USING (is_staff((select auth.uid()))) WITH CHECK (is_staff((select auth.uid())));
+ALTER POLICY "incomplete_events_staff_read" ON public.incomplete_events USING (has_permission((select auth.uid()), 'orders'));
+ALTER POLICY "incomplete_events_staff_write" ON public.incomplete_events USING (has_permission((select auth.uid()), 'orders')) WITH CHECK (has_permission((select auth.uid()), 'orders'));
+ALTER POLICY "incomplete_orders_staff_read" ON public.incomplete_orders USING (has_permission((select auth.uid()), 'orders'));
+ALTER POLICY "incomplete_orders_staff_write" ON public.incomplete_orders USING (has_permission((select auth.uid()), 'orders')) WITH CHECK (has_permission((select auth.uid()), 'orders'));
+ALTER POLICY "integrations_admin" ON public.integrations USING (is_admin((select auth.uid()))) WITH CHECK (is_admin((select auth.uid())));
+ALTER POLICY "landing_admin_write" ON public.landing_pages USING (has_permission((select auth.uid()), 'marketing')) WITH CHECK (has_permission((select auth.uid()), 'marketing'));
+ALTER POLICY "landing_public_read" ON public.landing_pages USING ((is_published = true) OR is_staff((select auth.uid())));
+ALTER POLICY "Staff can read cancellation history" ON public.order_cancellation_history USING (has_role((select auth.uid()), 'admin') OR has_role((select auth.uid()), 'super_admin') OR has_role((select auth.uid()), 'employee'));
+ALTER POLICY "order_items_read" ON public.order_items USING (has_permission((select auth.uid()), 'orders') OR EXISTS (SELECT 1 FROM public.orders o WHERE o.id = order_items.order_id AND o.created_by = (select auth.uid())));
+ALTER POLICY "order_items_staff_write" ON public.order_items USING (has_permission((select auth.uid()), 'orders')) WITH CHECK (has_permission((select auth.uid()), 'orders'));
+ALTER POLICY "order_locks_admin_delete" ON public.order_locks USING (is_admin((select auth.uid())) OR user_id = (select auth.uid()));
+ALTER POLICY "order_locks_staff_read" ON public.order_locks USING (has_permission((select auth.uid()), 'orders'));
+ALTER POLICY "order_logs_staff_read" ON public.order_status_logs USING (has_permission((select auth.uid()), 'orders'));
+ALTER POLICY "order_logs_staff_write" ON public.order_status_logs WITH CHECK (has_permission((select auth.uid()), 'orders'));
+ALTER POLICY "orders_admin_delete" ON public.orders USING (is_admin((select auth.uid())));
+ALTER POLICY "orders_staff_read" ON public.orders USING (is_admin((select auth.uid())) OR status::text <> 'web_pending' OR assigned_to = (select auth.uid()));
+ALTER POLICY "orders_staff_update" ON public.orders USING (has_permission((select auth.uid()), 'orders')) WITH CHECK (has_permission((select auth.uid()), 'orders'));
+ALTER POLICY "products_admin_write" ON public.products USING (has_permission((select auth.uid()), 'products')) WITH CHECK (has_permission((select auth.uid()), 'products'));
+ALTER POLICY "products_public_read" ON public.products USING ((is_active = true) OR is_staff((select auth.uid())));
+ALTER POLICY "profiles_admin_insert" ON public.profiles WITH CHECK ((id = (select auth.uid())) OR is_admin((select auth.uid())));
+ALTER POLICY "profiles_self_or_staff_read" ON public.profiles USING ((id = (select auth.uid())) OR is_staff((select auth.uid())));
+ALTER POLICY "profiles_self_update" ON public.profiles USING ((id = (select auth.uid())) OR is_admin((select auth.uid())));
+ALTER POLICY "site_settings_admin_write" ON public.site_settings USING (is_admin((select auth.uid()))) WITH CHECK (is_admin((select auth.uid())));
+ALTER POLICY "site_visitors_dashboard_read" ON public.site_visitors USING (has_permission((select auth.uid()), 'dashboard_live_visitors') OR has_permission((select auth.uid()), 'dashboard'));
+ALTER POLICY "site_visits_staff_read" ON public.site_visits USING (is_staff((select auth.uid())));
+ALTER POLICY "user_roles_admin_write" ON public.user_roles USING (has_role((select auth.uid()), 'super_admin')) WITH CHECK (has_role((select auth.uid()), 'super_admin'));
+ALTER POLICY "user_roles_self_read" ON public.user_roles USING ((user_id = (select auth.uid())) OR is_admin((select auth.uid())));
