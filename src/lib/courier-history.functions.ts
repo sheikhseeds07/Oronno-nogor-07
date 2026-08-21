@@ -14,6 +14,7 @@ type CourierHistoryResult = {
   configured: boolean;
   stats: CourierStat[];
   error: string | null;
+  stale?: boolean;
 };
 
 type CacheEntry = { expiresAt: number; result: CourierHistoryResult };
@@ -26,8 +27,9 @@ const SUCCESS_CACHE_TTL_MS = 30 * 60 * 1000;
 // This prevents a transient outage or a newly-enabled API from staying stuck as
 // "not configured" for 30 minutes, while still avoiding retry storms.
 const FAILURE_CACHE_TTL_MS = 45 * 1000;
+const STALE_CACHE_TTL_MS = 2 * 60 * 1000;
 // Bump whenever cache semantics change so stale process-level entries cannot be reused.
-const CACHE_VERSION = "courier-history-v4";
+const CACHE_VERSION = "courier-history-v5";
 const MAX_CACHE_ENTRIES = 1500;
 const MAX_EXTERNAL_CONCURRENCY = 3;
 
@@ -59,8 +61,12 @@ function writeCache(key: string, result: CourierHistoryResult) {
     }
   }
   // Only a genuinely configured, error-free provider response is long-lived.
-  // configured:false must recover quickly after an API is enabled/reconnected.
-  const ttl = result.error || !result.configured ? FAILURE_CACHE_TTL_MS : SUCCESS_CACHE_TTL_MS;
+  // Stale fallback is kept briefly so a provider hiccup never makes rows disappear.
+  const ttl = result.stale
+    ? STALE_CACHE_TTL_MS
+    : result.error || !result.configured
+      ? FAILURE_CACHE_TTL_MS
+      : SUCCESS_CACHE_TTL_MS;
   courierCache.set(key, { expiresAt: Date.now() + ttl, result });
 }
 
@@ -105,6 +111,7 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
         configured: Boolean(value.configured),
         stats: Array.isArray(value.stats) ? value.stats : [],
         error: typeof value.error === "string" ? value.error : null,
+        stale: value.stale === true,
       };
     });
 
