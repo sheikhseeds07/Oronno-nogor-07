@@ -540,13 +540,13 @@ function OrdersTable({
     });
   };
   const [search, setSearch] = useState("");
-  const PAGE_SIZE_KEY = `admin-orders-page-size:${mode}`;
+  const PAGE_SIZE_KEY = "admin-orders-page-size";
   const PAGE_SIZES = [20, 50, 70, 100, 200, 500] as const;
   type PageSize = (typeof PAGE_SIZES)[number];
   const [pageSize, setPageSize] = useState<PageSize>(() => {
     if (typeof window === "undefined") return 50;
     const stored = window.localStorage.getItem(PAGE_SIZE_KEY)
-      ?? (mode === "list" ? window.localStorage.getItem("order-list-page-size") : null);
+      ?? window.localStorage.getItem("order-list-page-size");
     const saved = Number(stored);
     return PAGE_SIZES.includes(saved as PageSize) ? (saved as PageSize) : 50;
   });
@@ -667,7 +667,7 @@ function OrdersTable({
   });
   const orders = orderResult?.rows ?? [];
 
-  const creatorIds = Array.from(new Set((orders ?? []).flatMap((o) => [o.created_by, o.assigned_to]).filter((x): x is string => !!x)));  const creatorIds = Array.from(new Set((orders ?? []).flatMap((o) => [o.created_by, o.assigned_to]).filter((x): x is string => !!x)));
+  const creatorIds = Array.from(new Set((orders ?? []).flatMap((o) => [o.created_by, o.assigned_to]).filter((x): x is string => !!x)));
   const { data: creatorProfiles } = useQuery({
     queryKey: ["order-creators", creatorIds.join(",")],
     enabled: creatorIds.length > 0,
@@ -746,9 +746,13 @@ function OrdersTable({
       try { await ensureInvoices({ data: { ids: [id] } }); } catch { /* invoice পরে সেট হবে */ }
     }
     // Optimistic remove from current visible list
-    qc.setQueriesData<OrderRow[] | undefined>({ queryKey: ["admin-orders"] }, (old) =>
-      old ? old.filter((o) => o.id !== id) : old,
-    );
+    qc.setQueriesData<OrdersPage | undefined>({ queryKey: ["admin-orders"] }, (old) => {
+      if (!old) return old;
+      const nextRows = old.rows.filter((order) => order.id !== id);
+      return nextRows.length === old.rows.length
+        ? old
+        : { ...old, rows: nextRows, total: Math.max(0, old.total - 1) };
+    });
     const { error } = await supabase.from("orders").update({ status }).eq("id", id);
     if (error) {
       toast.error(error.message);
@@ -784,7 +788,7 @@ function OrdersTable({
   const displayRows = isIncomplete ? rows.slice((page - 1) * pageSize, page * pageSize) : rows;
   useEffect(() => { setPage(1); }, [filter, mode, search, pageSize]);
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
-  const allChecked = displayRows.length > 0 && displayRows.every((o) => selectedIds.has(o.id));  const allChecked = displayRows.length > 0 && displayRows.every((o) => selectedIds.has(o.id));
+  const allChecked = displayRows.length > 0 && displayRows.every((o) => selectedIds.has(o.id));
   const toggleAll = () => {
     setSelectedIds(() => allChecked ? new Set() : new Set(displayRows.map((o) => o.id)));
   };
@@ -900,9 +904,14 @@ function OrdersTable({
 
   const optimisticRemove = (ids: string[]) => {
     // Remove instantly from every cached admin-orders list so UI updates in ns
-    qc.setQueriesData<OrderRow[] | undefined>({ queryKey: ["admin-orders"] }, (old) =>
-      old ? old.filter((o) => !ids.includes(o.id)) : old,
-    );
+    qc.setQueriesData<OrdersPage | undefined>({ queryKey: ["admin-orders"] }, (old) => {
+      if (!old) return old;
+      const nextRows = old.rows.filter((order) => !ids.includes(order.id));
+      const removed = old.rows.length - nextRows.length;
+      return removed > 0
+        ? { ...old, rows: nextRows, total: Math.max(0, old.total - removed) }
+        : old;
+    });
     setSelectedIds(new Set());
   };
 
@@ -1439,6 +1448,8 @@ type OrderRow = {
   assigned_to?: string | null;
   created_by?: string | null;
 };
+
+type OrdersPage = { rows: OrderRow[]; total: number };
 
 
 /** Show first 3 product thumbnails; collapse the rest into a "+N" pill that
