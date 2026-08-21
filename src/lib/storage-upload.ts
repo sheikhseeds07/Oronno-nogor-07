@@ -5,6 +5,73 @@ import { supabase } from "@/lib/personal-supabase/client";
 // visitor can load.
 const TEN_YEARS = 60 * 60 * 24 * 365 * 10;
 const ONE_YEAR = 60 * 60 * 24 * 365;
+const IMAGE_OPTIMIZE_THRESHOLD = 250 * 1024;
+const MAX_IMAGE_DIMENSION = 1920;
+const WEBP_QUALITY = 0.84;
+const OPTIMIZABLE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+type PreparedUpload = {
+  path: string;
+  file: File;
+};
+
+function replaceExtension(path: string, extension: string): string {
+  const slash = path.lastIndexOf("/");
+  const dot = path.lastIndexOf(".");
+  if (dot > slash) return `${path.slice(0, dot)}.${extension}`;
+  return `${path}.${extension}`;
+}
+
+async function optimizeImageUpload(path: string, file: File): Promise<PreparedUpload> {
+  if (
+    file.size < IMAGE_OPTIMIZE_THRESHOLD ||
+    !OPTIMIZABLE_IMAGE_TYPES.has(file.type) ||
+    typeof document === "undefined" ||
+    typeof createImageBitmap !== "function"
+  ) {
+    return { path, file };
+  }
+
+  let bitmap: ImageBitmap | null = null;
+  try {
+    bitmap = await createImageBitmap(file);
+    const largestSide = Math.max(bitmap.width, bitmap.height);
+    const scale = Math.min(1, MAX_IMAGE_DIMENSION / largestSide);
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d", { alpha: true });
+    if (!ctx) return { path, file };
+
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    const blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, "image/webp", WEBP_QUALITY);
+    });
+
+    // Only replace the upload when it materially reduces bytes. This preserves
+    // already-efficient images while preventing multi-megabyte PNG/JPEG uploads
+    // from becoming a recurring Storage egress cost.
+    if (!blob || blob.size >= file.size * 0.9) return { path, file };
+
+    const optimizedName = replaceExtension(file.name, "webp");
+    return {
+      path: replaceExtension(path, "webp"),
+      file: new File([blob], optimizedName, {
+        type: "image/webp",
+        lastModified: file.lastModified,
+      }),
+    };
+  } catch {
+    // Upload reliability is more important than optimization. Unsupported or
+    // malformed images continue through the existing upload path unchanged.
+    return { path, file };
+  } finally {
+    bitmap?.close();
+  }
+}
 
 export async function uploadToBucket(
   bucket: string,
@@ -12,16 +79,17 @@ export async function uploadToBucket(
   file: File,
   opts?: { upsert?: boolean },
 ): Promise<string> {
-  const { error } = await supabase.storage.from(bucket).upload(path, file, {
+  const prepared = await optimizeImageUpload(path, file);
+  const { error } = await supabase.storage.from(bucket).upload(prepared.path, prepared.file, {
     upsert: opts?.upsert ?? false,
-    contentType: file.type || undefined,
+    contentType: prepared.file.type || undefined,
     cacheControl: String(ONE_YEAR),
   });
   if (error) throw new Error(error.message);
 
   const { data, error: signErr } = await supabase.storage
     .from(bucket)
-    .createSignedUrl(path, TEN_YEARS);
+    .createSignedUrl(prepared.path, TEN_YEARS);
   if (signErr || !data?.signedUrl) throw new Error(signErr?.message || "URL তৈরি হয়নি");
   return data.signedUrl;
 }
