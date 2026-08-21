@@ -9,7 +9,9 @@ let source = await readFile(target, "utf8");
 // Keep the original Courier Success Rate UI exactly as before, but force the
 // order-table lookup into cache-only mode. This means rendering the table can
 // read persistent courier_history_cache data but can never invoke the external
-// courier-history Edge Function for every visible row.
+// courier-history Edge Function for every visible row. This comment-only touch
+// also triggers a clean Cloudflare rebuild so production cannot stay on the old
+// Fraud check / Open order placeholder bundle after the UI fix is merged.
 const automaticLookup = "    queryFn: () => fn({ data: { phone: digits } }),";
 const cacheOnlyLookup = "    queryFn: () => fn({ data: { phone: digits, cacheOnly: true } }),";
 
