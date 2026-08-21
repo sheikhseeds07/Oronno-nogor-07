@@ -17,6 +17,22 @@ function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith('sb_publishable_') || value.startsWith('sb_secret_');
 }
 
+async function measureResponseBytes(response: Response): Promise<number> {
+  const contentLength = Number(response.headers.get('content-length') || 0);
+  if (Number.isFinite(contentLength) && contentLength > 0) return contentLength;
+
+  // Supabase commonly uses chunked/streamed JSON without Content-Length.
+  // Clone only JSON API responses so the original response remains untouched.
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('json')) return 0;
+
+  try {
+    return (await response.clone().arrayBuffer()).byteLength;
+  } catch {
+    return 0;
+  }
+}
+
 function createSupabaseFetch(supabaseKey: string): typeof fetch {
   return async (input, init) => {
     const headers = new Headers(
@@ -36,8 +52,8 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
     const method = (init?.method || (typeof Request !== 'undefined' && input instanceof Request ? input.method : 'GET')).toUpperCase();
     const response = await fetch(input, { ...init, headers });
 
-    const contentLength = Number(response.headers.get('content-length') || 0);
-    recordSupabaseEgress(input, method, response.status, Number.isFinite(contentLength) ? contentLength : 0);
+    const responseBytes = await measureResponseBytes(response);
+    recordSupabaseEgress(input, method, response.status, responseBytes);
     return response;
   };
 }
