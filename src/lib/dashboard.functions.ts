@@ -19,9 +19,11 @@ const bdHour=(iso:string)=>Number(new Intl.DateTimeFormat("en-US",{hour:"2-digit
 const bdMonth=(iso:string)=>new Intl.DateTimeFormat("en-US",{month:"short",year:"2-digit",timeZone:"Asia/Dhaka"}).format(new Date(iso));
 const bdTodayStart=()=>{const day=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Dhaka"}).format(new Date());return new Date(`${day}T00:00:00+06:00`).toISOString()};
 const bdTomorrowStart=()=>{const start=new Date(bdTodayStart());start.setUTCDate(start.getUTCDate()+1);return start.toISOString()};
-const DASHBOARD_CACHE_TTL_MS=20_000;
+// Keep dashboard live while avoiding repeated heavy downloads from every render.
+const DASHBOARD_CACHE_TTL_MS=60_000;
 const MAX_DASHBOARD_CACHE_ENTRIES=20;
 const dashboardReportCache=new Map<string,{expiresAt:number;value:any}>();
+const dashboardInFlight=new Map<string,Promise<any>>();
 
 type MetaProfitConfig={access_token?:string;ad_account_id?:string;account_name?:string;account_id?:string;dollar_rate?:number;courier_cost_per_order?:number;return_rate?:number;cancel_rate?:number};
 
@@ -71,9 +73,8 @@ function writeDashboardCache(key:string,value:any){
  dashboardReportCache.set(key,{expiresAt:now+DASHBOARD_CACHE_TTL_MS,value});
 }
 
-export const getPremiumDashboardReport=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(input=>RangeSchema.parse(input)).handler(async({data,context})=>{
+async function buildDashboardReport(data:any,context:any){
  await assertStaff(context.supabase,context.userId); const db=supabaseAdmin as any;
- const cacheKey=`${data.from}|${data.to}`; const cached=dashboardReportCache.get(cacheKey); if(cached&&cached.expiresAt>Date.now())return cached.value;
  const todayStart=bdTodayStart(); const tomorrowStart=bdTomorrowStart();
  const [ordersR,deletedOrdersR,productsR,customersR,employeesR,landingR,todayVisitorsR,activeIncompleteR]=await Promise.all([
   db.from("orders").select("id,source,status,total,created_at,updated_at,created_by,assigned_to,originated_from_incomplete").gte("created_at",data.from).lte("created_at",data.to).limit(30000),
@@ -101,7 +102,8 @@ export const getPremiumDashboardReport=createServerFn({method:"POST"}).middlewar
  const profitSettings=await getMetaProfitData(db,data.from,data.to);
  const confirmedOrderIds=confirmedOrders.map((o:any)=>String(o.id));
  const confirmedIds=new Set(confirmedOrderIds);
- const realOrderIds=realOrders.map((o:any)=>String(o.id));
+ // Product cost and best-selling only use confirmed orders, so do not download items for pending/cancelled orders.
+ const realOrderIds=confirmedOrderIds;
  const items=realOrderIds.length?await fetchOrderItemsByIds(db,realOrderIds):[];
  let productCost=0;
  if(items.length){
@@ -125,6 +127,15 @@ export const getPremiumDashboardReport=createServerFn({method:"POST"}).middlewar
  for(const o of orders){const cancelActor=isCancelled(o.status)?String(o.assigned_to||""):"";const cancelEmployee=employeeMap.get(cancelActor);if(isCancelled(o.status)&&cancelEmployee)cancelEmployee.cancelled++;const confirmActor=String(o.created_by||"");const confirmEmployee=employeeMap.get(confirmActor);if(isConfirmed(o.status)&&confirmEmployee){confirmEmployee.confirmed++;confirmEmployee.total++;}}
  const webOrderTotal=webOrders.length;
  const report={real:{created:webOrderTotal,total:webOrderTotal,processing:webPendingOrders.length,approved:webConfirmedOrders.length,pending:webPendingOrders.length,cancelled:webCancelledOrders.length,revenue:confirmedRevenue,allRevenue:webRevenue},webOrders:{total:webOrderTotal,confirmed:webConfirmedOrders.length,processing:webPendingOrders.length,cancelled:webCancelledOrders.length},incompleteOrders:{total:incompleteSourceOrders.length,confirmed:incompleteConfirmed.length,processing:incompleteProcessing.length,cancelled:incompleteCancelled.length,active:activeIncompleteR.count??0},profit:{grossSales:confirmedRevenue,productCost,adSpendUsd:profitSettings.adSpendUsd,adSpendBdt:profitSettings.adSpendBdt,dollarRate:profitSettings.dollarRate,confirmedOrders:confirmedOrders.length,courierCost,courierCostPerOrder:profitSettings.courierCostPerOrder,cancelRate:profitSettings.cancelRate,cancellationAdjustment,netProfit,netProfitMargin,connected:profitSettings.connected,accountName:profitSettings.accountName,error:profitSettings.error??null},sourceBreakdown:Array.from(sourceMap.values()).sort((a,b)=>b.count-a.count),daily:Array.from(dayMap.values()).sort((a,b)=>a.day.localeCompare(b.day)),hourly,earnings:Array.from(earningsMap.values()),bestSelling,lowStock,stockSummary,customers:customersR.count??0,products:activeProducts.length,liveVisitors:visitorRows.length,todayVisitors:todayVisitorsR.count??0,liveLandingPages,liveProducts,employeePerformance:Array.from(employeeMap.values()).sort((a,b)=>(b.confirmed+b.cancelled)-(a.confirmed+a.cancelled)),incomplete:activeIncompleteR.count??0};
- writeDashboardCache(cacheKey,report);
+ writeDashboardCache(`${data.from}|${data.to}`,report);
  return report;
+}
+
+export const getPremiumDashboardReport=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(input=>RangeSchema.parse(input)).handler(async({data,context})=>{
+ const cacheKey=`${data.from}|${data.to}`;
+ const cached=dashboardReportCache.get(cacheKey); if(cached&&cached.expiresAt>Date.now())return cached.value;
+ const existing=dashboardInFlight.get(cacheKey); if(existing)return existing;
+ const request=buildDashboardReport(data,context);
+ dashboardInFlight.set(cacheKey,request);
+ try{return await request;}finally{dashboardInFlight.delete(cacheKey)}
 });
