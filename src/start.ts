@@ -4,6 +4,7 @@ import { renderErrorPage } from "./lib/error-page";
 import { attachSupabaseAuth } from "@/lib/personal-supabase/auth-attacher";
 
 const NO_STORE = "private, no-store";
+const PUBLIC_CACHE = "public, max-age=60, s-maxage=300, stale-while-revalidate=600";
 
 const errorMiddleware = createMiddleware().server(async ({ next }) => {
   try {
@@ -25,15 +26,22 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
   }
 });
 
-// Workers Caching is enabled at the Cloudflare Worker level so /media can be
-// served from Cloudflare before this application runs. Every other dynamic
-// route is explicitly no-store so orders, admin, auth, courier and API output
-// can never be cached or mixed between users.
-const dynamicNoStoreMiddleware = createMiddleware().server(async ({ request, next }) => {
+// Only anonymous public GET pages may be cached at the edge. Everything that
+// can contain orders, auth, checkout, account, admin or API data is no-store.
+const dynamicCacheMiddleware = createMiddleware().server(async ({ request, next }) => {
   const result = await next();
-  const pathname = new URL(request.url).pathname;
+  const url = new URL(request.url);
+  const pathname = url.pathname;
+  const method = request.method.toUpperCase();
+  const hasAuth = Boolean(request.headers.get("authorization"));
+  const hasCookie = Boolean(request.headers.get("cookie"));
+  const isPublicPage = method === "GET" && (pathname === "/" || pathname.startsWith("/landing/"));
 
-  if (pathname !== "/media") {
+  if (isPublicPage && !hasAuth && !hasCookie) {
+    result.response.headers.set("Cache-Control", PUBLIC_CACHE);
+    result.response.headers.set("CDN-Cache-Control", PUBLIC_CACHE);
+    result.response.headers.set("Cloudflare-CDN-Cache-Control", PUBLIC_CACHE);
+  } else {
     result.response.headers.set("Cache-Control", NO_STORE);
     result.response.headers.set("CDN-Cache-Control", NO_STORE);
     result.response.headers.set("Cloudflare-CDN-Cache-Control", NO_STORE);
@@ -43,6 +51,6 @@ const dynamicNoStoreMiddleware = createMiddleware().server(async ({ request, nex
 });
 
 export const startInstance = createStart(() => ({
-  requestMiddleware: [errorMiddleware, dynamicNoStoreMiddleware],
+  requestMiddleware: [errorMiddleware, dynamicCacheMiddleware],
   functionMiddleware: [attachSupabaseAuth],
 }));
