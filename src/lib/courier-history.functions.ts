@@ -16,12 +16,62 @@ type CourierHistoryResult = {
   error: string | null;
 };
 
-// Short-lived server-side cache: refreshing an order section must not call
-// the external courier API again for the same phone every time.
-const CACHE_TTL_MS = 5 * 60 * 1000;
-const CACHE_VERSION = "steadfast-fallback-v2";
-const courierCache = new Map<string, { expiresAt: number; result: CourierHistoryResult }>();
+type CacheEntry = { expiresAt: number; result: CourierHistoryResult };
+
+// Courier success history changes slowly compared with how often the admin
+// order list renders. Keep successful results for a while so page refreshes,
+// multiple admin tabs and repeated rows do not hammer the Edge Function.
+const SUCCESS_CACHE_TTL_MS = 30 * 60 * 1000;
+// Provider failures are cached only briefly. This prevents a transient provider
+// outage from creating a retry storm while still recovering quickly.
+const FAILURE_CACHE_TTL_MS = 45 * 1000;
+const CACHE_VERSION = "steadfast-fallback-v3";
+const MAX_CACHE_ENTRIES = 1500;
+const MAX_EXTERNAL_CONCURRENCY = 3;
+
+const courierCache = new Map<string, CacheEntry>();
 const inFlight = new Map<string, Promise<CourierHistoryResult>>();
+let activeExternalRequests = 0;
+const externalWaiters: Array<() => void> = [];
+
+function readCache(key: string): CourierHistoryResult | null {
+  const hit = courierCache.get(key);
+  if (!hit) return null;
+  if (hit.expiresAt <= Date.now()) {
+    courierCache.delete(key);
+    return null;
+  }
+  return hit.result;
+}
+
+function writeCache(key: string, result: CourierHistoryResult) {
+  if (courierCache.size >= MAX_CACHE_ENTRIES) {
+    const now = Date.now();
+    for (const [k, entry] of courierCache) {
+      if (entry.expiresAt <= now) courierCache.delete(k);
+    }
+    while (courierCache.size >= MAX_CACHE_ENTRIES) {
+      const oldest = courierCache.keys().next().value as string | undefined;
+      if (!oldest) break;
+      courierCache.delete(oldest);
+    }
+  }
+  const ttl = result.error ? FAILURE_CACHE_TTL_MS : SUCCESS_CACHE_TTL_MS;
+  courierCache.set(key, { expiresAt: Date.now() + ttl, result });
+}
+
+async function withExternalSlot<T>(fn: () => Promise<T>): Promise<T> {
+  if (activeExternalRequests >= MAX_EXTERNAL_CONCURRENCY) {
+    await new Promise<void>((resolve) => externalWaiters.push(resolve));
+  }
+  activeExternalRequests += 1;
+  try {
+    return await fn();
+  } finally {
+    activeExternalRequests = Math.max(0, activeExternalRequests - 1);
+    externalWaiters.shift()?.();
+  }
+}
 
 // Sensitive Hoorin / courier credentials stay inside the protected Supabase
 // Edge Function. The browser/server action only receives aggregated stats.
@@ -33,13 +83,13 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
 
     const phone = data.phone.replace(/\D/g, "");
     const cacheKey = `${CACHE_VERSION}:${phone}`;
-    const cached = courierCache.get(cacheKey);
-    if (cached && cached.expiresAt > Date.now()) return cached.result;
+    const cached = readCache(cacheKey);
+    if (cached) return cached;
 
     const existing = inFlight.get(cacheKey);
     if (existing) return existing;
 
-    const request = (async (): Promise<CourierHistoryResult> => {
+    const request = withExternalSlot(async (): Promise<CourierHistoryResult> => {
       const { data: result, error } = await context.supabase.functions.invoke("courier-history-bridge", {
         body: { phone },
       });
@@ -52,16 +102,12 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
         stats: Array.isArray(value.stats) ? value.stats : [],
         error: typeof value.error === "string" ? value.error : null,
       };
-    })();
+    });
 
     inFlight.set(cacheKey, request);
     try {
       const result = await request;
-      // Provider failures are returned with `error`, so transient 429/Packzy
-      // failures are never cached as a misleading Steadfast 0% score.
-      if (result.configured && !result.error) {
-        courierCache.set(cacheKey, { expiresAt: Date.now() + CACHE_TTL_MS, result });
-      }
+      writeCache(cacheKey, result);
       return result;
     } finally {
       inFlight.delete(cacheKey);
