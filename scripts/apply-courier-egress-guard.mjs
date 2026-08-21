@@ -18,13 +18,14 @@ function replaceIfPresent(from, to, label) {
   console.log(`Applied admin order UI patch: ${label}`);
 }
 
-// Keep the old Courier Success Rate design (percentage circle + Success / Order / Cancel)
-// while making the order-table lookup cache-only. Opening an order still uses the normal
-// on-demand courier-history flow, so the same courier data is available in both places.
+// Courier rows should use the normal guarded history loader. That loader reads the
+// persistent cache first and, only on a cache miss, refreshes through the configured
+// Hoorin API using the global rate/concurrency guard. Do not force cache-only mode,
+// otherwise new phone numbers can never populate the Courier Success Rate column.
 replaceIfPresent(
-  "    queryFn: () => fn({ data: { phone: digits } }),",
   "    queryFn: () => fn({ data: { phone: digits, cacheOnly: true } }),",
-  "courier rows use persistent cache only",
+  "    queryFn: () => fn({ data: { phone: digits } }),",
+  "courier rows refresh missing Hoorin history safely",
 );
 
 // The selected-order action strip must remain completely visible on phones. Allow wrapping,
@@ -91,7 +92,7 @@ replaceIfPresent(
 
 if (changed) {
   await writeFile(target, source, "utf8");
-  console.log("Admin Order List visibility + courier UI guard applied successfully.");
+  console.log("Admin Order List visibility + live Hoorin courier-rate guard applied successfully.");
 } else {
-  console.log("Admin Order List visibility + courier UI guard already applied.");
+  console.log("Admin Order List visibility + live Hoorin courier-rate guard already applied.");
 }
