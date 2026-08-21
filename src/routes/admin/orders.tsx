@@ -1658,7 +1658,7 @@ function CourierSuccessCell({ phone }: { phone: string }) {
   return <div ref={cellRef} className="flex min-h-9 items-center">{content}</div>;
 }
 
-function RelativeUpdatedTime({ value }: { value?: string | null }) {function RelativeUpdatedTime({ value }: { value?: string | null }) {
+function RelativeUpdatedTime({ value }: { value?: string | null }) {
   const [, refresh] = useState(0);
 
   useEffect(() => {
