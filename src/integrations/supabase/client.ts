@@ -2,6 +2,11 @@
 import "@/lib/crypto-polyfill";
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
+import {
+  flushSupabaseEgressNow,
+  recordSupabaseEgress,
+  setSupabaseEgressSender,
+} from '@/lib/supabase-egress-meter';
 
 // Production fallback. Build-time variables still take priority, but a deploy
 // without VITE_* configuration must connect to the same database as the live site.
@@ -13,7 +18,7 @@ function isNewSupabaseApiKey(value: string): boolean {
 }
 
 function createSupabaseFetch(supabaseKey: string): typeof fetch {
-  return (input, init) => {
+  return async (input, init) => {
     const headers = new Headers(
       typeof Request !== 'undefined' && input instanceof Request ? input.headers : undefined,
     );
@@ -28,7 +33,12 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
     }
 
     headers.set('apikey', supabaseKey);
-    return fetch(input, { ...init, headers });
+    const method = (init?.method || (input instanceof Request ? input.method : 'GET')).toUpperCase();
+    const response = await fetch(input, { ...init, headers });
+
+    const contentLength = Number(response.headers.get('content-length') || 0);
+    recordSupabaseEgress(input, method, response.status, Number.isFinite(contentLength) ? contentLength : 0);
+    return response;
   };
 }
 
@@ -41,7 +51,7 @@ function createSupabaseClient() {
     runtimeEnv?.['SUPABASE_PUBLISHABLE_KEY'] ||
     PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-  return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     global: {
       fetch: createSupabaseFetch(SUPABASE_PUBLISHABLE_KEY),
     },
@@ -51,6 +61,19 @@ function createSupabaseClient() {
       autoRefreshToken: true,
     },
   });
+
+  setSupabaseEgressSender(async (rows) => {
+    await client.rpc('record_endpoint_egress', { p_rows: rows });
+  });
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('pagehide', flushSupabaseEgressNow, { passive: true });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') flushSupabaseEgressNow();
+    });
+  }
+
+  return client;
 }
 
 let _supabase: ReturnType<typeof createSupabaseClient> | undefined;
