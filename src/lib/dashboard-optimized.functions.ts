@@ -108,14 +108,16 @@ export const getOptimizedDashboardReport = createServerFn({ method: "POST" })
     const sourceBreakdown = Array.isArray(s.sourceBreakdown) ? s.sourceBreakdown : [];
     const employeePerformance = Array.isArray(s.employeePerformance) ? s.employeePerformance : [];
 
-    const [productsR, customersR, todayVisitorsR, liveVisitorsR, landingR] = await Promise.all([
+    const [productsR, customersR, todayVisitorsR] = await Promise.all([
       supabaseAdmin.from("products").select("id,name,stock,is_active,cost").eq("is_active", true).order("stock", { ascending: true }).limit(100),
       supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }),
-      supabaseAdmin.from("site_visitors").select("id", { count: "exact", head: true }).gte("last_seen", new Date(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Dhaka" }) + "T00:00:00+06:00").toISOString()),
-      supabaseAdmin.from("site_visitors").select("id", { count: "exact", head: true }).gte("last_seen", new Date(Date.now() - 120000).toISOString()),
-      supabaseAdmin.from("landing_pages").select("id,title,slug,product_id,is_published").eq("is_published", true).limit(100),
+      supabaseAdmin
+        .from("site_visitors")
+        .select("id", { count: "exact", head: true })
+        .gte("last_seen", new Date(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Dhaka" }) + "T00:00:00+06:00").toISOString())
+        .or("path.eq./,path.like./landing/*"),
     ]);
-    for (const r of [productsR, customersR, todayVisitorsR, liveVisitorsR, landingR]) if (r.error) throw new Error(r.error.message);
+    for (const result of [productsR, customersR, todayVisitorsR]) if (result.error) throw new Error(result.error.message);
 
     const products = productsR.data ?? [];
     const lowStock = products.filter((p: any) => Number(p.stock ?? 0) <= 5).slice(0, 10).map((p: any) => ({ id: p.id, name: p.name, stock: p.stock ?? 0 }));
@@ -170,9 +172,7 @@ export const getOptimizedDashboardReport = createServerFn({ method: "POST" })
       bestSelling,
       lowStock,
       stockSummary,
-      liveVisitors: Number(liveVisitorsR.count ?? 0),
       todayVisitors: Number(todayVisitorsR.count ?? 0),
-      liveLandingPages: landingR.data ?? [],
       employeePerformance,
       customerCount: Number(customersR.count ?? 0),
     };
