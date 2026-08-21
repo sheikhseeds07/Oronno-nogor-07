@@ -8,14 +8,16 @@ type HoorinConfig = { configured: boolean; endpoint: string; apiKey: string; err
 type PersistentHit = { result: HistoryResult; fresh: boolean };
 
 const COURIER_ORDER = ["Steadfast", "Pathao", "RedX", "Paperfly", "Carrybee", "eCourier"];
-const SUCCESS_CACHE_TTL_MS = 30 * 60 * 1000;
-const SHORT_CACHE_TTL_MS = 45 * 1000;
-const STALE_FALLBACK_TTL_MS = 2 * 60 * 1000;
-const AUTHZ_CACHE_TTL_MS = 20 * 1000;
-const CONFIG_CACHE_TTL_MS = 60 * 1000;
+// Emergency egress guard: successful courier history is slow-changing compared
+// with the admin UI render frequency, so keep valid results for 24 hours.
+const SUCCESS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const SHORT_CACHE_TTL_MS = 5 * 60 * 1000;
+const STALE_FALLBACK_TTL_MS = 30 * 60 * 1000;
+const AUTHZ_CACHE_TTL_MS = 5 * 60 * 1000;
+const CONFIG_CACHE_TTL_MS = 10 * 60 * 1000;
 const MAX_CACHE_ENTRIES = 2000;
-const MAX_PROVIDER_CONCURRENCY = 3;
-const GLOBAL_PROVIDER_GAP_MS = 220;
+const MAX_PROVIDER_CONCURRENCY = 1;
+const GLOBAL_PROVIDER_GAP_MS = 1000;
 
 const historyCache = new Map<string, { expiresAt: number; result: HistoryResult }>();
 const historyInFlight = new Map<string, Promise<HistoryResult>>();
