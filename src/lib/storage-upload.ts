@@ -4,6 +4,7 @@ import { supabase } from "@/lib/personal-supabase/client";
 // Upload, then hand back a long-lived signed URL (10 years) that any
 // visitor can load.
 const TEN_YEARS = 60 * 60 * 24 * 365 * 10;
+const ONE_YEAR = 60 * 60 * 24 * 365;
 
 export async function uploadToBucket(
   bucket: string,
@@ -14,6 +15,7 @@ export async function uploadToBucket(
   const { error } = await supabase.storage.from(bucket).upload(path, file, {
     upsert: opts?.upsert ?? false,
     contentType: file.type || undefined,
+    cacheControl: String(ONE_YEAR),
   });
   if (error) throw new Error(error.message);
 
