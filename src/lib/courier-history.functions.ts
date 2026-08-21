@@ -19,19 +19,20 @@ type CourierHistoryResult = {
 
 type CacheEntry = { expiresAt: number; result: CourierHistoryResult };
 
-// Courier success history changes slowly compared with how often the admin
-// order list renders. Keep successful results for a while so page refreshes,
-// multiple admin tabs and repeated rows do not hammer the Edge Function.
-const SUCCESS_CACHE_TTL_MS = 30 * 60 * 1000;
-// Provider failures / temporarily-unconfigured responses are cached only briefly.
-// This prevents a transient outage or a newly-enabled API from staying stuck as
-// "not configured" for 30 minutes, while still avoiding retry storms.
-const FAILURE_CACHE_TTL_MS = 45 * 1000;
-const STALE_CACHE_TTL_MS = 2 * 60 * 1000;
+// Emergency egress protection: courier success history changes slowly, while the
+// admin order list can render hundreds of rows at once. Keep successful results
+// for a full day so repeated page loads/tabs do not re-invoke the Edge Function.
+const SUCCESS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+// Cache provider failures long enough to stop retry storms, but not long enough
+// to hide a recovered provider for an excessive period.
+const FAILURE_CACHE_TTL_MS = 5 * 60 * 1000;
+const STALE_CACHE_TTL_MS = 30 * 60 * 1000;
 // Bump whenever cache semantics change so stale process-level entries cannot be reused.
-const CACHE_VERSION = "courier-history-v5";
-const MAX_CACHE_ENTRIES = 1500;
-const MAX_EXTERNAL_CONCURRENCY = 3;
+const CACHE_VERSION = "courier-history-v6-egress-guard";
+const MAX_CACHE_ENTRIES = 2000;
+// One outgoing Edge invocation at a time per server isolate. This protects the
+// project from a table render turning into dozens of simultaneous invocations.
+const MAX_EXTERNAL_CONCURRENCY = 1;
 
 const courierCache = new Map<string, CacheEntry>();
 const inFlight = new Map<string, Promise<CourierHistoryResult>>();
@@ -60,8 +61,6 @@ function writeCache(key: string, result: CourierHistoryResult) {
       courierCache.delete(oldest);
     }
   }
-  // Only a genuinely configured, error-free provider response is long-lived.
-  // Stale fallback is kept briefly so a provider hiccup never makes rows disappear.
   const ttl = result.stale
     ? STALE_CACHE_TTL_MS
     : result.error || !result.configured
