@@ -26,13 +26,23 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
   }
 });
 
-// Only anonymous public GET pages may be cached at the edge. Everything that
-// can contain orders, auth, checkout, account, admin or API data is no-store.
+// Only anonymous public GET pages may be cached at the edge. The /media route
+// owns its own public/private cache policy and must not be overwritten here.
+// Everything that can contain orders, auth, checkout, account, admin or API
+// data remains no-store.
 const dynamicCacheMiddleware = createMiddleware().server(async ({ request, next }) => {
   const result = await next();
   const url = new URL(request.url);
   const pathname = url.pathname;
   const method = request.method.toUpperCase();
+
+  // /media validates the Supabase Storage bucket itself and sets the correct
+  // cache headers. Let those headers reach Cloudflare unchanged so the /media
+  // Cache Rule can actually cache public image responses at the edge.
+  if (pathname === "/media") {
+    return result;
+  }
+
   const hasAuth = Boolean(request.headers.get("authorization"));
   const hasCookie = Boolean(request.headers.get("cookie"));
   const isPublicPage = method === "GET" && (pathname === "/" || pathname.startsWith("/landing/"));
