@@ -3,10 +3,175 @@ import { createClient } from "@supabase/supabase-js";
 
 type CourierStat = { name: string; total: number; success: number; cancelled: number };
 type JsonRecord = Record<string, unknown>;
+type HistoryResult = { configured: boolean; stats: CourierStat[]; error: string | null; steadfast_source?: string; stale?: boolean };
+type HoorinConfig = { configured: boolean; endpoint: string; apiKey: string; error: string | null };
+type PersistentHit = { result: HistoryResult; fresh: boolean };
+
 const COURIER_ORDER = ["Steadfast", "Pathao", "RedX", "Paperfly", "Carrybee", "eCourier"];
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8" } });
+const SUCCESS_CACHE_TTL_MS = 30 * 60 * 1000;
+const SHORT_CACHE_TTL_MS = 45 * 1000;
+const STALE_FALLBACK_TTL_MS = 2 * 60 * 1000;
+const AUTHZ_CACHE_TTL_MS = 20 * 1000;
+const CONFIG_CACHE_TTL_MS = 60 * 1000;
+const MAX_CACHE_ENTRIES = 2000;
+const MAX_PROVIDER_CONCURRENCY = 3;
+const GLOBAL_PROVIDER_GAP_MS = 220;
+
+const historyCache = new Map<string, { expiresAt: number; result: HistoryResult }>();
+const historyInFlight = new Map<string, Promise<HistoryResult>>();
+const authzCache = new Map<string, { expiresAt: number; userId: string; authorized: boolean }>();
+const authzInFlight = new Map<string, Promise<{ userId: string; authorized: boolean }>>();
+let hooringConfigCache: { expiresAt: number; value: HoorinConfig } | null = null;
+let hooringConfigInFlight: Promise<HoorinConfig> | null = null;
+let activeProviderRequests = 0;
+const providerWaiters: Array<() => void> = [];
+
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+  status,
+  headers: {
+    "content-type": "application/json; charset=utf-8",
+    "cache-control": "private, no-store",
+  },
+});
 const num = (x: unknown) => { const n = typeof x === "number" ? x : Number(x); return Number.isFinite(n) ? n : 0; };
 const pretty = (s: string) => s.replace(/[_-]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+function readHistoryCache(key: string): HistoryResult | null {
+  const hit = historyCache.get(key);
+  if (!hit) return null;
+  if (hit.expiresAt <= Date.now()) {
+    historyCache.delete(key);
+    return null;
+  }
+  return hit.result;
+}
+
+function writeHistoryCache(key: string, result: HistoryResult) {
+  const now = Date.now();
+  for (const [k, entry] of historyCache) if (entry.expiresAt <= now) historyCache.delete(k);
+  while (historyCache.size >= MAX_CACHE_ENTRIES) {
+    const oldest = historyCache.keys().next().value as string | undefined;
+    if (!oldest) break;
+    historyCache.delete(oldest);
+  }
+  const ttl = result.stale
+    ? STALE_FALLBACK_TTL_MS
+    : result.configured && !result.error
+      ? SUCCESS_CACHE_TTL_MS
+      : SHORT_CACHE_TTL_MS;
+  historyCache.set(key, { expiresAt: now + ttl, result });
+}
+
+async function readPersistentCache(admin: ReturnType<typeof createClient>, phone: string): Promise<PersistentHit | null> {
+  const { data, error } = await admin
+    .from("courier_history_cache")
+    .select("configured,stats,error,steadfast_source,expires_at")
+    .eq("phone", phone)
+    .maybeSingle();
+  if (error || !data) return null;
+  const result: HistoryResult = {
+    configured: Boolean(data.configured),
+    stats: Array.isArray(data.stats) ? data.stats as CourierStat[] : [],
+    error: typeof data.error === "string" ? data.error : null,
+  };
+  if (typeof data.steadfast_source === "string" && data.steadfast_source) result.steadfast_source = data.steadfast_source;
+  const expiresAt = new Date(String(data.expires_at ?? "")).getTime();
+  return { result, fresh: Number.isFinite(expiresAt) && expiresAt > Date.now() };
+}
+
+async function writePersistentSuccess(admin: ReturnType<typeof createClient>, phone: string, result: HistoryResult) {
+  if (!result.configured || result.error) return;
+  const now = Date.now();
+  await admin.from("courier_history_cache").upsert({
+    phone,
+    configured: true,
+    stats: result.stats,
+    error: null,
+    steadfast_source: result.steadfast_source ?? null,
+    fetched_at: new Date(now).toISOString(),
+    expires_at: new Date(now + SUCCESS_CACHE_TTL_MS).toISOString(),
+  }, { onConflict: "phone" });
+}
+
+async function extendPersistentStale(admin: ReturnType<typeof createClient>, phone: string) {
+  await admin.from("courier_history_cache")
+    .update({ expires_at: new Date(Date.now() + STALE_FALLBACK_TTL_MS).toISOString() })
+    .eq("phone", phone);
+}
+
+async function reserveGlobalProviderSlot(admin: ReturnType<typeof createClient>): Promise<number> {
+  const { data, error } = await admin.rpc("reserve_courier_provider_slot", { p_gap_ms: GLOBAL_PROVIDER_GAP_MS });
+  if (error) return GLOBAL_PROVIDER_GAP_MS;
+  const waitMs = Number(data ?? 0);
+  return Number.isFinite(waitMs) ? Math.max(0, Math.min(waitMs, 120_000)) : GLOBAL_PROVIDER_GAP_MS;
+}
+
+async function withProviderSlot<T>(fn: () => Promise<T>): Promise<T> {
+  if (activeProviderRequests >= MAX_PROVIDER_CONCURRENCY) {
+    await new Promise<void>((resolve) => providerWaiters.push(resolve));
+  }
+  activeProviderRequests += 1;
+  try {
+    return await fn();
+  } finally {
+    activeProviderRequests = Math.max(0, activeProviderRequests - 1);
+    providerWaiters.shift()?.();
+  }
+}
+
+async function authorize(admin: ReturnType<typeof createClient>, token: string): Promise<{ userId: string; authorized: boolean }> {
+  const cached = authzCache.get(token);
+  if (cached && cached.expiresAt > Date.now()) return { userId: cached.userId, authorized: cached.authorized };
+  if (cached) authzCache.delete(token);
+
+  const existing = authzInFlight.get(token);
+  if (existing) return existing;
+
+  const request = (async () => {
+    const { data: userData, error: userError } = await admin.auth.getUser(token);
+    const user = userData?.user;
+    if (userError || !user) return { userId: "", authorized: false };
+
+    const [{ data: roles }, { data: perms }] = await Promise.all([
+      admin.from("user_roles").select("role").eq("user_id", user.id),
+      admin.from("employee_permissions").select("orders").eq("user_id", user.id).maybeSingle(),
+    ]);
+    const roleNames = new Set((roles ?? []).map((r) => String(r.role)));
+    const authorized = roleNames.has("admin") || roleNames.has("super_admin") || Boolean(perms?.orders);
+    if (authorized) authzCache.set(token, { expiresAt: Date.now() + AUTHZ_CACHE_TTL_MS, userId: user.id, authorized: true });
+    return { userId: user.id, authorized };
+  })();
+
+  authzInFlight.set(token, request);
+  try {
+    return await request;
+  } finally {
+    authzInFlight.delete(token);
+  }
+}
+
+async function getHoorinConfig(admin: ReturnType<typeof createClient>): Promise<HoorinConfig> {
+  if (hooringConfigCache && hooringConfigCache.expiresAt > Date.now()) return hooringConfigCache.value;
+  if (hooringConfigInFlight) return hooringConfigInFlight;
+
+  hooringConfigInFlight = (async () => {
+    const { data: row, error: rowError } = await admin.from("integrations").select("config,is_active").eq("name", "all_api_hoorin").maybeSingle();
+    if (rowError) return { configured: true, endpoint: "", apiKey: "", error: rowError.message };
+    const cfg = (row?.config ?? {}) as JsonRecord;
+    const endpoint = String(cfg.endpoint ?? "https://dash.hoorin.com/api/courier/api").trim();
+    const apiKey = String(cfg.api_key ?? "").trim();
+    const value = { configured: Boolean(row?.is_active && apiKey), endpoint, apiKey, error: null };
+    hooringConfigCache = { expiresAt: Date.now() + CONFIG_CACHE_TTL_MS, value };
+    return value;
+  })();
+
+  try {
+    return await hooringConfigInFlight;
+  } finally {
+    hooringConfigInFlight = null;
+  }
+}
 
 function summariesOf(payload: unknown): JsonRecord {
   if (!payload || typeof payload !== "object") return {};
@@ -85,20 +250,12 @@ async function loadDirectSteadfast(admin: ReturnType<typeof createClient>, phone
     try {
       const res = await fetch(`${baseUrl}/fraud_check/${encodeURIComponent(phone)}`, {
         method: "GET",
-        headers: {
-          Accept: "application/json",
-          "content-type": "application/json",
-          "api-key": apiKey,
-          "secret-key": secretKey,
-        },
+        headers: { Accept: "application/json", "content-type": "application/json", "api-key": apiKey, "secret-key": secretKey },
       });
       const text = await res.text();
       let payload: unknown = null;
       try { payload = JSON.parse(text); } catch { /* keep null */ }
-      if (!res.ok) {
-        failures.push(`${row.name}: HTTP ${res.status}`);
-        continue;
-      }
+      if (!res.ok) { failures.push(`${row.name}: HTTP ${res.status}`); continue; }
       const stat = parseDirectSteadfast(payload);
       if (stat) return { stat, error: null };
       failures.push(`${row.name}: invalid score response`);
@@ -107,6 +264,36 @@ async function loadDirectSteadfast(admin: ReturnType<typeof createClient>, phone
     }
   }
   return { stat: null, error: failures.join(" | ") || "No active Steadfast fallback credential" };
+}
+
+async function resolveHistory(admin: ReturnType<typeof createClient>, phone: string): Promise<HistoryResult> {
+  const cfg = await getHoorinConfig(admin);
+  if (cfg.error) return { configured: true, stats: [], error: cfg.error };
+  if (!cfg.configured) return { configured: false, stats: [], error: null };
+
+  try {
+    const res = await fetch(`${cfg.endpoint}?apiKey=${encodeURIComponent(cfg.apiKey)}&searchTerm=${encodeURIComponent(phone)}`, { method: "GET", headers: { Accept: "application/json" } });
+    const text = await res.text();
+    let payload: unknown = null;
+    try { payload = JSON.parse(text); } catch { /* keep null */ }
+    if (!res.ok) return { configured: true, stats: [], error: `HTTP ${res.status}: ${text.slice(0, 200)}` };
+
+    let stats = parseStats(payload);
+    const providerIssue = steadfastProviderIssue(payload);
+    if (providerIssue) {
+      const direct = await loadDirectSteadfast(admin, phone);
+      if (direct.stat) {
+        stats = sortStats([...stats.filter((s) => s.name.toLowerCase() !== "steadfast"), direct.stat]);
+        return { configured: true, stats, error: null, steadfast_source: "direct_fallback" };
+      }
+      stats = stats.filter((s) => s.name.toLowerCase() !== "steadfast");
+      return { configured: true, stats, error: `Steadfast temporarily unavailable (${providerIssue}). Direct fallback also failed: ${direct.error ?? "unknown error"}` };
+    }
+
+    return { configured: true, stats, error: null, steadfast_source: "hoorin" };
+  } catch (e) {
+    return { configured: true, stats: [], error: e instanceof Error ? e.message : "Network error" };
+  }
 }
 
 Deno.serve(async (req) => {
@@ -119,50 +306,57 @@ Deno.serve(async (req) => {
   if (!token) return json({ error: "Unauthorized" }, 401);
 
   const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
-  const { data: userData, error: userError } = await admin.auth.getUser(token);
-  const user = userData?.user;
-  if (userError || !user) return json({ error: "Unauthorized" }, 401);
-
-  const [{ data: roles }, { data: perms }] = await Promise.all([
-    admin.from("user_roles").select("role").eq("user_id", user.id),
-    admin.from("employee_permissions").select("orders").eq("user_id", user.id).maybeSingle(),
-  ]);
-  const roleNames = new Set((roles ?? []).map((r) => String(r.role)));
-  if (!roleNames.has("admin") && !roleNames.has("super_admin") && !perms?.orders) return json({ error: "Unauthorized" }, 403);
+  const access = await authorize(admin, token);
+  if (!access.authorized) return json({ error: "Unauthorized" }, 403);
 
   let body: JsonRecord;
   try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
   const phone = String(body.phone ?? "").replace(/\D/g, "");
   if (phone.length < 6 || phone.length > 20) return json({ error: "Invalid phone" }, 400);
 
-  const { data: row, error: rowError } = await admin.from("integrations").select("config,is_active").eq("name", "all_api_hoorin").maybeSingle();
-  if (rowError) return json({ error: rowError.message }, 500);
-  const cfg = (row?.config ?? {}) as JsonRecord;
-  const endpoint = String(cfg.endpoint ?? "https://dash.hoorin.com/api/courier/api").trim();
-  const apiKey = String(cfg.api_key ?? "").trim();
-  if (!row?.is_active || !apiKey) return json({ configured: false, stats: [], error: null });
+  const cacheKey = phone;
+  const memoryCached = readHistoryCache(cacheKey);
+  if (memoryCached) return json(memoryCached);
 
-  try {
-    const res = await fetch(`${endpoint}?apiKey=${encodeURIComponent(apiKey)}&searchTerm=${encodeURIComponent(phone)}`, { method: "GET", headers: { Accept: "application/json" } });
-    const text = await res.text();
-    let payload: unknown = null;
-    try { payload = JSON.parse(text); } catch { /* keep null */ }
-    if (!res.ok) return json({ configured: true, stats: [], error: `HTTP ${res.status}: ${text.slice(0, 200)}` });
+  const persistent = await readPersistentCache(admin, phone);
+  if (persistent?.fresh) {
+    writeHistoryCache(cacheKey, persistent.result);
+    return json(persistent.result);
+  }
 
-    let stats = parseStats(payload);
-    const providerIssue = steadfastProviderIssue(payload);
-    if (providerIssue) {
-      const direct = await loadDirectSteadfast(admin, phone);
-      if (direct.stat) {
-        stats = sortStats([...stats.filter((s) => s.name.toLowerCase() !== "steadfast"), direct.stat]);
-        return json({ configured: true, stats, error: null, steadfast_source: "direct_fallback" });
-      }
-      stats = stats.filter((s) => s.name.toLowerCase() !== "steadfast");
-      return json({ configured: true, stats, error: `Steadfast temporarily unavailable (${providerIssue}). Direct fallback also failed: ${direct.error ?? "unknown error"}` });
+  const existing = historyInFlight.get(cacheKey);
+  if (existing) return json(await existing);
+
+  const request = withProviderSlot(async (): Promise<HistoryResult> => {
+    const beforeSlot = await readPersistentCache(admin, phone);
+    if (beforeSlot?.fresh) return beforeSlot.result;
+
+    const waitMs = await reserveGlobalProviderSlot(admin);
+    if (waitMs > 0) await sleep(waitMs);
+
+    const afterSlot = await readPersistentCache(admin, phone);
+    if (afterSlot?.fresh) return afterSlot.result;
+
+    const result = await resolveHistory(admin, phone);
+    if (result.configured && !result.error) {
+      await writePersistentSuccess(admin, phone, result);
+      return result;
     }
 
-    return json({ configured: true, stats, error: null, steadfast_source: "hoorin" });
-  } catch (e) {
-    return json({ configured: true, stats: [], error: e instanceof Error ? e.message : "Network error" });
+    const stale = afterSlot ?? beforeSlot ?? persistent;
+    if (result.error && stale?.result.configured && !stale.result.error) {
+      await extendPersistentStale(admin, phone);
+      return { ...stale.result, error: null, stale: true };
+    }
+    return result;
+  });
+
+  historyInFlight.set(cacheKey, request);
+  try {
+    const result = await request;
+    writeHistoryCache(cacheKey, result);
+    return json(result);
+  } finally {
+    historyInFlight.delete(cacheKey);
   }
 });
