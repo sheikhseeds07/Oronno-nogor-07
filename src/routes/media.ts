@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 
 const ALLOWED_SUPABASE_HOST = "bvuhvzccziuniujeogng.supabase.co";
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
+const OPTIMIZED_WIDTH = 1920;
+const OPTIMIZED_QUALITY = 82;
 const NO_STORE = "private, no-store";
 
 type CloudflareCache = {
@@ -21,9 +23,7 @@ type OriginSnapshot = {
   body: ArrayBuffer;
 };
 
-// A burst can contain many identical image requests before the first cache.put
-// completes. Coalesce those requests inside the Worker isolate so only one of
-// them reaches Supabase Storage.
+// Coalesce bursts so identical images do not create parallel origin pulls.
 const inFlightOriginPulls = new Map<string, Promise<OriginSnapshot>>();
 
 function getCloudflareCache(): CloudflareCache | undefined {
@@ -46,13 +46,28 @@ function getSafeSource(request: Request): URL | null {
   }
 }
 
+function getOptimizedSource(source: URL): URL {
+  // Public Storage objects use Supabase's image transformation API. Supabase
+  // automatically returns WebP for supported browsers when transformations are
+  // requested. Private/signed Storage URLs remain untouched to avoid changing
+  // their authorization semantics.
+  const match = source.pathname.match(/^\/storage\/v1\/object\/public\/(.+)$/);
+  if (!match || source.pathname.includes("/render/image/")) return source;
+
+  const optimized = new URL(source.toString());
+  optimized.pathname = `/storage/v1/render/image/public/${match[1]}`;
+  optimized.search = "";
+  optimized.searchParams.set("width", String(OPTIMIZED_WIDTH));
+  optimized.searchParams.set("quality", String(OPTIMIZED_QUALITY));
+  optimized.searchParams.set("resize", "contain");
+  return optimized;
+}
+
 function makeCacheKey(request: Request, source: URL): Request {
-  // The object path is the stable asset identity. Signed tokens and transform
-  // query parameters are needed only at the origin and must not create duplicate
-  // Cloudflare Cache API items for the same stored object.
   const key = new URL(request.url);
   key.search = "";
   key.searchParams.set("asset", source.pathname);
+  key.searchParams.set("variant", `w${OPTIMIZED_WIDTH}-q${OPTIMIZED_QUALITY}-contain`);
   return new Request(key.toString(), { method: "GET" });
 }
 
@@ -60,6 +75,7 @@ function makeOriginCacheKey(request: Request, source: URL): string {
   const key = new URL(request.url);
   key.search = "";
   key.searchParams.set("asset", source.pathname);
+  key.searchParams.set("variant", `w${OPTIMIZED_WIDTH}-q${OPTIMIZED_QUALITY}-contain`);
   return key.toString();
 }
 
@@ -86,6 +102,7 @@ function cacheableResponse(snapshot: OriginSnapshot, body: ArrayBuffer, cacheSta
   headers.set("CDN-Cache-Control", cachePolicy);
   headers.set("Cloudflare-CDN-Cache-Control", cachePolicy);
   headers.set("X-Oronno-Media-Cache", cacheState);
+  headers.set("X-Oronno-Media-Variant", `w${OPTIMIZED_WIDTH}-q${OPTIMIZED_QUALITY}`);
 
   return new Response(body, {
     status: snapshot.status,
@@ -100,10 +117,6 @@ async function pullOrigin(source: URL, originCacheKey: string): Promise<OriginSn
   if (existing) return existing;
 
   const task = (async (): Promise<OriginSnapshot> => {
-    // Also opt the origin fetch into Cloudflare's HTTP cache. Cache API is kept
-    // below as a local fast path, while this cache directive gives the platform
-    // a shared CDN cache opportunity instead of relying only on one isolate's
-    // Cache API entry.
     const origin = await fetch(source.toString(), {
       method: "GET",
       headers: { Accept: "image/avif,image/webp,image/*,*/*;q=0.8" },
@@ -135,16 +148,14 @@ export const Route = createFileRoute("/media")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const source = getSafeSource(request);
-        if (!source) return noStoreResponse("Invalid media source", 400);
+        const rawSource = getSafeSource(request);
+        if (!rawSource) return noStoreResponse("Invalid media source", 400);
 
+        const source = getOptimizedSource(rawSource);
         const cache = getCloudflareCache();
-        const cacheKey = makeCacheKey(request, source);
-        const originCacheKey = makeOriginCacheKey(request, source);
+        const cacheKey = makeCacheKey(request, rawSource);
+        const originCacheKey = makeOriginCacheKey(request, rawSource);
 
-        // Local Cache API remains the fastest fallback. The origin fetch below
-        // also opts into Cloudflare's HTTP cache, so a miss here can still avoid
-        // a real Supabase Storage transfer.
         if (cache) {
           const hit = await cache.match(cacheKey);
           if (hit) {
@@ -165,7 +176,7 @@ export const Route = createFileRoute("/media")({
           try {
             await cache.put(cacheKey, cacheableResponse(origin, origin.body.slice(0), "HIT"));
           } catch {
-            // A cache write failure must never break live image delivery.
+            // Cache failure must never break image delivery.
           }
         }
 
