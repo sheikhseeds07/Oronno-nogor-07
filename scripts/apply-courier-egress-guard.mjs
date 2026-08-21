@@ -18,16 +18,14 @@ function replaceIfPresent(from, to, label) {
   console.log(`Applied admin order UI patch: ${label}`);
 }
 
-// Courier rows should use the normal guarded history loader. That loader reads the
-// persistent cache first and, only on a cache miss, refreshes through the configured
-// Hoorin API using the global rate/concurrency guard. Do not force cache-only mode,
-// otherwise new phone numbers can never populate the Courier Success Rate column.
+// Order-list rows must never fan out to the external Hoorin provider. They read only
+// the 24-hour persistent cache; opening an order or entering a phone in New Order
+// remains the explicit path that refreshes a missing courier history record.
 replaceIfPresent(
-  "    queryFn: () => fn({ data: { phone: digits, cacheOnly: true } }),",
   "    queryFn: () => fn({ data: { phone: digits } }),",
-  "courier rows refresh missing Hoorin history safely",
+  "    queryFn: () => fn({ data: { phone: digits, cacheOnly: true } }),",
+  "courier rows use cache-only history",
 );
-
 // The selected-order action strip must remain completely visible on phones. Allow wrapping,
 // preserve every button, and prevent the strip itself from clipping its contents.
 replaceIfPresent(
