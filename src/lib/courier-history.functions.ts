@@ -22,10 +22,12 @@ type CacheEntry = { expiresAt: number; result: CourierHistoryResult };
 // order list renders. Keep successful results for a while so page refreshes,
 // multiple admin tabs and repeated rows do not hammer the Edge Function.
 const SUCCESS_CACHE_TTL_MS = 30 * 60 * 1000;
-// Provider failures are cached only briefly. This prevents a transient provider
-// outage from creating a retry storm while still recovering quickly.
+// Provider failures / temporarily-unconfigured responses are cached only briefly.
+// This prevents a transient outage or a newly-enabled API from staying stuck as
+// "not configured" for 30 minutes, while still avoiding retry storms.
 const FAILURE_CACHE_TTL_MS = 45 * 1000;
-const CACHE_VERSION = "steadfast-fallback-v3";
+// Bump whenever cache semantics change so stale process-level entries cannot be reused.
+const CACHE_VERSION = "courier-history-v4";
 const MAX_CACHE_ENTRIES = 1500;
 const MAX_EXTERNAL_CONCURRENCY = 3;
 
@@ -56,7 +58,9 @@ function writeCache(key: string, result: CourierHistoryResult) {
       courierCache.delete(oldest);
     }
   }
-  const ttl = result.error ? FAILURE_CACHE_TTL_MS : SUCCESS_CACHE_TTL_MS;
+  // Only a genuinely configured, error-free provider response is long-lived.
+  // configured:false must recover quickly after an API is enabled/reconnected.
+  const ttl = result.error || !result.configured ? FAILURE_CACHE_TTL_MS : SUCCESS_CACHE_TTL_MS;
   courierCache.set(key, { expiresAt: Date.now() + ttl, result });
 }
 
