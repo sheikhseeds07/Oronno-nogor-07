@@ -13,15 +13,14 @@ function createVisitorId(): string {
 
 const VISITOR_ID_KEY = "site-visitor-id";
 const VISITOR_LOOKUP_KEY_PREFIX = "site-visitor-route:";
-// Dashboard treats a visitor as live when last_seen is within 2 minutes.
-// Refresh once per minute so active visitors do not disappear between heartbeats.
-const HEARTBEAT_INTERVAL_MS = 60_000;
 
 export function SiteVisitorTracker() {
   const location = useLocation();
 
   useEffect(() => {
-    if (location.pathname.startsWith("/admin")) return;
+    const path = location.pathname;
+    const trackable = path === "/" || path.startsWith("/landing/");
+    if (!trackable) return;
 
     const visitorId = (() => {
       const old = localStorage.getItem(VISITOR_ID_KEY);
@@ -32,10 +31,7 @@ export function SiteVisitorTracker() {
     })();
 
     let active = true;
-    let heartbeatInFlight = false;
-    const path = location.pathname;
     const landingSlug = path.startsWith("/landing/") ? path.split("/")[2] : null;
-    const productSlug = path.startsWith("/product/") ? path.split("/")[2] : null;
     const lookupKey = `${VISITOR_LOOKUP_KEY_PREFIX}${path}`;
 
     const getRouteIds = () => cachedRequest(`visitor-route:${path}`, async () => {
@@ -50,41 +46,25 @@ export function SiteVisitorTracker() {
         const { data } = await supabase.from("landing_pages").select("id,product_id").eq("slug", landingSlug).maybeSingle();
         landingPageId = data?.id ?? null;
         productId = data?.product_id ?? null;
-      } else if (productSlug) {
-        const { data } = await supabase.from("products").select("id").eq("slug", productSlug).maybeSingle();
-        productId = data?.id ?? null;
       }
       const result = { landingPageId, productId };
       try { sessionStorage.setItem(lookupKey, JSON.stringify(result)); } catch {}
       return result;
     }, 300_000);
 
-    const heartbeat = async () => {
-      if (!active || heartbeatInFlight || document.hidden) return;
-      heartbeatInFlight = true;
-      try {
-        const { landingPageId, productId } = await getRouteIds();
-        await (supabase as any).rpc("heartbeat_site_visitor", {
-          p_id: visitorId,
-          p_path: path,
-          p_landing_page_id: landingPageId,
-          p_product_id: productId,
-        });
-      } finally { heartbeatInFlight = false; }
+    const recordVisit = async () => {
+      const { landingPageId, productId } = await getRouteIds();
+      if (!active) return;
+      await (supabase as any).rpc("heartbeat_site_visitor", {
+        p_id: visitorId,
+        p_path: path,
+        p_landing_page_id: landingPageId,
+        p_product_id: productId,
+      });
     };
 
-    const onVisibility = () => {
-      if (!document.hidden) void heartbeat().catch(() => {});
-    };
-
-    void heartbeat().catch(() => {});
-    document.addEventListener("visibilitychange", onVisibility);
-    const timer = window.setInterval(() => void heartbeat().catch(() => {}), HEARTBEAT_INTERVAL_MS);
-    return () => {
-      active = false;
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.clearInterval(timer);
-    };
+    void recordVisit().catch(() => {});
+    return () => { active = false; };
   }, [location.pathname]);
 
   return null;
