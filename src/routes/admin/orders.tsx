@@ -646,8 +646,10 @@ function OrdersTable({
       let query = supabase
         .from("orders")
         .select("id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment,courier_display_name,printed_at,created_at,updated_at,created_by,assigned_to,order_items(id,product_name,quantity,price,product_id)", { count: "exact" })
-        .in("status", list as Exclude<OrderStatus, "incomplete">[])
-        .order("created_at", { ascending: false });
+        .in("status", list as Exclude<OrderStatus, "incomplete">[]);
+      query = mode === "list"
+        ? query.order("invoice_no", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false })
+        : query.order("created_at", { ascending: false });
 
       const term = debouncedSearch.trim().replace(/[%,()]/g, " ").trim();
       if (term) {
