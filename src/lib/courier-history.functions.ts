@@ -27,7 +27,7 @@ type PersistentHit = { result: CourierHistoryResult; fresh: boolean };
 const SUCCESS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const FAILURE_CACHE_TTL_MS = 5 * 60 * 1000;
 const STALE_CACHE_TTL_MS = 30 * 60 * 1000;
-const CACHE_VERSION = "courier-history-v7-persistent-first";
+const CACHE_VERSION = "courier-history-v8-cache-only-rows";
 const MAX_CACHE_ENTRIES = 2000;
 const MAX_EXTERNAL_CONCURRENCY = 1;
 const GLOBAL_EDGE_GAP_MS = 1500;
@@ -130,14 +130,15 @@ async function withExternalSlot<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
-// The admin UI can ask for courier history from several places (list rows,
-// New Order and the order modal). Successful results are therefore resolved
-// from the persistent database cache first. Only an actually missing/expired
-// phone is allowed to reach the Edge Function, and those invocations are
-// globally spaced so a table render cannot recreate the previous burst.
+// Order-list rows request cacheOnly=true so the old percentage UI can render
+// without ever invoking the external courier bridge. New Order / order detail
+// keep the normal behavior and may refresh a missing/expired phone on demand.
 export const fetchCourierHistory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ phone: z.string().min(6).max(20) }))
+  .inputValidator(z.object({
+    phone: z.string().min(6).max(20),
+    cacheOnly: z.boolean().optional().default(false),
+  }))
   .handler(async ({ data, context }) => {
     await assertCanManageOrders(context.userId);
 
@@ -145,9 +146,6 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
     const cacheKey = `${CACHE_VERSION}:${phone}`;
     const memoryCached = readCache(cacheKey);
 
-    // A successful process-level hit is the cheapest path. Failure/not-configured
-    // entries are deliberately not returned yet because a newer persistent
-    // success may have been written by another isolate in the meantime.
     if (memoryCached?.configured && !memoryCached.error && !memoryCached.stale) {
       return memoryCached;
     }
@@ -158,15 +156,24 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
       return persistent.result;
     }
 
+    // Critical egress guard: table rows never trigger courier-history-bridge.
+    // They display the same old success-rate UI using persistent cache only.
+    if (data.cacheOnly) {
+      if (persistent?.result.configured && !persistent.result.error) {
+        const cached = persistent.fresh ? persistent.result : { ...persistent.result, stale: true };
+        writeCache(cacheKey, cached);
+        return cached;
+      }
+      if (memoryCached) return memoryCached;
+      return { configured: false, stats: [], error: null };
+    }
+
     if (memoryCached) return memoryCached;
 
     const existing = inFlight.get(cacheKey);
     if (existing) return existing;
 
     const request = withExternalSlot(async (): Promise<CourierHistoryResult> => {
-      // Space Edge invocations across all app server isolates, then re-check the
-      // persistent cache. Another request may already have filled it while this
-      // lookup waited for its slot.
       const waitMs = await reserveGlobalEdgeSlot();
       if (waitMs > 0) await sleep(waitMs);
 
@@ -195,9 +202,6 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
         stale: value.stale === true,
       };
 
-      // Never show the misleading "API not connected" warning when the Hoorin
-      // integration is in fact active. A transient Edge/provider problem should
-      // be reported as temporary unavailability instead.
       if (!normalized.configured && await hoorinIsConfigured()) {
         normalized = {
           ...normalized,
