@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 const ALLOWED_SUPABASE_HOST = "bvuhvzccziuniujeogng.supabase.co";
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
+const NO_STORE = "private, no-store";
 
 type CloudflareCache = {
   match(request: Request): Promise<Response | undefined>;
@@ -12,12 +13,18 @@ type CloudflareCaches = {
   default?: CloudflareCache;
 };
 
-type CloudflareRequestInit = RequestInit & {
-  cf?: {
-    cacheEverything?: boolean;
-    cacheTtl?: number;
-  };
+type OriginSnapshot = {
+  ok: boolean;
+  status: number;
+  statusText: string;
+  headers: Headers;
+  body: ArrayBuffer;
 };
+
+// A burst can contain many identical image requests before the first cache.put
+// completes. Coalesce those requests inside the Worker isolate so only one of
+// them reaches Supabase Storage.
+const inFlightOriginPulls = new Map<string, Promise<OriginSnapshot>>();
 
 function getCloudflareCache(): CloudflareCache | undefined {
   return (globalThis as typeof globalThis & { caches?: CloudflareCaches }).caches?.default;
@@ -40,37 +47,71 @@ function getSafeSource(request: Request): URL | null {
 }
 
 function makeCacheKey(request: Request, source: URL): Request {
-  // The stored object path is the stable asset identity. Supabase signed
-  // tokens live in the query string and are only needed for the origin fetch;
-  // stripping them prevents duplicate Cloudflare cache entries for the same
-  // image when a new signed URL is generated later.
+  // The object path is the stable asset identity. Signed tokens are needed only
+  // for the Supabase origin fetch and must not create duplicate Cache API items.
   const key = new URL(request.url);
   key.search = "";
   key.searchParams.set("asset", source.pathname);
   return new Request(key.toString(), { method: "GET" });
 }
 
-function cacheableResponse(origin: Response, body: ArrayBuffer, cacheState: "HIT" | "MISS"): Response {
+function noStoreResponse(body: BodyInit | null, status: number, statusText = "", sourceHeaders?: Headers): Response {
+  const headers = new Headers(sourceHeaders);
+  headers.set("Cache-Control", NO_STORE);
+  headers.set("CDN-Cache-Control", NO_STORE);
+  headers.set("Cloudflare-CDN-Cache-Control", NO_STORE);
+  return new Response(body, { status, statusText, headers });
+}
+
+function cacheableResponse(snapshot: OriginSnapshot, body: ArrayBuffer, cacheState: "HIT" | "MISS"): Response {
   const headers = new Headers();
-  const contentType = origin.headers.get("content-type");
-  const etag = origin.headers.get("etag");
-  const lastModified = origin.headers.get("last-modified");
+  const contentType = snapshot.headers.get("content-type");
+  const etag = snapshot.headers.get("etag");
+  const lastModified = snapshot.headers.get("last-modified");
 
   if (contentType) headers.set("Content-Type", contentType);
   if (etag) headers.set("ETag", etag);
   if (lastModified) headers.set("Last-Modified", lastModified);
-  headers.set(
-    "Cache-Control",
-    `public, max-age=${ONE_YEAR_SECONDS}, s-maxage=${ONE_YEAR_SECONDS}, immutable`,
-  );
-  headers.set("CDN-Cache-Control", `public, max-age=${ONE_YEAR_SECONDS}, immutable`);
+
+  const cachePolicy = `public, max-age=${ONE_YEAR_SECONDS}, s-maxage=${ONE_YEAR_SECONDS}, immutable`;
+  headers.set("Cache-Control", cachePolicy);
+  headers.set("CDN-Cache-Control", cachePolicy);
+  headers.set("Cloudflare-CDN-Cache-Control", cachePolicy);
   headers.set("X-Oronno-Media-Cache", cacheState);
 
   return new Response(body, {
-    status: origin.status,
-    statusText: origin.statusText,
+    status: snapshot.status,
+    statusText: snapshot.statusText,
     headers,
   });
+}
+
+async function pullOrigin(source: URL): Promise<OriginSnapshot> {
+  const key = source.toString();
+  const existing = inFlightOriginPulls.get(key);
+  if (existing) return existing;
+
+  const task = (async (): Promise<OriginSnapshot> => {
+    const origin = await fetch(source.toString(), {
+      method: "GET",
+      headers: { Accept: "image/avif,image/webp,image/*,*/*;q=0.8" },
+    });
+    const body = await origin.arrayBuffer();
+    return {
+      ok: origin.ok,
+      status: origin.status,
+      statusText: origin.statusText,
+      headers: new Headers(origin.headers),
+      body,
+    };
+  })();
+
+  inFlightOriginPulls.set(key, task);
+  try {
+    return await task;
+  } finally {
+    if (inFlightOriginPulls.get(key) === task) inFlightOriginPulls.delete(key);
+  }
 }
 
 export const Route = createFileRoute("/media")({
@@ -78,11 +119,14 @@ export const Route = createFileRoute("/media")({
     handlers: {
       GET: async ({ request }) => {
         const source = getSafeSource(request);
-        if (!source) return new Response("Invalid media source", { status: 400 });
+        if (!source) return noStoreResponse("Invalid media source", 400);
 
         const cache = getCloudflareCache();
         const cacheKey = makeCacheKey(request, source);
 
+        // Local Cache API remains a fast fallback. The Worker-level cache in
+        // wrangler.jsonc sits in front of this route and provides the shared,
+        // tiered cache for repeated /media requests across Cloudflare locations.
         if (cache) {
           const hit = await cache.match(cacheKey);
           if (hit) {
@@ -92,40 +136,18 @@ export const Route = createFileRoute("/media")({
           }
         }
 
-        // Use Cloudflare's fetch cache in addition to the local Cache API.
-        // Unlike caches.default, fetch caching can use Cloudflare's tiered
-        // caching path, reducing repeated origin pulls from different POPs.
-        const origin = await fetch(source.toString(), {
-          method: "GET",
-          headers: { Accept: "image/avif,image/webp,image/*,*/*;q=0.8" },
-          signal: request.signal,
-          cf: {
-            cacheEverything: true,
-            cacheTtl: ONE_YEAR_SECONDS,
-          },
-        } as CloudflareRequestInit);
-
-        // Never cache failures. Existing data remains untouched and callers can
-        // retry later; this proxy is an optimization layer, not a data migration.
+        const origin = await pullOrigin(source);
         if (!origin.ok) {
-          return new Response(origin.body, {
-            status: origin.status,
-            statusText: origin.statusText,
-            headers: origin.headers,
-          });
+          return noStoreResponse(origin.body.slice(0), origin.status, origin.statusText, origin.headers);
         }
 
-        const body = await origin.arrayBuffer();
-        const response = cacheableResponse(origin, body, "MISS");
+        const response = cacheableResponse(origin, origin.body.slice(0), "MISS");
 
         if (cache) {
           try {
-            // Keep the local Cache API as a fast-path. The fetch() cache above
-            // remains the shared/tiered origin-cache path for other POPs.
-            const cached = cacheableResponse(origin, body.slice(0), "HIT");
-            await cache.put(cacheKey, cached);
+            await cache.put(cacheKey, cacheableResponse(origin, origin.body.slice(0), "HIT"));
           } catch {
-            // Cache failure must never break live image delivery.
+            // A cache write failure must never break live image delivery.
           }
         }
 
