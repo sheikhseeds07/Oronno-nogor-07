@@ -12,6 +12,13 @@ type CloudflareCaches = {
   default?: CloudflareCache;
 };
 
+type CloudflareRequestInit = RequestInit & {
+  cf?: {
+    cacheEverything?: boolean;
+    cacheTtl?: number;
+  };
+};
+
 function getCloudflareCache(): CloudflareCache | undefined {
   return (globalThis as typeof globalThis & { caches?: CloudflareCaches }).caches?.default;
 }
@@ -33,9 +40,10 @@ function getSafeSource(request: Request): URL | null {
 }
 
 function makeCacheKey(request: Request, source: URL): Request {
-  // The object path is the stable asset identity. Signed tokens/query strings
-  // are required only for the origin fetch and must not create duplicate cache
-  // entries for the same stored file.
+  // The stored object path is the stable asset identity. Supabase signed
+  // tokens live in the query string and are only needed for the origin fetch;
+  // stripping them prevents duplicate Cloudflare cache entries for the same
+  // image when a new signed URL is generated later.
   const key = new URL(request.url);
   key.search = "";
   key.searchParams.set("asset", source.pathname);
@@ -55,6 +63,7 @@ function cacheableResponse(origin: Response, body: ArrayBuffer, cacheState: "HIT
     "Cache-Control",
     `public, max-age=${ONE_YEAR_SECONDS}, s-maxage=${ONE_YEAR_SECONDS}, immutable`,
   );
+  headers.set("CDN-Cache-Control", `public, max-age=${ONE_YEAR_SECONDS}, immutable`);
   headers.set("X-Oronno-Media-Cache", cacheState);
 
   return new Response(body, {
@@ -83,11 +92,18 @@ export const Route = createFileRoute("/media")({
           }
         }
 
+        // Use Cloudflare's fetch cache in addition to the local Cache API.
+        // Unlike caches.default, fetch caching can use Cloudflare's tiered
+        // caching path, reducing repeated origin pulls from different POPs.
         const origin = await fetch(source.toString(), {
           method: "GET",
           headers: { Accept: "image/avif,image/webp,image/*,*/*;q=0.8" },
           signal: request.signal,
-        });
+          cf: {
+            cacheEverything: true,
+            cacheTtl: ONE_YEAR_SECONDS,
+          },
+        } as CloudflareRequestInit);
 
         // Never cache failures. Existing data remains untouched and callers can
         // retry later; this proxy is an optimization layer, not a data migration.
@@ -104,10 +120,12 @@ export const Route = createFileRoute("/media")({
 
         if (cache) {
           try {
+            // Keep the local Cache API as a fast-path. The fetch() cache above
+            // remains the shared/tiered origin-cache path for other POPs.
             const cached = cacheableResponse(origin, body.slice(0), "HIT");
             await cache.put(cacheKey, cached);
           } catch {
-            // Cache API failure must never break live image delivery.
+            // Cache failure must never break live image delivery.
           }
         }
 
