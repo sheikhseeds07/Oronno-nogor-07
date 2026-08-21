@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
-import { useEffect, useMemo, useState, type ReactNode, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode, type MouseEvent } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { BrandLoader } from "@/components/layout/BrandLoader";
 import { supabase } from "@/lib/personal-supabase/client";
@@ -540,20 +540,23 @@ function OrdersTable({
     });
   };
   const [search, setSearch] = useState("");
-  const PAGE_SIZE_KEY = "order-list-page-size";
-const PAGE_SIZES = [20, 50, 70, 100, 200, 500] as const;
-type PageSize = (typeof PAGE_SIZES)[number];
-const [rtsPageSize, setRtsPageSize] = useState<PageSize>(() => {
-  if (typeof window === "undefined") return 50;
-  const saved = Number(window.localStorage.getItem(PAGE_SIZE_KEY));
-  return PAGE_SIZES.includes(saved as PageSize) ? (saved as PageSize) : 50;
-});
-useEffect(() => {
-  if (typeof window !== "undefined") {
-    window.localStorage.setItem(PAGE_SIZE_KEY, String(rtsPageSize));
-  }
-}, [rtsPageSize]);
-  const [rtsPage, setRtsPage] = useState(1);
+  const PAGE_SIZE_KEY = `admin-orders-page-size:${mode}`;
+  const PAGE_SIZES = [20, 50, 70, 100, 200, 500] as const;
+  type PageSize = (typeof PAGE_SIZES)[number];
+  const [pageSize, setPageSize] = useState<PageSize>(() => {
+    if (typeof window === "undefined") return 50;
+    const stored = window.localStorage.getItem(PAGE_SIZE_KEY)
+      ?? (mode === "list" ? window.localStorage.getItem("order-list-page-size") : null);
+    const saved = Number(stored);
+    return PAGE_SIZES.includes(saved as PageSize) ? (saved as PageSize) : 50;
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(PAGE_SIZE_KEY, String(pageSize));
+    }
+  }, [PAGE_SIZE_KEY, pageSize]);
+  const [page, setPage] = useState(1);
+  const debouncedSearch = useDebouncedValue(search, 300);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [sendModal, setSendModal] = useState<SendProgress[] | null>(null);
   const [sendDone, setSendDone] = useState(false);
@@ -633,24 +636,38 @@ useEffect(() => {
 
 
 
-  const { data: orders, isFetching } = useQuery({
-    queryKey: ["admin-orders", mode, filter],
+  const { data: orderResult, isFetching, isError, error: ordersError } = useQuery({
+    queryKey: ["admin-orders", mode, filter, page, pageSize, debouncedSearch],
     enabled: !isIncomplete,
     staleTime: 15_000,
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      const list = (filter === "all" ? statuses : [filter]).filter((s) => s !== "incomplete");
-      const { data: ords } = await supabase
+      const list = (filter === "all" ? statuses : [filter]).filter((status) => status !== "incomplete");
+      let query = supabase
         .from("orders")
-        .select("id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment,courier_display_name,printed_at,created_at,updated_at,created_by,assigned_to,order_items(id,product_name,quantity,price,product_id)")
+        .select("id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment,courier_display_name,printed_at,created_at,updated_at,created_by,assigned_to,order_items(id,product_name,quantity,price,product_id)", { count: "exact" })
         .in("status", list as Exclude<OrderStatus, "incomplete">[])
-        .order("created_at", { ascending: false })
-        .limit(1000);
-      return await attachProductImages((ords ?? []) as unknown as OrderRow[]);
+        .order("created_at", { ascending: false });
+
+      const term = debouncedSearch.trim().replace(/[%,()]/g, " ").trim();
+      if (term) {
+        const orQuery = `customer_phone.ilike.%${term}%,invoice_no.ilike.%${term}%,customer_name.ilike.%${term}%,courier_consignment.ilike.%${term}%`;
+        query = query.or(orQuery);
+      }
+
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+      const { data: ords, count, error } = await query.range(from, to);
+      if (error) throw new Error(error.message);
+      return {
+        rows: await attachProductImages((ords ?? []) as unknown as OrderRow[]),
+        total: count ?? 0,
+      };
     },
   });
+  const orders = orderResult?.rows ?? [];
 
-  const creatorIds = Array.from(new Set((orders ?? []).flatMap((o) => [o.created_by, o.assigned_to]).filter((x): x is string => !!x)));
+  const creatorIds = Array.from(new Set((orders ?? []).flatMap((o) => [o.created_by, o.assigned_to]).filter((x): x is string => !!x)));  const creatorIds = Array.from(new Set((orders ?? []).flatMap((o) => [o.created_by, o.assigned_to]).filter((x): x is string => !!x)));
   const { data: creatorProfiles } = useQuery({
     queryKey: ["order-creators", creatorIds.join(",")],
     enabled: creatorIds.length > 0,
@@ -753,7 +770,7 @@ useEffect(() => {
 
 
   const searchTerm = search.trim().toLowerCase();
-  const rows = searchTerm
+  const rows = isIncomplete && searchTerm
     ? baseRows.filter((o) => {
         const inv = (o.invoice_no ?? o.id).toLowerCase();
         const phone = (o.customer_phone ?? "").toLowerCase();
@@ -762,11 +779,12 @@ useEffect(() => {
         return inv.includes(searchTerm) || phone.includes(searchTerm) || name.includes(searchTerm) || cn.includes(searchTerm);
       })
     : baseRows;
-  const rtsTotalPages = Math.max(1, Math.ceil(rows.length / rtsPageSize));
-  const displayRows = mode === "list" ? rows.slice((rtsPage - 1) * rtsPageSize, rtsPage * rtsPageSize) : rows;
-  useEffect(() => { setRtsPage(1); }, [filter, mode, search, rtsPageSize]);
-  useEffect(() => { if (rtsPage > rtsTotalPages) setRtsPage(rtsTotalPages); }, [rtsPage, rtsTotalPages]);
-  const allChecked = displayRows.length > 0 && displayRows.every((o) => selectedIds.has(o.id));
+  const totalRows = isIncomplete ? rows.length : (orderResult?.total ?? 0);
+  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+  const displayRows = isIncomplete ? rows.slice((page - 1) * pageSize, page * pageSize) : rows;
+  useEffect(() => { setPage(1); }, [filter, mode, search, pageSize]);
+  useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
+  const allChecked = displayRows.length > 0 && displayRows.every((o) => selectedIds.has(o.id));  const allChecked = displayRows.length > 0 && displayRows.every((o) => selectedIds.has(o.id));
   const toggleAll = () => {
     setSelectedIds(() => allChecked ? new Set() : new Set(displayRows.map((o) => o.id)));
   };
@@ -1151,10 +1169,16 @@ useEffect(() => {
         </div>
       )}
 
+      {!isIncomplete && isError && (
+        <div className="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+          অর্ডার লোড হয়নি: {ordersError instanceof Error ? ordersError.message : "API request failed"}
+        </div>
+      )}
+
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
         <OrdersTableRows
           orders={displayRows}
-          loading={isIncomplete ? incompleteFetching : isFetching}
+          loading={isIncomplete ? (incompleteFetching && !incompleteRows) : (isFetching && !orderResult)}
           mode={mode}
           onOpen={handleOpen}
           selectedIds={selectedIds}
@@ -1170,17 +1194,17 @@ useEffect(() => {
 
       </div>
 
-      {mode === "list" && rows.length > 0 && (
+      {(mode === "list" || mode === "web") && totalRows > 0 && (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
           <div className="flex items-center gap-2 text-xs text-slate-600">
             <span className="font-semibold">প্রতি পেইজে</span>
-            <select value={rtsPageSize} onChange={(e) => setRtsPageSize(Number(e.target.value) as PageSize)} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand/30"><option value={20}>20</option><option value={50}>50</option><option value={70}>70</option><option value={100}>100</option><option value={200}>200</option><option value={500}>500</option></select>
-            <span>অর্ডার · মোট {rows.length}</span>
+            <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value) as PageSize)} className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand/30"><option value={20}>20</option><option value={50}>50</option><option value={70}>70</option><option value={100}>100</option><option value={200}>200</option><option value={500}>500</option></select>
+            <span>অর্ডার · মোট {totalRows}</span>
           </div>
           <div className="flex items-center gap-1">
-            <button disabled={rtsPage === 1} onClick={() => setRtsPage((p) => Math.max(1,p-1))} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold disabled:opacity-40">Previous</button>
-            {Array.from({length:rtsTotalPages},(_,i)=>i+1).map((p) => <button key={p} onClick={() => setRtsPage(p)} className={`min-w-8 rounded-lg px-2 py-1.5 text-xs font-bold ${rtsPage===p ? 'bg-gradient-to-br from-brand to-brand-dark text-white shadow-sm' : 'border border-slate-200 text-slate-700 hover:bg-slate-50'}`}>{p}</button>)}
-            <button disabled={rtsPage === rtsTotalPages} onClick={() => setRtsPage((p) => Math.min(rtsTotalPages,p+1))} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold disabled:opacity-40">Next</button>
+            <button disabled={page === 1} onClick={() => setPage((p) => Math.max(1,p-1))} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold disabled:opacity-40">Previous</button>
+            {Array.from({length:totalPages},(_,i)=>i+1).map((p) => <button key={p} onClick={() => setPage(p)} className={`min-w-8 rounded-lg px-2 py-1.5 text-xs font-bold ${page===p ? 'bg-gradient-to-br from-brand to-brand-dark text-white shadow-sm' : 'border border-slate-200 text-slate-700 hover:bg-slate-50'}`}>{p}</button>)}
+            <button disabled={page === totalPages} onClick={() => setPage((p) => Math.min(totalPages,p+1))} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold disabled:opacity-40">Next</button>
           </div>
         </div>
       )}
@@ -1561,36 +1585,67 @@ function escapeHtml(s: string) {
 
 function CourierSuccessCell({ phone }: { phone: string }) {
   const fn = useServerFn(fetchCourierHistory);
+  const cellRef = useRef<HTMLDivElement>(null);
+  const [nearViewport, setNearViewport] = useState(false);
   const digits = (phone || "").replace(/\D/g, "").slice(-11);
   const enabled = digits.length >= 10;
+
+  useEffect(() => {
+    const node = cellRef.current;
+    if (!node) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setNearViewport(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setNearViewport(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "250px 0px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
   const { data, isFetching } = useQuery({
     queryKey: ["courier-rate", digits],
-    enabled,
-    queryFn: () => fn({ data: { phone: digits } }),
+    enabled: enabled && nearViewport,
+    queryFn: () => fn({ data: { phone: digits, cacheOnly: true } }),
     staleTime: 10 * 60_000,
   });
-  if (!enabled) return <span className="text-xs text-muted-foreground">—</span>;
-  if (isFetching && !data) return <span className="text-xs text-muted-foreground">লোড...</span>;
-  if (!data?.configured) return <span className="text-xs text-muted-foreground">—</span>;
-  const total = data.stats.reduce((a, s) => a + s.total, 0);
-  const success = data.stats.reduce((a, s) => a + s.success, 0);
-  const cancelled = data.stats.reduce((a, s) => a + s.cancelled, 0);
-  if (!total) return <span className="text-xs text-muted-foreground">কোনো রেকর্ড নেই</span>;
-  const rate = Math.round((success / total) * 100);
-  const ring = rate >= 80 ? "border-emerald-500 text-emerald-700" : rate >= 50 ? "border-amber-500 text-amber-700" : "border-rose-500 text-rose-700";
-  return (
-    <div className="flex items-center gap-2">
-      <div className={`w-9 h-9 rounded-full border-[3px] ${ring} flex items-center justify-center text-[10px] font-bold`}>{rate}%</div>
-      <div className="text-[11px] leading-tight">
-        <div className="text-emerald-700">Success: <b>{rate}%</b></div>
-        <div className="text-muted-foreground">Order: <b>{success}/{total}</b></div>
-        <div className="text-rose-600">Cancel: <b>{cancelled}</b></div>
-      </div>
-    </div>
-  );
+
+  let content: ReactNode = <span className="text-xs text-muted-foreground">—</span>;
+  if (enabled && nearViewport && isFetching && !data) {
+    content = <span className="text-xs text-muted-foreground">লোড...</span>;
+  } else if (data?.configured) {
+    const total = data.stats.reduce((sum, stat) => sum + stat.total, 0);
+    const success = data.stats.reduce((sum, stat) => sum + stat.success, 0);
+    const cancelled = data.stats.reduce((sum, stat) => sum + stat.cancelled, 0);
+    if (total) {
+      const rate = Math.round((success / total) * 100);
+      const ring = rate >= 80 ? "border-emerald-500 text-emerald-700" : rate >= 50 ? "border-amber-500 text-amber-700" : "border-rose-500 text-rose-700";
+      content = (
+        <div className="flex items-center gap-2">
+          <div className={`w-9 h-9 rounded-full border-[3px] ${ring} flex items-center justify-center text-[10px] font-bold`}>{rate}%</div>
+          <div className="text-[11px] leading-tight">
+            <div className="text-emerald-700">Success: <b>{rate}%</b></div>
+            <div className="text-muted-foreground">Order: <b>{success}/{total}</b></div>
+            <div className="text-rose-600">Cancel: <b>{cancelled}</b></div>
+          </div>
+        </div>
+      );
+    } else {
+      content = <span className="text-xs text-muted-foreground">কোনো রেকর্ড নেই</span>;
+    }
+  }
+
+  return <div ref={cellRef} className="flex min-h-9 items-center">{content}</div>;
 }
 
-function RelativeUpdatedTime({ value }: { value?: string | null }) {
+function RelativeUpdatedTime({ value }: { value?: string | null }) {function RelativeUpdatedTime({ value }: { value?: string | null }) {
   const [, refresh] = useState(0);
 
   useEffect(() => {
