@@ -100,7 +100,9 @@ function cacheableResponse(snapshot: OriginSnapshot, body: ArrayBuffer, cacheSta
   headers.set("Cloudflare-CDN-Cache-Control", cachePolicy);
   headers.set("X-Oronno-Media-Cache", cacheState);
   headers.set("X-Oronno-Media-Variant", `w${OPTIMIZED_WIDTH}-q${OPTIMIZED_QUALITY}`);
-  headers.set("Vary", "Accept");
+  // The output format is already baked into the canonical cache key, so do
+  // not emit Vary: Accept. Cloudflare cache keys must not depend on a Vary
+  // dimension that is not explicitly supported by the edge cache.
   if (cfResized) {
     headers.set("X-Oronno-Media-Optimized", "true");
     headers.set("X-Oronno-Cf-Resized", cfResized);
