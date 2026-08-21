@@ -33,7 +33,7 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
     }
 
     headers.set('apikey', supabaseKey);
-    const method = (init?.method || (input instanceof Request ? input.method : 'GET')).toUpperCase();
+    const method = (init?.method || (typeof Request !== 'undefined' && input instanceof Request ? input.method : 'GET')).toUpperCase();
     const response = await fetch(input, { ...init, headers });
 
     const contentLength = Number(response.headers.get('content-length') || 0);
@@ -63,7 +63,7 @@ function createSupabaseClient() {
   });
 
   setSupabaseEgressSender(async (rows) => {
-    await client.rpc('record_endpoint_egress', { p_rows: rows });
+    await (client as any).rpc('record_endpoint_egress', { p_rows: rows });
   });
 
   if (typeof window !== 'undefined') {
