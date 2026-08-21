@@ -14,39 +14,100 @@ function createVisitorId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
 }
 
+const VISITOR_ID_KEY = "site-visitor-id";
+const VISITOR_LOOKUP_KEY_PREFIX = "site-visitor-route:";
+const HEARTBEAT_INTERVAL_MS = 120_000;
+
 export function SiteVisitorTracker() {
   const location = useLocation();
+
   useEffect(() => {
     if (location.pathname.startsWith("/admin")) return;
+
     const visitorId = (() => {
-      const key = "site-visitor-id";
-      const old = localStorage.getItem(key);
+      const old = localStorage.getItem(VISITOR_ID_KEY);
       if (old) return old;
       const id = createVisitorId();
-      localStorage.setItem(key, id);
+      localStorage.setItem(VISITOR_ID_KEY, id);
       return id;
     })();
+
     let active = true;
-    const heartbeat = async () => {
-      if (!active) return;
-      const path = location.pathname;
-      const landingSlug = path.startsWith("/landing/") ? path.split("/")[2] : null;
-      const productSlug = path.startsWith("/product/") ? path.split("/")[2] : null;
+    let heartbeatInFlight = false;
+    const path = location.pathname;
+    const landingSlug = path.startsWith("/landing/") ? path.split("/")[2] : null;
+    const productSlug = path.startsWith("/product/") ? path.split("/")[2] : null;
+    const lookupKey = `${VISITOR_LOOKUP_KEY_PREFIX}${path}`;
+
+    const getRouteIds = async (): Promise<{
+      landingPageId: string | null;
+      productId: string | null;
+    }> => {
+      try {
+        const cached = sessionStorage.getItem(lookupKey);
+        if (cached) return JSON.parse(cached);
+      } catch {
+        // Ignore unavailable/corrupt browser storage.
+      }
+
       let landingPageId: string | null = null;
       let productId: string | null = null;
+
       if (landingSlug) {
-        const { data } = await supabase.from("landing_pages").select("id,product_id").eq("slug", landingSlug).maybeSingle();
+        const { data } = await supabase
+          .from("landing_pages")
+          .select("id,product_id")
+          .eq("slug", landingSlug)
+          .maybeSingle();
         landingPageId = data?.id ?? null;
         productId = data?.product_id ?? null;
       } else if (productSlug) {
-        const { data } = await supabase.from("products").select("id").eq("slug", productSlug).maybeSingle();
+        const { data } = await supabase
+          .from("products")
+          .select("id")
+          .eq("slug", productSlug)
+          .maybeSingle();
         productId = data?.id ?? null;
       }
-      await (supabase as any).rpc("heartbeat_site_visitor", { p_id: visitorId, p_path: path, p_landing_page_id: landingPageId, p_product_id: productId });
+
+      const result = { landingPageId, productId };
+      try {
+        sessionStorage.setItem(lookupKey, JSON.stringify(result));
+      } catch {
+        // Ignore storage quota/privacy restrictions.
+      }
+      return result;
     };
-    heartbeat().catch(() => { /* visitor tracking must never break the page */ });
-    const timer = window.setInterval(() => { void heartbeat().catch(() => {}); }, 30000);
-    return () => { active = false; window.clearInterval(timer); };
+
+    const heartbeat = async () => {
+      if (!active || heartbeatInFlight) return;
+      heartbeatInFlight = true;
+      try {
+        const { landingPageId, productId } = await getRouteIds();
+        await (supabase as any).rpc("heartbeat_site_visitor", {
+          p_id: visitorId,
+          p_path: path,
+          p_landing_page_id: landingPageId,
+          p_product_id: productId,
+        });
+      } finally {
+        heartbeatInFlight = false;
+      }
+    };
+
+    // One event per route, then a low-frequency heartbeat while the page remains open.
+    heartbeat().catch(() => {
+      /* visitor tracking must never break the page */
+    });
+    const timer = window.setInterval(() => {
+      void heartbeat().catch(() => {});
+    }, HEARTBEAT_INTERVAL_MS);
+
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
   }, [location.pathname]);
+
   return null;
 }
