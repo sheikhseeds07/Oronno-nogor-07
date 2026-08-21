@@ -2,28 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/personal-supabase/client";
 import { toast } from "sonner";
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import { ArrowRightLeft, Check, Loader2 } from "lucide-react";
-
-// Plays a short beep using WebAudio (no asset needed)
-function beep() {
-  try {
-    const Ctx = (window.AudioContext || (window as any).webkitAudioContext);
-    if (!Ctx) return;
-    const ctx = new Ctx();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type = "sine";
-    o.frequency.value = 880;
-    o.connect(g);
-    g.connect(ctx.destination);
-    g.gain.setValueAtTime(0.0001, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.01);
-    o.start();
-    o.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.25);
-    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
-    o.stop(ctx.currentTime + 0.55);
-  } catch {}
-}
+import { ArrowRightLeft, Check, Loader2, ShoppingBag, X } from "lucide-react";
 
 const ORDER_ACTION_STATUSES = [
   { value: "web_pending", label: "Processing" },
@@ -154,14 +133,60 @@ export function NewOrderNotifier() {
           // Ignore rows older than mount (initial backfill safety)
           if (row?.created_at && new Date(row.created_at).getTime() < startedAt.current - 5000) return;
 
-          beep();
           const title = `নতুন অর্ডার: ${row?.customer_name ?? ""}`;
           const body = `${row?.customer_phone ?? ""} • ৳${row?.total ?? 0}`;
-          toast.success(title, {
-            description: body,
-            duration: 8000,
-            action: { label: "দেখুন", onClick: () => navigate({ to: "/admin/orders" }) },
-          });
+
+          toast.custom(
+            (id) => (
+              <div className="w-[min(390px,calc(100vw-24px))] overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.18)] ring-1 ring-black/5">
+                <div className="flex items-start gap-3 p-4">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/20">
+                    <ShoppingBag className="h-5 w-5" strokeWidth={2.2} />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-emerald-600">
+                        New Order
+                      </div>
+                      <button
+                        type="button"
+                        aria-label="Close notification"
+                        onClick={() => toast.dismiss(id)}
+                        className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <div className="mt-0.5 truncate text-[15px] font-extrabold text-slate-900">
+                      {row?.customer_name || "New customer"}
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] font-medium text-slate-500">
+                      <span>{row?.customer_phone || "No phone"}</span>
+                      <span className="text-slate-300">•</span>
+                      <span className="font-extrabold text-slate-800">৳{row?.total ?? 0}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/80 px-4 py-3">
+                  <span className="text-[10px] font-semibold text-slate-400">Order received just now</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toast.dismiss(id);
+                      navigate({ to: "/admin/orders" });
+                    }}
+                    className="rounded-lg bg-slate-900 px-3.5 py-2 text-[11px] font-extrabold text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.98]"
+                  >
+                    View Order →
+                  </button>
+                </div>
+              </div>
+            ),
+            { duration: 8000 }
+          );
+
           if ("Notification" in window && Notification.permission === "granted") {
             try {
               const n = new Notification(title, { body, tag: row?.id });
