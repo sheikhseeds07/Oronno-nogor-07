@@ -19,6 +19,9 @@ const bdHour=(iso:string)=>Number(new Intl.DateTimeFormat("en-US",{hour:"2-digit
 const bdMonth=(iso:string)=>new Intl.DateTimeFormat("en-US",{month:"short",year:"2-digit",timeZone:"Asia/Dhaka"}).format(new Date(iso));
 const bdTodayStart=()=>{const day=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Dhaka"}).format(new Date());return new Date(`${day}T00:00:00+06:00`).toISOString()};
 const bdTomorrowStart=()=>{const start=new Date(bdTodayStart());start.setUTCDate(start.getUTCDate()+1);return start.toISOString()};
+const DASHBOARD_CACHE_TTL_MS=20_000;
+const MAX_DASHBOARD_CACHE_ENTRIES=20;
+const dashboardReportCache=new Map<string,{expiresAt:number;value:any}>();
 
 type MetaProfitConfig={access_token?:string;ad_account_id?:string;account_name?:string;account_id?:string;dollar_rate?:number;courier_cost_per_order?:number;return_rate?:number;cancel_rate?:number};
 
@@ -61,8 +64,16 @@ async function fetchOrderItemsByIds(db:any,ids:string[]){
  return rows;
 }
 
+function writeDashboardCache(key:string,value:any){
+ const now=Date.now();
+ for(const [k,entry] of dashboardReportCache){if(entry.expiresAt<=now)dashboardReportCache.delete(k)}
+ while(dashboardReportCache.size>=MAX_DASHBOARD_CACHE_ENTRIES){const first=dashboardReportCache.keys().next().value as string|undefined;if(!first)break;dashboardReportCache.delete(first)}
+ dashboardReportCache.set(key,{expiresAt:now+DASHBOARD_CACHE_TTL_MS,value});
+}
+
 export const getPremiumDashboardReport=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(input=>RangeSchema.parse(input)).handler(async({data,context})=>{
  await assertStaff(context.supabase,context.userId); const db=supabaseAdmin as any;
+ const cacheKey=`${data.from}|${data.to}`; const cached=dashboardReportCache.get(cacheKey); if(cached&&cached.expiresAt>Date.now())return cached.value;
  const todayStart=bdTodayStart(); const tomorrowStart=bdTomorrowStart();
  const [ordersR,deletedOrdersR,productsR,customersR,employeesR,landingR,todayVisitorsR,activeIncompleteR]=await Promise.all([
   db.from("orders").select("id,source,status,total,created_at,updated_at,created_by,assigned_to,originated_from_incomplete").gte("created_at",data.from).lte("created_at",data.to).limit(30000),
@@ -88,13 +99,15 @@ export const getPremiumDashboardReport=createServerFn({method:"POST"}).middlewar
  const confirmedRevenue=confirmedOrders.reduce((s,o)=>s+Number(o.total||0),0),webRevenue=webOrders.reduce((s,o)=>s+Number(o.total||0),0); const visitorRows=visitorsR.data??[],landingPages=landingR.data??[],products=productsR.data??[];
  const activeProducts=products.filter((p:any)=>p.is_active!==false);
  const profitSettings=await getMetaProfitData(db,data.from,data.to);
- const orderIds=confirmedOrders.map((o:any)=>o.id);
+ const confirmedOrderIds=confirmedOrders.map((o:any)=>String(o.id));
+ const confirmedIds=new Set(confirmedOrderIds);
+ const realOrderIds=realOrders.map((o:any)=>String(o.id));
+ const items=realOrderIds.length?await fetchOrderItemsByIds(db,realOrderIds):[];
  let productCost=0;
- if(orderIds.length){
-  const items=await fetchOrderItemsByIds(db,orderIds);
+ if(items.length){
   const costById=new Map(products.map((p:any)=>[String(p.id),Number(p.cost||0)]));
   const costByName=new Map(products.map((p:any)=>[String(p.name||"").trim().toLowerCase(),Number(p.cost||0)]));
-  for(const i of items){const cost=i.product_id!=null?costById.get(String(i.product_id)):costByName.get(String(i.product_name||"").trim().toLowerCase());productCost+=Number(i.quantity||0)*Number(cost||0);}
+  for(const i of items){if(!confirmedIds.has(String(i.order_id)))continue;const cost=i.product_id!=null?costById.get(String(i.product_id)):costByName.get(String(i.product_name||"").trim().toLowerCase());productCost+=Number(i.quantity||0)*Number(cost||0);}
  }
  const courierCost=confirmedOrders.length*profitSettings.courierCostPerOrder;
  const cancellationAdjustment=confirmedRevenue*(profitSettings.cancelRate/100);
@@ -106,10 +119,12 @@ export const getPremiumDashboardReport=createServerFn({method:"POST"}).middlewar
  const dayMap=new Map<string,{day:string;created:number;processing:number;confirmed:number;cancelled:number}>();for(const o of webOrders){const day=bdDay(o.created_at),e=dayMap.get(day)??{day,created:0,processing:0,confirmed:0,cancelled:0};e.created++;if(isWebPending(o.status))e.processing++;if(isConfirmed(o.status))e.confirmed++;if(isCancelled(o.status))e.cancelled++;dayMap.set(day,e)}
  const hourly=Array.from({length:24},(_,hour)=>({hour,label:`${hour===0?12:hour>12?hour-12:hour}${hour<12?"AM":"PM"}`,orders:0}));for(const o of webOrders){const h=bdHour(o.created_at);if(h>=0&&h<24)hourly[h].orders++}
  const earningsMap=new Map<string,{month:string;orders:number;revenue:number;confirmed:number}>();for(const o of webOrders){const month=bdMonth(o.created_at),e=earningsMap.get(month)??{month,orders:0,revenue:0,confirmed:0};e.orders++;e.revenue+=Number(o.total||0);if(isConfirmed(o.status))e.confirmed++;earningsMap.set(month,e)}
- let bestSelling:any[]=[];if(orderIds.length){const items=await fetchOrderItemsByIds(db,realOrders.map((o:any)=>o.id));const confirmedIds=new Set(confirmedOrders.map(o=>o.id)),sales=new Map<string,{product_id:string|null;name:string;units:number;revenue:number}>();for(const i of items){if(!confirmedIds.has(i.order_id))continue;const key=i.product_id??i.product_name,e=sales.get(key)??{product_id:i.product_id,name:i.product_name,units:0,revenue:0};e.units+=Number(i.quantity||0);e.revenue+=Number(i.subtotal||0);sales.set(key,e)}bestSelling=Array.from(sales.values()).sort((a,b)=>b.units-a.units).slice(0,10).map(x=>({...x,landingPages:landingPages.filter(p=>p.product_id===x.product_id).map(p=>({title:p.title,slug:p.slug}))}))}
+ let bestSelling:any[]=[];if(items.length){const sales=new Map<string,{product_id:string|null;name:string;units:number;revenue:number}>();for(const i of items){if(!confirmedIds.has(String(i.order_id)))continue;const key=i.product_id??i.product_name,e=sales.get(key)??{product_id:i.product_id,name:i.product_name,units:0,revenue:0};e.units+=Number(i.quantity||0);e.revenue+=Number(i.subtotal||0);sales.set(key,e)}bestSelling=Array.from(sales.values()).sort((a,b)=>b.units-a.units).slice(0,10).map(x=>({...x,landingPages:landingPages.filter(p=>p.product_id===x.product_id).map(p=>({title:p.title,slug:p.slug}))}))}
  const lowStock=activeProducts.filter(p=>(p.stock??0)<=5).slice(0,10).map(p=>({id:p.id,name:p.name,stock:p.stock??0})),stockSummary={total:activeProducts.length,low:activeProducts.filter(p=>(p.stock??0)>0&&(p.stock??0)<=5).length,out:activeProducts.filter(p=>(p.stock??0)<=0).length};
  const employeeMap=new Map<string,{user_id:string|null;name:string;confirmed:number;cancelled:number;total:number}>();for(const e of employeesR.data??[])employeeMap.set(String(e.user_id||e.id),{user_id:e.user_id,name:e.name,confirmed:0,cancelled:0,total:0});
  for(const o of orders){const cancelActor=isCancelled(o.status)?String(o.assigned_to||""):"";const cancelEmployee=employeeMap.get(cancelActor);if(isCancelled(o.status)&&cancelEmployee)cancelEmployee.cancelled++;const confirmActor=String(o.created_by||"");const confirmEmployee=employeeMap.get(confirmActor);if(isConfirmed(o.status)&&confirmEmployee){confirmEmployee.confirmed++;confirmEmployee.total++;}}
  const webOrderTotal=webOrders.length;
- return {real:{created:webOrderTotal,total:webOrderTotal,processing:webPendingOrders.length,approved:webConfirmedOrders.length,pending:webPendingOrders.length,cancelled:webCancelledOrders.length,revenue:confirmedRevenue,allRevenue:webRevenue},webOrders:{total:webOrderTotal,confirmed:webConfirmedOrders.length,processing:webPendingOrders.length,cancelled:webCancelledOrders.length},incompleteOrders:{total:incompleteSourceOrders.length,confirmed:incompleteConfirmed.length,processing:incompleteProcessing.length,cancelled:incompleteCancelled.length,active:activeIncompleteR.count??0},profit:{grossSales:confirmedRevenue,productCost,adSpendUsd:profitSettings.adSpendUsd,adSpendBdt:profitSettings.adSpendBdt,dollarRate:profitSettings.dollarRate,confirmedOrders:confirmedOrders.length,courierCost,courierCostPerOrder:profitSettings.courierCostPerOrder,cancelRate:profitSettings.cancelRate,cancellationAdjustment,netProfit,netProfitMargin,connected:profitSettings.connected,accountName:profitSettings.accountName,error:profitSettings.error??null},sourceBreakdown:Array.from(sourceMap.values()).sort((a,b)=>b.count-a.count),daily:Array.from(dayMap.values()).sort((a,b)=>a.day.localeCompare(b.day)),hourly,earnings:Array.from(earningsMap.values()),bestSelling,lowStock,stockSummary,customers:customersR.count??0,products:activeProducts.length,liveVisitors:visitorRows.length,todayVisitors:todayVisitorsR.count??0,liveLandingPages,liveProducts,employeePerformance:Array.from(employeeMap.values()).sort((a,b)=>(b.confirmed+b.cancelled)-(a.confirmed+a.cancelled)),incomplete:activeIncompleteR.count??0};
+ const report={real:{created:webOrderTotal,total:webOrderTotal,processing:webPendingOrders.length,approved:webConfirmedOrders.length,pending:webPendingOrders.length,cancelled:webCancelledOrders.length,revenue:confirmedRevenue,allRevenue:webRevenue},webOrders:{total:webOrderTotal,confirmed:webConfirmedOrders.length,processing:webPendingOrders.length,cancelled:webCancelledOrders.length},incompleteOrders:{total:incompleteSourceOrders.length,confirmed:incompleteConfirmed.length,processing:incompleteProcessing.length,cancelled:incompleteCancelled.length,active:activeIncompleteR.count??0},profit:{grossSales:confirmedRevenue,productCost,adSpendUsd:profitSettings.adSpendUsd,adSpendBdt:profitSettings.adSpendBdt,dollarRate:profitSettings.dollarRate,confirmedOrders:confirmedOrders.length,courierCost,courierCostPerOrder:profitSettings.courierCostPerOrder,cancelRate:profitSettings.cancelRate,cancellationAdjustment,netProfit,netProfitMargin,connected:profitSettings.connected,accountName:profitSettings.accountName,error:profitSettings.error??null},sourceBreakdown:Array.from(sourceMap.values()).sort((a,b)=>b.count-a.count),daily:Array.from(dayMap.values()).sort((a,b)=>a.day.localeCompare(b.day)),hourly,earnings:Array.from(earningsMap.values()),bestSelling,lowStock,stockSummary,customers:customersR.count??0,products:activeProducts.length,liveVisitors:visitorRows.length,todayVisitors:todayVisitorsR.count??0,liveLandingPages,liveProducts,employeePerformance:Array.from(employeeMap.values()).sort((a,b)=>(b.confirmed+b.cancelled)-(a.confirmed+a.cancelled)),incomplete:activeIncompleteR.count??0};
+ writeDashboardCache(cacheKey,report);
+ return report;
 });

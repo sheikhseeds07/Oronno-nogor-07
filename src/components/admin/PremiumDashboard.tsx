@@ -49,8 +49,21 @@ export function PremiumDashboard(){
  const [preset,setPreset]=useState<DashboardPreset>("today");
  const [range,setRange]=useState<DashboardRange>(()=>getDashboardPresetRange("today")!);
  const [refreshing,setRefreshing]=useState(false);
- const {data,isFetching,refetch}=useQuery({queryKey:["business-dashboard",range.from,range.to],queryFn:()=>fetchReport({data:range}),staleTime:15000});
- useEffect(()=>{const refresh=()=>qc.invalidateQueries({queryKey:["business-dashboard"]});const ch=supabase.channel("dashboard-live").on("postgres_changes",{event:"*",schema:"public",table:"orders"},refresh).on("postgres_changes",{event:"*",schema:"public",table:"products"},refresh).on("postgres_changes",{event:"*",schema:"public",table:"site_visitors"},refresh).on("postgres_changes",{event:"*",schema:"public",table:"incomplete_orders"},refresh).subscribe();const t=window.setInterval(refresh,30000);return()=>{supabase.removeChannel(ch);window.clearInterval(t)}},[qc]);
+ const {data,isFetching,refetch}=useQuery({queryKey:["business-dashboard",range.from,range.to],queryFn:()=>fetchReport({data:range}),staleTime:60000,refetchOnWindowFocus:false});
+ useEffect(()=>{
+  let scheduled:number|null=null;
+  const refresh=()=>{
+   if(document.hidden||scheduled!==null)return;
+   scheduled=window.setTimeout(()=>{scheduled=null;qc.invalidateQueries({queryKey:["business-dashboard"],refetchType:"active"})},5000);
+  };
+  const ch=supabase.channel("dashboard-live")
+   .on("postgres_changes",{event:"*",schema:"public",table:"orders"},refresh)
+   .on("postgres_changes",{event:"*",schema:"public",table:"products"},refresh)
+   .on("postgres_changes",{event:"*",schema:"public",table:"incomplete_orders"},refresh)
+   .subscribe();
+  const t=window.setInterval(()=>{if(!document.hidden)qc.invalidateQueries({queryKey:["business-dashboard"],refetchType:"active"})},120000);
+  return()=>{if(scheduled!==null)window.clearTimeout(scheduled);supabase.removeChannel(ch);window.clearInterval(t)};
+ },[qc]);
  const r:any=data??{real:{revenue:0},profit:{grossSales:0,netProfit:0,productCost:0,adSpendUsd:0,adSpendBdt:0,dollarRate:122,confirmedOrders:0,courierCost:0,courierCostPerOrder:50,cancelRate:20,cancellationAdjustment:0,netProfitMargin:0},webOrders:{total:0,confirmed:0,processing:0,cancelled:0},incompleteOrders:{total:0,confirmed:0,processing:0,cancelled:0,active:0},daily:[],hourly:[],bestSelling:[],lowStock:[],stockSummary:{out:0,low:0,total:0},liveVisitors:0,todayVisitors:0,liveLandingPages:[],employeePerformance:[]};
  const refresh=async()=>{setRefreshing(true);await refetch();setRefreshing(false)};
  const onFilterChange=(next:DashboardPreset,nextRange:DashboardRange|null)=>{if(!nextRange)return;setPreset(next);setRange(nextRange)};
