@@ -55,7 +55,7 @@ $$;
 
 grant execute on function public.record_endpoint_egress(jsonb) to anon, authenticated;
 grant select on public.endpoint_egress_hourly to authenticated;
-
+drop policy if exists endpoint_egress_staff_read on public.endpoint_egress_hourly;
 create policy endpoint_egress_staff_read on public.endpoint_egress_hourly
 for select to authenticated
 using (is_staff((select auth.uid())));
