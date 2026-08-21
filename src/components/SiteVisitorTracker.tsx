@@ -13,7 +13,9 @@ function createVisitorId(): string {
 
 const VISITOR_ID_KEY = "site-visitor-id";
 const VISITOR_LOOKUP_KEY_PREFIX = "site-visitor-route:";
-const HEARTBEAT_INTERVAL_MS = 120_000;
+// Visitor presence does not need second-level precision. Five minutes keeps
+// the tracking useful while substantially reducing write/request volume.
+const HEARTBEAT_INTERVAL_MS = 300_000;
 
 export function SiteVisitorTracker() {
   const location = useLocation();
