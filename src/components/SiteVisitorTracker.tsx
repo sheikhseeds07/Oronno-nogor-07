@@ -13,9 +13,9 @@ function createVisitorId(): string {
 
 const VISITOR_ID_KEY = "site-visitor-id";
 const VISITOR_LOOKUP_KEY_PREFIX = "site-visitor-route:";
-// Visitor presence does not need second-level precision. Five minutes keeps
-// the tracking useful while substantially reducing write/request volume.
-const HEARTBEAT_INTERVAL_MS = 300_000;
+// Dashboard treats a visitor as live when last_seen is within 2 minutes.
+// Refresh once per minute so active visitors do not disappear between heartbeats.
+const HEARTBEAT_INTERVAL_MS = 60_000;
 
 export function SiteVisitorTracker() {
   const location = useLocation();
@@ -60,7 +60,7 @@ export function SiteVisitorTracker() {
     }, 300_000);
 
     const heartbeat = async () => {
-      if (!active || heartbeatInFlight) return;
+      if (!active || heartbeatInFlight || document.hidden) return;
       heartbeatInFlight = true;
       try {
         const { landingPageId, productId } = await getRouteIds();
@@ -73,9 +73,18 @@ export function SiteVisitorTracker() {
       } finally { heartbeatInFlight = false; }
     };
 
+    const onVisibility = () => {
+      if (!document.hidden) void heartbeat().catch(() => {});
+    };
+
     void heartbeat().catch(() => {});
+    document.addEventListener("visibilitychange", onVisibility);
     const timer = window.setInterval(() => void heartbeat().catch(() => {}), HEARTBEAT_INTERVAL_MS);
-    return () => { active = false; window.clearInterval(timer); };
+    return () => {
+      active = false;
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.clearInterval(timer);
+    };
   }, [location.pathname]);
 
   return null;
