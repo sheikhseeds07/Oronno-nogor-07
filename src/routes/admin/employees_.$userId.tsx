@@ -4,10 +4,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { getEmployeeProfile, checkInAttendance, checkOutAttendance } from "@/lib/attendance.functions";
-import { getEmployeePerformance } from "@/lib/employee-performance.functions";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { ArrowLeft, Clock, LogIn, LogOut, XCircle, Pencil, Upload, UserRound, X, Trophy, TrendingUp, Timer, Flame, Star, FileText, Medal } from "lucide-react";
+import { ArrowLeft, Clock, LogIn, LogOut, XCircle, Pencil, Upload, UserRound, X } from "lucide-react";
 import { useState } from "react";
 import { supabase } from "@/lib/personal-supabase/client";
 import { uploadToBucket, safeFileName } from "@/lib/storage-upload";
@@ -18,44 +17,195 @@ function Profile() {
   const { userId } = useParams({ from: "/admin/employees_/$userId" });
   const qc = useQueryClient();
   const fetchProfile = useServerFn(getEmployeeProfile);
-  const fetchPerformance = useServerFn(getEmployeePerformance);
   const checkIn = useServerFn(checkInAttendance);
   const checkOut = useServerFn(checkOutAttendance);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", address: "", join_date: "", salary: "", position: "", avatar_url: "" });
-  const { data, isFetching } = useQuery({ queryKey: ["emp-profile", userId], queryFn: () => fetchProfile({ data: { user_id: userId } }) });
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
-  const { data: perf } = useQuery({ queryKey: ["emp-performance", userId, start, end], queryFn: () => fetchPerformance({ data: { user_id: userId, start, end } }), enabled: !!userId, refetchInterval: 30000 });
-  const openEditor = () => { setForm({ name: data?.profile?.full_name ?? data?.employee?.name ?? "", phone: data?.profile?.phone ?? data?.employee?.phone ?? "", address: data?.profile?.address ?? "", join_date: data?.employee?.join_date ?? "", salary: data?.employee?.salary != null ? String(data.employee.salary) : "", position: data?.employee?.position ?? "", avatar_url: data?.profile?.avatar_url ?? "" }); setEditing(true); };
-  const uploadAvatar = async (file: File) => { if (!file.type.startsWith("image/")) return toast.error("শুধু image file দিন"); if (file.size > 5 * 1024 * 1024) return toast.error("Image সর্বোচ্চ 5MB হতে পারবে"); setAvatarUploading(true); try { const url = await uploadToBucket("site-assets", `employee-avatars/${userId}-${safeFileName(file.name)}`, file); setForm(v => ({ ...v, avatar_url: url })); toast.success("Avatar আপলোড হয়েছে"); } catch (e) { toast.error(e instanceof Error ? e.message : "Avatar আপলোড হয়নি"); } finally { setAvatarUploading(false); } };
-  const saveProfile = async () => { if (!form.name.trim()) return toast.error("নাম দিন"); if (!form.phone.trim()) return toast.error("নাম্বার দিন"); const salary = form.salary.trim() === "" ? null : Number(form.salary); if (salary !== null && (!Number.isFinite(salary) || salary < 0)) return toast.error("সঠিক salary দিন"); setSaving(true); try { const [{ error: profileError }, { error: employeeError }] = await Promise.all([supabase.from("profiles").update({ full_name: form.name.trim(), phone: form.phone.trim(), address: form.address.trim() || null, avatar_url: form.avatar_url || null }).eq("id", userId), supabase.from("employees").update({ name: form.name.trim(), phone: form.phone.trim(), position: form.position.trim() || null, join_date: form.join_date || null, salary } as any).eq("user_id", userId)]); if (profileError) throw new Error(profileError.message); if (employeeError) throw new Error(employeeError.message); toast.success("Employee profile updated"); setEditing(false); await qc.invalidateQueries({ queryKey: ["emp-profile", userId] }); await qc.invalidateQueries({ queryKey: ["emp-performance", userId] }); } catch (e) { toast.error(e instanceof Error ? e.message : "Profile update failed"); } finally { setSaving(false); } };
-  const doCheckIn = async () => { try { await checkIn({ data: { user_id: userId } }); toast.success("Checked in successfully"); qc.invalidateQueries({ queryKey: ["emp-profile", userId] }); qc.invalidateQueries({ queryKey: ["emp-performance", userId] }); } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); } };
-  const doCheckOut = async () => { try { await checkOut({ data: { user_id: userId } }); toast.success("Checked out successfully"); qc.invalidateQueries({ queryKey: ["emp-profile", userId] }); qc.invalidateQueries({ queryKey: ["emp-performance", userId] }); } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); } };
+
+  const { data, isFetching } = useQuery({
+    queryKey: ["emp-profile", userId],
+    queryFn: () => fetchProfile({ data: { user_id: userId } }),
+  });
+
+  const openEditor = () => {
+    setForm({
+      name: data?.profile?.full_name ?? data?.employee?.name ?? "",
+      phone: data?.profile?.phone ?? data?.employee?.phone ?? "",
+      address: data?.profile?.address ?? "",
+      join_date: data?.employee?.join_date ?? "",
+      salary: data?.employee?.salary != null ? String(data.employee.salary) : "",
+      position: data?.employee?.position ?? "",
+      avatar_url: data?.profile?.avatar_url ?? "",
+    });
+    setEditing(true);
+  };
+
+  const uploadAvatar = async (file: File) => {
+    if (!file.type.startsWith("image/")) return toast.error("শুধু image file দিন");
+    if (file.size > 5 * 1024 * 1024) return toast.error("Image সর্বোচ্চ 5MB হতে পারবে");
+    setAvatarUploading(true);
+    try {
+      const url = await uploadToBucket("site-assets", `employee-avatars/${userId}-${safeFileName(file.name)}`, file);
+      setForm((v) => ({ ...v, avatar_url: url }));
+      toast.success("Avatar আপলোড হয়েছে");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Avatar আপলোড হয়নি");
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const saveProfile = async () => {
+    if (!form.name.trim()) return toast.error("নাম দিন");
+    if (!form.phone.trim()) return toast.error("নাম্বার দিন");
+    const salary = form.salary.trim() === "" ? null : Number(form.salary);
+    if (salary !== null && (!Number.isFinite(salary) || salary < 0)) return toast.error("সঠিক salary দিন");
+    setSaving(true);
+    try {
+      const [{ error: profileError }, { error: employeeError }] = await Promise.all([
+        supabase.from("profiles").update({
+          full_name: form.name.trim(),
+          phone: form.phone.trim(),
+          address: form.address.trim() || null,
+          avatar_url: form.avatar_url || null,
+        }).eq("id", userId),
+        supabase.from("employees").update({
+          name: form.name.trim(),
+          phone: form.phone.trim(),
+          position: form.position.trim() || null,
+          join_date: form.join_date || null,
+          salary,
+        } as any).eq("user_id", userId),
+      ]);
+      if (profileError) throw new Error(profileError.message);
+      if (employeeError) throw new Error(employeeError.message);
+      toast.success("Employee profile updated");
+      setEditing(false);
+      await qc.invalidateQueries({ queryKey: ["emp-profile", userId] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Profile update failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const doCheckIn = async () => {
+    try {
+      await checkIn({ data: { user_id: userId } });
+      toast.success("Checked in successfully");
+      qc.invalidateQueries({ queryKey: ["emp-profile", userId] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    }
+  };
+
+  const doCheckOut = async () => {
+    try {
+      await checkOut({ data: { user_id: userId } });
+      toast.success("Checked out successfully");
+      qc.invalidateQueries({ queryKey: ["emp-profile", userId] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    }
+  };
+
   if (isFetching && !data) return <AdminLayout><div className="p-8"><BrandLoader /></div></AdminLayout>;
   if (!data) return <AdminLayout><div className="p-8 text-center text-muted-foreground">Profile not found</div></AdminLayout>;
+
   const { profile, employee, attendance, activeAttendanceId } = data;
   const displayName = profile?.full_name ?? employee?.name ?? "Employee";
   const avatar = profile?.avatar_url;
   const records = attendance ?? [];
-  const score = perf?.score ?? 0, confirmed = perf?.confirmed ?? 0, cancelled = perf?.cancelled ?? 0, confirmationRate = perf?.confirmationRate ?? 0, cancellationRate = perf?.cancellationRate ?? 0, avgHours = perf?.avgHours ?? 0;
-  const target = perf?.target ?? 0, ranking = perf?.rank ?? 0, teamSize = perf?.teamSize ?? 0, streak = perf?.streak ?? 0, level = perf?.level ?? "Bronze";
-  const achievements = Array.isArray(perf?.achievements) ? perf.achievements : [];
-  const adminNotes = perf?.adminNotes ?? "";
-  const autoBadges = [score >= 90 ? "Top Performer" : null, confirmationRate >= 90 ? "High Confirmation" : null, streak >= 7 ? "7-Day Streak" : null, perf?.presentDays >= 26 ? "Perfect Attendance" : null, confirmed >= 200 ? "200+ Confirmed" : null].filter(Boolean) as string[];
-  const badges = Array.from(new Set([...achievements, ...autoBadges])).slice(0, 4);
-  const hasAchievement = badges.length > 0;
-  const glowClass = level === "Gold" || level === "Elite" || hasAchievement ? "ring-2 ring-amber-300 shadow-[0_0_22px_rgba(245,158,11,0.28)]" : "ring-2 ring-white shadow-lg";
+
   return <AdminLayout>
-    <div className="mb-4 flex items-center gap-3"><Link to="/admin/employees" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /> Employee List</Link></div>
-    <div className="relative overflow-hidden bg-white border rounded-2xl p-5 mb-5 shadow-sm animate-in fade-in slide-in-from-bottom-3 duration-500"><div className="absolute -right-20 -top-20 w-48 h-48 rounded-full bg-amber-200/30 blur-3xl"/><div className="flex flex-wrap gap-4 items-center relative"><div className="relative shrink-0"><div className={`relative w-20 h-20 rounded-[1.15rem] overflow-hidden bg-brand text-white flex items-center justify-center text-2xl font-bold transition-all duration-500 hover:scale-105 ${glowClass}`}>{avatar ? <img src={avatar} alt={displayName} className="w-full h-full object-cover brightness-105 contrast-105" /> : <span>{displayName.charAt(0)}</span>}</div>{hasAchievement && <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center ring-1 ring-amber-200 animate-in zoom-in duration-500"><Medal className="w-4 h-4 text-amber-500" /></div>}</div><div className="flex-1 min-w-0"><div className="flex items-center gap-2"><div className="text-xl font-bold">{displayName}</div>{level !== "Bronze" && <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold">{level}</span>}</div><div className="text-sm text-muted-foreground">{employee?.position ?? "Employee"}</div><div className="text-xs text-muted-foreground mt-1">📞 {employee?.phone ?? profile?.phone ?? "—"} • ✉️ {employee?.email ?? "—"}</div><div className="text-xs text-muted-foreground mt-1">📍 {profile?.address || "Address not added"}</div></div><div className="flex gap-2"><button onClick={openEditor} className="border px-4 py-2 rounded-xl font-semibold flex items-center gap-2 hover:bg-muted transition-all hover:-translate-y-0.5"><Pencil className="w-4 h-4" /> Edit Profile</button>{activeAttendanceId ? <button onClick={doCheckOut} className="bg-red-600 text-white px-4 py-2 rounded-xl font-semibold flex items-center gap-2 shadow-sm transition-all hover:-translate-y-0.5"><LogOut className="w-4 h-4" /> Check Out</button> : <button onClick={doCheckIn} className="bg-green-600 text-white px-4 py-2 rounded-xl font-semibold flex items-center gap-2 shadow-sm transition-all hover:-translate-y-0.5"><LogIn className="w-4 h-4" /> Check In</button>}</div></div></div>
-    <div className="bg-white border rounded-2xl p-5 mb-5 shadow-sm animate-in fade-in slide-in-from-bottom-3 duration-700"><div className="flex items-center justify-between mb-4"><div><h2 className="font-bold flex items-center gap-2"><span className="inline-block h-2 w-2 rounded-full bg-green-500 animate-pulse" /> Performance</h2><p className="text-xs text-muted-foreground">Live this month • refreshes automatically</p></div><span className="px-3 py-1 rounded-full text-xs font-bold bg-muted animate-in zoom-in duration-500">{level}</span></div><div className="grid grid-cols-2 md:grid-cols-4 gap-3"><div className="rounded-xl border p-3 transition-all duration-300 hover:-translate-y-1 hover:shadow-md"><div className="text-xs text-muted-foreground flex items-center gap-1"><TrendingUp className="w-3.5 h-3.5" /> Score</div><div className="text-2xl font-bold mt-1">{score}<span className="text-sm text-muted-foreground">/100</span></div><div className="h-2 bg-muted rounded-full mt-2 overflow-hidden"><div className="h-full bg-foreground rounded-full transition-all duration-1000 ease-out" style={{width:`${score}%`}} /></div></div><div className="rounded-xl border p-3 transition-all duration-300 hover:-translate-y-1 hover:shadow-md"><div className="text-xs text-muted-foreground">📈 Confirmation</div><div className="text-xl font-bold mt-1">{confirmationRate}%</div><div className="text-xs text-muted-foreground mt-1">{confirmed} confirmed</div><div className="h-1.5 bg-muted rounded-full mt-2 overflow-hidden"><div className="h-full bg-foreground rounded-full transition-all duration-1000" style={{width:`${confirmationRate}%`}} /></div></div><div className="rounded-xl border p-3 transition-all duration-300 hover:-translate-y-1 hover:shadow-md"><div className="text-xs text-muted-foreground">❌ Cancellation</div><div className="text-xl font-bold mt-1">{cancellationRate}%</div><div className="text-xs text-muted-foreground mt-1">{cancelled} cancelled</div><div className="h-1.5 bg-muted rounded-full mt-2 overflow-hidden"><div className="h-full bg-foreground rounded-full transition-all duration-1000" style={{width:`${cancellationRate}%`}} /></div></div><div className="rounded-xl border p-3 transition-all duration-300 hover:-translate-y-1 hover:shadow-md"><div className="text-xs text-muted-foreground flex items-center gap-1"><Timer className="w-3.5 h-3.5" /> Avg Hours</div><div className="text-xl font-bold mt-1">{avgHours ? avgHours.toFixed(1) : "—"}</div><div className="text-xs text-muted-foreground mt-1">per working day</div></div></div>{target > 0 && <div className="mt-4 rounded-xl bg-muted/30 p-3"><div className="flex justify-between text-xs mb-2"><span className="font-medium">Monthly Target</span><span className="text-muted-foreground">{confirmed.toLocaleString("en-BD")} / {target.toLocaleString("en-BD")}</span></div><div className="h-2 bg-muted rounded-full overflow-hidden"><div className="h-full bg-foreground rounded-full transition-all duration-1000 ease-out" style={{width:`${Math.min(100,(confirmed/target)*100)}%`}} /></div></div>}</div>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">{[[<Trophy className="w-4 h-4" />, "Monthly Ranking", ranking > 0 ? `#${ranking} / ${teamSize}` : "—", "Team position"],[<Flame className="w-4 h-4" />, "Work Streak", `${streak} days`, "Attendance streak"]].map(([icon,title,value,sub],i)=><div key={i} className="bg-white border rounded-2xl p-4 shadow-sm animate-in fade-in zoom-in-95 duration-500 transition-all hover:-translate-y-1 hover:shadow-lg" style={{animationDelay:`${i*100}ms`}}><div className="text-xs text-muted-foreground flex items-center gap-2">{icon} {title}</div><div className="text-2xl font-bold mt-2">{value}</div><div className="text-xs text-muted-foreground mt-1">{sub}</div></div>)}</div>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5"><div className="bg-white border rounded-2xl p-4 shadow-sm transition-all hover:-translate-y-1"><div className="flex items-center gap-2 font-semibold"><Star className="w-4 h-4" /> Achievements</div><div className="flex flex-wrap gap-2 mt-3">{badges.length ? badges.map((a:string,i:number)=><span key={i} className="px-3 py-1.5 rounded-full bg-muted text-xs font-semibold animate-in zoom-in duration-500" style={{animationDelay:`${i*120}ms`}}>⭐ {a}</span>) : <span className="text-sm text-muted-foreground">Keep going — your first achievement is close.</span>}</div></div><div className="bg-white border rounded-2xl p-4 shadow-sm transition-all hover:-translate-y-1"><div className="flex items-center gap-2 font-semibold"><FileText className="w-4 h-4" /> Admin Notes</div><p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap">{adminNotes || "No private notes added."}</p></div></div>
-    {editing && <div className="fixed inset-0 z-50 bg-black/40 p-4 flex items-center justify-center" onMouseDown={(e)=>e.target===e.currentTarget&&!saving&&setEditing(false)}><div className="w-full max-w-lg bg-white rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto"><div className="p-5 border-b flex items-center justify-between"><div><h2 className="text-lg font-bold">Edit Employee Profile</h2><p className="text-xs text-muted-foreground mt-1">Employee information update করুন</p></div><button onClick={()=>setEditing(false)} disabled={saving} className="p-2 rounded-lg hover:bg-muted"><X className="w-5 h-5" /></button></div><div className="p-5 space-y-4"><div className="flex items-center gap-4"><div className="w-20 h-20 rounded-2xl overflow-hidden bg-brand text-white flex items-center justify-center text-2xl font-bold shrink-0">{form.avatar_url?<img src={form.avatar_url} alt="Avatar" className="w-full h-full object-cover"/>:<UserRound className="w-9 h-9"/>}</div><div><label className="inline-flex items-center gap-2 border px-3 py-2 rounded-xl font-semibold cursor-pointer hover:bg-muted"><Upload className="w-4 h-4" /> {avatarUploading?"Uploading...":"Change Image / Avatar"}<input type="file" accept="image/*" className="hidden" disabled={avatarUploading||saving} onChange={e=>e.target.files?.[0]&&uploadAvatar(e.target.files[0])}/></label><div className="text-xs text-muted-foreground mt-1">JPG/PNG/WebP • max 5MB</div></div></div><div className="grid grid-cols-1 md:grid-cols-2 gap-3"><label className="space-y-1"><span className="text-sm font-medium">Name</span><input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} className="w-full border rounded-xl px-3 py-2.5" /></label><label className="space-y-1"><span className="text-sm font-medium">Phone Number</span><input value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} className="w-full border rounded-xl px-3 py-2.5" /></label><label className="space-y-1 md:col-span-2"><span className="text-sm font-medium">Address</span><textarea value={form.address} onChange={e=>setForm({...form,address:e.target.value})} rows={2} className="w-full border rounded-xl px-3 py-2.5 resize-none" /></label><label className="space-y-1"><span className="text-sm font-medium">Position</span><input value={form.position} onChange={e=>setForm({...form,position:e.target.value})} className="w-full border rounded-xl px-3 py-2.5" placeholder="e.g. Order Confirmation Executive" /></label><label className="space-y-1"><span className="text-sm font-medium">Join Date</span><input type="date" value={form.join_date} onChange={e=>setForm({...form,join_date:e.target.value})} className="w-full border rounded-xl px-3 py-2.5" /></label><label className="space-y-1"><span className="text-sm font-medium">Salary (৳)</span><input type="number" min="0" step="1" value={form.salary} onChange={e=>setForm({...form,salary:e.target.value})} className="w-full border rounded-xl px-3 py-2.5" placeholder="e.g. 15000" /></label></div></div><div className="p-5 border-t flex justify-end gap-2"><button onClick={()=>setEditing(false)} disabled={saving} className="border px-4 py-2 rounded-xl font-semibold">Cancel</button><button onClick={saveProfile} disabled={saving||avatarUploading} className="bg-brand text-white px-5 py-2 rounded-xl font-semibold disabled:opacity-50">{saving?"Saving...":"Save Changes"}</button></div></div></div>}
-    <div className="bg-white border rounded-2xl overflow-hidden shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-700"><div className="p-4 border-b font-semibold flex items-center gap-2"><Clock className="w-4 h-4" /> Attendance & Working Hours</div><div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-muted text-xs"><tr><th className="p-3 text-left">Date</th><th className="p-3 text-left">Check In</th><th className="p-3 text-left">Check Out</th><th className="p-3 text-left">Working Hours</th></tr></thead><tbody>{records.map((a:any)=>{const i=new Date(a.check_in);const o=a.check_out?new Date(a.check_out):null;const h=o?((o.getTime()-i.getTime())/3600000).toFixed(1):"-";return <tr key={a.id} className="border-t hover:bg-muted/30 transition-colors"><td className="p-3">{format(i,"dd MMM yyyy")}</td><td className="p-3">{format(i,"hh:mm a")}</td><td className="p-3">{o?format(o,"hh:mm a"):<span className="text-green-600 font-semibold">Active</span>}</td><td className="p-3 font-semibold">{h==="-"?"In Progress":`${h} hours`}</td></tr>})}{!records.length&&<tr><td colSpan={4} className="p-8 text-center text-muted-foreground"><XCircle className="w-8 h-8 mx-auto mb-2 opacity-30" />No attendance records</td></tr>}</tbody></table></div></div>
+    <div className="mb-4 flex items-center gap-3">
+      <Link to="/admin/employees" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="w-4 h-4" /> Employee List
+      </Link>
+    </div>
+
+    <div className="bg-white border rounded-2xl p-5 mb-5 shadow-sm">
+      <div className="flex flex-wrap gap-4 items-center">
+        <div className="relative shrink-0">
+          <div className="relative w-20 h-20 rounded-[1.15rem] overflow-hidden bg-brand text-white flex items-center justify-center text-2xl font-bold">
+            {avatar ? <img src={avatar} alt={displayName} className="w-full h-full object-cover" /> : <span>{displayName.charAt(0)}</span>}
+          </div>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-xl font-bold">{displayName}</div>
+          <div className="text-sm text-muted-foreground">{employee?.position ?? "Employee"}</div>
+          <div className="text-xs text-muted-foreground mt-1">📞 {employee?.phone ?? profile?.phone ?? "—"} • ✉️ {employee?.email ?? "—"}</div>
+          <div className="text-xs text-muted-foreground mt-1">📍 {profile?.address || "Address not added"}</div>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={openEditor} className="border px-4 py-2 rounded-xl font-semibold flex items-center gap-2 hover:bg-muted">
+            <Pencil className="w-4 h-4" /> Edit Profile
+          </button>
+          {activeAttendanceId ? (
+            <button onClick={doCheckOut} className="bg-red-600 text-white px-4 py-2 rounded-xl font-semibold flex items-center gap-2">
+              <LogOut className="w-4 h-4" /> Check Out
+            </button>
+          ) : (
+            <button onClick={doCheckIn} className="bg-green-600 text-white px-4 py-2 rounded-xl font-semibold flex items-center gap-2">
+              <LogIn className="w-4 h-4" /> Check In
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+
+    {editing && <div className="fixed inset-0 z-50 bg-black/40 p-4 flex items-center justify-center" onMouseDown={(e) => e.target === e.currentTarget && !saving && setEditing(false)}>
+      <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto">
+        <div className="p-5 border-b flex items-center justify-between">
+          <div><h2 className="text-lg font-bold">Edit Employee Profile</h2><p className="text-xs text-muted-foreground mt-1">Employee information update করুন</p></div>
+          <button onClick={() => setEditing(false)} disabled={saving} className="p-2 rounded-lg hover:bg-muted"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="w-20 h-20 rounded-2xl overflow-hidden bg-brand text-white flex items-center justify-center text-2xl font-bold shrink-0">
+              {form.avatar_url ? <img src={form.avatar_url} alt="Avatar" className="w-full h-full object-cover" /> : <UserRound className="w-9 h-9" />}
+            </div>
+            <div>
+              <label className="inline-flex items-center gap-2 border px-3 py-2 rounded-xl font-semibold cursor-pointer hover:bg-muted">
+                <Upload className="w-4 h-4" /> {avatarUploading ? "Uploading..." : "Change Image / Avatar"}
+                <input type="file" accept="image/*" className="hidden" disabled={avatarUploading || saving} onChange={(e) => e.target.files?.[0] && uploadAvatar(e.target.files[0])} />
+              </label>
+              <div className="text-xs text-muted-foreground mt-1">JPG/PNG/WebP • max 5MB</div>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label className="space-y-1"><span className="text-sm font-medium">Name</span><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full border rounded-xl px-3 py-2.5" /></label>
+            <label className="space-y-1"><span className="text-sm font-medium">Phone Number</span><input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full border rounded-xl px-3 py-2.5" /></label>
+            <label className="space-y-1 md:col-span-2"><span className="text-sm font-medium">Address</span><textarea value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} rows={2} className="w-full border rounded-xl px-3 py-2.5 resize-none" /></label>
+            <label className="space-y-1"><span className="text-sm font-medium">Position</span><input value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} className="w-full border rounded-xl px-3 py-2.5" placeholder="e.g. Order Confirmation Executive" /></label>
+            <label className="space-y-1"><span className="text-sm font-medium">Join Date</span><input type="date" value={form.join_date} onChange={(e) => setForm({ ...form, join_date: e.target.value })} className="w-full border rounded-xl px-3 py-2.5" /></label>
+            <label className="space-y-1"><span className="text-sm font-medium">Salary (৳)</span><input type="number" min="0" step="1" value={form.salary} onChange={(e) => setForm({ ...form, salary: e.target.value })} className="w-full border rounded-xl px-3 py-2.5" placeholder="e.g. 15000" /></label>
+          </div>
+        </div>
+        <div className="p-5 border-t flex justify-end gap-2">
+          <button onClick={() => setEditing(false)} disabled={saving} className="border px-4 py-2 rounded-xl font-semibold">Cancel</button>
+          <button onClick={saveProfile} disabled={saving || avatarUploading} className="bg-brand text-white px-5 py-2 rounded-xl font-semibold disabled:opacity-50">{saving ? "Saving..." : "Save Changes"}</button>
+        </div>
+      </div>
+    </div>}
+
+    <div className="bg-white border rounded-2xl overflow-hidden shadow-sm">
+      <div className="p-4 border-b font-semibold flex items-center gap-2"><Clock className="w-4 h-4" /> Attendance & Working Hours</div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-muted text-xs"><tr><th className="p-3 text-left">Date</th><th className="p-3 text-left">Check In</th><th className="p-3 text-left">Check Out</th><th className="p-3 text-left">Working Hours</th></tr></thead>
+          <tbody>
+            {records.map((a: any) => {
+              const i = new Date(a.check_in); const o = a.check_out ? new Date(a.check_out) : null;
+              const h = o ? ((o.getTime() - i.getTime()) / 3600000).toFixed(1) : "-";
+              return <tr key={a.id} className="border-t hover:bg-muted/30"><td className="p-3">{format(i, "dd MMM yyyy")}</td><td className="p-3">{format(i, "hh:mm a")}</td><td className="p-3">{o ? format(o, "hh:mm a") : <span className="text-green-600 font-semibold">Active</span>}</td><td className="p-3 font-semibold">{h === "-" ? "In Progress" : `${h} hours`}</td></tr>;
+            })}
+            {!records.length && <tr><td colSpan={4} className="p-8 text-center text-muted-foreground"><XCircle className="w-8 h-8 mx-auto mb-2 opacity-30" />No attendance records</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
   </AdminLayout>;
 }
