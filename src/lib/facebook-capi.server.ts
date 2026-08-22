@@ -15,11 +15,8 @@ type FbConfig = {
 let cachedConfig: { value: FbConfig | null; at: number } | null = null;
 
 async function loadFbConfig(): Promise<FbConfig | null> {
-  // Cache the lookup for 60s — settings rarely change.
   const now = Date.now();
   if (cachedConfig && now - cachedConfig.at < 60_000) return cachedConfig.value;
-  // The access_token + test_event_code live in the admin-only integrations
-  // table; the pixel_id is mirrored from site_settings for the browser pixel.
   const [{ data: integ }, { data: site }] = await Promise.all([
     supabaseAdmin.from("integrations").select("config,is_active").eq("name", "facebook_capi").maybeSingle(),
     supabaseAdmin.from("site_settings").select("settings").limit(1).maybeSingle(),
@@ -36,7 +33,6 @@ async function loadFbConfig(): Promise<FbConfig | null> {
   return fb;
 }
 
-
 const sha256 = (s: string) => createHash("sha256").update(s.trim().toLowerCase()).digest("hex");
 
 export type PurchaseEventPayload = {
@@ -48,18 +44,14 @@ export type PurchaseEventPayload = {
   city?: string | null;
   country?: string;
   contents?: Array<{ id: string; quantity: number; price: number }>;
-  // Browser context (passed from the client where available):
   clientIp?: string | null;
   userAgent?: string | null;
-  fbp?: string | null; // _fbp cookie
-  fbc?: string | null; // _fbc cookie
+  fbp?: string | null;
+  fbc?: string | null;
   eventSourceUrl?: string | null;
 };
 
-/**
- * Send a Purchase event to Facebook's Conversions API.
- * Returns silently — failures only logged so they never break checkout.
- */
+/** Send Purchase to Meta CAPI with short retries for transient network/API failures. */
 export async function sendPurchaseEvent(payload: PurchaseEventPayload): Promise<void> {
   try {
     const cfg = await loadFbConfig();
@@ -89,51 +81,60 @@ export async function sendPurchaseEvent(payload: PurchaseEventPayload): Promise<
     if (payload.fbc) userData.fbc = payload.fbc;
 
     const body = {
-      data: [
-        {
-          event_name: "Purchase",
-          event_time: Math.floor(Date.now() / 1000),
-          event_id: payload.orderId,
-          action_source: "website",
-          event_source_url: payload.eventSourceUrl ?? undefined,
-          user_data: userData,
-          custom_data: {
-            currency: payload.currency ?? "BDT",
-            value: Number(payload.value.toFixed(2)),
-            order_id: payload.orderId,
-            ...(payload.contents
-              ? {
-                  contents: payload.contents.map((c) => ({
-                    id: c.id,
-                    quantity: c.quantity,
-                    item_price: c.price,
-                  })),
-                  content_type: "product",
-                  num_items: payload.contents.reduce((s, c) => s + c.quantity, 0),
-                }
-              : {}),
-          },
+      data: [{
+        event_name: "Purchase",
+        event_time: Math.floor(Date.now() / 1000),
+        event_id: payload.orderId,
+        action_source: "website",
+        event_source_url: payload.eventSourceUrl ?? undefined,
+        user_data: userData,
+        custom_data: {
+          currency: payload.currency ?? "BDT",
+          value: Number(payload.value.toFixed(2)),
+          order_id: payload.orderId,
+          ...(payload.contents ? {
+            contents: payload.contents.map((c) => ({ id: c.id, quantity: c.quantity, item_price: c.price })),
+            content_type: "product",
+            num_items: payload.contents.reduce((s, c) => s + c.quantity, 0),
+          } : {}),
         },
-      ],
+      }],
       ...(cfg.test_event_code ? { test_event_code: cfg.test_event_code } : {}),
     };
 
     const url = `https://graph.facebook.com/v19.0/${cfg.pixel_id}/events?access_token=${encodeURIComponent(cfg.access_token)}`;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const text = await res.text().catch(() => "");
-    if (!res.ok) {
-      console.error("[FB CAPI] Purchase FAILED", {
-        orderId: payload.orderId, pixel: cfg.pixel_id, status: res.status, body: text.slice(0, 600),
-      });
-    } else {
-      console.log("[FB CAPI] Purchase SENT", {
-        orderId: payload.orderId, pixel: cfg.pixel_id, status: res.status, response: text.slice(0, 300),
-      });
+    let lastError = "";
+
+    // A transient Meta/network failure should not silently lose a conversion.
+    // Retry only a few times so checkout remains fast and we never create a new event_id.
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(5000),
+        });
+        const text = await res.text().catch(() => "");
+        if (res.ok) {
+          console.log("[FB CAPI] Purchase SENT", {
+            orderId: payload.orderId, pixel: cfg.pixel_id, status: res.status,
+            attempt, response: text.slice(0, 300),
+          });
+          return;
+        }
+        lastError = `HTTP ${res.status}: ${text.slice(0, 600)}`;
+        // Don't retry permanent client/config errors.
+        if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) break;
+      } catch (err) {
+        lastError = err instanceof Error ? err.message : String(err);
+      }
+      if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 250));
     }
+
+    console.error("[FB CAPI] Purchase FAILED after retries", {
+      orderId: payload.orderId, pixel: cfg.pixel_id, error: lastError,
+    });
   } catch (err) {
     console.error("[FB CAPI] Purchase threw:", err);
   }
