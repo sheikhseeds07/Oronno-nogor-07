@@ -1,0 +1,14 @@
+{
+  "name": "অরন্য নগর — Admin Panel",
+  "short_name": "Admin Panel",
+  "description": "অরন্য নগর Admin Panel",
+  "start_url": "/admin/",
+  "scope": "/admin/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0d4a29",
+  "icons": [
+    { "src": "/icon-192-v2.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512-v2.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
