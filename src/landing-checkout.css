@@ -47,3 +47,46 @@
   .container.mx-auto.px-4.max-w-2xl.py-6 .grid.sm\:grid-cols-2.gap-3 > div { animation:none; opacity:0; visibility:hidden; }
   .container.mx-auto.px-4.max-w-2xl.py-6 .grid.sm\:grid-cols-2.gap-3 > div:first-child { opacity:1; visibility:visible; transform:none; }
 }
+
+/* Seedcombo checkout flow: move the pre-checkout CTA above the trust section heading and tighten the final flow. */
+.lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6:has(> .lp-reveal:has(+ #order)) {
+  padding-top:16px !important;
+  padding-bottom:16px !important;
+}
+.lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6:has(> .lp-reveal:has(+ #order)) > :not([hidden]) ~ :not([hidden]) {
+  margin-top:16px !important;
+}
+.lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:has(+ #order) {
+  display:flex !important;
+  flex-direction:column !important;
+}
+.lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:has(+ #order) > .mt-4 {
+  order:0 !important;
+  margin-top:0 !important;
+  margin-bottom:10px !important;
+}
+.lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:has(+ #order) > .mb-4.text-center {
+  order:1 !important;
+  margin-bottom:10px !important;
+}
+.lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:has(+ #order) > .rounded-xl.border {
+  order:2 !important;
+}
+.lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:has(+ #order) + #order {
+  margin-top:4px !important;
+}
+@media (max-width:640px) {
+  .lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6:has(> .lp-reveal:has(+ #order)) {
+    padding-top:12px !important;
+    padding-bottom:12px !important;
+  }
+  .lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6:has(> .lp-reveal:has(+ #order)) > :not([hidden]) ~ :not([hidden]) {
+    margin-top:12px !important;
+  }
+  .lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:has(+ #order) > .mt-4 {
+    margin-bottom:8px !important;
+  }
+  .lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:has(+ #order) > .mb-4.text-center {
+    margin-bottom:8px !important;
+  }
+}
