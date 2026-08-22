@@ -48,7 +48,7 @@ function ensureSeedComboCheckoutSpacing() {
   style.id = "seedcombo-checkout-spacing-fix";
   style.textContent = `
     #order {
-      margin-top: 14px !important;
+      margin-top: 24px !important;
       padding-top: 10px !important;
     }
     #order #lp-order-form {
@@ -56,7 +56,7 @@ function ensureSeedComboCheckoutSpacing() {
     }
     @media (max-width: 640px) {
       #order {
-        margin-top: 12px !important;
+        margin-top: 22px !important;
         padding-top: 8px !important;
       }
       #order #lp-order-form {
