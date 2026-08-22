@@ -1,0 +1,88 @@
+name: Fix Employee Performance Live Data
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-employee-performance-live.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.15
+      - name: Patch performance calculation
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('src/lib/employee-performance.functions.ts')
+          s = p.read_text()
+
+          old = '''    // Confirmation/cancellation counts stay aligned with the Dashboard source of truth.
+    for (const row of dashboardRows) {
+      const id = String(row?.user_id ?? "");
+      const m = metrics.get(id);
+      if (!m) continue;
+      m.confirmed = Number(row?.confirmed ?? 0);
+      m.cancelled = Number(row?.cancelled ?? 0);
+    }
+'''
+          new = '''    // Employee performance is based on the employee who actually owns the order.
+    // The dashboard previously attributed confirmations through created_by, which can be
+    // a system/admin actor and caused employee profiles to show 0 even when orders existed.
+    for (const order of orders ?? []) {
+      const id = String(order?.assigned_to ?? "");
+      const m = metrics.get(id);
+      if (!m) continue;
+      if (isCancelled(order)) m.cancelled++;
+      else if (isDelivered(order) || isShipped(order) || ["pending", "rts", "partial"].includes(statusOf(order))) m.confirmed++;
+    }
+'''
+          if old in s:
+              s = s.replace(old, new, 1)
+          elif 'Employee performance is based on the employee who actually owns the order.' not in s:
+              raise SystemExit('Confirmation/cancellation block marker not found')
+
+          # Avoid counting cancellation twice in the outcome pass; confirmed/cancelled are
+          # already calculated above while delivered/returned/shipped remain outcome metrics.
+          old = '''      if (isDelivered(order)) m.delivered++;
+      if (isReturned(order)) m.returned++;
+      if (isShipped(order)) m.shipped++;
+'''
+          new = '''      if (isDelivered(order)) m.delivered++;
+      if (isReturned(order)) m.returned++;
+      if (isShipped(order)) m.shipped++;
+'''
+          # Keep outcome counts unchanged; this replacement is intentionally idempotent.
+          if old not in s:
+              raise SystemExit('Outcome block marker not found')
+
+          required = [
+              'Employee performance is based on the employee who actually owns the order.',
+              'if (isCancelled(order)) m.cancelled++;',
+              'else if (isDelivered(order) || isShipped(order)',
+          ]
+          missing = [x for x in required if x not in s]
+          if missing:
+              raise SystemExit('Patch incomplete: ' + ', '.join(missing))
+          p.write_text(s)
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Build verification
+        run: bun run build
+      - name: Commit patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/lib/employee-performance.functions.ts
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix: calculate employee performance from assigned orders'
+          git push
