@@ -1,0 +1,88 @@
+name: Restrict Incomplete Web Orders
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/restrict-incomplete-orders.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply admin-only incomplete Web Order restriction
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('src/routes/admin/orders.tsx')
+          s = p.read_text()
+
+          old = 'const WEB_STATUSES: OrderStatus[] = ["web_pending", "incomplete", "hold", "cancelled"];'
+          new = 'const WEB_STATUSES: OrderStatus[] = ["web_pending", "incomplete", "hold", "cancelled"];\nconst WEB_EMPLOYEE_STATUSES: OrderStatus[] = ["web_pending", "hold", "cancelled"];'
+          if old not in s:
+              raise SystemExit('WEB_STATUSES marker not found')
+          s = s.replace(old, new, 1)
+
+          old = '  const qc = useQueryClient();\n\n  return (\n    <AdminLayout'
+          new = '  const qc = useQueryClient();\n  const { isAdmin } = useAuth();\n\n  return (\n    <AdminLayout'
+          if old not in s:
+              raise SystemExit('Orders auth marker not found')
+          s = s.replace(old, new, 1)
+
+          old = '{tab === "web" && <OrdersTable statuses={WEB_STATUSES} mode="web" onOpen={setSelected} />}'
+          new = '{tab === "web" && <OrdersTable statuses={isAdmin ? WEB_STATUSES : WEB_EMPLOYEE_STATUSES} mode="web" onOpen={setSelected} />}'
+          if old not in s:
+              raise SystemExit('Web Orders render marker not found')
+          s = s.replace(old, new, 1)
+
+          old = '  const qc = useQueryClient();\n  const sendBulk = useServerFn(sendOrdersToSteadfast);'
+          new = '  const qc = useQueryClient();\n  const { isAdmin } = useAuth();\n  const sendBulk = useServerFn(sendOrdersToSteadfast);'
+          if old not in s:
+              raise SystemExit('OrdersTable auth marker not found')
+          s = s.replace(old, new, 1)
+
+          old = '    enabled: mode === "web",\n    queryFn: async () => {'
+          new = '    enabled: mode === "web" && isAdmin,\n    queryFn: async () => {'
+          if old not in s:
+              raise SystemExit('Incomplete count marker not found')
+          s = s.replace(old, new, 1)
+
+          old = '    enabled: isIncomplete,\n    staleTime: 15_000,\n    placeholderData: keepPreviousData,\n\n\n    queryFn: async () => {'
+          new = '    enabled: isIncomplete && isAdmin,\n    staleTime: 15_000,\n    placeholderData: keepPreviousData,\n\n\n    queryFn: async () => {'
+          if old not in s:
+              raise SystemExit('Incomplete rows marker not found')
+          s = s.replace(old, new, 1)
+
+          p.write_text(s)
+
+      - name: Verify patch
+        run: |
+          grep -q 'WEB_EMPLOYEE_STATUSES' src/routes/admin/orders.tsx
+          grep -q 'isAdmin ? WEB_STATUSES : WEB_EMPLOYEE_STATUSES' src/routes/admin/orders.tsx
+          grep -q 'enabled: mode === "web" && isAdmin' src/routes/admin/orders.tsx
+          grep -q 'enabled: isIncomplete && isAdmin' src/routes/admin/orders.tsx
+
+      - name: Typecheck and build
+        run: |
+          corepack enable || true
+          if command -v bun >/dev/null 2>&1; then
+            bun install --frozen-lockfile || bun install
+            bun run build
+          else
+            npm ci
+            npm run build
+          fi
+
+      - name: Commit patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/routes/admin/orders.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix: restrict incomplete web orders to admins'
+          git push
