@@ -4,7 +4,12 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useAuth } from "@/lib/auth";
 import { PremiumDashboard } from "@/components/admin/PremiumDashboard";
 
-export const Route = createFileRoute("/admin/")({ component: DashboardGate });
+export const Route = createFileRoute("/admin/")({
+  head: () => ({
+    links: [{ rel: "manifest", href: "/admin.webmanifest" }],
+  }),
+  component: DashboardGate,
+});
 
 function DashboardGate() {
   return <DashboardOrRedirect />;
