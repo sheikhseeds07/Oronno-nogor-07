@@ -1,0 +1,41 @@
+name: Seedcombo floating checkout cleanup
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message != 'fix(seedcombo): simplify floating checkout button'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch floating checkout UI
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/components/landing/CleanLandingPage.tsx')
+          s = p.read_text(encoding='utf-8')
+          marker = ' const scrollToOrder=()=>orderSectionRef.current?.scrollIntoView({behavior:"smooth",block:"start"});'
+          if marker not in s:
+              raise SystemExit('scrollToOrder marker not found; refusing to modify source')
+          injection = '''\n const seedcomboFloatingCleanup=()=>{\n  if(slug!=="seedcombo"||typeof document==="undefined")return;\n  const bars=Array.from(document.querySelectorAll<HTMLElement>('.lp-root [class*="fixed"][class*="bottom-0"]'));\n  const bar=bars.find(el=>!!el.querySelector('button[form="lp-order-form"],button[type="submit"]'));\n  if(!bar)return;\n  bar.classList.add('lp-seedcombo-floating-clean');\n  const button=bar.querySelector<HTMLButtonElement>('button[form="lp-order-form"],button[type="submit"]');\n  if(!button)return;\n  button.classList.add('lp-seedcombo-floating-action');\n  button.textContent=`অর্ডার কনফার্ম করুন - ${taka(total)}`;\n };\n useEffect(()=>{if(slug!=="seedcombo")return;seedcomboFloatingCleanup();const id=window.setTimeout(seedcomboFloatingCleanup,50);const id2=window.setTimeout(seedcomboFloatingCleanup,250);return()=>{window.clearTimeout(id);window.clearTimeout(id2)}},[slug,total,selectedPkg,formInView]);'''
+          s = s.replace(marker, marker + injection, 1)
+          style_marker = '.lp-product-checkout-group { border:1px solid #dfeae2; border-radius:18px; background:#fff; overflow:hidden; }'
+          if style_marker not in s:
+              raise SystemExit('style marker not found; refusing to modify source')
+          css = '''\n.lp-root .lp-seedcombo-floating-clean { background:transparent !important; background-color:transparent !important; box-shadow:none !important; border:0 !important; padding:0 !important; margin:0 !important; inset-inline:0 !important; display:flex !important; justify-content:center !important; pointer-events:none !important; }\n.lp-root .lp-seedcombo-floating-clean .lp-seedcombo-floating-action { pointer-events:auto !important; width:min(100%,680px) !important; min-height:54px !important; margin:0 12px max(10px,env(safe-area-inset-bottom)) !important; padding:13px 18px !important; border:0 !important; border-radius:14px !important; background:#facc15 !important; color:#111827 !important; box-shadow:0 10px 28px -10px rgba(0,0,0,.28) !important; font-size:16px !important; font-weight:800 !important; line-height:1.2 !important; }\n.lp-root .lp-seedcombo-floating-clean .lp-seedcombo-floating-action:hover { filter:brightness(.98); }\n.lp-root .lp-seedcombo-floating-clean > *:not(.lp-seedcombo-floating-action) { display:none !important; }\n@media (max-width:640px) { .lp-root .lp-seedcombo-floating-clean .lp-seedcombo-floating-action { width:calc(100% - 20px) !important; margin-left:10px !important; margin-right:10px !important; min-height:52px !important; border-radius:12px !important; } }'''
+          s = s.replace(style_marker, style_marker + css, 1)
+          p.write_text(s, encoding='utf-8')
+          PY
+          git diff --check
+          git add src/components/landing/CleanLandingPage.tsx
+          git rm .github/workflows/seedcombo-floating-cleanup.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(seedcombo): simplify floating checkout button'
+          git push origin HEAD:main
