@@ -1,0 +1,40 @@
+name: Seedcombo selector layout fix
+on:
+  push:
+    branches: [main]
+jobs:
+  fix:
+    if: ${{ !contains(github.event.head_commit.message, 'Seedcombo selector layout fix') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch compact product selector
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('src/routes/landing.$slug.tsx')
+          s=p.read_text()
+          marker='@media (max-width:640px) {'
+          css='''
+  #order .lp-product-checkout-group .lp-product-selector { padding:6px !important; margin:0 !important; }
+  #order .lp-product-checkout-group .lp-product-selector > div { gap:5px !important; }
+  #order .lp-product-checkout-group .lp-product-selector button { min-height:52px !important; height:52px !important; padding:4px 7px !important; border-radius:12px !important; display:flex !important; align-items:center !important; gap:7px !important; overflow:hidden !important; }
+  #order .lp-product-checkout-group .lp-product-selector button img { width:42px !important; height:42px !important; min-width:42px !important; min-height:42px !important; max-width:42px !important; max-height:42px !important; object-fit:cover !important; border-radius:8px !important; flex:0 0 42px !important; }
+  #order .lp-product-checkout-group .lp-product-selector button p,
+  #order .lp-product-checkout-group .lp-product-selector button span { white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; line-height:1.1 !important; margin:0 !important; }
+  #order .lp-product-checkout-group .lp-product-selector button svg { flex:0 0 auto !important; }
+'''
+          if css.strip() not in s:
+              s=s.replace(marker, marker+'\n'+css, 1)
+              p.write_text(s)
+      - name: Commit and remove workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/routes/landing.$slug.tsx
+          git commit -m 'Seedcombo selector layout fix [skip ci]'
+          git rm .github/workflows/seedcombo-selector-fix.yml
+          git commit -m 'Remove temporary seedcombo selector workflow [skip ci]'
+          git push
