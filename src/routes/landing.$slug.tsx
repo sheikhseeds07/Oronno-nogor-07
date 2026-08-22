@@ -12,7 +12,7 @@ const LEGACY_SLUGS = new Set(["seeds-combo-24"]);
 export const Route = createFileRoute("/landing/$slug")({ component: LandingPage });
 
 const seedComboCheckoutCss = `
-#order { scroll-margin-top: 76px !important; margin-top: -34px !important; padding-top: 0 !important; }
+#order { scroll-margin-top: 76px !important; margin-top: -22px !important; padding-top: 0 !important; }
 #order > .mb-4.text-center { margin-bottom: 10px !important; }
 #order #lp-order-form {
   position: relative;
@@ -44,7 +44,7 @@ const seedComboCheckoutCss = `
 #order #lp-order-form button[type="submit"] { display:none !important; }
 #order #lp-order-form button[type="button"] { transition:transform .18s ease,box-shadow .18s ease !important; }
 #order #lp-order-form button[type="button"]:active { transform:scale(.985); }
-@media (max-width:640px) { #order { margin-top:-38px !important; } #order > .mb-4.text-center { margin-bottom:7px !important; } #order #lp-order-form { padding:8px !important; border-radius:22px !important; } #order #lp-order-form > .border-2.rounded-2xl.p-3 { margin-bottom:6px !important; padding:6px !important; border-radius:16px !important; } #order #lp-order-form > .border-2.rounded-2xl.p-3 .space-y-2 > button { min-height:50px !important; padding:6px 7px !important; border-radius:12px !important; } #order #lp-order-form input:not([type="checkbox"]), #order #lp-order-form textarea { min-height:50px !important; font-size:16px !important; } #order #lp-order-form textarea { min-height:82px !important; } }
+@media (max-width:640px) { #order { margin-top:-26px !important; } #order > .mb-4.text-center { margin-bottom:7px !important; } #order #lp-order-form { padding:8px !important; border-radius:22px !important; } #order #lp-order-form > .border-2.rounded-2xl.p-3 { margin-bottom:6px !important; padding:6px !important; border-radius:16px !important; } #order #lp-order-form > .border-2.rounded-2xl.p-3 .space-y-2 > button { min-height:50px !important; padding:6px 7px !important; border-radius:12px !important; } #order #lp-order-form input:not([type="checkbox"]), #order #lp-order-form textarea { min-height:50px !important; font-size:16px !important; } #order #lp-order-form textarea { min-height:82px !important; } }
 @media (prefers-reduced-motion: reduce) { #order #lp-order-form::before, #order #lp-order-form > .border-2.rounded-2xl.p-3 .space-y-2 > button:first-child { animation:none !important; } }
 `;
 
