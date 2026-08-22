@@ -1,0 +1,36 @@
+name: Temporary SeedCombo CTA Fix
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch floating CTA
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('src/components/landing/ProductStyleLandingPage.tsx')
+          s = p.read_text()
+          pattern = r'\{checkoutVisible && <button type="button" onClick=\{\(\) => submit\(\)\}.*?</button>\}'
+          replacement = '''{checkoutVisible && <button type="button" onClick={() => submit()} disabled={submitting} aria-label="অর্ডার কনফার্ম করুন" className="hng-floating-order fixed bottom-0 left-1/2 z-50 w-[min(92vw,430px)] rounded-t-2xl rounded-b-none px-5 py-3.5 text-white font-black text-base border border-white/25 border-b-0 backdrop-blur-md transition-all duration-300 disabled:cursor-not-allowed disabled:opacity-70" style={{ backgroundColor: slug === "seedcombo" ? "#166534" : theme }}><span className="relative z-10 inline-flex items-center justify-center gap-2"><span className="inline-block h-2 w-2 rounded-full bg-white shadow-[0_0_0_4px_rgba(255,255,255,.15)]" />{submitting ? "অর্ডার হচ্ছে..." : slug === "seedcombo" ? "অর্ডার কনফার্ম করুন - ৳২৯৯" : `অর্ডার টি কনফার্ম করুন — ${taka(total)}`}</span></button>}'''
+          s2, n = re.subn(pattern, replacement, s, count=1, flags=re.S)
+          if n != 1:
+              raise SystemExit(f'CTA pattern not found: {n}')
+          p.write_text(s2)
+          PY
+      - name: Commit and remove temporary workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/components/landing/ProductStyleLandingPage.tsx
+          git commit -m 'fix(landing): update SeedCombo floating checkout CTA'
+          rm .github/workflows/temporary-seedcombo-cta-fix.yml
+          git add .github/workflows/temporary-seedcombo-cta-fix.yml
+          git commit -m 'chore: remove temporary SeedCombo CTA workflow'
+          git push
