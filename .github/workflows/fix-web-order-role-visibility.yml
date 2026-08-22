@@ -1,7 +1,9 @@
 name: Fix Web Order role visibility
 
 on:
-  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/fix-web-order-role-visibility.yml
 
 permissions:
   contents: write
