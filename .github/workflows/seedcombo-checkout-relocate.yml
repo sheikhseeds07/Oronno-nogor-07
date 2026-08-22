@@ -1,0 +1,44 @@
+name: One-time seedcombo checkout layout fix
+
+on:
+  push:
+    branches: [tmp]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Relocate seedcombo CTA and compact spacing
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("src/components/landing/CleanLandingPage.tsx")
+          s = p.read_text(encoding="utf-8")
+          old = '{why.length>0&&<Reveal><SectionHead kicker={C.why_kicker} title={C.why_title}/><IconRowList items={why} themeColor={themeColor} themeBg10={themeBg10}/><div className="mt-4"><RedCta/></div></Reveal>}'
+          new = '{why.length>0&&<Reveal><div className="lp-trust-cta mb-2 sm:mb-3"><RedCta/></div><SectionHead kicker={C.why_kicker} title={C.why_title}/><IconRowList items={why} themeColor={themeColor} themeBg10={themeBg10}/></Reveal>}'
+          if old not in s:
+              raise SystemExit("Expected trust-section CTA markup was not found; refusing to modify the file.")
+          s = s.replace(old, new, 1)
+          old_container = '<div className="container mx-auto px-4 py-5 max-w-2xl space-y-6">'
+          new_container = '<div className={`container mx-auto px-4 py-4 max-w-2xl ${slug==="seedcombo"?"space-y-4":"space-y-6"}`}>'
+          if old_container not in s:
+              raise SystemExit("Expected landing container markup was not found; refusing to modify the file.")
+          s = s.replace(old_container, new_container, 1)
+          p.write_text(s, encoding="utf-8")
+          PY
+          git diff --check
+          git diff -- src/components/landing/CleanLandingPage.tsx
+      - name: Commit source change and remove one-time workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/landing/CleanLandingPage.tsx .github/workflows/seedcombo-checkout-relocate.yml
+          git rm .github/workflows/seedcombo-checkout-relocate.yml
+          git commit -m "fix(seedcombo): relocate checkout CTA and compact spacing"
+          git push origin HEAD:tmp
