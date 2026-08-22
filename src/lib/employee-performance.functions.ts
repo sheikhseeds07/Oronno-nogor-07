@@ -24,6 +24,7 @@ const isDelivered = (o: any) => statusOf(o) === "delivered";
 const isReturned = (o: any) => ["returned", "rts", "pending_return"].includes(statusOf(o));
 const isShipped = (o: any) => ["shipped", "delivered", "pending_return", "returned", "rts"].includes(statusOf(o));
 const isCancelled = (o: any) => ["cancelled", "canceled"].includes(statusOf(o));
+const isConfirmed = (o: any) => ["pending", "rts", "shipped", "delivered", "pending_return", "returned", "partial"].includes(statusOf(o));
 
 export const getEmployeePerformance = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -31,15 +32,6 @@ export const getEmployeePerformance = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     if (data.user_id !== context.userId && !(await isAdmin(context.userId))) throw new Error("Unauthorized");
 
-    const dashboard = await getPremiumDashboardReport({
-      data: {
-        from: new Date(`${data.start}T00:00:00`).toISOString(),
-        to: new Date(`${data.end}T23:59:59.999`).toISOString(),
-      },
-      context: context as any,
-    } as any);
-
-    const dashboardRows = Array.isArray((dashboard as any)?.employeePerformance) ? (dashboard as any).employeePerformance : [];
     const { data: employees, error: employeeError } = await supabaseAdmin
       .from("employees")
       .select("id,name,user_id,is_active")
@@ -52,6 +44,7 @@ export const getEmployeePerformance = createServerFn({ method: "POST" })
       ? await supabaseAdmin.from("user_roles").select("user_id,role").in("user_id", employeeIds)
       : { data: [], error: null };
     if (roleError) throw new Error(roleError.message);
+
     const adminIds = new Set((roleRows ?? [])
       .filter((r: any) => ["admin", "super_admin"].includes(String(r.role).toLowerCase()))
       .map((r: any) => String(r.user_id)));
@@ -85,21 +78,15 @@ export const getEmployeePerformance = createServerFn({ method: "POST" })
       });
     }
 
-    // Confirmation/cancellation counts stay aligned with the Dashboard source of truth.
-    for (const row of dashboardRows) {
-      const id = String(row?.user_id ?? "");
-      const m = metrics.get(id);
-      if (!m) continue;
-      m.confirmed = Number(row?.confirmed ?? 0);
-      m.cancelled = Number(row?.cancelled ?? 0);
-    }
-
-    // Delivery/return/shipping are outcome metrics tied to the employee handling the order.
+    // Performance belongs to the employee currently assigned to the order.
+    // created_by may be an admin/system actor, so it must not be used for employee KPIs.
     for (const order of orders ?? []) {
       const id = String(order?.assigned_to ?? "");
       if (!eligibleIds.has(id)) continue;
       const m = metrics.get(id);
       if (!m) continue;
+      if (isCancelled(order)) m.cancelled++;
+      else if (isConfirmed(order)) m.confirmed++;
       if (isDelivered(order)) m.delivered++;
       if (isReturned(order)) m.returned++;
       if (isShipped(order)) m.shipped++;
@@ -114,15 +101,9 @@ export const getEmployeePerformance = createServerFn({ method: "POST" })
     const maxCancelled = Math.max(0, ...all.map((m) => m.cancelled));
     const maxReturned = Math.max(0, ...all.map((m) => m.returned));
 
-    // Overall score: successful outcomes carry the most weight; cancellations/returns reduce it.
     for (const m of all) {
-      const positive =
-        norm(m.confirmed, maxConfirmed) * 35 +
-        norm(m.delivered, maxDelivered) * 35 +
-        norm(m.shipped, maxShipped) * 10;
-      const negative =
-        norm(m.cancelled, maxCancelled) * 10 +
-        norm(m.returned, maxReturned) * 10;
+      const positive = norm(m.confirmed, maxConfirmed) * 35 + norm(m.delivered, maxDelivered) * 35 + norm(m.shipped, maxShipped) * 10;
+      const negative = norm(m.cancelled, maxCancelled) * 10 + norm(m.returned, maxReturned) * 10;
       m.score = Math.max(0, Math.min(100, Math.round(positive - negative)));
       const handled = m.confirmed + m.cancelled;
       m.handled = handled;
@@ -148,10 +129,12 @@ export const getEmployeePerformance = createServerFn({ method: "POST" })
     const shipped = Number(row?.shipped ?? 0);
     const handled = confirmed + cancelled;
 
-    const [{ data: attendance }, { data: employee }] = await Promise.all([
+    const [{ data: attendance, error: attendanceError }, { data: employee, error: employeeDataError }] = await Promise.all([
       supabaseAdmin.from("attendance").select("id,user_id,check_in,check_out").eq("user_id", data.user_id).gte("check_in", new Date(`${data.start}T00:00:00`).toISOString()).lte("check_in", new Date(`${data.end}T23:59:59.999`).toISOString()).order("check_in", { ascending: false }),
       supabaseAdmin.from("employees").select("*").eq("user_id", data.user_id).maybeSingle(),
     ]);
+    if (attendanceError) throw new Error(attendanceError.message);
+    if (employeeDataError) throw new Error(employeeDataError.message);
 
     const attendanceRows = attendance ?? [];
     const presentDays = new Set(attendanceRows.map((r) => new Date(r.check_in).toISOString().slice(0, 10))).size;
