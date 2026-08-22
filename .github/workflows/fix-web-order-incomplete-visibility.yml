@@ -50,3 +50,5 @@ jobs:
           git rm .github/workflows/fix-web-order-incomplete-visibility.yml || true
           git commit -m 'chore: remove temporary visibility patch workflow' || true
           git push
+
+# trigger the patch runner
