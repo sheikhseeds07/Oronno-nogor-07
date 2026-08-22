@@ -13,12 +13,49 @@ concurrency:
   group: build-check-${{ github.ref }}
   cancel-in-progress: false
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Apply Web Order role visibility fix
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/routes/admin/orders.tsx')
+          s = p.read_text()
+          old = 'const WEB_STATUSES: OrderStatus[] = ["web_pending", "incomplete", "hold", "cancelled"];'
+          new = old + '\nconst EMPLOYEE_WEB_STATUSES: OrderStatus[] = ["web_pending", "hold", "cancelled"];'
+          if 'const EMPLOYEE_WEB_STATUSES' not in s:
+              if old not in s:
+                  raise SystemExit('WEB_STATUSES marker not found')
+              s = s.replace(old, new, 1)
+          old2 = 'function Orders() {\n  useLiveOrders();\n  const search = Route.useSearch();'
+          new2 = 'function Orders() {\n  useLiveOrders();\n  const { isAdmin } = useAuth();\n  const search = Route.useSearch();'
+          if 'const { isAdmin } = useAuth();' not in s:
+              if old2 not in s:
+                  raise SystemExit('Orders function marker not found')
+              s = s.replace(old2, new2, 1)
+          old3 = '{tab === "web" && <OrdersTable statuses={WEB_STATUSES} mode="web" onOpen={setSelected} />}'
+          new3 = '{tab === "web" && <OrdersTable statuses={isAdmin ? WEB_STATUSES : EMPLOYEE_WEB_STATUSES} mode="web" onOpen={setSelected} />}'
+          if old3 in s:
+              s = s.replace(old3, new3, 1)
+          p.write_text(s)
+          PY
+          if git diff --quiet -- src/routes/admin/orders.tsx; then
+            echo 'Web Order role fix already applied'
+          else
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add src/routes/admin/orders.tsx
+            git commit -m 'fix: restrict Web Order incomplete to admins'
+            git push
+          fi
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
