@@ -41,6 +41,32 @@ function markSent(path: string, set: Set<string>) {
 let flushTimer: ReturnType<typeof setTimeout> | undefined;
 let flushing = false;
 
+function ensureSeedComboCheckoutSpacing() {
+  if (typeof document === "undefined" || window.location.pathname !== "/landing/seedcombo") return;
+  if (document.getElementById("seedcombo-checkout-spacing-fix")) return;
+  const style = document.createElement("style");
+  style.id = "seedcombo-checkout-spacing-fix";
+  style.textContent = `
+    #order {
+      margin-top: 14px !important;
+      padding-top: 10px !important;
+    }
+    #order #lp-order-form {
+      margin-top: 8px !important;
+    }
+    @media (max-width: 640px) {
+      #order {
+        margin-top: 12px !important;
+        padding-top: 8px !important;
+      }
+      #order #lp-order-form {
+        margin-top: 7px !important;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 export async function flushVisitQueue() {
   if (typeof window === "undefined" || flushing) return;
   const queue = readQueue();
@@ -59,6 +85,7 @@ function scheduleFlush() {
 export function trackVisit(path: string) {
   if (typeof window === "undefined") return;
   const normalizedPath = path || window.location.pathname;
+  if (normalizedPath === "/landing/seedcombo") ensureSeedComboCheckoutSpacing();
   const sent = getSentSet();
   if (sent.has(normalizedPath)) return;
   markSent(normalizedPath, sent);
