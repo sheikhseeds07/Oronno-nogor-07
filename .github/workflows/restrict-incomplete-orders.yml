@@ -15,6 +15,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.15
+
       - name: Apply admin-only incomplete Web Order restriction
         shell: python
         run: |
@@ -26,57 +31,50 @@ jobs:
           new = 'const WEB_STATUSES: OrderStatus[] = ["web_pending", "incomplete", "hold", "cancelled"];\nconst WEB_EMPLOYEE_STATUSES: OrderStatus[] = ["web_pending", "hold", "cancelled"];'
           if old not in s:
               raise SystemExit('WEB_STATUSES marker not found')
-          s = s.replace(old, new, 1)
+          if 'const WEB_EMPLOYEE_STATUSES' not in s:
+              s = s.replace(old, new, 1)
 
           old = '  const qc = useQueryClient();\n\n  return (\n    <AdminLayout'
           new = '  const qc = useQueryClient();\n  const { isAdmin } = useAuth();\n\n  return (\n    <AdminLayout'
-          if old not in s:
-              raise SystemExit('Orders auth marker not found')
-          s = s.replace(old, new, 1)
+          if old in s and 'const { isAdmin } = useAuth();' not in s:
+              s = s.replace(old, new, 1)
 
           old = '{tab === "web" && <OrdersTable statuses={WEB_STATUSES} mode="web" onOpen={setSelected} />}'
           new = '{tab === "web" && <OrdersTable statuses={isAdmin ? WEB_STATUSES : WEB_EMPLOYEE_STATUSES} mode="web" onOpen={setSelected} />}'
-          if old not in s:
-              raise SystemExit('Web Orders render marker not found')
-          s = s.replace(old, new, 1)
+          if old in s:
+              s = s.replace(old, new, 1)
 
           old = '  const qc = useQueryClient();\n  const sendBulk = useServerFn(sendOrdersToSteadfast);'
           new = '  const qc = useQueryClient();\n  const { isAdmin } = useAuth();\n  const sendBulk = useServerFn(sendOrdersToSteadfast);'
-          if old not in s:
-              raise SystemExit('OrdersTable auth marker not found')
-          s = s.replace(old, new, 1)
+          if old in s and s.count('const { isAdmin } = useAuth();') < 2:
+              s = s.replace(old, new, 1)
 
           old = '    enabled: mode === "web",\n    queryFn: async () => {'
           new = '    enabled: mode === "web" && isAdmin,\n    queryFn: async () => {'
-          if old not in s:
-              raise SystemExit('Incomplete count marker not found')
-          s = s.replace(old, new, 1)
+          if old in s:
+              s = s.replace(old, new, 1)
 
           old = '    enabled: isIncomplete,\n    staleTime: 15_000,\n    placeholderData: keepPreviousData,\n\n\n    queryFn: async () => {'
           new = '    enabled: isIncomplete && isAdmin,\n    staleTime: 15_000,\n    placeholderData: keepPreviousData,\n\n\n    queryFn: async () => {'
-          if old not in s:
-              raise SystemExit('Incomplete rows marker not found')
-          s = s.replace(old, new, 1)
+          if old in s:
+              s = s.replace(old, new, 1)
 
+          required = [
+              'const WEB_EMPLOYEE_STATUSES',
+              'statuses={isAdmin ? WEB_STATUSES : WEB_EMPLOYEE_STATUSES}',
+              'enabled: mode === "web" && isAdmin',
+              'enabled: isIncomplete && isAdmin',
+          ]
+          missing = [x for x in required if x not in s]
+          if missing:
+              raise SystemExit('Patch incomplete: ' + ', '.join(missing))
           p.write_text(s)
 
-      - name: Verify patch
-        run: |
-          grep -q 'WEB_EMPLOYEE_STATUSES' src/routes/admin/orders.tsx
-          grep -q 'isAdmin ? WEB_STATUSES : WEB_EMPLOYEE_STATUSES' src/routes/admin/orders.tsx
-          grep -q 'enabled: mode === "web" && isAdmin' src/routes/admin/orders.tsx
-          grep -q 'enabled: isIncomplete && isAdmin' src/routes/admin/orders.tsx
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
 
-      - name: Typecheck and build
-        run: |
-          corepack enable || true
-          if command -v bun >/dev/null 2>&1; then
-            bun install --frozen-lockfile || bun install
-            bun run build
-          else
-            npm ci
-            npm run build
-          fi
+      - name: Build verification
+        run: bun run build
 
       - name: Commit patch
         run: |
