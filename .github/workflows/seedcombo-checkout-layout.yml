@@ -1,0 +1,85 @@
+name: Seedcombo checkout package payment layout
+on:
+  push:
+    branches: [main]
+jobs:
+  update:
+    if: ${{ !contains(github.event.head_commit.message, 'Seedcombo checkout package payment layout') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update seedcombo checkout UI
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('src/components/landing/CleanLandingPage.tsx')
+          s = p.read_text()
+          old_css = '''const LANDING_CHECKOUT_GROUP_STYLE = `'''
+          start = s.find(old_css)
+          if start < 0:
+              raise SystemExit('checkout style block not found')
+          end = s.find('`;', start)
+          if end < 0:
+              raise SystemExit('checkout style block end not found')
+          new_style = '''const LANDING_CHECKOUT_GROUP_STYLE = `
+.lp-product-checkout-group { border:1px solid #dbe7df; border-radius:18px; background:#fff; overflow:visible; position:relative; z-index:2; }
+.lp-product-checkout-group .lp-product-selector { display:none !important; }
+.lp-product-checkout-group > section { padding:11px !important; margin:0 !important; position:relative; z-index:1; }
+.lp-product-checkout-group > section > div { margin-bottom:0 !important; }
+.lp-checkout-package { border:1px solid #e5eee8; border-radius:12px; background:#fbfefc; padding:8px; }
+.lp-checkout-package-list { display:flex; flex-direction:column; gap:5px; }
+.lp-checkout-package-option { width:100%; min-height:54px; display:flex; align-items:center; gap:8px; padding:5px 7px; border:1px solid #e5eee8; border-radius:10px; background:#fff; text-align:left; box-sizing:border-box; }
+.lp-checkout-package-option img { width:38px; height:38px; min-width:38px; border-radius:7px; object-fit:cover; }
+.lp-checkout-package-option .pkg-copy { min-width:0; flex:1; }
+.lp-checkout-package-option .pkg-name { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-size:12px; line-height:1.25; font-weight:700; color:#334155; }
+.lp-checkout-payment { border:1px solid #e5eee8; border-radius:12px; padding:9px 10px; background:#fff; }
+.lp-checkout-payment-row { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; color:#334155; }
+.lp-checkout-payment-row input { accent-color:#16a34a; }
+.lp-checkout-subtotal { display:flex; align-items:center; justify-content:space-between; padding:9px 2px 2px; font-size:13px; font-weight:700; color:#475569; }
+#order { scroll-margin-top:78px !important; }
+#order #lp-order-form { overflow:visible !important; position:relative !important; z-index:1 !important; }
+#order #lp-order-form > div { min-width:0 !important; }
+#order #lp-order-form input:not([type="checkbox"]),#order #lp-order-form textarea { width:100% !important; box-sizing:border-box !important; }
+@media (max-width:640px) {
+  .lp-product-checkout-group { border-radius:16px !important; }
+  .lp-product-checkout-group > section { padding:9px !important; }
+  #order #lp-order-form { padding:10px !important; }
+  #order #lp-order-form input:not([type="checkbox"]),#order #lp-order-form textarea { min-height:50px !important; font-size:16px !important; }
+  #order #lp-order-form textarea { min-height:82px !important; }
+}
+`;'''
+          s = s[:start] + new_style + s[end+2:]
+          marker = '</form>'
+          if marker not in s:
+              raise SystemExit('order form closing tag not found')
+          if 'প্যাকেজ সিলেক্ট করুন' not in s:
+              block = '''
+<div ref={productSelectionRef} className="lp-checkout-package mt-2">
+  <div className="text-[12px] font-extrabold text-slate-700 mb-1.5">প্যাকেজ সিলেক্ট করুন</div>
+  <div className="lp-checkout-package-list">
+    {packages.map((pkg,i)=><button key={`${pkg.product_id||pkg.name}-${i}`} type="button" onClick={()=>setSelectedPkg(i)} className="lp-checkout-package-option" style={i===selectedPkg?{borderColor:themeColor,boxShadow:`0 0 0 1px ${themeColor}22`}:undefined}>
+      {pkg.image?<img src={toImg(pkg.image,{w:100,q:80})} alt="" loading="lazy"/>:<div className="w-[38px] h-[38px] min-w-[38px] rounded-[7px] bg-emerald-50"/>}
+      <div className="pkg-copy"><div className="pkg-name">{pkg.name}</div></div>
+      <div className="text-[12px] font-extrabold text-slate-700 shrink-0">{taka(pkg.price)}</div>
+    </button>)}
+  </div>
+</div>
+<div className="lp-checkout-payment mt-2">
+  <div className="text-[12px] font-extrabold text-slate-700 mb-1.5">পেমেন্ট মাধ্যম</div>
+  <label className="lp-checkout-payment-row"><input type="radio" checked readOnly/> ক্যাশ অন হোম ডেলিভারি</label>
+</div>
+<div className="lp-checkout-subtotal">
+  <span>সাব টোটাল</span><span>{taka(subtotal)}</span>
+</div>
+'''
+              s = s.replace(marker, block + marker, 1)
+          p.write_text(s)
+      - name: Commit changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/components/landing/CleanLandingPage.tsx
+          git commit -m 'Seedcombo checkout package payment layout [skip ci]'
+          git push
