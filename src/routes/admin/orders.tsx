@@ -1948,12 +1948,7 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
             {historyTotal > 0 ? "এই কাস্টমারের আগের রেকর্ড" : "নতুন কাস্টমার — কোনো আগের অর্ডার নেই"}
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1">
-            <OurRecordCard history={history ?? []} total={historyTotal} success={historyTotal - historyCancelled} cancelled={historyCancelled} />
-            <div className="min-w-[150px] rounded-lg border p-2.5 bg-white text-xs">
-              <div className="font-bold text-sm">Web Cancel</div>
-              <div className="text-rose-600 font-semibold mt-2">{historyWebCancel}</div>
-              <div className="text-muted-foreground">এই কাস্টমারের</div>
-            </div>
+            <OurRecordCard history={history ?? []} total={historyTotal} success={historyTotal - historyCancelled} cancelled={historyCancelled} webCancel={historyWebCancel} />
             <CourierCard name="Overall" total={overallTotal} success={overallSuccess} cancelled={overallCancelled} />
             {courierStats.map((c) => (
               <CourierCard key={c.name} name={c.name} total={c.total} success={c.success} cancelled={c.cancelled} />
@@ -2092,7 +2087,7 @@ type HistoryOrder = {
   order_items?: { product_name: string; quantity: number }[] | null;
 };
 
-function OurRecordCard({ history, total, success, cancelled }: { history: HistoryOrder[]; total: number; success: number; cancelled: number }) {
+function OurRecordCard({ history, total, success, cancelled, webCancel = 0 }: { history: HistoryOrder[]; total: number; success: number; cancelled: number; webCancel?: number }) {
   if (total === 0) {
     return <CourierCard name="Our Record" total={0} success={0} cancelled={0} highlight />;
   }
@@ -2112,6 +2107,7 @@ function OurRecordCard({ history, total, success, cancelled }: { history: Histor
           <div className="flex gap-3 mt-1.5 text-[11px]">
             <span className="text-emerald-700 font-semibold">✓ সফল: {success}</span>
             <span className="text-rose-600 font-semibold">✕ বাতিল: {cancelled}</span>
+            <span className="text-amber-700 font-semibold">⌫ ওয়েব ক্যানসেল: {webCancel}</span>
           </div>
         </div>
         <div className="max-h-96 overflow-y-auto divide-y bg-white">
@@ -2501,13 +2497,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
           {/* Courier history strip */}
           <div className="p-4 border-b">
             <div className="flex gap-2 overflow-x-auto pb-1">
-              <OurRecordCard history={otherHistory} total={historyTotal} success={historyTotal - historyCancelled} cancelled={historyCancelled} />
-
-              <div className="min-w-[150px] rounded-lg border p-2.5 bg-white text-xs">
-                <div className="font-bold text-sm">Web Cancel</div>
-                <div className="text-rose-600 font-semibold mt-2">{historyWebCancel}</div>
-                <div className="text-muted-foreground">এই কাস্টমারের</div>
-              </div>
+              <OurRecordCard history={otherHistory} total={historyTotal} success={historyTotal - historyCancelled} cancelled={historyCancelled} webCancel={historyWebCancel} />
               <CourierCard name="Overall" total={overallTotal} success={overallSuccess} cancelled={overallCancelled} />
               {courierStats.map((c) => (
                 <CourierCard key={c.name} name={c.name} total={c.total} success={c.success} cancelled={c.cancelled} />
@@ -2664,3 +2654,4 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
     </div>
   );
 }
+
