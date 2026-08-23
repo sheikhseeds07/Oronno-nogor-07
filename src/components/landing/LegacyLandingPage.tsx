@@ -15,6 +15,8 @@ import { FacebookPixel } from "@/components/layout/FacebookPixel";
 import { trackVisit } from "@/lib/track-visit";
 import { getFbContext } from "@/lib/fb-context";
 import { toImg, imgSrcSet } from "@/lib/img";
+import { LP_SHARED_STYLE, LpHeaderCountdown, LpPackageSelector, LpFloatingCta } from "@/components/landing/lp-shared";
+
 
 type Feature = { icon?: string; title: string; text?: string };
 type Review = { name: string; rating: number; text: string; image?: string };
@@ -89,7 +91,7 @@ export function LegacyLandingPage({ slug }: { slug: string }) {
   const subtotal = selected ? selected.price : 0;
   const total = subtotal + deliveryFee;
 
-  // Global site pixel handles tracking — see <FacebookPixel eager /> below.
+  // Global site pixel handles tracking — see <FacebookPixel eager /><style>{LP_SHARED_STYLE}</style> below.
 
 
   // Detect when the order form is in view → sticky CTA flips to "Place Order"
@@ -232,9 +234,7 @@ export function LegacyLandingPage({ slug }: { slug: string }) {
               {settings.tagline && <div className="text-[10px] text-slate-500 font-medium hidden sm:block">{settings.tagline}</div>}
             </div>
           </div>
-          <button onClick={scrollToOrder} className="text-sm font-semibold rounded-full px-5 py-2 border-2 hover:shadow transition" style={{ borderColor: themeColor, color: themeColor, background: themeBg05 }}>
-            অর্ডার করুন
-          </button>
+          <LpHeaderCountdown hours={3} />
         </div>
       </header>
 
@@ -522,32 +522,7 @@ export function LegacyLandingPage({ slug }: { slug: string }) {
 
               {/* Package picker */}
               {packages.length > 0 && (
-                <div className="border-2 rounded-2xl p-3" style={{ borderColor: themeBg10 }}>
-                  <div className="font-bold text-sm mb-3">পণ্য সিলেক্ট করুন</div>
-                  <div className="space-y-2">
-                    {packages.map((p, i) => {
-                      const active = selectedPkg === i;
-                      return (
-                        <button type="button" key={i} onClick={() => setSelectedPkg(i)}
-                          className="w-full flex items-center gap-3 rounded-xl p-2.5 border-2 text-left transition"
-                          style={active ? { borderColor: themeColor, background: themeBg05 } : { borderColor: "#e5e7eb", background: "#fff" }}>
-                          {p.image && <img src={toImg(p.image)} alt="" width={56} height={56} loading="lazy" decoding="async" className="w-14 h-14 rounded-lg object-contain bg-white shrink-0" />}
-                          <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-sm leading-tight">{p.label}</div>
-                            {p.badge && <span className="inline-block mt-1 text-[11px] px-2 py-0.5 rounded-full font-medium" style={{ background: themeBg10, color: themeColor }}>{p.badge}</span>}
-                          </div>
-                          <div className="text-right shrink-0">
-                            <div className="font-extrabold" style={{ color: themeColor }}>{taka(p.price)}</div>
-                            {p.old && p.old > p.price && <div className="text-xs line-through text-slate-400">{taka(p.old)}</div>}
-                          </div>
-                          <span className="grid place-items-center w-6 h-6 rounded-full border-2 shrink-0" style={active ? { background: themeColor, borderColor: themeColor } : { borderColor: "#d1d5db" }}>
-                            {active && <Check className="w-3.5 h-3.5 text-white" />}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                <LpPackageSelector packages={packages} selected={selectedPkg} onSelect={setSelectedPkg} themeColor={themeColor} title="পণ্য সিলেক্ট করুন" />
               )}
 
               {/* Single nationwide delivery */}
@@ -594,34 +569,7 @@ export function LegacyLandingPage({ slug }: { slug: string }) {
       <Footer />
 
       {/* Sticky CTA — flips to "Place Order" when form is in view */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t shadow-[0_-4px_20px_rgba(0,0,0,0.08)] px-3 py-2.5">
-        <div className="container mx-auto max-w-2xl flex items-center gap-3">
-          <div className="hidden sm:block text-right leading-tight">
-            <div className="text-[11px] text-slate-500">সর্বমোট</div>
-            <div className="font-extrabold text-base" style={{ color: themeColor }}>{taka(total)}</div>
-          </div>
-          {formInView ? (
-            <button
-              type="submit"
-              form="lp-order-form"
-              disabled={submitting}
-              className="flex-1 text-white py-3.5 rounded-full font-extrabold text-base shadow-lg disabled:opacity-60 active:scale-[0.99] transition"
-              style={{ background: themeColor }}
-            >
-              {submitting ? "অর্ডার হচ্ছে..." : `✓ অর্ডারটি কনফার্ম করুন — ${taka(total)}`}
-            </button>
-          ) : (
-            <button
-              onClick={scrollToOrder}
-              className="flex-1 text-white py-3.5 rounded-full font-extrabold text-base shadow-lg active:scale-[0.99] transition flex items-center justify-center gap-2"
-              style={{ background: themeColor }}
-            >
-              <ShoppingCart className="w-5 h-5" />
-              {page.cta_text || "এখনই অর্ডার করুন"}
-            </button>
-          )}
-        </div>
-      </div>
+      <LpFloatingCta formInView={formInView} formId="lp-order-form" submitting={submitting} total={total} subtotal={subtotal} regular={null} productName={selected?.label || brandName} ctaText={page.cta_text || "এখনই অর্ডার করুন"} themeColor={themeColor} onScrollToOrder={scrollToOrder} />
     </div>
   );
 }
