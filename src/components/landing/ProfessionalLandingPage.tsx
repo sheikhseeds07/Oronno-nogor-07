@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Check, ChevronDown, ShieldCheck, Truck, Star, ShoppingBag, Sparkles, Phone, MapPin, User, Minus, Plus } from "lucide-react";
+import { ShieldCheck, Truck, Star, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/personal-supabase/client";
 import { placeOrder } from "@/lib/place-order.functions";
 import { useCheckoutAutofill } from "@/lib/useCheckoutAutofill";
@@ -12,10 +12,10 @@ import { trackInitiateCheckout, trackPurchase } from "@/lib/fbq";
 import { getFbContext } from "@/lib/fb-context";
 import { FacebookPixel } from "@/components/layout/FacebookPixel";
 import { Footer } from "@/components/layout/Footer";
-import { mergeContent, DEFAULT_FEATURES, DEFAULT_WHY, DEFAULT_REVIEWS, type Feature, type WhyItem, type Review } from "@/lib/landing-content";
+import { mergeContent, DEFAULT_FEATURES, DEFAULT_WHY, DEFAULT_REVIEWS } from "@/lib/landing-content";
 import { toImg, imgFallback } from "@/lib/img";
 import brandLogoFile from "@/assets/logo.jpg";
-import { LP_SHARED_STYLE, LpHeaderCountdown, LpPackageSelector, LpFloatingCta } from "@/components/landing/lp-shared";
+import { LP_SHARED_STYLE, LpHeaderCountdown, LpPackageSelector, LpFloatingCta, LpOrderNote, LpCheckoutCard } from "@/components/landing/lp-shared";
 
 
 type Variant = "premium" | "modern";
@@ -29,7 +29,7 @@ export function ProfessionalLandingPage({ slug, variant }: Props) {
   const navigate = useNavigate();
   const runPlaceOrder = useServerFn(placeOrder);
   const [selected, setSelected] = useState(0);
-  const [qty, setQty] = useState(1);
+  const qty = 1;
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", address: "", note: "" });
   const [formInView, setFormInView] = useState(false);
@@ -124,10 +124,7 @@ export function ProfessionalLandingPage({ slug, variant }: Props) {
 
       <section className="space-y-3"><div className="text-center"><div className="text-xs font-black uppercase tracking-widest" style={{ color: theme }}>{C.reviews_kicker || "কাস্টমার ফিডব্যাক"}</div><h2 className="text-2xl font-black">{C.reviews_title || "ক্রেতারা যা বলছেন"}</h2></div><div className="grid md:grid-cols-3 gap-3">{reviews.map((r, i) => <article key={i} className="bg-white border rounded-2xl p-4"><div className="flex gap-1 text-amber-400">{Array.from({ length: Math.max(1, Math.min(5, Number(r.rating) || 5)) }).map((_, j) => <Star key={j} className="w-4 h-4 fill-current"/>)}</div><p className="text-sm leading-relaxed mt-3 text-slate-600">“{r.text}”</p><div className="font-bold text-sm mt-3">{r.name}</div></article>)}</div></section>
 
-      <section id="lp-order" className="scroll-mt-24 rounded-[30px] bg-white border-2 p-4 sm:p-7 shadow-xl"><div className="text-center mb-5"><div className="text-xs font-black uppercase tracking-widest" style={{ color: theme }}>{C.order_kicker || "অর্ডার"}</div><h2 className="text-2xl sm:text-3xl font-black mt-1">{C.order_title || "ডেলিভারি তথ্য দিন"}</h2>{C.order_note && <p className="text-sm text-slate-500 mt-2">{C.order_note}</p>}</div>
-        {selectedPackage && <div className="rounded-2xl border p-3 mb-4 flex items-center gap-3"><img src={toImg(selectedPackage.image || heroImage, { w: 320, q: 74 })} alt="" className="w-16 h-16 rounded-xl object-cover"/><div className="flex-1 min-w-0"><div className="font-black truncate">{selectedPackage.name}</div><div className="text-sm font-bold" style={{ color: theme }}>{taka(selectedPackage.price)}</div></div><div className="flex items-center border rounded-xl"><button type="button" onClick={() => setQty(q => Math.max(1, q - 1))} className="p-2"><Minus className="w-4 h-4"/></button><span className="px-2 font-black">{qty}</span><button type="button" onClick={() => setQty(q => q + 1)} className="p-2"><Plus className="w-4 h-4"/></button></div></div>}
-        <form id="lp-order-form-pro" onSubmit={submit} className="space-y-3"><label className="block"><span className="text-sm font-black flex items-center gap-2"><User className="w-4 h-4"/> {C.name_label}</span><input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="mt-1.5 w-full rounded-xl border px-4 py-3.5 outline-none focus:ring-4" style={{ ["--tw-ring-color" as string]: `${theme}20` }} /></label><label className="block"><span className="text-sm font-black flex items-center gap-2"><Phone className="w-4 h-4"/> {C.phone_label}</span><input inputMode="tel" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} className="mt-1.5 w-full rounded-xl border px-4 py-3.5 outline-none focus:ring-4" /></label><label className="block"><span className="text-sm font-black flex items-center gap-2"><MapPin className="w-4 h-4"/> {C.address_label}</span><textarea rows={3} value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} className="mt-1.5 w-full rounded-xl border px-4 py-3.5 outline-none resize-none" /></label><label className="block"><span className="text-sm font-black">নোট (ঐচ্ছিক)</span><textarea rows={2} value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} className="mt-1.5 w-full rounded-xl border px-4 py-3.5 outline-none resize-none" /></label><div className="rounded-2xl bg-slate-50 border p-4 space-y-2 text-sm"><div className="flex justify-between"><span>পণ্য</span><b>{taka(subtotal)}</b></div><div className="flex justify-between"><span>ডেলিভারি</span><b>{taka(shipping)}</b></div><div className="flex justify-between pt-2 border-t text-base"><span className="font-black">সর্বমোট</span><b style={{ color: theme }}>{taka(total)}</b></div></div><button disabled={submitting} className="w-full rounded-2xl py-4 text-white font-black text-lg disabled:opacity-60" style={{ background: theme }}>{submitting ? "অর্ডার নেওয়া হচ্ছে..." : (C.submit_text || page.cta_text || "অর্ডার কনফার্ম করুন")}</button>{C.cod_note && <p className="text-center text-xs text-slate-500">{C.cod_note}</p>}</form>
-      </section>
+      <section id="lp-order" className="scroll-mt-24 space-y-3"><LpOrderNote /><LpCheckoutCard formId="lp-order-form-pro" onSubmit={submit} values={{ name: form.name, phone: form.phone, address: form.address }} onChange={(k, v) => setForm({ ...form, [k]: v })} packages={packages} selectedPkg={selected} onSelectPkg={setSelected} themeColor={theme} subtotal={subtotal} deliveryFee={shipping} total={total} submitting={submitting} submitText={C.submit_text || page.cta_text || "অর্ডার কনফার্ম করুন"} /></section>
     </main>
     <div className="pb-24"><Footer /></div>
     <LpFloatingCta formInView={formInView} formId="lp-order-form-pro" submitting={submitting} total={total} subtotal={subtotal} regular={regularPrice} productName={packages[selected]?.name || brand} ctaText={page.cta_text || "এখনই অর্ডার করুন"} themeColor={theme} onScrollToOrder={goOrder} />
