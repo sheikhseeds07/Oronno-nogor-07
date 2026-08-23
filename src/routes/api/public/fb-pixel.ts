@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 import { getPublicPixelConfig } from "@/lib/facebook-capi.server";
 
 export const Route = createFileRoute("/api/public/fb-pixel")({
