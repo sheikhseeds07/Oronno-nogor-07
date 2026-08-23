@@ -1870,8 +1870,6 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
   }
 
   const historyTotal = history?.length ?? 0;
-  const historyCancelled = (history ?? []).filter((o) => o.status === "cancelled" || o.status === "returned").length;
-  const historyWebCancel = (history ?? []).filter((o) => o.status === "cancelled").length;
 
   const { data: extHistory, isFetching: courierLoading } = useQuery({
     queryKey: ["hoorin-courier-history", phoneDigits],
@@ -1948,7 +1946,7 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
             {historyTotal > 0 ? "এই কাস্টমারের আগের রেকর্ড" : "নতুন কাস্টমার — কোনো আগের অর্ডার নেই"}
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1">
-            <OurRecordCard history={history ?? []} total={historyTotal} success={historyTotal - historyCancelled} cancelled={historyCancelled} webCancel={historyWebCancel} />
+            <OurRecordCard history={history ?? []} />
             <CourierCard name="Overall" total={overallTotal} success={overallSuccess} cancelled={overallCancelled} />
             {courierStats.map((c) => (
               <CourierCard key={c.name} name={c.name} total={c.total} success={c.success} cancelled={c.cancelled} />
@@ -2087,69 +2085,104 @@ type HistoryOrder = {
   order_items?: { product_name: string; quantity: number }[] | null;
 };
 
-function OurRecordCard({ history, total, success, cancelled, webCancel = 0 }: { history: HistoryOrder[]; total: number; success: number; cancelled: number; webCancel?: number }) {
-  if (total === 0) {
-    return <CourierCard name="Our Record" total={0} success={0} cancelled={0} highlight />;
-  }
+function OurRecordCard({ history }: { history: HistoryOrder[]; total?: number; success?: number; cancelled?: number; webCancel?: number }) {
+  const qc = useQueryClient();
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const total = history.length;
+
+  const groups = useMemo(() => {
+    const map = new Map<string, HistoryOrder[]>();
+    for (const o of history) {
+      const arr = map.get(o.status) ?? [];
+      arr.push(o);
+      map.set(o.status, arr);
+    }
+    const order: string[] = ["web_pending", "incomplete", "hold", "pending", "rts", "shipped", "delivered", "partial", "pending_return", "returned", "cancelled"];
+    return Array.from(map.entries()).sort((a, b) => {
+      const ia = order.indexOf(a[0]); const ib = order.indexOf(b[0]);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    });
+  }, [history]);
+
+  const cancelOrder = async (id: string) => {
+    setBusyId(id);
+    const { error } = await supabase.from("orders").update({ status: "cancelled" }).eq("id", id);
+    setBusyId(null);
+    if (error) { toast.error(error.message); return; }
+    toast.success("অর্ডারটি ক্যানসেল হয়েছে");
+    qc.invalidateQueries({ queryKey: ["customer-history"] });
+    qc.invalidateQueries({ queryKey: ["new-order-history"] });
+    qc.invalidateQueries({ queryKey: ["admin-orders"] });
+    qc.invalidateQueries({ queryKey: ["order-status-counts"] });
+  };
+
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button type="button" className="text-left">
-          <CourierCard name="Our Record" total={total} success={success} cancelled={cancelled} highlight clickable />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-[420px] max-w-[94vw] p-0 overflow-hidden">
-        <div className="px-4 py-3 border-b bg-gradient-to-r from-cyan-50 to-blue-50">
-          <div className="flex items-center justify-between">
-            <div className="font-bold text-sm text-slate-800">আগের অর্ডার সমূহ</div>
-            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-white border border-cyan-200 text-cyan-700">মোট {total}</span>
-          </div>
-          <div className="flex gap-3 mt-1.5 text-[11px]">
-            <span className="text-emerald-700 font-semibold">✓ সফল: {success}</span>
-            <span className="text-rose-600 font-semibold">✕ বাতিল: {cancelled}</span>
-            <span className="text-amber-700 font-semibold">⌫ ওয়েব ক্যানসেল: {webCancel}</span>
-          </div>
-        </div>
-        <div className="max-h-96 overflow-y-auto divide-y bg-white">
-          {history.slice(0, 30).map((o) => {
-            const items = o.order_items ?? [];
-            const addr = [o.customer_address, o.thana, o.district].filter(Boolean).join(", ");
+    <div className="min-w-[230px] rounded-lg border border-cyan-300 bg-cyan-50 p-2.5 text-xs space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-bold text-sm text-foreground">Our Record</span>
+        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white border border-cyan-300 text-cyan-700">Total: {total}</span>
+      </div>
+      {total === 0 ? (
+        <div className="text-[11px] text-muted-foreground">এই নাম্বারে আগের কোনো অর্ডার নেই</div>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {groups.map(([status, rows]) => {
+            const canCancel = status === "hold" || status === "web_pending" || status === "incomplete";
             return (
-              <div key={o.id} className="px-4 py-3 text-xs hover:bg-slate-50 transition-colors">
-                <div className="flex items-start justify-between gap-2 mb-1.5">
-                  <div>
-                    <div className="font-bold text-slate-800 text-[12px]">
-                      {o.invoice_no ? `#${o.invoice_no}` : "Draft"}
-                    </div>
-                    <div className="text-[10.5px] text-muted-foreground">
-                      {format(new Date(o.created_at), "dd MMM yyyy, hh:mm a")}
-                    </div>
+              <Popover key={status}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className={`px-2 py-1 rounded-full text-[10.5px] font-bold border border-black/5 hover:shadow-md hover:scale-[1.03] transition ${statusColor[status as OrderStatus] ?? "bg-gray-100 text-gray-700"}`}
+                    title="দেখুন"
+                  >
+                    {statusEn[status as OrderStatus] ?? status}: {rows.length}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-[340px] max-w-[92vw] p-0 overflow-hidden">
+                  <div className="px-3 py-2 border-b bg-slate-50 flex items-center justify-between">
+                    <span className="text-[12px] font-bold text-slate-800">{statusEn[status as OrderStatus] ?? status}</span>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white border">{rows.length} টি</span>
                   </div>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${statusColor[o.status as OrderStatus] ?? "bg-gray-100 text-gray-700"}`}>
-                    {statusEn[o.status as OrderStatus] ?? o.status}
-                  </span>
-                </div>
-                <div className="text-[11px] text-slate-700 mb-1">
-                  <span className="font-semibold">{o.customer_name || "—"}</span>
-                  {addr && <span className="text-muted-foreground"> · {addr}</span>}
-                </div>
-                {items.length > 0 && (
-                  <ul className="text-[11px] text-muted-foreground space-y-0.5 mb-1.5 pl-1">
-                    {items.map((it, i) => (
-                      <li key={i} className="truncate">• {it.product_name} × {it.quantity}</li>
+                  <div className="max-h-72 overflow-y-auto divide-y bg-white">
+                    {rows.map((o) => (
+                      <div key={o.id} className="px-3 py-2 text-[11px] hover:bg-slate-50 transition-colors">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="font-bold text-slate-800 text-[11.5px]">{o.invoice_no ? `#${o.invoice_no}` : "Draft"}</div>
+                            <div className="text-[10px] text-muted-foreground">{format(new Date(o.created_at), "dd MMM yyyy, hh:mm a")}</div>
+                            <div className="text-[10.5px] text-slate-700 truncate">{o.customer_name || "—"}</div>
+                            {(o.order_items ?? []).length > 0 && (
+                              <div className="text-[10px] text-muted-foreground truncate">
+                                {(o.order_items ?? []).map((it) => `${it.product_name} × ${it.quantity}`).join(", ")}
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-right shrink-0 space-y-1">
+                            <div className="font-bold text-slate-900 text-[11.5px]">{taka(Number(o.total))}</div>
+                            {canCancel && (
+                              <button
+                                type="button"
+                                disabled={busyId === o.id}
+                                onClick={() => cancelOrder(o.id)}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-rose-600 text-white text-[10px] font-bold hover:bg-rose-700 disabled:opacity-50 transition"
+                              >
+                                {busyId === o.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
+                                ক্যানসেল
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     ))}
-                  </ul>
-                )}
-                <div className="flex items-center justify-between border-t pt-1.5 mt-1">
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wide">মোট</span>
-                  <span className="text-[12px] font-bold text-slate-900">{taka(Number(o.total))}</span>
-                </div>
-              </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
             );
           })}
         </div>
-      </PopoverContent>
-    </Popover>
+      )}
+    </div>
   );
 }
 
@@ -2304,9 +2337,6 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
 
   // History stats — exclude the order currently being viewed
   const otherHistory = useMemo(() => (history ?? []).filter((o) => o.id !== detail?.id), [history, detail?.id]);
-  const historyTotal = otherHistory.length;
-  const historyCancelled = otherHistory.filter((o) => o.status === "cancelled" || o.status === "returned").length;
-  const historyWebCancel = otherHistory.filter((o) => o.status === "cancelled").length;
 
 
   // Real courier history via BD Courier Check API (configured in /admin/all-api)
@@ -2497,7 +2527,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
           {/* Courier history strip */}
           <div className="p-4 border-b">
             <div className="flex gap-2 overflow-x-auto pb-1">
-              <OurRecordCard history={otherHistory} total={historyTotal} success={historyTotal - historyCancelled} cancelled={historyCancelled} webCancel={historyWebCancel} />
+              <OurRecordCard history={otherHistory} />
               <CourierCard name="Overall" total={overallTotal} success={overallSuccess} cancelled={overallCancelled} />
               {courierStats.map((c) => (
                 <CourierCard key={c.name} name={c.name} total={c.total} success={c.success} cancelled={c.cancelled} />
