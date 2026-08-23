@@ -53,64 +53,39 @@
   padding-top:16px !important;
   padding-bottom:16px !important;
 }
-.lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6:has(> .lp-reveal:has(+ #order)) > :not([hidden]) ~ :not([hidden]) {
-  margin-top:16px !important;
-}
-.lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:has(+ #order) {
-  display:flex !important;
-  flex-direction:column !important;
-}
-.lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:has(+ #order) > .mt-4 {
-  order:0 !important;
-  margin-top:0 !important;
-  margin-bottom:10px !important;
-}
-.lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:has(+ #order) > .mb-4.text-center {
-  order:1 !important;
-  margin-bottom:10px !important;
-}
-.lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:has(+ #order) > .rounded-xl.border {
-  order:2 !important;
-}
-.lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:has(+ #order) + #order {
-  margin-top:4px !important;
-}
+.lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6:has(> .lp-reveal:has(+ #order)) > :not([hidden]) ~ :not([hidden]) { margin-top:16px !important; }
+.lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:has(+ #order) { display:flex !important; flex-direction:column !important; }
+.lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:has(+ #order) > .mt-4 { order:0 !important; margin-top:0 !important; margin-bottom:10px !important; }
+.lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:has(+ #order) > .mb-4.text-center { order:1 !important; margin-bottom:10px !important; }
+.lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:has(+ #order) > .rounded-xl.border { order:2 !important; }
+.lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:has(+ #order) + #order { margin-top:4px !important; }
 @media (max-width:640px) {
-  .lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6:has(> .lp-reveal:has(+ #order)) {
-    padding-top:12px !important;
-    padding-bottom:12px !important;
-  }
-  .lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6:has(> .lp-reveal:has(+ #order)) > :not([hidden]) ~ :not([hidden]) {
-    margin-top:12px !important;
-  }
-  .lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:has(+ #order) > .mt-4 {
-    margin-bottom:8px !important;
-  }
-  .lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:has(+ #order) > .mb-4.text-center {
-    margin-bottom:8px !important;
-  }
+  .lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6:has(> .lp-reveal:has(+ #order)) { padding-top:12px !important; padding-bottom:12px !important; }
+  .lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6:has(> .lp-reveal:has(+ #order)) > :not([hidden]) ~ :not([hidden]) { margin-top:12px !important; }
+  .lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:has(+ #order) > .mt-4 { margin-bottom:8px !important; }
+  .lp-root .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:has(+ #order) > .mb-4.text-center { margin-bottom:8px !important; }
 }
 
-/* Seedcombo hero: remove announcement bar and the CTA between headline and image; make the first viewport compact. */
+/* Seedcombo hero: remove announcement bar and the CTA between headline and image; keep headline prominent and add breathing room before image. */
 .lp-root > .bg-slate-900 { display:none !important; }
-.lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 { padding-top:10px !important; padding-bottom:12px !important; gap:10px !important; }
+.lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 { padding-top:10px !important; padding-bottom:12px !important; gap:16px !important; }
 .lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:first-child { margin:0 !important; }
-.lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:first-child > .lp-offer { padding:14px 14px 16px !important; border-radius:20px !important; }
-.lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:first-child > .lp-offer h1 { font-size:24px !important; line-height:1.2 !important; }
-.lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:first-child > .lp-offer .lp-price-pill { margin-top:8px !important; padding:10px 20px !important; }
-.lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:first-child > .lp-offer .lp-price-pill span { font-size:25px !important; }
-.lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:first-child > .lp-offer .relative.mt-4 { margin-top:8px !important; }
-.lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:first-child > .lp-offer .relative.mt-5 { margin-top:8px !important; }
+.lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:first-child > .lp-offer { padding:18px 16px 20px !important; border-radius:20px !important; }
+.lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:first-child > .lp-offer h1 { font-size:28px !important; line-height:1.22 !important; }
+.lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:first-child > .lp-offer .lp-price-pill { margin-top:10px !important; padding:11px 22px !important; }
+.lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:first-child > .lp-offer .lp-price-pill span { font-size:27px !important; }
+.lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:first-child > .lp-offer .relative.mt-4 { margin-top:10px !important; }
+.lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:first-child > .lp-offer .relative.mt-5 { margin-top:10px !important; }
 .lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-red-cta { display:none !important; }
 .lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-red-cta + .lp-reveal { margin-top:0 !important; }
 .lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-red-cta + .lp-reveal > div { border-width:2px !important; border-radius:18px !important; }
 .lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-red-cta + .lp-reveal > div img { display:block; width:100%; aspect-ratio:1/1; object-fit:cover; }
 .lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-red-cta + .lp-reveal > p { margin-top:7px !important; font-size:15px !important; line-height:1.3 !important; }
 @media (max-width:640px) {
-  .lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 { padding-top:7px !important; padding-bottom:10px !important; gap:8px !important; }
-  .lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:first-child > .lp-offer { padding:11px 11px 13px !important; border-radius:17px !important; }
-  .lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:first-child > .lp-offer h1 { font-size:22px !important; line-height:1.15 !important; }
-  .lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:first-child > .lp-offer .lp-price-pill { margin-top:6px !important; padding:9px 17px !important; }
-  .lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:first-child > .lp-offer .lp-price-pill span { font-size:23px !important; }
-  .lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-red-cta + .lp-reveal > p { margin-top:5px !important; font-size:14px !important; }
+  .lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 { padding-top:7px !important; padding-bottom:10px !important; gap:14px !important; }
+  .lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:first-child > .lp-offer { padding:15px 13px 17px !important; border-radius:17px !important; }
+  .lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:first-child > .lp-offer h1 { font-size:26px !important; line-height:1.18 !important; }
+  .lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:first-child > .lp-offer .lp-price-pill { margin-top:8px !important; padding:10px 19px !important; }
+  .lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-reveal:first-child > .lp-offer .lp-price-pill span { font-size:25px !important; }
+  .lp-root > .container.mx-auto.px-4.py-5.max-w-2xl.space-y-6 > .lp-red-cta + .lp-reveal > p { margin-top:7px !important; font-size:14px !important; }
 }
