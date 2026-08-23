@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -15,6 +15,8 @@ import { Footer } from "@/components/layout/Footer";
 import { mergeContent, DEFAULT_FEATURES, DEFAULT_WHY, DEFAULT_REVIEWS, type Feature, type WhyItem, type Review } from "@/lib/landing-content";
 import { toImg, imgFallback } from "@/lib/img";
 import brandLogoFile from "@/assets/logo.jpg";
+import { LP_SHARED_STYLE, LpHeaderCountdown, LpPackageSelector, LpFloatingCta } from "@/components/landing/lp-shared";
+
 
 type Variant = "premium" | "modern";
 type Product = { id: string; name: string; price: number; sale_price: number | null; images: string[] | null };
@@ -30,6 +32,9 @@ export function ProfessionalLandingPage({ slug, variant }: Props) {
   const [qty, setQty] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", address: "", note: "" });
+  const [formInView, setFormInView] = useState(false);
+  const goOrder = () => document.getElementById("lp-order")?.scrollIntoView({ behavior: "smooth" });
+  useEffect(() => { const el = document.getElementById("lp-order"); if (!el || typeof IntersectionObserver === "undefined") return; const obs = new IntersectionObserver(([e]) => setFormInView(Boolean(e?.isIntersecting)), { threshold: 0.12, rootMargin: "0px 0px -10% 0px" }); obs.observe(el); return () => obs.disconnect(); });
   const { data: page, isLoading } = useQuery({
     queryKey: ["landing-professional", slug],
     queryFn: async () => (await supabase.from("landing_pages").select("*, products(*)").eq("slug", slug).eq("is_published", true).maybeSingle()).data,
@@ -81,12 +86,12 @@ export function ProfessionalLandingPage({ slug, variant }: Props) {
   const Cta = ({ children = C.red_cta_text }: { children?: React.ReactNode }) => <button type="button" onClick={() => document.getElementById("lp-order")?.scrollIntoView({ behavior: "smooth" })} className="w-full rounded-2xl py-4 px-6 text-white font-black text-[17px] shadow-lg transition hover:-translate-y-0.5 active:scale-[.99]" style={{ background: theme }}>{children}</button>;
 
   return <div className={variant === "premium" ? "min-h-screen bg-[#f5f7f2] text-slate-800" : "min-h-screen bg-slate-50 text-slate-800"} style={{ ["--lp-theme" as string]: theme }}>
-    <FacebookPixel eager />
+    <FacebookPixel eager /><style>{LP_SHARED_STYLE}</style>
     {C.show_popup && <div className="hidden" aria-hidden="true" />}
     <div className="sticky top-0 z-40 border-b bg-white/95 backdrop-blur">
       <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 min-w-0"><img src={toImg(logo)} alt={brand} className="w-9 h-9 rounded-full object-cover"/><div className="min-w-0"><div className="font-black truncate">{brand}</div>{settings.tagline && <div className="text-[10px] text-slate-500 truncate">{settings.tagline}</div>}</div></div>
-        <button onClick={() => document.getElementById("lp-order")?.scrollIntoView({ behavior: "smooth" })} className="rounded-xl px-4 py-2 text-sm font-extrabold text-white" style={{ background: theme }}>{C.header_cta_text || page.cta_text || "অর্ডার করুন"}</button>
+        <LpHeaderCountdown hours={Number(C.countdown_hours) || 3} />
       </div>
     </div>
     {page.top_bar_text && <div className="text-white text-center text-xs font-bold py-2 px-3" style={{ background: theme }}>{page.top_bar_text}</div>}
@@ -105,7 +110,7 @@ export function ProfessionalLandingPage({ slug, variant }: Props) {
         <div className="order-1 md:order-2"><div className="rounded-[26px] overflow-hidden bg-slate-100 border shadow-sm"><img src={toImg(heroImage, { w: 1000, q: 86 })} onError={e => imgFallback(e, heroImage)} alt={page.title} className="w-full aspect-square object-cover"/></div></div>
       </section>
 
-      {packages.length > 1 && <section className="rounded-3xl bg-white border p-4 sm:p-6"><div className="font-black text-xl mb-3">প্যাকেজ বেছে নিন</div><div className="grid sm:grid-cols-2 gap-3">{packages.map((p, i) => <button key={i} onClick={() => setSelected(i)} className={`text-left rounded-2xl border-2 p-3 transition ${selected === i ? "shadow-md" : "border-slate-200"}`} style={selected === i ? { borderColor: theme, background: `${theme}08` } : undefined}><div className="flex gap-3 items-center"><img src={toImg(p.image || heroImage, { w: 320, q: 74 })} alt="" className="w-16 h-16 rounded-xl object-cover"/><div className="min-w-0 flex-1"><div className="font-extrabold truncate">{p.name}</div><div className="font-black mt-1" style={{ color: theme }}>{taka(p.price)}</div></div>{selected === i && <Check className="w-5 h-5" style={{ color: theme }}/>}</div></button>)}</div></section>}
+      {packages.length > 1 && <section className="rounded-3xl bg-white border p-4 sm:p-6"><LpPackageSelector packages={packages} selected={selected} onSelect={setSelected} themeColor={theme} /></section>}
 
       <section className="grid md:grid-cols-2 gap-4">
         {features.map((f, i) => <div key={i} className="bg-white border rounded-2xl p-4 flex gap-3 shadow-sm"><span className="w-10 h-10 rounded-xl grid place-items-center shrink-0 text-lg" style={{ background: `${theme}12` }}>{f.icon || icons[i % icons.length]}</span><div><div className="font-black">{f.title}</div>{f.text && <p className="text-sm text-slate-500 mt-1 leading-relaxed">{f.text}</p>}</div></div>)}
@@ -121,9 +126,10 @@ export function ProfessionalLandingPage({ slug, variant }: Props) {
 
       <section id="lp-order" className="scroll-mt-24 rounded-[30px] bg-white border-2 p-4 sm:p-7 shadow-xl"><div className="text-center mb-5"><div className="text-xs font-black uppercase tracking-widest" style={{ color: theme }}>{C.order_kicker || "অর্ডার"}</div><h2 className="text-2xl sm:text-3xl font-black mt-1">{C.order_title || "ডেলিভারি তথ্য দিন"}</h2>{C.order_note && <p className="text-sm text-slate-500 mt-2">{C.order_note}</p>}</div>
         {selectedPackage && <div className="rounded-2xl border p-3 mb-4 flex items-center gap-3"><img src={toImg(selectedPackage.image || heroImage, { w: 320, q: 74 })} alt="" className="w-16 h-16 rounded-xl object-cover"/><div className="flex-1 min-w-0"><div className="font-black truncate">{selectedPackage.name}</div><div className="text-sm font-bold" style={{ color: theme }}>{taka(selectedPackage.price)}</div></div><div className="flex items-center border rounded-xl"><button type="button" onClick={() => setQty(q => Math.max(1, q - 1))} className="p-2"><Minus className="w-4 h-4"/></button><span className="px-2 font-black">{qty}</span><button type="button" onClick={() => setQty(q => q + 1)} className="p-2"><Plus className="w-4 h-4"/></button></div></div>}
-        <form onSubmit={submit} className="space-y-3"><label className="block"><span className="text-sm font-black flex items-center gap-2"><User className="w-4 h-4"/> {C.name_label}</span><input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="mt-1.5 w-full rounded-xl border px-4 py-3.5 outline-none focus:ring-4" style={{ ["--tw-ring-color" as string]: `${theme}20` }} /></label><label className="block"><span className="text-sm font-black flex items-center gap-2"><Phone className="w-4 h-4"/> {C.phone_label}</span><input inputMode="tel" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} className="mt-1.5 w-full rounded-xl border px-4 py-3.5 outline-none focus:ring-4" /></label><label className="block"><span className="text-sm font-black flex items-center gap-2"><MapPin className="w-4 h-4"/> {C.address_label}</span><textarea rows={3} value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} className="mt-1.5 w-full rounded-xl border px-4 py-3.5 outline-none resize-none" /></label><label className="block"><span className="text-sm font-black">নোট (ঐচ্ছিক)</span><textarea rows={2} value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} className="mt-1.5 w-full rounded-xl border px-4 py-3.5 outline-none resize-none" /></label><div className="rounded-2xl bg-slate-50 border p-4 space-y-2 text-sm"><div className="flex justify-between"><span>পণ্য</span><b>{taka(subtotal)}</b></div><div className="flex justify-between"><span>ডেলিভারি</span><b>{taka(shipping)}</b></div><div className="flex justify-between pt-2 border-t text-base"><span className="font-black">সর্বমোট</span><b style={{ color: theme }}>{taka(total)}</b></div></div><button disabled={submitting} className="w-full rounded-2xl py-4 text-white font-black text-lg disabled:opacity-60" style={{ background: theme }}>{submitting ? "অর্ডার নেওয়া হচ্ছে..." : (C.submit_text || page.cta_text || "অর্ডার কনফার্ম করুন")}</button>{C.cod_note && <p className="text-center text-xs text-slate-500">{C.cod_note}</p>}</form>
+        <form id="lp-order-form-pro" onSubmit={submit} className="space-y-3"><label className="block"><span className="text-sm font-black flex items-center gap-2"><User className="w-4 h-4"/> {C.name_label}</span><input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="mt-1.5 w-full rounded-xl border px-4 py-3.5 outline-none focus:ring-4" style={{ ["--tw-ring-color" as string]: `${theme}20` }} /></label><label className="block"><span className="text-sm font-black flex items-center gap-2"><Phone className="w-4 h-4"/> {C.phone_label}</span><input inputMode="tel" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} className="mt-1.5 w-full rounded-xl border px-4 py-3.5 outline-none focus:ring-4" /></label><label className="block"><span className="text-sm font-black flex items-center gap-2"><MapPin className="w-4 h-4"/> {C.address_label}</span><textarea rows={3} value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} className="mt-1.5 w-full rounded-xl border px-4 py-3.5 outline-none resize-none" /></label><label className="block"><span className="text-sm font-black">নোট (ঐচ্ছিক)</span><textarea rows={2} value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} className="mt-1.5 w-full rounded-xl border px-4 py-3.5 outline-none resize-none" /></label><div className="rounded-2xl bg-slate-50 border p-4 space-y-2 text-sm"><div className="flex justify-between"><span>পণ্য</span><b>{taka(subtotal)}</b></div><div className="flex justify-between"><span>ডেলিভারি</span><b>{taka(shipping)}</b></div><div className="flex justify-between pt-2 border-t text-base"><span className="font-black">সর্বমোট</span><b style={{ color: theme }}>{taka(total)}</b></div></div><button disabled={submitting} className="w-full rounded-2xl py-4 text-white font-black text-lg disabled:opacity-60" style={{ background: theme }}>{submitting ? "অর্ডার নেওয়া হচ্ছে..." : (C.submit_text || page.cta_text || "অর্ডার কনফার্ম করুন")}</button>{C.cod_note && <p className="text-center text-xs text-slate-500">{C.cod_note}</p>}</form>
       </section>
     </main>
-    <Footer />
+    <div className="pb-24"><Footer /></div>
+    <LpFloatingCta formInView={formInView} formId="lp-order-form-pro" submitting={submitting} total={total} subtotal={subtotal} regular={regularPrice} productName={packages[selected]?.name || brand} ctaText={page.cta_text || "এখনই অর্ডার করুন"} themeColor={theme} onScrollToOrder={goOrder} />
   </div>;
 }
