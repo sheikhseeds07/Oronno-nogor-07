@@ -7,7 +7,7 @@ import { placeOrder } from "@/lib/place-order.functions";
 import { useCheckoutAutofill } from "@/lib/useCheckoutAutofill";
 import { taka, bnDigits } from "@/lib/format";
 import { toast } from "sonner";
-import { Check, ShoppingCart, User, Phone, MapPin, Flame, ChevronLeft, ChevronRight, Truck, ShieldCheck, Clock, Sprout, Award, Leaf, Star } from "lucide-react";
+import { Check, ShoppingCart, Flame, ChevronLeft, ChevronRight, Truck, ShieldCheck, Clock, Sprout, Award, Leaf, Star } from "lucide-react";
 import { trackInitiateCheckout, trackPurchase } from "@/lib/fbq";
 import { BrandLoader } from "@/components/layout/BrandLoader";
 import { Footer } from "@/components/layout/Footer";
@@ -15,7 +15,7 @@ import { FacebookPixel } from "@/components/layout/FacebookPixel";
 import { trackVisit } from "@/lib/track-visit";
 import { getFbContext } from "@/lib/fb-context";
 import { toImg, imgSrcSet } from "@/lib/img";
-import { LP_SHARED_STYLE, LpHeaderCountdown, LpPackageSelector, LpFloatingCta } from "@/components/landing/lp-shared";
+import { LP_SHARED_STYLE, LpHeaderCountdown, LpFloatingCta, LpOrderNote, LpCheckoutCard } from "@/components/landing/lp-shared";
 
 
 type Feature = { icon?: string; title: string; text?: string };
@@ -43,7 +43,6 @@ export function LegacyLandingPage({ slug }: { slug: string }) {
   const [form, setForm] = useState({ name: "", phone: "", address: "", alt_phone: "", note: "" });
   const [formInView, setFormInView] = useState(false);
   const [reviewIdx, setReviewIdx] = useState(0);
-  const formRef = useRef<HTMLFormElement | null>(null);
   const orderSectionRef = useRef<HTMLElement | null>(null);
 
   const { data: page, isLoading } = useQuery({
@@ -464,89 +463,10 @@ export function LegacyLandingPage({ slug }: { slug: string }) {
       )}
 
       {/* Order Form */}
-      <section id="order" ref={orderSectionRef} className="py-6 scroll-mt-20">
-        <div className="container mx-auto px-4 max-w-2xl">
-          <div className="border-2 rounded-2xl overflow-hidden bg-white shadow-sm" style={{ borderColor: themeBg10 }}>
-            {/* form header */}
-            <div className="flex items-center gap-3 px-4 py-4 border-b" style={{ background: themeBg05 }}>
-              <span className="grid place-items-center w-10 h-10 rounded-full" style={{ background: themeBg10, color: themeColor }}>
-                <ShoppingCart className="w-5 h-5" />
-              </span>
-              <h2 className="font-extrabold text-lg">অর্ডার করতে নিচের ফর্মটি পূরণ করুন</h2>
-            </div>
-
-            <form id="lp-order-form" ref={formRef} onSubmit={submit} className="p-4 space-y-4 bg-white">
-              {/* Name */}
-              <div>
-                <label className="text-sm font-semibold block mb-1.5">আপনার নাম <span style={{ color: themeColor }}>*</span></label>
-                <div className="relative">
-                  <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="আপনার নাম" className="w-full border rounded-full pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2" style={{ ["--tw-ring-color" as string]: themeColor }} />
-                </div>
-              </div>
-
-              {/* Phone */}
-              <div>
-                <label className="text-sm font-semibold block mb-1.5">ফোন নম্বর <span style={{ color: themeColor }}>*</span></label>
-                <div className="relative">
-                  <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input required type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="01XXXXXXXXX" className="w-full border rounded-full pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2" style={{ ["--tw-ring-color" as string]: themeColor }} />
-                </div>
-              </div>
-
-              {/* Address */}
-              <div>
-                <label className="text-sm font-semibold block mb-1.5">ডেলিভারি ঠিকানা <span style={{ color: themeColor }}>*</span></label>
-                <div className="relative">
-                  <MapPin className="w-4 h-4 absolute left-3 top-3.5 text-slate-400" />
-                  <textarea required rows={3} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="সম্পূর্ণ ঠিকানা লিখুন" className="w-full border rounded-2xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 resize-none" style={{ ["--tw-ring-color" as string]: themeColor }} />
-                </div>
-              </div>
-
-              <div className="border-t border-dashed pt-3 space-y-2">
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input type="checkbox" checked={showAlt} onChange={(e) => setShowAlt(e.target.checked)} className="w-4 h-4 rounded-full accent-current" style={{ accentColor: themeColor }} />
-                  বিকল্প নম্বর
-                </label>
-                {showAlt && (
-                  <input value={form.alt_phone} onChange={(e) => setForm({ ...form, alt_phone: e.target.value })} placeholder="বিকল্প ফোন নম্বর" className="w-full border rounded-full px-4 py-2.5 text-sm" />
-                )}
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input type="checkbox" checked={showNote} onChange={(e) => setShowNote(e.target.checked)} className="w-4 h-4 rounded-full accent-current" style={{ accentColor: themeColor }} />
-                  নোট যোগ করুন
-                </label>
-                {showNote && (
-                  <textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="অর্ডারের জন্য বিশেষ নোট" rows={2} className="w-full border rounded-2xl px-4 py-2.5 text-sm resize-none" />
-                )}
-              </div>
-
-              {/* Package picker */}
-              {packages.length > 0 && (
-                <LpPackageSelector packages={packages} selected={selectedPkg} onSelect={setSelectedPkg} themeColor={themeColor} title="পণ্য সিলেক্ট করুন" />
-              )}
-
-              {/* Single nationwide delivery */}
-              <div className="border-2 rounded-2xl p-3 flex items-center gap-3" style={{ borderColor: themeColor, background: themeBg05 }}>
-                <span className="grid place-items-center w-10 h-10 rounded-full" style={{ background: themeColor }}>
-                  <Truck className="w-5 h-5 text-white" />
-                </span>
-                <div className="flex-1">
-                  <div className="font-bold text-sm">সারাদেশে হোম ডেলিভারি</div>
-                  <div className="text-xs text-slate-600">২-৩ দিনের মধ্যে আপনার ঠিকানায়</div>
-                </div>
-                <div className="font-extrabold text-lg" style={{ color: themeColor }}>{taka(deliveryFee)}</div>
-              </div>
-
-              {/* Totals */}
-              <div className="border-2 rounded-2xl p-4 space-y-2 text-sm" style={{ borderColor: themeBg10 }}>
-                <div className="flex justify-between"><span className="text-slate-600">মূল্য (১টি)</span><span className="font-bold" style={{ color: themeColor }}>{taka(subtotal)}</span></div>
-                <div className="flex justify-between"><span className="text-slate-600">ডেলিভারি</span><span className="font-bold" style={{ color: themeColor }}>{taka(deliveryFee)}</span></div>
-                <div className="border-t pt-2 flex justify-between text-lg"><span className="font-extrabold">সর্বমোট</span><span className="font-extrabold" style={{ color: themeColor }}>{taka(total)}</span></div>
-              </div>
-
-              <p className="text-center text-xs text-slate-500 pt-1">নিচের <span className="font-bold" style={{ color: themeColor }}>"অর্ডারটি কনফার্ম করুন"</span> বাটনে চাপ দিন</p>
-            </form>
-          </div>
+      <section id="order" ref={orderSectionRef} className="pt-2 pb-5 scroll-mt-20">
+        <div className="container mx-auto px-4 max-w-2xl space-y-3">
+          <LpOrderNote />
+          <LpCheckoutCard formId="lp-order-form" onSubmit={submit} values={{ name: form.name, phone: form.phone, address: form.address }} onChange={(k, v) => setForm({ ...form, [k]: v })} packages={packages} selectedPkg={selectedPkg} onSelectPkg={setSelectedPkg} themeColor={themeColor} subtotal={subtotal} deliveryFee={deliveryFee} total={total} submitting={submitting} packageTitle="পণ্য সিলেক্ট করুন" />
         </div>
       </section>
 
