@@ -2120,7 +2120,63 @@ function OurRecordCard({ history }: { history: HistoryOrder[]; total?: number; s
     <div className="min-w-[230px] rounded-lg border border-cyan-300 bg-cyan-50 p-2.5 text-xs space-y-2">
       <div className="flex items-center justify-between gap-2">
         <span className="font-bold text-sm text-foreground">Our Record</span>
-        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white border border-cyan-300 text-cyan-700">Total: {total}</span>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white border border-cyan-300 text-cyan-700 hover:bg-cyan-100 transition"
+              title="সব অর্ডার দেখুন"
+            >
+              Total: {total}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-[340px] max-w-[92vw] p-0 overflow-hidden">
+            <div className="px-3 py-2 border-b bg-slate-50 flex items-center justify-between">
+              <span className="text-[12px] font-bold text-slate-800">Total Orders</span>
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white border">{total} টি</span>
+            </div>
+            <div className="max-h-72 overflow-y-auto divide-y bg-white">
+              {[...history]
+                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                .map((o) => {
+                  const canCancel = o.status === "hold" || o.status === "web_pending" || o.status === "incomplete";
+                  return (
+                    <div key={o.id} className="px-3 py-2 text-[11px] hover:bg-slate-50 transition-colors">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="font-bold text-slate-800 text-[11.5px]">{o.invoice_no ? `#${o.invoice_no}` : "Draft"}</div>
+                          <div className="text-[10px] text-muted-foreground">{format(new Date(o.created_at), "dd MMM yyyy, hh:mm a")}</div>
+                          <div className="text-[10.5px] text-slate-700 truncate">{o.customer_name || "—"}</div>
+                          {(o.order_items ?? []).length > 0 && (
+                            <div className="text-[10px] text-muted-foreground truncate">
+                              {(o.order_items ?? []).map((it) => `${it.product_name} × ${it.quantity}`).join(", ")}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-right shrink-0 space-y-1">
+                          <div className="font-bold text-slate-900 text-[11.5px]">{taka(Number(o.total))}</div>
+                          <span className={`inline-block px-1.5 py-0.5 rounded-full text-[9px] font-bold ${statusColor[o.status as OrderStatus] ?? "bg-gray-100 text-gray-700"}`}>
+                            {statusEn[o.status as OrderStatus] ?? o.status}
+                          </span>
+                          {canCancel && (
+                            <button
+                              type="button"
+                              disabled={busyId === o.id}
+                              onClick={() => cancelOrder(o.id)}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-rose-600 text-white text-[10px] font-bold hover:bg-rose-700 disabled:opacity-50 transition"
+                            >
+                              {busyId === o.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <X className="w-3 h-3" />}
+                              ক্যানসেল
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
       {total === 0 ? (
         <div className="text-[11px] text-muted-foreground">এই নাম্বারে আগের কোনো অর্ডার নেই</div>
