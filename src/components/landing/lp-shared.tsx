@@ -75,7 +75,7 @@ export function LpPackageSelector({ packages, selected, onSelect, themeColor, ti
 }
 
 export function LpFloatingCta({ formInView, formId, submitting, total, subtotal, regular, productName, ctaText, themeColor, onScrollToOrder }: { formInView: boolean; formId: string; submitting: boolean; total: number; subtotal: number; regular?: number | null; productName: string; ctaText: string; themeColor: string; onScrollToOrder: () => void }) {
-  return <div className={`fixed bottom-0 left-0 right-0 z-40 transition-all duration-300 ${formInView ? "bg-transparent px-3 pt-1 pb-[calc(env(safe-area-inset-bottom,0px)+6px)] pointer-events-none" : "bg-white/95 backdrop-blur border-t border-emerald-100 px-3 pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+6px)]"}`}>
+  return <div style={{ marginBottom: 0, bottom: 0 }} className={`fixed bottom-0 left-0 right-0 z-40 transition-all duration-300 ${formInView ? "bg-transparent px-3 pt-1 pb-[calc(env(safe-area-inset-bottom,0px)+2px)] pointer-events-none" : "bg-white/95 backdrop-blur border-t border-emerald-100 px-3 pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+2px)]"}`}>
     <div className="container mx-auto max-w-2xl">
       {!formInView ? <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
         <div className="leading-tight min-w-0">
