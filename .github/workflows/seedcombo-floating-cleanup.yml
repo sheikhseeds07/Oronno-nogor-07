@@ -1,47 +1,52 @@
 name: Seedcombo CTA source patch
-
 on:
   push:
     branches: [main]
-
 permissions:
   contents: write
-
 jobs:
   patch:
     if: github.event.head_commit.message != 'fix(seedcombo): apply CTA source patch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch source
+      - name: Apply actual source changes
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p = Path('src/components/landing/CleanLandingPage.tsx')
           s = p.read_text(encoding='utf-8')
-
           marker = 'const DEFAULT_ICONS = [Sprout, Leaf, ShieldCheck, Award, Wallet, Truck, Headphones, BarChart3];'
-          css = '''\n.lp-root .lp-seedcombo-floating-clean { background:rgba(255,255,255,.96) !important; background-color:rgba(255,255,255,.96) !important; backdrop-filter:blur(12px) !important; -webkit-backdrop-filter:blur(12px) !important; box-shadow:0 -4px 18px -12px rgba(6,78,59,.28) !important; border-top:1px solid #dfeae2 !important; padding:6px 10px !important; }\n.lp-root .lp-seedcombo-floating-inner { width:min(100%,680px); margin:0 auto; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:10px; }\n.lp-root .lp-seedcombo-floating-price { min-width:0; display:flex; align-items:center; }\n.lp-root .lp-seedcombo-floating-price span { font-size:17px; line-height:1; font-weight:900; white-space:nowrap; letter-spacing:-.02em; }\n.lp-root .lp-seedcombo-floating-action { min-width:108px; padding:9px 14px !important; border:0 !important; border-radius:10px !important; color:#fff !important; background:var(--lp) !important; box-shadow:0 5px 14px -7px rgba(0,0,0,.35) !important; font-size:14px !important; font-weight:800 !important; line-height:1.15 !important; white-space:nowrap !important; transition:transform .16s ease,filter .16s ease,box-shadow .16s ease !important; }\n.lp-root .lp-seedcombo-floating-action:hover { filter:brightness(.97) !important; box-shadow:0 7px 18px -7px rgba(0,0,0,.4) !important; }\n.lp-root .lp-seedcombo-floating-action:active { transform:scale(.97) !important; }\n.lp-root .lp-seedcombo-order-submit { min-height:48px !important; padding:12px 16px !important; border-radius:12px !important; font-size:16px !important; font-weight:800 !important; box-shadow:0 8px 20px -12px rgba(6,78,59,.45) !important; white-space:nowrap !important; }\n@media (max-width:640px) { .lp-root .lp-seedcombo-floating-clean { padding:6px 8px !important; } .lp-root .lp-seedcombo-floating-inner { gap:8px; } .lp-root .lp-seedcombo-floating-action { min-width:104px; padding:9px 12px !important; font-size:14px !important; border-radius:9px !important; } .lp-root .lp-seedcombo-floating-price span { font-size:16px; } .lp-root .lp-seedcombo-order-submit { min-height:46px !important; padding:11px 14px !important; font-size:15px !important; border-radius:11px !important; } }'''
+          css = r'''
+.lp-root .lp-seedcombo-floating-clean{background:rgba(255,255,255,.97)!important;backdrop-filter:blur(12px)!important;-webkit-backdrop-filter:blur(12px)!important;box-shadow:0 -4px 18px -12px rgba(6,78,59,.28)!important;border-top:1px solid #dfeae2!important;padding:6px 10px!important}
+.lp-root .lp-seedcombo-floating-inner{width:min(100%,680px);margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px}
+.lp-root .lp-seedcombo-floating-price{min-width:0;display:flex;align-items:center}
+.lp-root .lp-seedcombo-floating-price span{font-size:17px;line-height:1;font-weight:900;white-space:nowrap;letter-spacing:-.02em}
+.lp-root .lp-seedcombo-floating-action{min-width:108px;padding:9px 14px!important;border:0!important;border-radius:10px!important;color:#fff!important;background:var(--lp)!important;box-shadow:0 5px 14px -7px rgba(0,0,0,.35)!important;font-size:14px!important;font-weight:800!important;line-height:1.15!important;white-space:nowrap!important;transition:transform .16s ease,filter .16s ease,box-shadow .16s ease!important}
+.lp-root .lp-seedcombo-floating-action:hover{filter:brightness(.97)!important;box-shadow:0 7px 18px -7px rgba(0,0,0,.4)!important}
+.lp-root .lp-seedcombo-floating-action:active{transform:scale(.97)!important}
+.lp-root .lp-seedcombo-order-submit{min-height:48px!important;padding:12px 16px!important;border-radius:12px!important;font-size:16px!important;font-weight:800!important;box-shadow:0 8px 20px -12px rgba(6,78,59,.45)!important;white-space:nowrap!important}
+@media(max-width:640px){.lp-root .lp-seedcombo-floating-clean{padding:6px 8px!important}.lp-root .lp-seedcombo-floating-inner{gap:8px}.lp-root .lp-seedcombo-floating-action{min-width:104px;padding:9px 12px!important;font-size:14px!important;border-radius:9px!important}.lp-root .lp-seedcombo-floating-price span{font-size:16px}.lp-root .lp-seedcombo-order-submit{min-height:46px!important;padding:11px 14px!important;font-size:15px!important;border-radius:11px!important}}
+'''
           if '.lp-seedcombo-floating-clean' not in s:
               if marker not in s: raise SystemExit('CSS marker not found')
-              s = s.replace(marker, marker + css, 1)
-
-          old_submit = 'className={`w-full text-white py-4 rounded-xl font-extrabold text-[17px] disabled:opacity-60 transition hover:brightness-95 inline-flex items-center justify-center gap-2 shadow-lg ${formInView?"lp-float-up":""}`}'
-          new_submit = 'className="lp-seedcombo-order-submit w-full text-white disabled:opacity-60 transition hover:brightness-95 inline-flex items-center justify-center gap-2"'
-          if old_submit in s: s = s.replace(old_submit, new_submit, 1)
-
-          start = ' <div className={`fixed bottom-0 left-0 right-0 z-40 transition-all duration-300 ${formInView?"bg-gradient-to-t from-emerald-900/90 via-emerald-800/85 to-emerald-700/80 backdrop-blur px-3 py-3.5 border-t border-white/10":"bg-white/95 backdrop-blur border-t border-emerald-100 px-3 py-2.5"}`}'
+              s=s.replace(marker,marker+css,1)
+          old='className={`w-full text-white py-4 rounded-xl font-extrabold text-[17px] disabled:opacity-60 transition hover:brightness-95 inline-flex items-center justify-center gap-2 shadow-lg ${formInView?"lp-float-up":""}`}'
+          if old in s:
+              s=s.replace(old,'className="lp-seedcombo-order-submit w-full text-white disabled:opacity-60 transition hover:brightness-95 inline-flex items-center justify-center gap-2"',1)
+          start=' <div className={`fixed bottom-0 left-0 right-0 z-40 transition-all duration-300 ${formInView?"bg-gradient-to-t from-emerald-900/90 via-emerald-800/85 to-emerald-700/80 backdrop-blur px-3 py-3.5 border-t border-white/10":"bg-white/95 backdrop-blur border-t border-emerald-100 px-3 py-2.5"}`}'
           if start not in s: raise SystemExit('floating CTA marker not found')
-          i = s.index(start)
-          j = s.index('</div>\n </div>\n </div>}', i) + len('</div>\n </div>')
-          new_block = ''' <div className={`fixed bottom-0 left-0 right-0 z-40 transition-all duration-300 ${formInView ? "translate-y-full opacity-0 pointer-events-none" : "translate-y-0 opacity-100"} lp-seedcombo-floating-clean`} aria-hidden={formInView}>\n  <div className="lp-seedcombo-floating-inner">\n   <div className="lp-seedcombo-floating-price"><span style={{color:themeColor}}>{taka(selected?.price ?? price)}</span></div>\n   <button onClick={scrollToOrder} style={ctaStyle} className="lp-seedcombo-floating-action">{cta}</button>\n  </div>\n </div>'''
-          s = s[:i] + new_block + s[j:]
-          p.write_text(s, encoding='utf-8')
+          i=s.index(start)
+          end=s.index('</div>\n </div>\n </div>}',i)+len('</div>\n </div>')
+          new=''' <div className={`fixed bottom-0 left-0 right-0 z-40 transition-all duration-300 ${formInView ? "translate-y-full opacity-0 pointer-events-none" : "translate-y-0 opacity-100"} lp-seedcombo-floating-clean`} aria-hidden={formInView}>\n  <div className="lp-seedcombo-floating-inner">\n   <div className="lp-seedcombo-floating-price"><span style={{color:themeColor}}>{taka(selected?.price ?? price)}</span></div>\n   <button onClick={scrollToOrder} style={ctaStyle} className="lp-seedcombo-floating-action">{cta}</button>\n  </div>\n </div>'''
+          s=s[:i]+new+s[end:]
+          p.write_text(s,encoding='utf-8')
           PY
           git diff --check
-          git add src/components/landing/CleanLandingPage.tsx
-          git rm .github/workflows/seedcombo-floating-cleanup.yml
+          grep -q 'lp-seedcombo-floating-clean' src/components/landing/CleanLandingPage.tsx
+          grep -q 'lp-seedcombo-order-submit' src/components/landing/CleanLandingPage.tsx
+          git add src/components/landing/CleanLandingPage.tsx .github/workflows/seedcombo-floating-cleanup.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'fix(seedcombo): apply CTA source patch'
