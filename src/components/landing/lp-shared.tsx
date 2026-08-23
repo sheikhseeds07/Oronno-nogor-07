@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, ShieldCheck, ShoppingCart } from "lucide-react";
+import { Check, ShieldCheck, ShoppingCart, User, Phone, MapPin, Wallet } from "lucide-react";
 import { toImg } from "@/lib/img";
 import { taka } from "@/lib/format";
 
@@ -31,6 +31,13 @@ export const LP_SHARED_STYLE = `
 @keyframes lpConfirmShine{0%{left:-40%}55%{left:120%}100%{left:120%}}
 @keyframes lpConfirmRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 @media (prefers-reduced-motion:reduce){.lp-confirm-cta,.lp-confirm-cta::after{animation:none}}
+.lp-product-checkout-group{border:1px solid #dfeae2;border-radius:18px;background:#fff;overflow:hidden}
+.lp-product-checkout-group .lp-checkout-shell{border-top:1px solid #dfeae2}
+.lp-product-checkout-group .lp-inline-selector{padding:8px 10px;margin:0;border:0;border-bottom:1px solid #edf3ee;background:#fff;border-radius:0}
+.lp-product-checkout-group .lp-inline-summary{border:0;border-top:1px solid #edf3ee;border-radius:0}
+.lp-product-checkout-group .lp-inline-summary>div{padding-top:7px;padding-bottom:7px}
+.lp-order-note{display:flex;align-items:center;gap:8px;justify-content:center;text-align:left;background:linear-gradient(135deg,#f0fdf4,#ecfdf5);border:1px solid #bbf7d0;border-radius:14px;padding:9px 12px;font-size:12px;font-weight:600;color:#14532d;line-height:1.5;box-shadow:0 4px 14px -10px rgba(6,78,59,.5)}
+.lp-order-note svg{color:#16a34a;flex:0 0 auto}
 `;
 
 export function LpHeaderCountdown({ hours = 3 }: { hours?: number }) {
@@ -68,7 +75,7 @@ export function LpPackageSelector({ packages, selected, onSelect, themeColor, ti
 }
 
 export function LpFloatingCta({ formInView, formId, submitting, total, subtotal, regular, productName, ctaText, themeColor, onScrollToOrder }: { formInView: boolean; formId: string; submitting: boolean; total: number; subtotal: number; regular?: number | null; productName: string; ctaText: string; themeColor: string; onScrollToOrder: () => void }) {
-  return <div className={`fixed bottom-0 left-0 right-0 z-40 transition-all duration-300 ${formInView ? "bg-transparent px-3 pb-4 pt-1 pointer-events-none" : "bg-white/95 backdrop-blur border-t border-emerald-100 px-3 py-2.5"}`}>
+  return <div className={`fixed bottom-0 left-0 right-0 z-40 transition-all duration-300 ${formInView ? "bg-transparent px-3 pt-1 pb-[calc(env(safe-area-inset-bottom,0px)+6px)] pointer-events-none" : "bg-white/95 backdrop-blur border-t border-emerald-100 px-3 pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+6px)]"}`}>
     <div className="container mx-auto max-w-2xl">
       {!formInView ? <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
         <div className="leading-tight min-w-0">
@@ -81,4 +88,40 @@ export function LpFloatingCta({ formInView, formId, submitting, total, subtotal,
       </div>}
     </div>
   </div>;
+}
+
+export function LpOrderNote({ text = "নিশ্চিন্তে অর্ডার করুন। অর্ডার করার পরে আমরা আপনাকে কল দিয়ে বিস্তারিত বলে কনফার্ম করবো।" }: { text?: string }) {
+  return <div className="lp-order-note"><ShieldCheck className="w-4 h-4" /><span>{text}</span></div>;
+}
+
+export type LpCheckoutValues = { name: string; phone: string; address: string };
+
+export function LpCheckoutCard({ formId, onSubmit, values, onChange, packages, selectedPkg, onSelectPkg, themeColor, subtotal, deliveryFee, total, submitting, submitText = "অর্ডার কনফার্ম করুন", packageTitle = "প্যাকেজ সিলেক্ট করুন" }: {
+  formId: string; onSubmit: (e: React.FormEvent) => void; values: LpCheckoutValues; onChange: (k: keyof LpCheckoutValues, v: string) => void;
+  packages: LpPackage[]; selectedPkg: number; onSelectPkg: (i: number) => void; themeColor: string;
+  subtotal: number; deliveryFee: number; total: number; submitting: boolean; submitText?: string; packageTitle?: string;
+}) {
+  const themeBg10 = themeColor + "1A";
+  const inputCls = "w-full border border-slate-200 rounded-lg pl-10 pr-3 py-2.5 text-sm bg-slate-50/60 outline-none focus:bg-white focus:border-emerald-500 transition";
+  return <div className="lp-product-checkout-group"><div className="lp-checkout-shell rounded-2xl bg-white overflow-hidden">
+    <form id={formId} onSubmit={onSubmit} className="p-3 sm:p-4 space-y-3">
+      <div><label className="text-[13px] font-semibold text-slate-900 block mb-1.5">আপনার নাম</label><div className="relative"><User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input required value={values.name} onChange={e => onChange("name", e.target.value)} placeholder="আপনার নাম" className={inputCls} /></div></div>
+      <div><label className="text-[13px] font-semibold text-slate-900 block mb-1.5">ফোন নম্বর</label><div className="relative"><Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input required type="tel" value={values.phone} onChange={e => onChange("phone", e.target.value)} placeholder="01XXXXXXXXX" className={inputCls} /></div></div>
+      <div><label className="text-[13px] font-semibold text-slate-900 block mb-1.5">ডেলিভারি ঠিকানা</label><div className="relative"><MapPin className="w-4 h-4 absolute left-3 top-3 text-slate-400" /><textarea required rows={3} value={values.address} onChange={e => onChange("address", e.target.value)} placeholder="গ্রাম/এলাকা, থানা, জেলা" className={inputCls + " resize-none"} /></div></div>
+      <LpPackageSelector packages={packages} selected={selectedPkg} onSelect={onSelectPkg} themeColor={themeColor} title={packageTitle} />
+      <div className="lp-inline-selector"><div className="lp-inline-title">পেমেন্ট মাধ্যম</div><div className="lp-inline-options">
+        <div className="lp-inline-option w-full flex items-center gap-2 border text-left bg-white" style={{ borderColor: themeColor, background: themeColor + "0D", boxShadow: `0 0 0 1px ${themeColor}` }}>
+          <span className="grid place-items-center w-8 h-8 rounded-lg shrink-0" style={{ background: themeBg10, color: themeColor }}><Wallet className="w-4 h-4" /></span>
+          <div className="flex-1 min-w-0"><div className="lp-option-name font-semibold text-slate-900">ক্যাশ অন ডেলিভারি</div><div className="text-[10px] text-slate-500">পণ্য হাতে পেয়ে পেমেন্ট করুন</div></div>
+          <span className="grid place-items-center w-4 h-4 rounded-full border-2 shrink-0" style={{ background: themeColor, borderColor: themeColor }}><Check className="w-2.5 h-2.5 text-white" strokeWidth={3} /></span>
+        </div>
+      </div></div>
+      <div className="lp-inline-summary text-sm divide-y divide-slate-100 overflow-hidden">
+        <div className="flex justify-between px-3.5"><span className="text-slate-500">সাবটোটাল</span><span className="font-semibold text-slate-900">{taka(subtotal)}</span></div>
+        <div className="flex justify-between px-3.5"><span className="text-slate-500">ডেলিভারি ফি</span><span className="font-semibold text-slate-900">{deliveryFee === 0 ? "ফ্রি" : taka(deliveryFee)}</span></div>
+        <div className="flex justify-between px-3.5 bg-emerald-50/60"><span className="font-bold text-slate-900">সর্বমোট</span><span className="font-bold text-[16px]" style={{ color: themeColor }}>{taka(total)}</span></div>
+      </div>
+      <button type="submit" disabled={submitting} style={{ background: themeColor }} className="w-full text-white py-4 rounded-xl font-extrabold text-[17px] disabled:opacity-60 transition hover:brightness-95 inline-flex items-center justify-center gap-2 shadow-lg"><ShieldCheck className="w-[18px] h-[18px]" />{submitting ? "অর্ডার হচ্ছে..." : `${submitText} — ${taka(total)}`}</button>
+    </form>
+  </div></div>;
 }
