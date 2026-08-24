@@ -1,110 +1,74 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { supabase } from "@/lib/personal-supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Bot, Facebook, Inbox, KeyRound, MessageCircle, MessageSquareText, Play, Save, Settings2, Sparkles, UserRound, Wifi } from "lucide-react";
+import { ArrowLeft, Bot, Facebook, Inbox, KeyRound, MessageCircle, Play, RefreshCw, Save, Send, Sparkles, UserRound, Wifi, X } from "lucide-react";
 
 export const Route = createFileRoute("/admin/page-message-ai")({ component: PageMessageAi });
-
 type Tab = "overview" | "api" | "page" | "training" | "inbox";
-type AiSettings = {
-  provider?: "gemini" | "openai";
-  model?: string;
-  api_connected?: boolean;
-  page_connected?: boolean;
-  ai_enabled?: boolean;
-  auto_reply_messages?: boolean;
-  auto_reply_comments?: boolean;
-  allow_ai_orders?: boolean;
-  training_prompt?: string;
-  page_id?: string;
-  page_name?: string;
-  [key: string]: unknown;
-};
-
+type Msg = { id?: string; role: "user" | "assistant"; text: string };
+type Status = { connected: boolean; page: { id: string | null; name: string | null; picture: string | null }; ai: { enabled: boolean; api_connected: boolean; model: string }; webhook_url: string };
+type Conversation = { id: string; psid: string; customer_name: string | null; last_message_text: string | null; last_message_at: string; unread_count: number; needs_human: boolean };
+type Comment = { id: string; comment_id: string; from_name: string | null; text: string | null; ai_reply: string | null; replied: boolean; reply_error: string | null; created_at: string };
 const inputCls = "w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100";
+const fn = "page-message-ai";
 
 function PageMessageAi() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("overview");
-  const [settings, setSettings] = useState<AiSettings>({ provider: "gemini", model: "gemini-2.5-flash-lite", training_prompt: "" });
+  const [status, setStatus] = useState<Status | null>(null);
   const [apiKey, setApiKey] = useState("");
+  const [model, setModel] = useState("gemini-2.5-flash-lite");
+  const [training, setTraining] = useState("");
+  const [aiEnabled, setAiEnabled] = useState(true);
+  const [replyComments, setReplyComments] = useState(true);
+  const [chat, setChat] = useState<Msg[]>([]);
   const [message, setMessage] = useState("");
-  const [aiReply, setAiReply] = useState("আমি আপনার Page Message AI। আমাকে আপনার পণ্য, দাম, অফার ও অর্ডার নেওয়ার নিয়ম শেখাতে পারেন।");
-  const [saving, setSaving] = useState(false);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [selected, setSelected] = useState<Conversation | null>(null);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [reply, setReply] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    void (async () => {
-      const { data } = await supabase.from("site_settings").select("settings").maybeSingle();
-      const s = (data?.settings as AiSettings | null) ?? {};
-      setSettings({ provider: "gemini", model: "gemini-2.5-flash-lite", ...s });
-    })();
-  }, []);
-
-  const save = async (patch: Partial<AiSettings> = {}) => {
-    setSaving(true);
-    try {
-      const { data, error } = await supabase.from("site_settings").select("id,settings").maybeSingle();
-      if (error) throw error;
-      const merged = { ...((data?.settings as AiSettings | null) ?? {}), ...settings, ...patch };
-      const result = data?.id
-        ? await supabase.from("site_settings").update({ settings: merged as never }).eq("id", data.id)
-        : await supabase.from("site_settings").insert({ settings: merged as never });
-      if (result.error) throw result.error;
-      setSettings(merged);
-      toast.success("Page Message AI সেটিংস সংরক্ষণ হয়েছে");
-    } catch (e) { toast.error(e instanceof Error ? e.message : "সংরক্ষণ হয়নি"); }
-    finally { setSaving(false); }
+  const invoke = async (body: Record<string, unknown>) => {
+    const { data, error } = await supabase.functions.invoke(fn, { body });
+    if (error) throw new Error(error.message || "Request failed");
+    if (data?.error) throw new Error(data.error);
+    return data;
   };
+  const loadStatus = async () => { try { const d = await invoke({ action: "status" }); setStatus(d); setModel(d.ai.model || "gemini-2.5-flash-lite"); setAiEnabled(d.ai.enabled); } catch (e) { toast.error(e instanceof Error ? e.message : "Status load failed"); } };
+  const loadInbox = async () => { try { const d = await invoke({ action: "list_inbox" }); setConversations(d.conversations || []); setComments(d.comments || []); } catch (e) { toast.error(e instanceof Error ? e.message : "Inbox load failed"); } };
+  useEffect(() => { void loadStatus(); }, []);
+  useEffect(() => { if (tab === "inbox") void loadInbox(); }, [tab]);
+  useEffect(() => { const f = () => void loadStatus(); window.addEventListener("message", f); return () => window.removeEventListener("message", f); }, []);
 
-  const testAi = () => {
-    const text = message.trim();
-    if (!text) return;
-    setAiReply(text.includes("দাম") ? "অবশ্যই 😊 কোন প্রোডাক্টটির দাম জানতে চান? আমি বর্তমান শপের তথ্য দেখে জানাব।" : "জি, আমি বুঝেছি। অর্ডার করতে চাইলে নাম, মোবাইল নাম্বার ও পূর্ণ ঠিকানা দিতে পারেন।");
-    setMessage("");
-  };
+  const connectPage = async () => { try { setBusy(true); const d = await invoke({ action: "oauth_url" }); window.open(d.url, "facebook-page-connect", "width=700,height=800"); } catch (e) { toast.error(e instanceof Error ? e.message : "Facebook connect failed"); } finally { setBusy(false); } };
+  const saveApi = async () => { if (!apiKey.trim()) return toast.error("Gemini API key দিন"); try { setBusy(true); await invoke({ action: "save_api", apiKey: apiKey.trim(), model }); setApiKey(""); await loadStatus(); toast.success("Gemini API যাচাই ও সংরক্ষণ হয়েছে"); } catch (e) { toast.error(e instanceof Error ? e.message : "API save failed"); } finally { setBusy(false); } };
+  const saveTraining = async () => { try { setBusy(true); await invoke({ action: "save_training", training, aiEnabled, replyComments }); await loadStatus(); toast.success("AI training live করা হয়েছে"); } catch (e) { toast.error(e instanceof Error ? e.message : "Training save failed"); } finally { setBusy(false); } };
+  const train = async () => { const text = message.trim(); if (!text) return; const next = [...chat, { role: "user" as const, text }]; setChat(next); setMessage(""); try { const d = await invoke({ action: "train_chat", message: text, history: next, training, model }); setChat([...next, { role: "assistant", text: d.reply }]); } catch (e) { toast.error(e instanceof Error ? e.message : "AI failed"); } };
+  const openConversation = async (c: Conversation) => { setSelected(c); try { const d = await invoke({ action: "conversation", id: c.id }); setMessages(d.messages || []); } catch (e) { toast.error(e instanceof Error ? e.message : "Conversation load failed"); } };
+  const send = async () => { if (!selected || !reply.trim()) return; try { setBusy(true); await invoke({ action: "send_message", psid: selected.psid, text: reply.trim() }); setReply(""); await openConversation(selected); toast.success("Message sent"); } catch (e) { toast.error(e instanceof Error ? e.message : "Message failed"); } finally { setBusy(false); } };
+  const sync = async () => { try { setBusy(true); await invoke({ action: "sync" }); await loadInbox(); toast.success("Facebook inbox sync হয়েছে"); } catch (e) { toast.error(e instanceof Error ? e.message : "Sync failed"); } finally { setBusy(false); } };
+  const replyComment = async (c: Comment) => { const text = window.prompt("Comment reply লিখুন", c.ai_reply || ""); if (!text?.trim()) return; try { await invoke({ action: "reply_comment", commentId: c.comment_id, text }); await loadInbox(); toast.success("Comment reply sent"); } catch (e) { toast.error(e instanceof Error ? e.message : "Comment reply failed"); } };
+  const page = status?.page;
+  const tabs = useMemo(() => [["overview", "Overview", Sparkles], ["api", "API Connect", KeyRound], ["page", "Page Connect", Facebook], ["training", "AI Training", Bot], ["inbox", "Inbox", Inbox]] as const, []);
 
-  const tabs: { id: Tab; label: string; icon: typeof Bot }[] = [
-    { id: "overview", label: "Overview", icon: Sparkles },
-    { id: "api", label: "API Connect", icon: KeyRound },
-    { id: "page", label: "Page Connect", icon: Facebook },
-    { id: "training", label: "AI Training", icon: Bot },
-    { id: "inbox", label: "Inbox", icon: Inbox },
-  ];
+  return <AdminLayout><div className="mx-auto max-w-6xl space-y-5">
+    <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-3"><button onClick={() => navigate({ to: "/admin/settings" })} className="grid h-10 w-10 place-items-center rounded-xl border bg-white shadow-sm"><ArrowLeft className="h-5 w-5" /></button><div><div className="flex items-center gap-2"><div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><MessageCircle className="h-5 w-5" /></div><h1 className="text-2xl font-extrabold">Page Message AI</h1></div><p className="mt-1 text-sm text-slate-500">Real Facebook Messenger + Comments + Gemini AI</p></div></div><div className={`rounded-full px-3 py-1.5 text-xs font-bold ${status?.ai.enabled ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{status?.ai.enabled ? "● AI LIVE" : "○ AI OFF"}</div></div>
+    <div className="grid gap-2 rounded-2xl border bg-white p-2 shadow-sm sm:grid-cols-5">{tabs.map(([id,label,Icon]) => <button key={id} onClick={() => setTab(id)} className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold ${tab===id?"bg-emerald-600 text-white":"text-slate-600 hover:bg-slate-50"}`}><Icon className="h-4 w-4" />{label}</button>)}</div>
 
-  return <AdminLayout>
-    <div className="mx-auto max-w-6xl space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate({ to: "/admin/settings" })} className="grid h-10 w-10 place-items-center rounded-xl border bg-white text-slate-600 shadow-sm hover:bg-slate-50"><ArrowLeft className="h-5 w-5" /></button>
-          <div><div className="flex items-center gap-2"><div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><MessageCircle className="h-5 w-5" /></div><h1 className="text-2xl font-extrabold text-slate-900">Page Message AI</h1></div><p className="mt-1 text-sm text-slate-500">Facebook Page Messenger + Comments + AI order assistant</p></div>
-        </div>
-        <div className={`rounded-full px-3 py-1.5 text-xs font-bold ${settings.ai_enabled ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{settings.ai_enabled ? "● AI LIVE" : "○ AI OFF"}</div>
-      </div>
+    {tab === "overview" && <div className="grid gap-4 md:grid-cols-3"><Card icon={Facebook} title="Facebook Page" value={status?.connected ? page?.name || "Connected" : "Not connected"} ok={!!status?.connected} /><Card icon={Wifi} title="Gemini API" value={status?.ai.api_connected ? status.ai.model : "Not connected"} ok={!!status?.ai.api_connected} /><Card icon={Bot} title="AI Assistant" value={status?.ai.enabled ? "Live" : "Off"} ok={!!status?.ai.enabled} /><div className="md:col-span-3 rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-5"><h2 className="font-extrabold">Real integration status</h2><div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Pill ok={!!status?.connected} text="Facebook OAuth" /><Pill ok={!!status?.connected} text="Page Webhook" /><Pill ok={!!status?.ai.api_connected} text="Gemini API" /><Pill ok={!!status?.ai.enabled} text="Auto AI Reply" /></div></div></div>}
 
-      <div className="grid gap-2 rounded-2xl border bg-white p-2 shadow-sm sm:grid-cols-5">
-        {tabs.map(t => { const Icon = t.icon; return <button key={t.id} onClick={() => setTab(t.id)} className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold transition ${tab === t.id ? "bg-emerald-600 text-white shadow" : "text-slate-600 hover:bg-slate-50"}`}><Icon className="h-4 w-4" />{t.label}</button>; })}
-      </div>
+    {tab === "api" && <section className="space-y-5 rounded-2xl border bg-white p-5 shadow-sm"><div><h2 className="text-lg font-extrabold">Gemini API — Real Connection</h2><p className="mt-1 text-sm text-slate-500">Save করার আগে API key দিয়ে বাস্তব Gemini request চালিয়ে যাচাই হবে। তারপর server-side integration-এ রাখা হবে; browser-এ key ফেরত দেওয়া হবে না।</p></div><div className="grid gap-4 md:grid-cols-2"><div><label className="text-sm font-semibold">Model</label><select value={model} onChange={e=>setModel(e.target.value)} className={inputCls}><option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option><option value="gemini-2.5-flash">Gemini 2.5 Flash</option></select></div><div><label className="text-sm font-semibold">API status</label><div className={`mt-1 rounded-xl border px-3 py-2.5 ${status?.ai.api_connected?"border-emerald-200 bg-emerald-50 text-emerald-700":"bg-slate-50 text-slate-500"}`}>{status?.ai.api_connected?"Connected + verified":"Not connected"}</div></div></div><div><label className="text-sm font-semibold">Gemini API Key</label><input type="password" autoComplete="new-password" value={apiKey} onChange={e=>setApiKey(e.target.value)} placeholder="AIza..." className={inputCls}/></div><button disabled={busy} onClick={saveApi} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"><KeyRound className="h-4 w-4"/>Verify & Connect</button></section>}
 
-      {tab === "overview" && <div className="grid gap-4 md:grid-cols-3">
-        {[
-          [Facebook, "Facebook Page", settings.page_connected ? "Connected" : "Not connected", settings.page_connected],
-          [Wifi, "AI API", settings.api_connected ? `${settings.provider} connected` : "Not connected", settings.api_connected],
-          [Bot, "AI Assistant", settings.ai_enabled ? "Live & ready" : "Ready to configure", settings.ai_enabled],
-        ].map(([Icon, title, sub, ok]) => { const C = Icon as typeof Bot; return <div key={title as string} className="rounded-2xl border bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><div className="rounded-xl bg-emerald-50 p-3 text-emerald-700"><C className="h-5 w-5" /></div><span className={`text-xs font-bold ${ok ? "text-emerald-600" : "text-slate-400"}`}>{ok ? "READY" : "SETUP"}</span></div><h3 className="mt-5 font-bold text-slate-900">{title as string}</h3><p className="mt-1 text-sm text-slate-500">{sub as string}</p></div>; })}
-        <div className="md:col-span-3 rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-5"><h2 className="font-extrabold text-slate-900">সম্পূর্ণ পরিকল্পনা</h2><div className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4"><div className="rounded-xl bg-white p-3 shadow-sm">① Gemini/API connect</div><div className="rounded-xl bg-white p-3 shadow-sm">② Facebook Page connect</div><div className="rounded-xl bg-white p-3 shadow-sm">③ AI-কে live chat দিয়ে train</div><div className="rounded-xl bg-white p-3 shadow-sm">④ Messenger + Comments Inbox</div></div></div>
-      </div>}
+    {tab === "page" && <section className="space-y-5 rounded-2xl border bg-white p-5 shadow-sm"><div><h2 className="text-lg font-extrabold">Facebook Page Connect</h2><p className="mt-1 text-sm text-slate-500">Manual Page ID নয় — real Facebook OAuth দিয়ে managed Page নির্বাচন হবে। Connect হলে Page name, logo, Page ID, webhook status এবং Messenger/Comment pipeline সক্রিয় হবে।</p></div>{status?.connected ? <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4"><div className="flex items-center gap-4">{page?.picture?<img src={page.picture} className="h-16 w-16 rounded-2xl object-cover"/>:<div className="grid h-16 w-16 place-items-center rounded-2xl bg-white text-blue-600"><Facebook/></div>}<div><div className="text-lg font-extrabold">{page?.name}</div><div className="text-xs text-emerald-700">Page connected • Webhook subscription enabled</div><div className="mt-1 text-[11px] text-slate-500">Page ID: {page?.id}</div></div></div><button onClick={connectPage} className="rounded-xl border bg-white px-4 py-2 text-sm font-bold">Reconnect</button></div>:<div className="rounded-2xl border border-dashed p-8 text-center"><div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-blue-50 text-blue-600"><Facebook className="h-8 w-8"/></div><h3 className="mt-4 text-lg font-extrabold">Connect your Facebook Page</h3><p className="mx-auto mt-2 max-w-xl text-sm text-slate-500">Facebook login খুলবে → আপনি যে Page manage করেন সেটি নির্বাচন করবেন → অনুমতি দিলে system নিজে Page access token নেবে → Page subscribe করবে → messages/comments receive করবে।</p><button disabled={busy} onClick={connectPage} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-bold text-white disabled:opacity-50"><Facebook className="h-5 w-5"/>Connect Facebook Page</button></div>}<div className="rounded-xl bg-slate-50 p-4 text-sm"><b>Webhook URL</b><div className="mt-1 break-all text-xs text-slate-600">{status?.webhook_url || "Loading..."}</div><p className="mt-2 text-xs text-slate-500">Meta Webhooks verification এবং signed event validation server-side করা হয়েছে।</p></div></section>}
 
-      {tab === "api" && <section className="rounded-2xl border bg-white p-5 shadow-sm space-y-5"><div><h2 className="text-lg font-extrabold">AI API Connect</h2><p className="mt-1 text-sm text-slate-500">Test-এর জন্য Gemini Free Tier দিয়ে শুরু করা যাবে। Production-এ paid billing ব্যবহার করা যাবে।</p></div><div className="grid gap-4 md:grid-cols-2"><div><label className="text-sm font-semibold">Provider</label><select value={settings.provider ?? "gemini"} onChange={e => setSettings({ ...settings, provider: e.target.value as AiSettings["provider"] })} className={inputCls}><option value="gemini">Google Gemini</option><option value="openai">OpenAI</option></select></div><div><label className="text-sm font-semibold">Model</label><select value={settings.model ?? "gemini-2.5-flash-lite"} onChange={e => setSettings({ ...settings, model: e.target.value })} className={inputCls}><option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option><option value="gemini-2.5-flash">Gemini 2.5 Flash</option></select></div></div><div><label className="text-sm font-semibold">API Key</label><input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="API key এখানে দিন (শুধু setup UI)" className={inputCls} /><p className="mt-1 text-xs text-amber-700">Security: API key browser/database-এ plain text হিসেবে রাখবে না। Production secret হিসেবে server-side সংরক্ষণ করতে হবে।</p></div><div className="flex flex-wrap gap-2"><button disabled={saving} onClick={() => save({ api_connected: true })} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"><Save className="h-4 w-4" />API Connected হিসেবে Save</button><button onClick={() => { setSettings({ ...settings, api_connected: false }); void save({ api_connected: false }); }} className="rounded-xl border px-4 py-2.5 text-sm font-bold">Disconnect</button></div></section>}
+    {tab === "training" && <section className="grid gap-4 lg:grid-cols-[1fr_360px]"><div className="rounded-2xl border bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><div><h2 className="text-lg font-extrabold">Live AI Training</h2><p className="mt-1 text-sm text-slate-500">এখানে কথা বললে real Gemini API-তে request যাবে।</p></div><Bot className="text-emerald-600"/></div><div className="mt-4 min-h-80 space-y-3 rounded-2xl bg-slate-50 p-4">{chat.length===0?<div className="text-sm text-slate-400">প্রথম প্রশ্ন করুন…</div>:chat.map((m,i)=><div key={i} className={`max-w-[88%] rounded-2xl p-3 text-sm shadow-sm ${m.role==="user"?"ml-auto bg-emerald-600 text-white":"bg-white"}`}><div className="mb-1 text-[10px] font-bold opacity-60">{m.role==="user"?"YOU":"AI"}</div>{m.text}</div>)}</div><div className="mt-3 flex gap-2"><input value={message} onChange={e=>setMessage(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")void train()}} placeholder="যেমন: ২৪ প্রকার বীজ কম্বোর দাম কত?" className={inputCls}/><button onClick={()=>void train()} className="grid shrink-0 place-items-center rounded-xl bg-emerald-600 px-4 text-white"><Play/></button></div></div><div className="rounded-2xl border bg-white p-5 shadow-sm"><h3 className="font-extrabold">Training & Automation</h3><label className="mt-4 flex items-center justify-between rounded-xl border p-3 text-sm"><span>AI auto reply</span><input type="checkbox" checked={aiEnabled} onChange={e=>setAiEnabled(e.target.checked)}/></label><label className="mt-2 flex items-center justify-between rounded-xl border p-3 text-sm"><span>Comment auto reply</span><input type="checkbox" checked={replyComments} onChange={e=>setReplyComments(e.target.checked)}/></label><textarea rows={14} value={training} onChange={e=>setTraining(e.target.value)} className={`${inputCls} mt-3`} placeholder="পণ্য, দাম, অফার, ডেলিভারি, অর্ডার নেওয়ার নিয়ম, tone, নিষেধাজ্ঞা—সব business knowledge এখানে লিখুন..."/><button disabled={busy} onClick={()=>void saveTraining()} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white"><Save className="h-4 w-4"/>Save & Activate</button></div></section>}
 
-      {tab === "page" && <section className="rounded-2xl border bg-white p-5 shadow-sm space-y-5"><div><h2 className="text-lg font-extrabold">Facebook Page Connect</h2><p className="mt-1 text-sm text-slate-500">Page token + webhook দিয়ে Messenger এবং comment events এখানে যুক্ত হবে।</p></div><div className="grid gap-4 md:grid-cols-2"><div><label className="text-sm font-semibold">Page ID</label><input value={settings.page_id ?? ""} onChange={e => setSettings({ ...settings, page_id: e.target.value })} placeholder="Facebook Page ID" className={inputCls} /></div><div><label className="text-sm font-semibold">Page Name</label><input value={settings.page_name ?? ""} onChange={e => setSettings({ ...settings, page_name: e.target.value })} placeholder="Your Page" className={inputCls} /></div></div><div className="rounded-xl border bg-slate-50 p-4"><div className="flex items-center gap-3"><Facebook className="h-6 w-6 text-blue-600" /><div><b>{settings.page_name || "Facebook Page"}</b><p className="text-xs text-slate-500">{settings.page_connected ? "Connected" : "Not connected"}</p></div></div></div><button onClick={() => save({ page_connected: true })} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white"><Facebook className="h-4 w-4" />Page Connect Save</button><p className="text-xs text-slate-500">Note: real Meta OAuth/token + webhook activation এই UI-এর পরের integration step; existing public pages/order flow এতে পরিবর্তন হবে না।</p></section>}
-
-      {tab === "training" && <section className="grid gap-4 lg:grid-cols-[1fr_360px]"><div className="rounded-2xl border bg-white p-5 shadow-sm space-y-4"><div><h2 className="text-lg font-extrabold">AI-কে Live কথা বলে Train করুন</h2><p className="mt-1 text-sm text-slate-500">আপনি প্রশ্ন করবেন, AI উত্তর দেবে; ভালো উত্তর হলে training instruction-এ যোগ করুন।</p></div><div className="min-h-72 rounded-2xl bg-slate-50 p-4"><div className="max-w-[90%] rounded-2xl rounded-tl-sm bg-white p-3 text-sm shadow-sm">{aiReply}</div></div><div className="flex gap-2"><input value={message} onChange={e => setMessage(e.target.value)} onKeyDown={e => { if (e.key === "Enter") testAi(); }} placeholder="যেমন: ২৪ প্রকার বীজ কম্বোর দাম কত?" className={inputCls} /><button onClick={testAi} className="grid shrink-0 place-items-center rounded-xl bg-emerald-600 px-4 text-white"><Play className="h-4 w-4" /></button></div></div><div className="rounded-2xl border bg-white p-5 shadow-sm space-y-4"><h3 className="font-extrabold">Training Rules</h3><textarea rows={12} value={settings.training_prompt ?? ""} onChange={e => setSettings({ ...settings, training_prompt: e.target.value })} placeholder="AI কীভাবে কথা বলবে, কোন অফার বলবে, কীভাবে order নেবে—এখানে লিখুন..." className={inputCls} /><button onClick={() => save()} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white"><Save className="h-4 w-4" />Training Save</button></div></section>}
-
-      {tab === "inbox" && <section className="rounded-2xl border bg-white shadow-sm overflow-hidden"><div className="flex flex-wrap items-center justify-between gap-3 border-b p-5"><div><h2 className="text-lg font-extrabold">Inbox</h2><p className="mt-1 text-sm text-slate-500">Messenger messages এবং Facebook comments এক জায়গায়।</p></div><div className="flex gap-2"><span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-sky-700">Messages</span><span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-bold text-violet-700">Comments</span></div></div><div className="grid min-h-80 place-items-center p-8 text-center"><div><div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-slate-100 text-slate-500"><MessageSquareText className="h-7 w-7" /></div><h3 className="mt-4 font-bold text-slate-800">Inbox ready for Meta Webhook</h3><p className="mt-1 max-w-md text-sm text-slate-500">Page connect ও webhook activation সম্পন্ন হলে এখানে live Messenger + Comment conversation, AI reply এবং human handoff দেখা যাবে।</p></div></div></section>}
-
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600"><b>Safety:</b> এই feature আলাদা admin route ও settings keys ব্যবহার করে। Existing public pages, checkout, order creation এবং current tracking code পরিবর্তন করা হচ্ছে না।</div>
-    </div>
-  </AdminLayout>;
+    {tab === "inbox" && <section className="rounded-2xl border bg-white shadow-sm"><div className="flex flex-wrap items-center justify-between gap-3 border-b p-5"><div><h2 className="text-lg font-extrabold">Live Page Inbox</h2><p className="mt-1 text-sm text-slate-500">Messenger conversations + Facebook comments</p></div><button disabled={busy} onClick={()=>void sync()} className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold"><RefreshCw className="h-4 w-4"/>Sync Facebook</button></div><div className="grid md:grid-cols-[340px_1fr]"> <div className="border-r"><div className="p-3 text-xs font-bold text-slate-400">MESSENGER</div>{conversations.map(c=><button key={c.id} onClick={()=>void openConversation(c)} className={`w-full border-t p-4 text-left hover:bg-slate-50 ${selected?.id===c.id?"bg-emerald-50":""}`}><div className="flex items-center gap-2"><UserRound className="h-4 w-4"/><b>{c.customer_name||c.psid}</b>{c.needs_human&&<span className="text-[10px] font-bold text-amber-600">HUMAN</span>}</div><p className="mt-1 truncate text-xs text-slate-500">{c.last_message_text||"No message"}</p></button>)}{conversations.length===0&&<div className="p-5 text-sm text-slate-400">No conversations yet. Sync or wait for webhook.</div>}<div className="p-3 text-xs font-bold text-slate-400">COMMENTS</div>{comments.map(c=><div key={c.id} className="border-t p-4"><b className="text-sm">{c.from_name||"Facebook user"}</b><p className="mt-1 text-sm">{c.text}</p><div className="mt-2 flex gap-2"><span className={`text-[10px] font-bold ${c.replied?"text-emerald-600":"text-amber-600"}`}>{c.replied?"REPLIED":"WAITING"}</span><button onClick={()=>void replyComment(c)} className="text-xs font-bold text-emerald-700">Reply</button></div></div>)}</div><div className="min-h-[520px]">{selected?<><div className="flex items-center justify-between border-b p-4"><div><b>{selected.customer_name||selected.psid}</b><div className="text-xs text-slate-500">{selected.psid}</div></div><button onClick={()=>setSelected(null)}><X className="h-5 w-5"/></button></div><div className="h-[410px] space-y-2 overflow-y-auto bg-slate-50 p-4">{messages.map(m=><div key={m.id} className={`max-w-[75%] rounded-2xl p-3 text-sm ${m.direction==="out"?"ml-auto bg-emerald-600 text-white":"bg-white shadow-sm"}`}>{m.text}</div>)}</div><div className="flex gap-2 border-t p-3"><input value={reply} onChange={e=>setReply(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")void send()}} placeholder="Reply to customer…" className={inputCls}/><button disabled={busy} onClick={()=>void send()} className="grid place-items-center rounded-xl bg-emerald-600 px-4 text-white"><Send/></button></div></>:<div className="grid h-full min-h-[520px] place-items-center text-center text-slate-400"><div><Inbox className="mx-auto h-12 w-12"/><p className="mt-3">একটি Messenger conversation নির্বাচন করুন</p></div></div>}</div></div></section>}
+  </div></AdminLayout>;
 }
+function Card({icon:Icon,title,value,ok}:{icon:any;title:string;value:string;ok:boolean}){return <div className="rounded-2xl border bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><div className="rounded-xl bg-emerald-50 p-3 text-emerald-700"><Icon className="h-5 w-5"/></div><span className={`text-xs font-bold ${ok?"text-emerald-600":"text-slate-400"}`}>{ok?"READY":"SETUP"}</span></div><h3 className="mt-5 font-bold">{title}</h3><p className="mt-1 text-sm text-slate-500">{value}</p></div>}
+function Pill({ok,text}:{ok:boolean;text:string}){return <div className={`rounded-xl bg-white p-3 text-sm shadow-sm ${ok?"text-emerald-700":"text-slate-400"}`}>{ok?"✓":"○"} {text}</div>}
