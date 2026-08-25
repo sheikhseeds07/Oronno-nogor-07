@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Update checkout layout
+      - name: Update checkout layout and seedcombo background
         run: |
           python3 <<'PY'
           from pathlib import Path
@@ -42,26 +42,22 @@ jobs:
           text = text.replace(' const scrollToProductSelection=()=>{const target=productSelectionRef.current;if(target){target.scrollIntoView({behavior:"smooth",block:"start"});return;}scrollToOrder();};', ' const scrollToProductSelection=scrollToOrder;')
           text = text.replace('onClick={scrollToProductSelection}', 'onClick={scrollToOrder}')
 
-          # Remove the old standalone package selector block.
           start = text.find('{packages.length>1&&<div ref={productSelectionRef}>')
           order_start = text.find('<section id="order"', start)
           if start != -1 and order_start != -1:
               text = text[:start] + text[order_start:]
 
-          # Add a payment selector state/model next to package selection state.
           text = text.replace('const [submitting,setSubmitting]=useState(false); const [selectedPkg,setSelectedPkg]=useState(0); const [form,setForm]=useState', 'const [submitting,setSubmitting]=useState(false); const [selectedPkg,setSelectedPkg]=useState(0); const [selectedPayment,setSelectedPayment]=useState("cod"); const [form,setForm]=useState')
           needle = ' const selected=packages[selectedPkg]||packages[0]; const subtotal=selected?selected.price:price; const deliveryFee=selected?selected.delivery_fee:defaultDelivery; const total=subtotal+deliveryFee;'
           replacement = needle + ' const paymentMethods=[{id:"cod",label:"ক্যাশ অন ডেলিভারি",description:"পণ্য হাতে পেয়ে পেমেন্ট করুন"}];'
           text = text.replace(needle, replacement)
 
-          # For seedcombo, keep the checkout itself visually focused on the first input.
           old_order = '<section id="order" ref={orderSectionRef} className="scroll-mt-20 lp-product-checkout-group"><SectionHead kicker={packages.length>1?C.order_kicker:"অর্ডার"} title={C.order_title}/>{C.order_note&&<p className="text-center text-[13px] font-medium text-emerald-800 bg-emerald-50 rounded-xl px-4 py-3 mb-3 leading-relaxed">{C.order_note}</p>}<div className="rounded-2xl border border-emerald-100 bg-white overflow-hidden"><form id="lp-order-form" onSubmit={submit} className="p-4 sm:p-5 space-y-4">'
           new_order = '<section id="order" ref={orderSectionRef} className="scroll-mt-20 lp-product-checkout-group"><div className="lp-checkout-shell rounded-2xl bg-white overflow-hidden"><form id="lp-order-form" onSubmit={submit} className="p-3 sm:p-4 space-y-3">'
           if old_order not in text:
               raise SystemExit('order opening pattern not found')
           text = text.replace(old_order, new_order, 1)
 
-          # Insert compact package selector, payment selector, and image-free summary after address.
           summary_start = text.find('<div className="rounded-xl border border-slate-200 divide-y divide-slate-100 text-sm overflow-hidden">')
           submit_start = text.find('<button type="submit" disabled={submitting}', summary_start)
           if summary_start == -1 or submit_start == -1:
@@ -80,8 +76,12 @@ jobs:
           '''
           text = text[:summary_start] + inline + text[submit_start:]
 
-          # Ensure the submit wrapper closing structure remains valid after the opening simplification.
-          text = text.replace('</form></div></section>\n </div><Footer/>', '</form></div></section>\n </div><Footer/>', 1)
+          # Seed Combo only: premium agricultural background with soft botanical-green depth.
+          root_old = 'return <div className="lp-root min-h-screen bg-white text-slate-700" style={{["--lp" as string]:themeColor}}>'
+          root_new = 'return <div className="lp-root min-h-screen text-slate-700" style={{["--lp" as string]:themeColor,background:slug==="seedcombo"?"radial-gradient(circle at 8% 8%,rgba(34,197,94,.13),transparent 24%),radial-gradient(circle at 92% 20%,rgba(21,128,61,.09),transparent 22%),repeating-linear-gradient(135deg,rgba(22,101,52,.018) 0,rgba(22,101,52,.018) 1px,transparent 1px,transparent 11px),linear-gradient(180deg,#edf9f0 0%,#ffffff 32%,#f6fbf7 72%,#eef8f1 100%)":"#fff"}}>'
+          if root_old not in text:
+              raise SystemExit('seedcombo root pattern not found')
+          text = text.replace(root_old, root_new, 1)
 
           path.write_text(text)
           print('updated', path)
@@ -93,7 +93,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/components/landing/CleanLandingPage.tsx
-          git commit -m "feat: redesign seedcombo checkout flow"
+          git commit -m "feat: premium agriculture background for seedcombo"
           git push
           git rm .github/workflows/update-seedcombo-checkout.yml
           git commit -m "chore: remove one-time seedcombo checkout workflow"
