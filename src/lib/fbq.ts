@@ -1,3 +1,5 @@
+import { getFbContext } from "@/lib/fb-context";
+
 type FbqArgs = unknown[];
 type Fbq = (...args: FbqArgs) => void;
 
@@ -55,8 +57,14 @@ export function setCachedPixelId(pixelId: string | null) {
 
 export function setCapiMirrorEnabled(enabled: boolean) { mirrorEnabled = enabled; }
 
+/**
+ * Server-side (Conversions API) copy of a browser event.
+ * Purchase is skipped here: the order server function sends it with the order id
+ * as event_id, so browser + server deduplicate on Meta's side.
+ */
 function mirrorToCapi(item: QueuedEvent) {
   if (!mirrorEnabled || typeof window === "undefined" || item.event === "Purchase") return;
+  const ctx = getFbContext();
   void fetch("/api/public/fb-capi", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -65,16 +73,18 @@ function mirrorToCapi(item: QueuedEvent) {
       event: {
         event_name: item.event,
         event_id: item.eventID,
-        event_source_url: window.location.href,
+        event_time: Math.floor(Date.now() / 1000),
+        event_source_url: ctx.source_url ?? window.location.href,
         custom_data: item.params ?? {},
+        fbp: ctx.fbp,
+        fbc: ctx.fbc,
       },
     }),
   }).catch(() => undefined);
 }
 
-function send(item: QueuedEvent, fbq: Fbq) {
+function sendBrowser(item: QueuedEvent, fbq: Fbq) {
   try { fbq("track", item.event, item.params ?? {}, { eventID: item.eventID }); } catch { /* ignore */ }
-  mirrorToCapi(item);
 }
 
 function enqueue(item: QueuedEvent) {
@@ -86,17 +96,17 @@ export function flushFbqQueue() {
   if (!fbq) return;
   const queue = readQueue();
   writeQueue([]);
-  queue.forEach((item) => send(item, fbq));
+  // Server copies were already sent when these events happened.
+  queue.forEach((item) => sendBrowser(item, fbq));
 }
 
 export function fbqTrack(event: string, params?: Record<string, unknown>, eventID = uuid()) {
   const item = { event, params, eventID };
   const fbq = getFbq();
-  if (fbq) {
-    send(item, fbq);
-  } else {
-    enqueue(item);
-  }
+  if (fbq) sendBrowser(item, fbq);
+  else enqueue(item);
+  // Always fire the server copy, even if the browser pixel is blocked or still loading.
+  mirrorToCapi(item);
   return eventID;
 }
 
@@ -124,6 +134,6 @@ export function trackPurchase(items: PixelItem[], value: number, eventID?: strin
   const params = { content_ids: items.map((i) => i.id), content_type: "product", contents: toContentItems(items), num_items: items.reduce((s, i) => s + (i.quantity ?? 1), 0), value, currency: "BDT" };
   const item = { event: "Purchase", params, eventID: id };
   const fbq = getFbq();
-  if (fbq) send(item, fbq); else enqueue(item);
+  if (fbq) sendBrowser(item, fbq); else enqueue(item);
   return id;
 }
