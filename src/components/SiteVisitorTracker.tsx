@@ -13,6 +13,23 @@ function createVisitorId(): string {
 
 const VISITOR_ID_KEY = "site-visitor-id";
 const VISITOR_LOOKUP_KEY_PREFIX = "site-visitor-route:";
+const VISITOR_BEAT_KEY_PREFIX = "site-visitor-beat:";
+// One presence write per visitor per path per window. Live-visitor accuracy
+// stays useful while request volume (and its egress) stops scaling with how
+// often a visitor navigates back and forth.
+const BEAT_WINDOW_MS = 300_000;
+
+function shouldRecordBeat(path: string): boolean {
+  try {
+    const key = `${VISITOR_BEAT_KEY_PREFIX}${path}`;
+    const last = Number(sessionStorage.getItem(key) || 0);
+    if (Number.isFinite(last) && Date.now() - last < BEAT_WINDOW_MS) return false;
+    sessionStorage.setItem(key, String(Date.now()));
+    return true;
+  } catch {
+    return true;
+  }
+}
 
 export function SiteVisitorTracker() {
   const location = useLocation();
@@ -21,6 +38,7 @@ export function SiteVisitorTracker() {
     const path = location.pathname;
     const trackable = path === "/" || path.startsWith("/landing/");
     if (!trackable) return;
+    if (!shouldRecordBeat(path)) return;
 
     const visitorId = (() => {
       const old = localStorage.getItem(VISITOR_ID_KEY);
@@ -50,9 +68,11 @@ export function SiteVisitorTracker() {
       const result = { landingPageId, productId };
       try { sessionStorage.setItem(lookupKey, JSON.stringify(result)); } catch {}
       return result;
-    }, 300_000);
+    }, 900_000);
 
     const recordVisit = async () => {
+      // Hidden/prerendered tabs must not spend a request at all.
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
       const { landingPageId, productId } = await getRouteIds();
       if (!active) return;
       await (supabase as any).rpc("heartbeat_site_visitor", {
