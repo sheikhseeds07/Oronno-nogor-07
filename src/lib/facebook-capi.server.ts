@@ -49,9 +49,13 @@ async function loadFbConfig(): Promise<FbConfig | null> {
   const siteMeta = asRecord(settings.meta);
   const pixelSettings = asRecord(settings.pixel);
   const capiSettings = asRecord(settings.capi);
+  const envPixelId = pickString(process.env["META_PIXEL_ID"], process.env["FACEBOOK_PIXEL_ID"], process.env["FB_PIXEL_ID"]);
+  const envAccessToken = pickString(process.env["META_CAPI_ACCESS_TOKEN"], process.env["FACEBOOK_CAPI_ACCESS_TOKEN"], process.env["FB_CAPI_ACCESS_TOKEN"]);
+  const envTestEventCode = pickString(process.env["META_TEST_EVENT_CODE"], process.env["FACEBOOK_TEST_EVENT_CODE"], process.env["FB_TEST_EVENT_CODE"]);
 
   const value: FbConfig = {
     pixel_id: pickString(
+      envPixelId,
       integCfg.pixel_id,
       integCfg.pixelId,
       siteFacebook.pixel_id,
@@ -62,6 +66,7 @@ async function loadFbConfig(): Promise<FbConfig | null> {
       pixelSettings.pixelId,
     ),
     access_token: pickString(
+      envAccessToken,
       integCfg.access_token,
       integCfg.accessToken,
       integCfg.conversion_api_access_token,
@@ -84,6 +89,7 @@ async function loadFbConfig(): Promise<FbConfig | null> {
       capiSettings.capi_access_token,
     ),
     test_event_code: pickString(
+      envTestEventCode,
       integCfg.test_event_code,
       integCfg.testEventCode,
       siteFacebook.test_event_code,
