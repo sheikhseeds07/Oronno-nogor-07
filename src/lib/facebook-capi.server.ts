@@ -8,6 +8,31 @@ type FbConfig = {
   enabled?: boolean | null;
 };
 
+type AnyRecord = Record<string, unknown>;
+
+function asRecord(value: unknown): AnyRecord {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as AnyRecord : {};
+}
+
+function asString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function pickString(...values: unknown[]): string | null {
+  for (const value of values) {
+    const str = asString(value);
+    if (str) return str;
+  }
+  return null;
+}
+
+function pickEnabled(...values: unknown[]): boolean {
+  for (const value of values) {
+    if (typeof value === "boolean") return value;
+  }
+  return true;
+}
+
 let cachedConfig: { value: FbConfig | null; at: number } | null = null;
 
 async function loadFbConfig(): Promise<FbConfig | null> {
@@ -18,13 +43,57 @@ async function loadFbConfig(): Promise<FbConfig | null> {
     supabaseAdmin.from("integrations").select("config,is_active").eq("name", "facebook_capi").maybeSingle(),
     supabaseAdmin.from("site_settings").select("settings").limit(1).maybeSingle(),
   ]);
-  const integCfg = (integ?.config as Record<string, string> | null) ?? {};
-  const siteFacebook = (site?.settings as { facebook?: { pixel_id?: string; enabled?: boolean } } | null)?.facebook;
+  const integCfg = asRecord(integ?.config);
+  const settings = asRecord(site?.settings);
+  const siteFacebook = asRecord(settings.facebook);
+  const siteMeta = asRecord(settings.meta);
+  const pixelSettings = asRecord(settings.pixel);
+  const capiSettings = asRecord(settings.capi);
+
   const value: FbConfig = {
-    pixel_id: integCfg.pixel_id || siteFacebook?.pixel_id || null,
-    access_token: integCfg.access_token || null,
-    test_event_code: integCfg.test_event_code || null,
-    enabled: integ?.is_active ?? siteFacebook?.enabled ?? true,
+    pixel_id: pickString(
+      integCfg.pixel_id,
+      integCfg.pixelId,
+      siteFacebook.pixel_id,
+      siteFacebook.pixelId,
+      siteMeta.pixel_id,
+      siteMeta.pixelId,
+      pixelSettings.pixel_id,
+      pixelSettings.pixelId,
+    ),
+    access_token: pickString(
+      integCfg.access_token,
+      integCfg.accessToken,
+      integCfg.conversion_api_access_token,
+      integCfg.conversions_api_access_token,
+      integCfg.capi_access_token,
+      siteFacebook.access_token,
+      siteFacebook.accessToken,
+      siteFacebook.conversion_api_access_token,
+      siteFacebook.conversions_api_access_token,
+      siteFacebook.capi_access_token,
+      siteMeta.access_token,
+      siteMeta.accessToken,
+      siteMeta.conversion_api_access_token,
+      siteMeta.conversions_api_access_token,
+      siteMeta.capi_access_token,
+      capiSettings.access_token,
+      capiSettings.accessToken,
+      capiSettings.conversion_api_access_token,
+      capiSettings.conversions_api_access_token,
+      capiSettings.capi_access_token,
+    ),
+    test_event_code: pickString(
+      integCfg.test_event_code,
+      integCfg.testEventCode,
+      siteFacebook.test_event_code,
+      siteFacebook.testEventCode,
+      siteMeta.test_event_code,
+      siteMeta.testEventCode,
+      capiSettings.test_event_code,
+      capiSettings.testEventCode,
+    ),
+    enabled: integ?.is_active ?? pickEnabled(siteFacebook.enabled, siteMeta.enabled, pixelSettings.enabled, capiSettings.enabled),
   };
   cachedConfig = { value, at: now };
   return value;
