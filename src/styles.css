@@ -196,3 +196,62 @@ div[style*="homeCategoryMarquee"] > button { display:flex;flex-direction:column;
 div[style*="homeCategoryMarquee"] > button > div:first-child { order:2;margin-bottom:0; }
 div[style*="homeCategoryMarquee"] > button > div:nth-child(2) { order:1;margin-bottom:.625rem; }
 #order #lp-order-form > p:last-child { display:none !important; }
+
+/* ===== Seed Combo premium agriculture background ===== */
+body:has(.combo-table) {
+  background:
+    radial-gradient(900px 420px at 50% -80px, rgba(34,197,94,.16), transparent 70%),
+    radial-gradient(560px 520px at -10% 28%, rgba(163,230,53,.12), transparent 72%),
+    radial-gradient(620px 540px at 110% 62%, rgba(22,163,74,.10), transparent 72%),
+    linear-gradient(180deg, #f4f9f1 0%, #eef6eb 42%, #f7f4e9 100%) !important;
+  background-attachment: fixed;
+}
+body:has(.combo-table) #root {
+  background:
+    radial-gradient(180px 180px at 7% 14%, rgba(101,163,13,.055), transparent 70%),
+    radial-gradient(220px 220px at 94% 34%, rgba(22,101,52,.05), transparent 72%),
+    repeating-linear-gradient(135deg, rgba(22,101,52,.018) 0, rgba(22,101,52,.018) 1px, transparent 1px, transparent 34px);
+}
+body:has(.combo-table) .lp-root {
+  position: relative;
+  isolation: isolate;
+  background: transparent !important;
+}
+body:has(.combo-table) .lp-root::before,
+body:has(.combo-table) .lp-root::after {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  pointer-events: none;
+  opacity: .5;
+  filter: blur(.2px);
+}
+body:has(.combo-table) .lp-root::before {
+  width: 210px;
+  height: 210px;
+  left: -100px;
+  top: 22%;
+  border-radius: 55% 45% 62% 38% / 44% 58% 42% 56%;
+  background: radial-gradient(circle at 55% 45%, rgba(21,128,61,.14), rgba(21,128,61,0) 68%);
+  transform: rotate(-18deg);
+}
+body:has(.combo-table) .lp-root::after {
+  width: 250px;
+  height: 250px;
+  right: -125px;
+  top: 58%;
+  border-radius: 44% 56% 38% 62% / 58% 42% 58% 42%;
+  background: radial-gradient(circle at 45% 48%, rgba(132,204,22,.13), rgba(132,204,22,0) 70%);
+  transform: rotate(22deg);
+}
+@media (max-width:640px) {
+  body:has(.combo-table) {
+    background:
+      radial-gradient(520px 260px at 50% -50px, rgba(34,197,94,.14), transparent 72%),
+      radial-gradient(300px 360px at 100% 42%, rgba(22,163,74,.08), transparent 72%),
+      linear-gradient(180deg, #f3f8f0 0%, #edf5ea 46%, #f6f3e9 100%) !important;
+    background-attachment: scroll;
+  }
+  body:has(.combo-table) .lp-root::before { width:150px;height:150px;left:-90px;top:30%; }
+  body:has(.combo-table) .lp-root::after { width:170px;height:170px;right:-100px;top:64%; }
+}
