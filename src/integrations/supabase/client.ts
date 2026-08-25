@@ -2,14 +2,8 @@
 import "@/lib/crypto-polyfill";
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
-import {
-  flushSupabaseEgressNow,
-  recordSupabaseEgress,
-  setSupabaseEgressSender,
-} from '@/lib/supabase-egress-meter';
+import { flushSupabaseEgressNow, recordSupabaseEgress, setSupabaseEgressSender } from '@/lib/supabase-egress-meter';
 
-// Production fallback. Build-time variables still take priority, but a deploy
-// without VITE_* configuration must connect to the same database as the live site.
 const PUBLIC_SUPABASE_URL = 'https://bvuhvzccziuniujeogng.supabase.co';
 const PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_rapcUAgVGYdCuww7Q6GRNg__kFKVc17';
 
@@ -17,83 +11,43 @@ function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith('sb_publishable_') || value.startsWith('sb_secret_');
 }
 
-async function measureResponseBytes(response: Response): Promise<number> {
-  const contentLength = Number(response.headers.get('content-length') || 0);
-  if (Number.isFinite(contentLength) && contentLength > 0) return contentLength;
-
-  // Supabase commonly uses chunked/streamed JSON without Content-Length.
-  // Clone only JSON API responses so the original response remains untouched.
-  const contentType = response.headers.get('content-type') || '';
-  if (!contentType.includes('json')) return 0;
-
-  try {
-    return (await response.clone().arrayBuffer()).byteLength;
-  } catch {
-    return 0;
-  }
-}
-
 function createSupabaseFetch(supabaseKey: string): typeof fetch {
   return async (input, init) => {
-    const headers = new Headers(
-      typeof Request !== 'undefined' && input instanceof Request ? input.headers : undefined,
-    );
-
-    if (init?.headers) {
-      new Headers(init.headers).forEach((value, key) => headers.set(key, value));
-    }
-
-    // New Supabase API keys are opaque strings, not bearer JWTs.
-    if (isNewSupabaseApiKey(supabaseKey) && headers.get('Authorization') === `Bearer ${supabaseKey}`) {
-      headers.delete('Authorization');
-    }
-
+    const headers = new Headers(typeof Request !== 'undefined' && input instanceof Request ? input.headers : undefined);
+    if (init?.headers) new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+    if (isNewSupabaseApiKey(supabaseKey) && headers.get('Authorization') === `Bearer ${supabaseKey}`) headers.delete('Authorization');
     headers.set('apikey', supabaseKey);
     const method = (init?.method || (typeof Request !== 'undefined' && input instanceof Request ? input.method : 'GET')).toUpperCase();
     const response = await fetch(input, { ...init, headers });
-
-    const responseBytes = await measureResponseBytes(response);
-    recordSupabaseEgress(input, method, response.status, responseBytes);
+    // Avoid cloning/reading every JSON response: Content-Length is cheap and avoids
+    // duplicating potentially large response bodies on the hot path.
+    const responseBytes = Number(response.headers.get('content-length') || 0);
+    recordSupabaseEgress(input, method, response.status, Number.isFinite(responseBytes) ? responseBytes : 0);
     return response;
   };
 }
 
 function createSupabaseClient() {
   const runtimeEnv = typeof process !== 'undefined' ? process.env : undefined;
-  const SUPABASE_URL =
-    import.meta.env['VITE_SUPABASE_URL'] || runtimeEnv?.['SUPABASE_URL'] || PUBLIC_SUPABASE_URL;
-  const SUPABASE_PUBLISHABLE_KEY =
-    import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] ||
-    runtimeEnv?.['SUPABASE_PUBLISHABLE_KEY'] ||
-    PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-
+  const SUPABASE_URL = import.meta.env['VITE_SUPABASE_URL'] || runtimeEnv?.['SUPABASE_URL'] || PUBLIC_SUPABASE_URL;
+  const SUPABASE_PUBLISHABLE_KEY = import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] || runtimeEnv?.['SUPABASE_PUBLISHABLE_KEY'] || PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-    global: {
-      fetch: createSupabaseFetch(SUPABASE_PUBLISHABLE_KEY),
-    },
-    auth: {
-      storage: typeof window !== 'undefined' ? localStorage : undefined,
-      persistSession: true,
-      autoRefreshToken: true,
-    },
+    global: { fetch: createSupabaseFetch(SUPABASE_PUBLISHABLE_KEY) },
+    auth: { storage: typeof window !== 'undefined' ? localStorage : undefined, persistSession: true, autoRefreshToken: true },
   });
-
   setSupabaseEgressSender(async (rows) => {
     await (client as any).rpc('record_endpoint_egress', { p_rows: rows });
   });
-
   if (typeof window !== 'undefined') {
     window.addEventListener('pagehide', flushSupabaseEgressNow, { passive: true });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') flushSupabaseEgressNow();
     });
   }
-
   return client;
 }
 
 let _supabase: ReturnType<typeof createSupabaseClient> | undefined;
-
 export const supabase = new Proxy({} as ReturnType<typeof createSupabaseClient>, {
   get(_, prop, receiver) {
     if (!_supabase) _supabase = createSupabaseClient();
