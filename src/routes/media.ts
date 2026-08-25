@@ -2,8 +2,15 @@ import { createFileRoute } from "@tanstack/react-router";
 
 const ALLOWED_SUPABASE_HOST = "bvuhvzccziuniujeogng.supabase.co";
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
-const OPTIMIZED_WIDTH = 1280;
-const OPTIMIZED_QUALITY = 74;
+// Egress budget guard: public catalog imagery never needs more than ~1024px on
+// phone-first traffic. Lower width/quality keeps Supabase Storage egress flat
+// even when visitor count grows, because every byte is pulled once and then
+// served from the Cloudflare cache.
+const OPTIMIZED_WIDTH = 1024;
+const OPTIMIZED_QUALITY = 62;
+// Extra-lean variant for data-saver clients / very slow networks.
+const ECONOMY_WIDTH = 720;
+const ECONOMY_QUALITY = 52;
 const NO_STORE = "private, no-store";
 
 // Only these catalog/marketing buckets are intentionally exposed through the
@@ -39,6 +46,13 @@ type OriginSnapshot = {
   body: ArrayBuffer;
 };
 
+type DeliveryVariant = {
+  width: number;
+  quality: number;
+  format: "webp" | "source";
+  id: string;
+};
+
 const inFlightOriginPulls = new Map<string, Promise<OriginSnapshot>>();
 
 function getCloudflareCache(): CloudflareCache | undefined {
@@ -69,19 +83,35 @@ function supportsWebp(request: Request): boolean {
   return /(?:^|,)\s*image\/webp(?:\s*;|,|$)/i.test(request.headers.get("Accept") || "");
 }
 
-function makeCacheKey(request: Request, source: URL): Request {
-  const asset = getStorageAsset(source);
+function wantsEconomy(request: Request): boolean {
+  const saveData = (request.headers.get("Save-Data") || "").toLowerCase();
+  if (saveData.includes("on")) return true;
+  const ect = (request.headers.get("ECT") || "").toLowerCase();
+  return ect === "slow-2g" || ect === "2g" || ect === "3g";
+}
+
+// One canonical variant per (economy, format) pair. A small, fixed variant set
+// is what keeps cached egress predictable: no per-visitor width explosion.
+function getVariant(request: Request): DeliveryVariant {
   const format = supportsWebp(request) ? "webp" : "source";
+  const economy = wantsEconomy(request);
+  const width = economy ? ECONOMY_WIDTH : OPTIMIZED_WIDTH;
+  const quality = economy ? ECONOMY_QUALITY : OPTIMIZED_QUALITY;
+  return { width, quality, format, id: `w${width}-q${quality}-${format}` };
+}
+
+function makeCacheKey(request: Request, source: URL, variant: DeliveryVariant): Request {
+  const asset = getStorageAsset(source);
   const key = new URL(request.url);
   key.search = "";
   key.searchParams.set("asset", `${asset?.bucket ?? "unknown"}/${asset?.objectPath ?? source.pathname}`);
-  key.searchParams.set("variant", `w${OPTIMIZED_WIDTH}-q${OPTIMIZED_QUALITY}-${format}`);
+  key.searchParams.set("variant", variant.id);
   return new Request(key.toString(), { method: "GET" });
 }
 
-function makeOriginCacheKey(source: URL): string {
+function makeOriginCacheKey(source: URL, variant: DeliveryVariant): string {
   const asset = getStorageAsset(source);
-  return `https://${ALLOWED_SUPABASE_HOST}/storage/v1/object/${asset?.bucket ?? "unknown"}/${asset?.objectPath ?? source.pathname}`;
+  return `https://${ALLOWED_SUPABASE_HOST}/storage/v1/object/${asset?.bucket ?? "unknown"}/${asset?.objectPath ?? source.pathname}?v=${variant.id}`;
 }
 
 function noStoreResponse(body: BodyInit | null, status: number, statusText = "", sourceHeaders?: Headers): Response {
@@ -93,7 +123,12 @@ function noStoreResponse(body: BodyInit | null, status: number, statusText = "",
   return new Response(body, { status, statusText, headers });
 }
 
-function cacheableResponse(snapshot: OriginSnapshot, body: ArrayBuffer, cacheState: "HIT" | "MISS"): Response {
+function cacheableResponse(
+  snapshot: OriginSnapshot,
+  body: ArrayBuffer,
+  cacheState: "HIT" | "MISS",
+  variant: DeliveryVariant,
+): Response {
   const headers = new Headers();
   const contentType = snapshot.headers.get("content-type");
   const contentLength = snapshot.headers.get("content-length");
@@ -111,7 +146,7 @@ function cacheableResponse(snapshot: OriginSnapshot, body: ArrayBuffer, cacheSta
   headers.set("CDN-Cache-Control", cachePolicy);
   headers.set("Cloudflare-CDN-Cache-Control", cachePolicy);
   headers.set("X-Oronno-Media-Cache", cacheState);
-  headers.set("X-Oronno-Media-Variant", `w${OPTIMIZED_WIDTH}-q${OPTIMIZED_QUALITY}`);
+  headers.set("X-Oronno-Media-Variant", variant.id);
   // The output format is already baked into the canonical cache key, so do
   // not emit Vary: Accept. Cloudflare cache keys must not depend on a Vary
   // dimension that is not explicitly supported by the edge cache.
@@ -123,19 +158,26 @@ function cacheableResponse(snapshot: OriginSnapshot, body: ArrayBuffer, cacheSta
   return new Response(body, { status: snapshot.status, statusText: snapshot.statusText, headers });
 }
 
-async function pullOrigin(source: URL, originCacheKey: string, request: Request, publicAsset: boolean): Promise<OriginSnapshot> {
-  const format = supportsWebp(request) ? "webp" : "source";
-  const taskKey = `${source.toString()}|${format}`;
+async function pullOrigin(
+  source: URL,
+  originCacheKey: string,
+  request: Request,
+  publicAsset: boolean,
+  variant: DeliveryVariant,
+): Promise<OriginSnapshot> {
+  const taskKey = `${source.toString()}|${variant.id}`;
   const existing = inFlightOriginPulls.get(taskKey);
   if (existing) return existing;
 
   const task = (async (): Promise<OriginSnapshot> => {
     const imageOptions: Record<string, unknown> = {
       fit: "scale-down",
-      width: OPTIMIZED_WIDTH,
-      quality: OPTIMIZED_QUALITY,
+      width: variant.width,
+      quality: variant.quality,
+      // Strip EXIF/ICC payloads; they add bytes with no visual benefit.
+      metadata: "none",
     };
-    if (format === "webp") imageOptions.format = "webp";
+    if (variant.format === "webp") imageOptions.format = "webp";
 
     const origin = await fetch(source.toString(), {
       method: "GET",
@@ -178,35 +220,45 @@ export const Route = createFileRoute("/media")({
         if (!asset) return noStoreResponse("Invalid storage asset", 400);
 
         const publicAsset = PUBLIC_MEDIA_BUCKETS.has(asset.bucket);
+        const variant = getVariant(request);
 
         // Non-public/user-specific Storage assets remain functional but never
         // become publicly cacheable through /media.
         if (!publicAsset) {
-          const origin = await pullOrigin(source, "", request, false);
-          if (!origin.ok) return noStoreResponse(origin.body.slice(0), origin.status, origin.statusText, origin.headers);
+          const origin = await pullOrigin(source, "", request, false, variant);
           return noStoreResponse(origin.body.slice(0), origin.status, origin.statusText, origin.headers);
         }
 
+        // Conditional requests: if the browser already has the bytes, answer 304
+        // and send no body at all.
         const cache = getCloudflareCache();
-        const cacheKey = makeCacheKey(request, source);
-        const originCacheKey = makeOriginCacheKey(source);
+        const cacheKey = makeCacheKey(request, source, variant);
+        const originCacheKey = makeOriginCacheKey(source, variant);
+        const ifNoneMatch = request.headers.get("If-None-Match");
 
         if (cache) {
           const hit = await cache.match(cacheKey);
           if (hit) {
+            const hitEtag = hit.headers.get("ETag");
+            if (ifNoneMatch && hitEtag && ifNoneMatch.includes(hitEtag)) {
+              const headers = new Headers(hit.headers);
+              headers.delete("Content-Length");
+              headers.set("X-Oronno-Media-Cache", "HIT-304");
+              return new Response(null, { status: 304, headers });
+            }
             const headers = new Headers(hit.headers);
             headers.set("X-Oronno-Media-Cache", "HIT");
             return new Response(hit.body, { status: hit.status, statusText: hit.statusText, headers });
           }
         }
 
-        const origin = await pullOrigin(source, originCacheKey, request, true);
+        const origin = await pullOrigin(source, originCacheKey, request, true, variant);
         if (!origin.ok) return noStoreResponse(origin.body.slice(0), origin.status, origin.statusText, origin.headers);
 
-        const response = cacheableResponse(origin, origin.body.slice(0), "MISS");
+        const response = cacheableResponse(origin, origin.body.slice(0), "MISS", variant);
         if (cache) {
           try {
-            await cache.put(cacheKey, cacheableResponse(origin, origin.body.slice(0), "HIT"));
+            await cache.put(cacheKey, cacheableResponse(origin, origin.body.slice(0), "HIT", variant));
           } catch {
             // Cache failure must never break image delivery.
           }
@@ -216,4 +268,3 @@ export const Route = createFileRoute("/media")({
     },
   },
 });
-
