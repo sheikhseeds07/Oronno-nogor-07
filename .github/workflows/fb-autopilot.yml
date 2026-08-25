@@ -1,0 +1,23 @@
+name: Facebook AI Autopilot
+
+on:
+  schedule:
+    - cron: "* * * * *"
+  workflow_dispatch:
+
+jobs:
+  autopilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Run four 15-second Facebook AI passes
+        env:
+          APP_URL: ${{ secrets.FB_AUTOPILOT_APP_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          test -n "$APP_URL"
+          test -n "$SUPABASE_ANON_KEY"
+          curl --fail-with-body --silent --show-error --max-time 100 \
+            -X POST "$APP_URL/api/public/fb-autopilot-loop" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Content-Type: application/json"
