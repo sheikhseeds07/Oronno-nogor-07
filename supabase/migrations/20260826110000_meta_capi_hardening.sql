@@ -19,6 +19,7 @@ declare
   v_event_name text;
   v_source_url text;
   v_request_id bigint;
+  v_encoded_token text;
 begin
   if jsonb_typeof(p_body->'data') <> 'array' or jsonb_array_length(p_body->'data') <> 1 then
     return false;
@@ -54,8 +55,13 @@ begin
     return false;
   end if;
 
+  -- Meta expects the access token as a query parameter. Escape the small set of
+  -- characters that can change the query string; the normal Meta token is already
+  -- URL-safe apart from these characters.
+  v_encoded_token := replace(replace(replace(replace(v_token, '%', '%25'), '&', '%26'), '+', '%2B'), ' ', '%20');
+
   select extensions.net.http_post(
-    url := 'https://graph.facebook.com/v23.0/' || v_pixel_id || '/events?access_token=' || urlencode(v_token),
+    url := 'https://graph.facebook.com/v23.0/' || v_pixel_id || '/events?access_token=' || v_encoded_token,
     headers := jsonb_build_object('Content-Type', 'application/json'),
     body := p_body,
     timeout_milliseconds := 15000
