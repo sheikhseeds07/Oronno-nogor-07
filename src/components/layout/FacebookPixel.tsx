@@ -39,12 +39,21 @@ export function FacebookPixel({ eager = true }: Props) {
     let cleanup: (() => void) | undefined;
 
     const start = async () => {
+      // Track only the customer-facing website. Admin activity must never pollute ad data.
+      if (window.location.pathname.startsWith("/admin")) return;
+      const runtime = window as unknown as Record<string, unknown>;
+      if (runtime.__oronnoFacebookPixelOwner) return;
+      runtime.__oronnoFacebookPixelOwner = true;
+
       const cached = getCachedPixelId();
       if (cached) initPixel(cached);
 
       const response = await fetch("/api/public/fb-pixel", { headers: { Accept: "application/json" } }).catch(() => null);
       const config = response?.ok ? await response.json().catch(() => null) : null;
-      if (cancelled || typeof window === "undefined") return;
+      if (cancelled || typeof window === "undefined") {
+        runtime.__oronnoFacebookPixelOwner = false;
+        return;
+      }
       const pixelId = typeof config?.pixel_id === "string" && config.enabled !== false ? config.pixel_id : null;
       if (!pixelId) return;
       setCachedPixelId(pixelId);
@@ -52,7 +61,7 @@ export function FacebookPixel({ eager = true }: Props) {
 
       const pageView = () => {
         const path = window.location.pathname + window.location.search;
-        if (path === lastPath) return;
+        if (window.location.pathname.startsWith("/admin") || path === lastPath) return;
         lastPath = path;
         trackPageView();
       };
@@ -66,6 +75,7 @@ export function FacebookPixel({ eager = true }: Props) {
       window.addEventListener("popstate", onRoute);
       window.addEventListener("oronno:route-change", onRoute);
       cleanup = () => {
+        runtime.__oronnoFacebookPixelOwner = false;
         history.pushState = originalPushState;
         history.replaceState = originalReplaceState;
         window.removeEventListener("popstate", onRoute);
