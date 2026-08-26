@@ -34,6 +34,11 @@ function pickEnabled(...values: unknown[]): boolean {
 }
 
 let cachedConfig: { value: FbConfig | null; at: number } | null = null;
+let databaseDispatcherReady = false;
+
+function privilegedStatusReady(_cfg?: FbConfig | null): boolean {
+  return databaseDispatcherReady;
+}
 
 async function loadFbConfig(): Promise<FbConfig | null> {
   const now = Date.now();
@@ -47,6 +52,7 @@ async function loadFbConfig(): Promise<FbConfig | null> {
   ]);
   const privilegedStatus = asRecord(dbStatus);
   const tokenCfg = asRecord(dbTokenRaw);
+  databaseDispatcherReady = privilegedStatus.server_events_ready === true;
   const integCfg = asRecord(integ?.config);
   const settings = asRecord(site?.settings);
   const siteFacebook = asRecord(settings.facebook);
@@ -120,7 +126,7 @@ async function loadFbConfig(): Promise<FbConfig | null> {
 
 export async function getPublicPixelConfig(): Promise<{ pixel_id: string | null; enabled: boolean } | null> {
   const cfg = await loadFbConfig();
-  return cfg ? { pixel_id: çôú.pixel_id ?? null, enabled: cfg.enabled !== false } : null;
+  return cfg ? { pixel_id: cfg.pixel_id ?? null, enabled: cfg.enabled !== false } : null;
 }
 
 /** Non-secret readiness snapshot so the pixel setup can be verified without leaking the token. */
@@ -131,7 +137,9 @@ export async function getCapiStatus() {
     pixel_id_present: !!cfg?.pixel_id,
     access_token_present: !!cfg?.access_token,
     test_event_code_present: !!cfg?.test_event_code,
-    server_events_ready: cfg?.enabled !== false && !!cfg?.pixel_id && !!cfg?.access_token && cfg?.access_token !== "database-managed",
+    server_events_ready: cfg?.enabled !== false && !!cfg?.pixel_id && (
+      (!!cfg?.access_token && cfg.access_token !== "database-managed") || privilegedStatusReady(cfg)
+    ),
   };
 }
 
@@ -165,7 +173,7 @@ function buildUserData(payload: ServerEventPayload) {
 /** Send any supported website event to Meta CAPI. */
 export async function sendServerEvent(payload: ServerEventPayload): Promise<{ ok: boolean }> {
   const cfg = await loadFbConfig();
-  if (!cfg?.enabled || !cfg.pixel_id || !cfg.access_token || cfg.access_token === "database-managed") return { ok: false };
+  if (!cfg?.enabled || !cfg.pixel_id) return { ok: false };
 
   const now = Math.floor(Date.now() / 1000);
   // Meta rejects events dated in the future or older than 7 days.
@@ -183,6 +191,19 @@ export async function sendServerEvent(payload: ServerEventPayload): Promise<{ ok
     }],
     ...(cfg.test_event_code ? { test_event_code: cfg.test_event_code } : {}),
   };
+
+  // Prefer a server secret/direct token. When All API keeps the token only in the
+  // database, use the SECURITY DEFINER dispatcher so the token never reaches the browser.
+  if (!cfg.access_token || cfg.access_token === "database-managed") {
+    const { data, error } = await (supabaseAdmin as any).rpc("dispatch_meta_capi_event", { p_body: body });
+    if (!error && data === true) return { ok: true };
+    console.error("[FB CAPI database dispatch failed]", {
+      event: payload.event_name,
+      eventId: payload.event_id,
+      error: error?.message ?? "dispatcher unavailable",
+    });
+    return { ok: false };
+  }
 
   const url = `https://graph.facebook.com/v23.0/${cfg.pixel_id}/events?access_token=${encodeURIComponent(cfg.access_token)}`;
   let lastError = "";
