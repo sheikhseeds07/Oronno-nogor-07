@@ -11,9 +11,13 @@ type QueuedEvent = {
 
 const QUEUE_KEY = "oronno_fb_event_queue_v1";
 const PIXEL_CACHE_KEY = "oronno_fb_pixel_id_v1";
+const SENT_KEY = "oronno_fb_sent_ids_v1";
 const MAX_QUEUE = 50;
+const MAX_SENT_IDS = 200;
 let memoryQueue: QueuedEvent[] = [];
 let mirrorEnabled = true;
+/** Guards against the same event id being sent twice inside one page session (StrictMode / re-renders). */
+const inFlight = new Set<string>();
 
 function getFbq(): Fbq | null {
   if (typeof window === "undefined") return null;
@@ -37,6 +41,32 @@ function writeQueue(queue: QueuedEvent[]) {
   try { localStorage.setItem(QUEUE_KEY, JSON.stringify(memoryQueue)); } catch { /* ignore */ }
 }
 
+/**
+ * Durable "already counted" ledger, keyed by event id. Used for one-per-order
+ * events so a page refresh, back-navigation, or restored tab never re-counts.
+ */
+function readSentIds(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SENT_KEY) ?? "[]");
+    return Array.isArray(parsed) ? parsed.filter((v) => typeof v === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function markSent(id: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const next = [...readSentIds().filter((v) => v !== id), id].slice(-MAX_SENT_IDS);
+    localStorage.setItem(SENT_KEY, JSON.stringify(next));
+  } catch { /* ignore */ }
+}
+
+function alreadySent(id: string) {
+  return inFlight.has(id) || readSentIds().includes(id);
+}
+
 function uuid() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
   return `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
@@ -58,9 +88,10 @@ export function setCachedPixelId(pixelId: string | null) {
 export function setCapiMirrorEnabled(enabled: boolean) { mirrorEnabled = enabled; }
 
 /**
- * Server-side (Conversions API) copy of a browser event.
- * Purchase is skipped here: the order server function sends it with the order id
- * as event_id, so browser + server deduplicate on Meta's side.
+ * Server-side (Conversions API) copy of a browser event, sent with the SAME
+ * event_id so Meta deduplicates browser + server into a single event.
+ * Purchase is skipped here: the order server function sends it with the order
+ * id as event_id, which keeps exactly one Purchase per order.
  */
 function mirrorToCapi(item: QueuedEvent) {
   if (!mirrorEnabled || typeof window === "undefined" || item.event === "Purchase") return;
@@ -101,6 +132,8 @@ export function flushFbqQueue() {
 }
 
 export function fbqTrack(event: string, params?: Record<string, unknown>, eventID = uuid()) {
+  if (inFlight.has(eventID)) return eventID;
+  inFlight.add(eventID);
   const item = { event, params, eventID };
   const fbq = getFbq();
   if (fbq) sendBrowser(item, fbq);
@@ -129,9 +162,17 @@ export function trackSearch(searchString: string) {
 export function trackContact(params?: Record<string, unknown>) { return fbqTrack("Contact", params); }
 export function trackLead(params?: Record<string, unknown>) { return fbqTrack("Lead", params); }
 
+/**
+ * Purchase: exactly one per order.
+ * - event_id is the order id, shared with the server-side Conversions API copy.
+ * - a durable ledger stops refreshes / back-navigation from re-counting it.
+ */
 export function trackPurchase(items: PixelItem[], value: number, eventID?: string) {
   const id = eventID ?? uuid();
-  const params = { content_ids: items.map((i) => i.id), content_type: "product", contents: toContentItems(items), num_items: items.reduce((s, i) => s + (i.quantity ?? 1), 0), value, currency: "BDT" };
+  if (alreadySent(id)) return id;
+  inFlight.add(id);
+  markSent(id);
+  const params = { content_ids: items.map((i) => i.id), content_type: "product", contents: toContentItems(items), num_items: items.reduce((s, i) => s + (i.quantity ?? 1), 0), value: Number(value.toFixed(2)), currency: "BDT" };
   const item = { event: "Purchase", params, eventID: id };
   const fbq = getFbq();
   if (fbq) sendBrowser(item, fbq); else enqueue(item);
