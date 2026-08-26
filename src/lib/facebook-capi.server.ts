@@ -5,6 +5,7 @@ type FbConfig = {
   pixel_id?: string | null;
   access_token?: string | null;
   test_event_code?: string | null;
+  test_event_code_present?: boolean;
   enabled?: boolean | null;
 };
 
@@ -102,6 +103,7 @@ async function loadFbConfig(): Promise<FbConfig | null> {
       capiSettings.conversions_api_access_token,
       capiSettings.capi_access_token,
     ),
+    test_event_code_present: privilegedStatus.test_event_code_present === true,
     test_event_code: pickString(
       envTestEventCode,
       tokenCfg.test_event_code,
@@ -136,7 +138,7 @@ export async function getCapiStatus() {
     enabled: cfg?.enabled !== false,
     pixel_id_present: !!cfg?.pixel_id,
     access_token_present: !!cfg?.access_token,
-    test_event_code_present: !!cfg?.test_event_code,
+    test_event_code_present: !!cfg?.test_event_code || cfg?.test_event_code_present === true,
     server_events_ready: cfg?.enabled !== false && !!cfg?.pixel_id && (
       (!!cfg?.access_token && cfg.access_token !== "database-managed") || privilegedStatusReady(cfg)
     ),
