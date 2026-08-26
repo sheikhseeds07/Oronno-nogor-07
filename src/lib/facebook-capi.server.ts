@@ -6,6 +6,7 @@ type FbConfig = {
   access_token?: string | null;
   test_event_code?: string | null;
   enabled?: boolean | null;
+  database_dispatch_ready?: boolean;
 };
 
 type AnyRecord = Record<string, unknown>;
@@ -39,10 +40,12 @@ async function loadFbConfig(): Promise<FbConfig | null> {
   const now = Date.now();
   if (cachedConfig && now - cachedConfig.at < 60_000) return cachedConfig.value;
 
-  const [{ data: integ }, { data: site }] = await Promise.all([
+  const [{ data: integ }, { data: site }, { data: dbStatus }] = await Promise.all([
     supabaseAdmin.from("integrations").select("config,is_active").eq("name", "facebook_capi").maybeSingle(),
     supabaseAdmin.from("site_settings").select("settings").limit(1).maybeSingle(),
+    (supabaseAdmin as any).rpc("get_meta_capi_status"),
   ]);
+  const privilegedStatus = asRecord(dbStatus);
   const integCfg = asRecord(integ?.config);
   const settings = asRecord(site?.settings);
   const siteFacebook = asRecord(settings.facebook);
@@ -56,6 +59,7 @@ async function loadFbConfig(): Promise<FbConfig | null> {
   const value: FbConfig = {
     pixel_id: pickString(
       envPixelId,
+      privilegedStatus.pixel_id,
       integCfg.pixel_id,
       integCfg.pixelId,
       siteFacebook.pixel_id,
@@ -67,6 +71,7 @@ async function loadFbConfig(): Promise<FbConfig | null> {
     ),
     access_token: pickString(
       envAccessToken,
+      privilegedStatus.access_token_present === true ? "database-managed" : null,
       integCfg.access_token,
       integCfg.accessToken,
       integCfg.conversion_api_access_token,
@@ -99,7 +104,10 @@ async function loadFbConfig(): Promise<FbConfig | null> {
       capiSettings.test_event_code,
       capiSettings.testEventCode,
     ),
-    enabled: integ?.is_active ?? pickEnabled(siteFacebook.enabled, siteMeta.enabled, pixelSettings.enabled, capiSettings.enabled),
+    enabled: typeof privilegedStatus.enabled === "boolean"
+      ? privilegedStatus.enabled
+      : integ?.is_active ?? pickEnabled(siteFacebook.enabled, siteMeta.enabled, pixelSettings.enabled, capiSettings.enabled),
+    database_dispatch_ready: privilegedStatus.server_events_ready === true,
   };
   cachedConfig = { value, at: now };
   return value;
@@ -171,6 +179,16 @@ export async function sendServerEvent(payload: ServerEventPayload): Promise<{ ok
     ...(cfg.test_event_code ? { test_event_code: cfg.test_event_code } : {}),
   };
 
+  // All API is the shared source of truth. The database function reads the private token
+  // with SECURITY DEFINER and sends the event without ever returning the token to this public route.
+  if (cfg.database_dispatch_ready) {
+    const { data: dispatched, error } = await (supabaseAdmin as any).rpc("dispatch_meta_capi_event", { p_body: body });
+    if (!error && dispatched === true) return { ok: true };
+    console.error("[FB CAPI] database dispatch failed", { event: payload.event_name, eventId: payload.event_id, error: error?.message });
+  }
+
+  // Environment-backed fallback for deployments that have not applied the database migration yet.
+  if (cfg.access_token === "database-managed") return { ok: false };
   const url = `https://graph.facebook.com/v23.0/${cfg.pixel_id}/events?access_token=${encodeURIComponent(cfg.access_token)}`;
   let lastError = "";
   for (let attempt = 1; attempt <= 3; attempt++) {
