@@ -14,10 +14,12 @@ const PIXEL_CACHE_KEY = "oronno_fb_pixel_id_v1";
 const SENT_KEY = "oronno_fb_sent_ids_v1";
 const MAX_QUEUE = 50;
 const MAX_SENT_IDS = 200;
+const DUPLICATE_WINDOW_MS = 750;
 let memoryQueue: QueuedEvent[] = [];
 let mirrorEnabled = true;
 /** Guards against the same event id being sent twice inside one page session (StrictMode / re-renders). */
 const inFlight = new Set<string>();
+const recentEvents = new Map<string, { id: string; at: number }>();
 
 function getFbq(): Fbq | null {
   if (typeof window === "undefined") return null;
@@ -131,16 +133,24 @@ export function flushFbqQueue() {
   queue.forEach((item) => sendBrowser(item, fbq));
 }
 
-export function fbqTrack(event: string, params?: Record<string, unknown>, eventID = uuid()) {
-  if (inFlight.has(eventID)) return eventID;
-  inFlight.add(eventID);
-  const item = { event, params, eventID };
+export function fbqTrack(event: string, params?: Record<string, unknown>, eventID?: string) {
+  const now = Date.now();
+  const signature = `${event}:${JSON.stringify(params ?? {})}`;
+  const recent = recentEvents.get(signature);
+  if (!eventID && recent && now - recent.at < DUPLICATE_WINDOW_MS) return recent.id;
+
+  const id = eventID ?? uuid();
+  if (inFlight.has(id)) return id;
+  inFlight.add(id);
+  recentEvents.set(signature, { id, at: now });
+  window.setTimeout(() => inFlight.delete(id), DUPLICATE_WINDOW_MS);
+  const item = { event, params, eventID: id };
   const fbq = getFbq();
   if (fbq) sendBrowser(item, fbq);
   else enqueue(item);
   // Always fire the server copy, even if the browser pixel is blocked or still loading.
   mirrorToCapi(item);
-  return eventID;
+  return id;
 }
 
 export type PixelItem = { id: string; name?: string; price?: number; quantity?: number };
