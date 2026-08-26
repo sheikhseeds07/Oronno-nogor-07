@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getCapiStatus, sendServerEvent } from "@/lib/facebook-capi.server";
 
 const EventSchema = z.object({
-  event_name: z.enum(["PageView", "ViewContent", "Search", "AddToCart", "InitiateCheckout", "Lead", "Contact", "AddToWishlist", "CompleteRegistration"]),
+  event_name: z.enum(["PageView", "ViewContent", "Search", "AddToCart", "InitiateCheckout", "Lead", "Contact", "AddToWishlist", "CompleteRegistration", "Purchase"]),
   event_id: z.string().min(8).max(200),
   event_time: z.number().int().positive().optional(),
   event_source_url: z.string().url().max(2000).optional().nullable(),
@@ -15,7 +15,7 @@ const EventSchema = z.object({
 });
 
 const BodySchema = z.object({ event: EventSchema });
-const CAPI_REVISION = "2026-08-26-server-pairing-v2";
+const CAPI_REVISION = "2026-08-26-server-pairing-v3";
 
 function readCookie(cookieHeader: string | null | undefined, name: string): string | null {
   if (!cookieHeader) return null;
