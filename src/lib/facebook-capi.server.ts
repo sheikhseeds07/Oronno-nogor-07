@@ -6,7 +6,6 @@ type FbConfig = {
   access_token?: string | null;
   test_event_code?: string | null;
   enabled?: boolean | null;
-  database_dispatch_ready?: boolean;
 };
 
 type AnyRecord = Record<string, unknown>;
@@ -40,12 +39,14 @@ async function loadFbConfig(): Promise<FbConfig | null> {
   const now = Date.now();
   if (cachedConfig && now - cachedConfig.at < 60_000) return cachedConfig.value;
 
-  const [{ data: integ }, { data: site }, { data: dbStatus }] = await Promise.all([
+  const [{ data: integ }, { data: site }, { data: dbStatus }, { data: dbTokenRaw }] = await Promise.all([
     supabaseAdmin.from("integrations").select("config,is_active").eq("name", "facebook_capi").maybeSingle(),
     supabaseAdmin.from("site_settings").select("settings").limit(1).maybeSingle(),
     (supabaseAdmin as any).rpc("get_meta_capi_status"),
+    (supabaseAdmin as any).rpc("get_meta_capi_token"),
   ]);
   const privilegedStatus = asRecord(dbStatus);
+  const tokenCfg = asRecord(dbTokenRaw);
   const integCfg = asRecord(integ?.config);
   const settings = asRecord(site?.settings);
   const siteFacebook = asRecord(settings.facebook);
@@ -59,6 +60,7 @@ async function loadFbConfig(): Promise<FbConfig | null> {
   const value: FbConfig = {
     pixel_id: pickString(
       envPixelId,
+      tokenCfg.pixel_id,
       privilegedStatus.pixel_id,
       integCfg.pixel_id,
       integCfg.pixelId,
@@ -71,6 +73,7 @@ async function loadFbConfig(): Promise<FbConfig | null> {
     ),
     access_token: pickString(
       envAccessToken,
+      tokenCfg.access_token,
       privilegedStatus.access_token_present === true ? "database-managed" : null,
       integCfg.access_token,
       integCfg.accessToken,
@@ -95,6 +98,7 @@ async function loadFbConfig(): Promise<FbConfig | null> {
     ),
     test_event_code: pickString(
       envTestEventCode,
+      tokenCfg.test_event_code,
       integCfg.test_event_code,
       integCfg.testEventCode,
       siteFacebook.test_event_code,
@@ -104,10 +108,11 @@ async function loadFbConfig(): Promise<FbConfig | null> {
       capiSettings.test_event_code,
       capiSettings.testEventCode,
     ),
-    enabled: typeof privilegedStatus.enabled === "boolean"
-      ? privilegedStatus.enabled
-      : integ?.is_active ?? pickEnabled(siteFacebook.enabled, siteMeta.enabled, pixelSettings.enabled, capiSettings.enabled),
-    database_dispatch_ready: privilegedStatus.server_events_ready === true,
+    enabled: typeof tokenCfg.enabled === "boolean"
+      ? tokenCfg.enabled
+      : typeof privilegedStatus.enabled === "boolean"
+        ? privilegedStatus.enabled
+        : integ?.is_active ?? pickEnabled(siteFacebook.enabled, siteMeta.enabled, pixelSettings.enabled, capiSettings.enabled),
   };
   cachedConfig = { value, at: now };
   return value;
@@ -115,7 +120,7 @@ async function loadFbConfig(): Promise<FbConfig | null> {
 
 export async function getPublicPixelConfig(): Promise<{ pixel_id: string | null; enabled: boolean } | null> {
   const cfg = await loadFbConfig();
-  return cfg ? { pixel_id: cfg.pixel_id ?? null, enabled: cfg.enabled !== false } : null;
+  return cfg ? { pixel_id: çôú.pixel_id ?? null, enabled: cfg.enabled !== false } : null;
 }
 
 /** Non-secret readiness snapshot so the pixel setup can be verified without leaking the token. */
@@ -126,7 +131,7 @@ export async function getCapiStatus() {
     pixel_id_present: !!cfg?.pixel_id,
     access_token_present: !!cfg?.access_token,
     test_event_code_present: !!cfg?.test_event_code,
-    server_events_ready: cfg?.enabled !== false && !!cfg?.pixel_id && !!cfg?.access_token,
+    server_events_ready: cfg?.enabled !== false && !!cfg?.pixel_id && !!cfg?.access_token && cfg?.access_token !== "database-managed",
   };
 }
 
@@ -160,7 +165,7 @@ function buildUserData(payload: ServerEventPayload) {
 /** Send any supported website event to Meta CAPI. */
 export async function sendServerEvent(payload: ServerEventPayload): Promise<{ ok: boolean }> {
   const cfg = await loadFbConfig();
-  if (!cfg?.enabled || !cfg.pixel_id || !cfg.access_token) return { ok: false };
+  if (!cfg?.enabled || !cfg.pixel_id || !cfg.access_token || cfg.access_token === "database-managed") return { ok: false };
 
   const now = Math.floor(Date.now() / 1000);
   // Meta rejects events dated in the future or older than 7 days.
@@ -179,16 +184,6 @@ export async function sendServerEvent(payload: ServerEventPayload): Promise<{ ok
     ...(cfg.test_event_code ? { test_event_code: cfg.test_event_code } : {}),
   };
 
-  // All API is the shared source of truth. The database function reads the private token
-  // with SECURITY DEFINER and sends the event without ever returning the token to this public route.
-  if (cfg.database_dispatch_ready) {
-    const { data: dispatched, error } = await (supabaseAdmin as any).rpc("dispatch_meta_capi_event", { p_body: body });
-    if (!error && dispatched === true) return { ok: true };
-    console.error("[FB CAPI] database dispatch failed", { event: payload.event_name, eventId: payload.event_id, error: error?.message });
-  }
-
-  // Environment-backed fallback for deployments that have not applied the database migration yet.
-  if (cfg.access_token === "database-managed") return { ok: false };
   const url = `https://graph.facebook.com/v23.0/${cfg.pixel_id}/events?access_token=${encodeURIComponent(cfg.access_token)}`;
   let lastError = "";
   for (let attempt = 1; attempt <= 3; attempt++) {
@@ -208,7 +203,7 @@ export async function sendServerEvent(payload: ServerEventPayload): Promise<{ ok
     }
     if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 250));
   }
-  console.error("[FB CAPI] event failed", { event: payload.event_name, eventId: payload.event_id, error: lastError });
+  console.error("[FB CAPI event failed", { event: payload.event_name, eventId: payload.event_id, error: lastError });
   return { ok: false };
 }
 
@@ -218,8 +213,8 @@ export type PurchaseEventPayload = {
   currency?: string;
   phone?: string | null;
   name?: string | null;
-  city?: string | null;
-  country?: string;
+  city?: string;
+  country: string;
   contents?: Array<{ id: string; quantity: number; price: number }>;
   clientIp?: string | null;
   userAgent?: string | null;
@@ -231,20 +226,9 @@ export type PurchaseEventPayload = {
 /** Purchase uses the order id as the shared browser/CAPI event_id for deduplication. */
 export async function sendPurchaseEvent(payload: PurchaseEventPayload): Promise<void> {
   const userData: Record<string, unknown> = { external_id: [sha256(payload.orderId)], country: [sha256(payload.country ?? "bd")] };
-  if (payload.phone) {
-    const digits = payload.phone.replace(/\D/g, "");
-    if (digits) {
-      // Meta expects E.164 digits without "+": local 01XXXXXXXXX -> 8801XXXXXXXXX
-      const e164 = digits.startsWith("880") ? digits : digits.replace(/^0/, "880");
-      userData.ph = [sha256(e164)];
-    }
-  }
-  if (payload.name) {
-    const parts = payload.name.trim().split(/\s+/);
-    if (parts[0]) userData.fn = [sha256(parts[0])];
-    if (parts.length > 1) userData.ln = [sha256(parts.slice(1).join(" "))];
-  }
-  if (payload.city) userData.ct = [sha256(payload.city.replace(/\s+/g, ""))];
+  if (payload.phone) { const digits = payload.phone.replace(/\\D/g, ""); if (digits) { const e164 = digits.startsWith("880") ? digits : digits.replace(/^0/, "880"); userData.ph = [sha256(e164)]; } }
+  if (payload.name) { const parts = payload.name.trim().split(/\\s+/); if (parts[0]) userData.fn = [sha256(parts[0])]; if (parts.length > 1) userData.ln = [sha256(parts.slice(1).join(" "))]; }
+  if (payload.city) userData.ct = [sha256(payload.city.replace(/\\s+/, ""))];
 
   await sendServerEvent({
     event_name: "Purchase",
