@@ -15,6 +15,7 @@ const EventSchema = z.object({
 });
 
 const BodySchema = z.object({ event: EventSchema });
+const CAPI_REVISION = "2026-08-26-server-pairing-v2";
 
 function readCookie(cookieHeader: string | null | undefined, name: string): string | null {
   if (!cookieHeader) return null;
@@ -25,7 +26,6 @@ function readCookie(cookieHeader: string | null | undefined, name: string): stri
   return null;
 }
 
-/** Rebuild _fbc from an fbclid still present in the page URL when the cookie is missing. */
 function fbcFromUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   try {
@@ -39,8 +39,10 @@ function fbcFromUrl(url: string | null | undefined): string | null {
 export const Route = createFileRoute("/api/public/fb-capi")({
   server: {
     handlers: {
-      // Non-secret readiness probe: confirms the server-side pixel is wired up.
-      GET: async () => Response.json(await getCapiStatus(), { headers: { "Cache-Control": "no-store" } }),
+      GET: async () => Response.json(
+        { ...(await getCapiStatus()), revision: CAPI_REVISION },
+        { headers: { "Cache-Control": "no-store, no-cache, must-revalidate", "CDN-Cache-Control": "no-store" } },
+      ),
       POST: async ({ request }) => {
         try {
           const body = BodySchema.parse(await request.json());
@@ -58,11 +60,11 @@ export const Route = createFileRoute("/api/public/fb-capi")({
             fbp: event.fbp || readCookie(cookieHeader, "_fbp"),
             fbc: event.fbc || readCookie(cookieHeader, "_fbc") || fbcFromUrl(event.event_source_url),
           });
-          return Response.json({ ok: result.ok }, { status: result.ok ? 200 : 202 });
+          return Response.json({ ok: result.ok, revision: CAPI_REVISION }, { status: result.ok ? 200 : 503 });
         } catch (error) {
-          if (error instanceof z.ZodError) return Response.json({ ok: false, error: "Invalid event" }, { status: 400 });
+          if (error instanceof z.ZodError) return Response.json( { ok: false, error: "Invalid event", revision: CAPI_REVISION }, { status: 400 });
           console.error("[FB CAPI mirror] failed:", error);
-          return Response.json({ ok: false }, { status: 202 });
+          return Response.json({ ok: false, error: "Server event delivery failed", revision: CAPI_REVISION }, { status: 503 });
         }
       },
     },
