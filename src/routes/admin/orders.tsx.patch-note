@@ -1,1 +1,0 @@
-Web Order UI contract: show only Processing (backend web_pending), Incomplete, Hold, Cancelled. Remove All section entirely. No backend status changes.

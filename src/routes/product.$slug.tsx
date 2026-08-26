@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { supabase } from "@/lib/personal-supabase/client";
-import { fallbackProducts } from "@/lib/fallback-shop";
 import { taka, bnDigits } from "@/lib/format";
 import { useCart } from "@/lib/cart-store";
 import { Minus, Plus, ShoppingCart, Zap, ShieldCheck, Truck } from "lucide-react";
@@ -27,7 +26,10 @@ function ProductPage() {
     queryKey: ["product", slug],
     queryFn: async () => {
       const { data } = await supabase.from("products").select("*, categories(name,slug)").eq("slug", slug).maybeSingle();
-      return data ?? fallbackProducts.find((item) => item.slug === slug) ?? null;
+      if (data) return data;
+      // Fallback catalog is large; load it only when the database returns nothing.
+      const { fallbackProducts } = await import("@/lib/fallback-shop");
+      return fallbackProducts.find((item) => item.slug === slug) ?? null;
     },
   });
 

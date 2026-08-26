@@ -1,22 +1,0 @@
-﻿name
-presswayy/laravel-sync
-
-description
-Two-way sync of your store's products, inventory, orders and customers with the Presswayy AI dashboard.
-
-
-require
-keywordshomepagelicensetypephpilluminate/supportpresswayyhttps://presswayy.comMITlibrary^7.4|^8.0|^8.1|^8.2|^8.3 ^8.0|^9.0|^10.0|^11.0
-laravel
-ecommerce
-sync
-woocommerce
-ai
-
-
-requireautoloadextrailluminate/httppsr-4
-Presswayy\Sync\laravel providersminimum-stability^8.0|^9.0|^10.0|^11.0src/Presswayy\Sync\PresswayyServiceProviderstable
-
-
-prefer-stable
-TRUE

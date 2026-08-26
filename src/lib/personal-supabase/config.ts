@@ -1,4 +1,0 @@
-export const PERSONAL_SUPABASE_URL = "https://wbhtcrypszbwyypxebto.supabase.co";
-
-export const PERSONAL_SUPABASE_PUBLISHABLE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndiaHRjcnlwc3pid3l5cHhlYnRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2ODk0NzIsImV4cCI6MjA5NDI2NTQ3Mn0.jcrj48LGGDJV9usMvov_wiW9FKOJfmeg8I9FsZ6zlyU";
