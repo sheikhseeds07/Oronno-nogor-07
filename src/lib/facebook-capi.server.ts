@@ -61,7 +61,7 @@ async function loadFbConfig(): Promise<FbConfig | null> {
   const capiSettings = asRecord(settings.capi);
   const envPixelId = pickString(process.env["META_PIXEL_ID"], process.env["FACEBOOK_PIXEL_ID"], process.env["FB_PIXEL_ID"]);
   const envAccessToken = pickString(process.env["META_CAPI_ACCESS_TOKEN"], process.env["FACEBOOK_CAPI_ACCESS_TOKEN"], process.env["FB_CAPI_ACCESS_TOKEN"]);
-  const envTestEventCode = pickString(process.env["META_TEST_EVENT_CODE"], process.env["FACEBOOK_TEST_EVENT_CODE"], process.env["FB_TEST_EVENT_CODE"]);
+  const envTestEventCode = pickString(process.env["META_TEST_EVENT_CODE"], process.env["FACEBOOK_TEST_EVENT_CODE"]);
 
   const value: FbConfig = {
     pixel_id: pickString(
@@ -163,20 +163,18 @@ function buildUserData(payload: ServerEventPayload) {
   const userData = { ...(payload.user_data ?? {}) } as Record<string, unknown>;
   if (payload.clientIp) userData.client_ip_address = payload.clientIp;
   if (payload.userAgent) userData.client_user_agent = payload.userAgent;
-  // fbp / fbc are the strongest match signals for website events and are sent raw (never hashed).
   if (payload.fbp && !userData.fbp) userData.fbp = payload.fbp;
   if (payload.fbc && !userData.fbc) userData.fbc = payload.fbc;
   if (payload.externalId && !userData.external_id) userData.external_id = [sha256(payload.externalId)];
   return userData;
 }
 
-/** Send any supported website event to Meta CAPI. */
+/** Send any supported website event to Meta CAPI with a direct server request and a database fallback. */
 export async function sendServerEvent(payload: ServerEventPayload): Promise<{ ok: boolean }> {
   const cfg = await loadFbConfig();
   if (!cfg?.enabled || !cfg.pixel_id) return { ok: false };
 
   const now = Math.floor(Date.now() / 1000);
-  // Meta rejects events dated in the future or older than 7 days.
   const eventTime = payload.event_time && payload.event_time <= now + 60 && payload.event_time > now - 6 * 24 * 3600 ? payload.event_time : now;
 
   const body = {
@@ -192,20 +190,21 @@ export async function sendServerEvent(payload: ServerEventPayload): Promise<{ ok
     ...(cfg.test_event_code ? { test_event_code: cfg.test_event_code } : {}),
   };
 
-  // Prefer a server secret/direct token. When All API keeps the token only in the
-  // database, use the SECURITY DEFINER dispatcher so the token never reaches the browser.
-  if (!cfg.access_token || cfg.access_token === "database-managed") {
-    const { data, error } = await (supabaseAdmin as any).rpc("dispatch_meta_capi_event", { p_body: body });
-    if (!error && data === true) return { ok: true };
-    console.error("[FB CAPI database dispatch failed]", {
-      event: payload.event_name,
-      eventId: payload.event_id,
-      error: error?.message ?? "dispatcher unavailable",
-    });
-    return { ok: false };
-  }
+  const dispatchFallback = async () => {
+    try {
+      const { data, error } = await (supabaseAdmin as any).rpc("dispatch_meta_capi_event", { p_body: body });
+      if (!error && data === true) return true;
+      console.error("[FB CAPI database fallback failed]", { event: payload.event_name, eventId: payload.event_id, error: error?.message ?? "dispatcher unavailable" });
+    } catch (error) {
+      console.error("[FB CAPI database fallback exception]", { event: payload.event_name, eventId: payload.event_id, error: error instanceof Error ? error.message : String(error) });
+    }
+    return false;
+  };
 
-  const url = `https://graph.facebook.com/v23.0/${cfg.pixel_id}/events?access_token=${encodeURIComponent(cfg.access_token)}`;
+  const accessToken = cfg.access_token;
+  if (!accessToken || accessToken === "database-managed") return (await dispatchFallback()) ? { ok: true } : { ok: false };
+
+  const url = `https://graph.facebook.com/v23.0/${cfg.pixel_id}/events?access_token=${encodeURIComponent(accessToken)}`;
   let lastError = "";
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
@@ -224,8 +223,9 @@ export async function sendServerEvent(payload: ServerEventPayload): Promise<{ ok
     }
     if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 250));
   }
-  console.error("[FB CAPI event failed", { event: payload.event_name, eventId: payload.event_id, error: lastError });
-  return { ok: false };
+
+  console.error("[FB CAPI direct delivery failed]", { event: payload.event_name, eventId: payload.event_id, error: lastError });
+  return (await dispatchFallback()) ? { ok: true } : { ok: false };
 }
 
 export type PurchaseEventPayload = {
@@ -247,9 +247,9 @@ export type PurchaseEventPayload = {
 /** Purchase uses the order id as the shared browser/CAPI event_id for deduplication. */
 export async function sendPurchaseEvent(payload: PurchaseEventPayload): Promise<void> {
   const userData: Record<string, unknown> = { external_id: [sha256(payload.orderId)], country: [sha256(payload.country ?? "bd")] };
-  if (payload.phone) { const digits = payload.phone.replace(/\\D/g, ""); if (digits) { const e164 = digits.startsWith("880") ? digits : digits.replace(/^0/, "880"); userData.ph = [sha256(e164)]; } }
-  if (payload.name) { const parts = payload.name.trim().split(/\\s+/); if (parts[0]) userData.fn = [sha256(parts[0])]; if (parts.length > 1) userData.ln = [sha256(parts.slice(1).join(" "))]; }
-  if (payload.city) userData.ct = [sha256(payload.city.replace(/\\s+/, ""))];
+  if (payload.phone) { const digits = payload.phone.replace(/\D/g, ""); if (digits) { const e164 = digits.startsWith("880") ? digits : digits.replace(/^0/, "880"); userData.ph = [sha256(e164)]; } }
+  if (payload.name) { const parts = payload.name.trim().split(/\s+/); if (parts[0]) userData.fn = [sha256(parts[0])]; if (parts.length > 1) userData.ln = [sha256(parts.slice(1).join(" "))]; }
+  if (payload.city) userData.ct = [sha256(payload.city.replace(/\s+/, ""))];
 
   await sendServerEvent({
     event_name: "Purchase",
