@@ -31,6 +31,7 @@ function Checkout() {
   const [form, setForm] = useState({ name: "", phone: "", address: "", note: "", zone: "all" });
   const [phoneErr, setPhoneErr] = useState("");
   const placedSuccessfully = useRef(false);
+  const submitLockRef = useRef(false);
 
   const delivery = ZONES.find((z) => z.id === form.zone)?.fee ?? 50;
   const total = subtotal + delivery;
@@ -95,7 +96,9 @@ function Checkout() {
       return toast.error("ফোন নাম্বার সঠিক নয়");
     }
     if (!form.address.trim()) return toast.error("ঠিকানা দিন");
+    if (submitLockRef.current) return;
 
+    submitLockRef.current = true;
     setSubmitting(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -128,6 +131,7 @@ function Checkout() {
       toast.success("অর্ডার সফল হয়েছে!");
       navigate({ to: "/order/$id", params: { id: result.id } });
     } catch (err) {
+      submitLockRef.current = false;
       setSubmitting(false);
       toast.error("অর্ডার করতে সমস্যা: " + (err instanceof Error ? err.message : "অজানা"));
     }
