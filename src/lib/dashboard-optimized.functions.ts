@@ -81,6 +81,26 @@ async function getMetaProfitData(from: string, to: string) {
   }
 }
 
+export const getWebProcessingOrderCount = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const role = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .in("role", ["admin", "super_admin", "employee"])
+      .limit(1);
+    if (role.error) throw new Error(role.error.message);
+    if (!role.data?.length) throw new Error("Unauthorized");
+
+    const { count, error } = await supabaseAdmin
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "web_pending");
+    if (error) throw new Error(error.message);
+    return Number(count ?? 0);
+  });
+
 export const getOptimizedDashboardReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => RangeSchema.parse(input))
