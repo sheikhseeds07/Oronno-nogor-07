@@ -61,9 +61,7 @@ export function ProductStyleLandingPage({ slug }: Props) {
   if (isLoading) return <div className="min-h-screen bg-[#f7f9f6]" aria-hidden="true" />;
   if (!page) return <div className="min-h-screen grid place-items-center">পেজ পাওয়া যায়নি</div>;
   const goOrder = () => {
-    const form = document.getElementById("product-order-form");
-    const firstField = form?.querySelector<HTMLElement>("input, textarea, select");
-    const target = firstField ?? form;
+    const target = document.getElementById("product-order") ?? document.getElementById("product-order-form");
     if (!target) return;
 
     const stickyHeader = document.querySelector<HTMLElement>(".sticky.top-0");
