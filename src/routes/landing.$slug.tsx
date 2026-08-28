@@ -52,7 +52,23 @@ main > div:first-child { margin-top:0 !important;padding-top:0 !important; }
 .lp-root { padding-top:0 !important;margin-top:0 !important; }
 `;
 
-function LandingPopupBehavior({ enabled, hideReviews, hideHeader }: { enabled: boolean; hideReviews?: boolean; hideHeader?: boolean }) {
+const productCompactCss = `
+.sticky.top-0 { display:none !important; }
+header { display:none !important; }
+main { padding-top:6px !important; padding-bottom:10px !important; }
+main > section:first-of-type { padding:10px !important; border-radius:22px !important; }
+main > * + * { margin-top:8px !important; }
+main .hng-product-head { padding:12px 10px 10px !important; border-radius:18px !important; }
+main .hng-price { margin-top:7px !important; }
+main .hng-gift { margin-top:6px !important; }
+main .hng-trust { margin-top:6px !important; padding-top:6px !important; }
+main .hng-image-compact-cta { margin:6px 0 0 !important; }
+main .hng-section-cta { margin:0 0 2px !important; }
+#product-order { scroll-margin-top:6px !important; }
+@media (max-width:640px) { main { padding-left:10px !important; padding-right:10px !important; } main > * + * { margin-top:7px !important; } }
+`;
+
+function LandingPopupBehavior({ enabled, hideReviews, hideHeader, compact }: { enabled: boolean; hideReviews?: boolean; hideHeader?: boolean; compact?: boolean }) {
   useEffect(() => {
     if ((!enabled && !hideReviews && !hideHeader) || typeof document === "undefined") return;
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -66,24 +82,27 @@ function LandingPopupBehavior({ enabled, hideReviews, hideHeader }: { enabled: b
     const attach=()=>{if(enabled){const popup=document.querySelector('.fixed.inset-0.z-\\[60\\]');if(popup&&popup!==activePopup){activePopup=popup;if(timer)clearTimeout(timer);timer=setTimeout(closePopup,10000);}}removeReviews();hideOrderTexts();hideLandingHeader();moveCountdownToHeader();};
     attach();const observer=new MutationObserver(attach);observer.observe(document.body,{childList:true,subtree:true});const handlePopupCta=(event:MouseEvent)=>{if(!activePopup||!document.body.contains(activePopup))return;const target=event.target instanceof Element?event.target:null;if(!target||!activePopup.contains(target))return;const control=target.closest("button,a") as HTMLElement|null;if(!control)return;const label=(control.textContent||"").trim();const isClose=control.matches('button[aria-label="বন্ধ করুন"],button[aria-label="close"]');if(isClose)return;if(/এখনই অর্ডার করুন|অর্ডার করুন/.test(label)){event.preventDefault();event.stopPropagation();closePopup();}};document.addEventListener("click",handlePopupCta,true);return()=>{observer.disconnect();document.removeEventListener("click",handlePopupCta,true);if(timer)clearTimeout(timer);if(countdownTimer)clearInterval(countdownTimer);activePopup=null;};
   }, [enabled,hideReviews,hideHeader]);
-  return <>{enabled && <style dangerouslySetInnerHTML={{__html:seedComboCheckoutCss}} />}{hideHeader && <style dangerouslySetInnerHTML={{__html:karalaCompactCss}} />}</>;
+  return <>{enabled && <style dangerouslySetInnerHTML={{__html:seedComboCheckoutCss}} />}{hideHeader && <style dangerouslySetInnerHTML={{__html:karalaCompactCss}} />}{compact && <style dangerouslySetInnerHTML={{__html:productCompactCss}} />}</>;
 }
 
 function LandingPage() {
   const { slug } = useParams({ from: "/landing/$slug" });
   const isLegacySlug = LEGACY_SLUGS.has(slug);
   const isSeedCombo = slug === "seedcombo";
-  const hideHeader = slug === "karala";
+  const COMPACT_SLUGS = new Set(["odc", "bagun"]);
+  const compact = COMPACT_SLUGS.has(slug);
+  const hideHeader = slug === "karala" || compact;
   const { data, isLoading } = useQuery({ enabled: !isLegacySlug && !isSeedCombo, staleTime:5*60_000, gcTime:30*60_000, queryKey:["landing-template",slug], queryFn:async() => (await supabase.from("landing_pages").select("planting_steps").eq("slug",slug).maybeSingle()).data ?? null });
   const popupBehaviorEnabled = isSeedCombo || slug === "seeds-combo-24";
-  const hideReviews = isSeedCombo || slug === "karala";
-  if (isLegacySlug) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} /><LegacyLandingPage slug={slug} /></>;
-  if (isSeedCombo) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader /><CleanLandingPage slug={slug} /></>;
+  const hideReviews = isSeedCombo || slug === "karala" || compact;
+  if (isLegacySlug) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} compact={compact} /><LegacyLandingPage slug={slug} /></>;
+  if (isSeedCombo) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader compact={compact} /><CleanLandingPage slug={slug} /></>;
   const template = mergeContent(data?.planting_steps).template as string;
-  if (template === "product") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} /><ProductStyleLandingPage slug={slug} /></>;
-  if (template === "premium") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} /><ProfessionalLandingPage slug={slug} variant="premium" /></>;
-  if (template === "modern") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} /><ProfessionalLandingPage slug={slug} variant="modern" /></>;
-  if (isLoading && !data) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} /><ProductStyleLandingPage slug={slug} /></>;
-  if (template === "all") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} /><LegacyLandingPage slug={slug} /></>;
-  return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} /><CleanLandingPage slug={slug} /></>;
+  if (template === "product") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><ProductStyleLandingPage slug={slug} /></>;
+  if (template === "premium") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><ProfessionalLandingPage slug={slug} variant="premium" /></>;
+  if (template === "modern") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><ProfessionalLandingPage slug={slug} variant="modern" /></>;
+  if (isLoading && !data) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><ProductStyleLandingPage slug={slug} /></>;
+  if (template === "all") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><LegacyLandingPage slug={slug} /></>;
+  return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><CleanLandingPage slug={slug} /></>;
 }
+
