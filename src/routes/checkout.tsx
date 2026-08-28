@@ -16,6 +16,7 @@ export const Route = createFileRoute("/checkout")({ component: Checkout });
 
 const PHONE_RE = /^01[3-9][0-9]{8}$/;
 const PHONE_ERROR = "সঠিক ১১ ডিজিটের বাংলাদেশি মোবাইল নাম্বার দিন (01XXXXXXXXX)";
+const PHONE_MAX_ERROR = "সর্বোচ্চ ১১ ডিজিটের নাম্বার দেওয়া যাবে";
 const ZONES = [
   { id: "all", label: "সারাদেশে হোম ডেলিভারি", fee: 50 },
 ];
@@ -171,15 +172,25 @@ function Checkout() {
                 type="tel"
                 inputMode="numeric"
                 value={form.phone}
+                maxLength={11}
+                onKeyDown={(e) => {
+                  if (!/^[0-9]$/.test(e.key) || e.ctrlKey || e.metaKey) return;
+                  const el = e.currentTarget;
+                  const selected = (el.selectionEnd ?? 0) - (el.selectionStart ?? 0);
+                  const digits = el.value.replace(/[^\d]/g, "").length;
+                  if (digits - selected >= 11) { e.preventDefault(); setPhoneErr(PHONE_MAX_ERROR); }
+                }}
                 onChange={(e) => {
-                  const v = e.target.value;
+                  const raw = e.target.value.replace(/[^\d]/g, "");
+                  const v = raw.slice(0, 11);
                   setForm({ ...form, phone: v });
-                  setPhoneErr(v && !PHONE_RE.test(v) ? PHONE_ERROR : "");
+                  if (raw.length > 11) setPhoneErr(PHONE_MAX_ERROR);
+                  else setPhoneErr(v && !PHONE_RE.test(v) ? PHONE_ERROR : "");
                 }}
                 onBlur={() => setPhoneErr(form.phone && !phoneValid ? PHONE_ERROR : "")}
                 placeholder="01XXXXXXXXX"
-                aria-invalid={Boolean(form.phone && !phoneValid)}
-                className={`w-full border rounded-lg px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand/40 ${phoneErr ? "border-destructive" : ""}`}
+                aria-invalid={Boolean(phoneErr)}
+                className={`w-full border rounded-lg px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand/40 ${phoneErr ? "border-destructive bg-destructive/5 focus:ring-destructive/40" : ""}`}
               />
               {phoneErr && <p className="text-xs text-destructive mt-1">{phoneErr}</p>}
             </div>
