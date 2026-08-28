@@ -1,0 +1,26 @@
+name: fix-product-scroll
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch scroll target
+        run: |
+          python3 - <<'EOF'
+          p="src/components/landing/ProductStyleLandingPage.tsx"
+          s=open(p).read()
+          old='const goOrder = () => document.getElementById("product-order")?.scrollIntoView({ behavior: "smooth" });'
+          new='const goOrder = () => { const section = document.getElementById("product-order"); if (!section) return; const target = (section.querySelector("#product-order-form input, #product-order-form textarea") as HTMLElement | null) ?? section; const header = document.querySelector("header") as HTMLElement | null; const headerOffset = header && header.offsetHeight > 0 && getComputedStyle(header).display !== "none" ? header.offsetHeight : 0; const top = target.getBoundingClientRect().top + window.scrollY - headerOffset - 10; window.scrollTo({ top: Math.max(top, 0), behavior: "smooth" }); };'
+          assert old in s
+          s=s.replace(old,new).replace('<section id="product-order" className="scroll-mt-24 space-y-3">','<section id="product-order" className="scroll-mt-4 space-y-3">')
+          open(p,"w").write(s)
+          EOF
+      - name: Commit
+        run: |
+          git config user.name "lovable-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git commit -am "fix: CTA scrolls straight to order form fields on product landing pages"
+          git push
