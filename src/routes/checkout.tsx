@@ -93,8 +93,9 @@ function Checkout() {
     if (items.length === 0) return toast.error("কার্ট খালি");
     if (!form.name.trim()) return toast.error("নাম দিন");
     if (!phoneValid) {
-      setPhoneErr(PHONE_ERROR);
-      return toast.error("ফোন নাম্বার সঠিক নয়");
+      const msg = form.phone.replace(/[^\d]/g, "").length > 11 ? PHONE_MAX_ERROR : PHONE_ERROR;
+      setPhoneErr(msg);
+      return toast.error(msg);
     }
     if (!form.address.trim()) return toast.error("ঠিকানা দিন");
     if (submitLockRef.current) return;
@@ -172,22 +173,12 @@ function Checkout() {
                 type="tel"
                 inputMode="numeric"
                 value={form.phone}
-                maxLength={11}
-                onKeyDown={(e) => {
-                  if (!/^[0-9]$/.test(e.key) || e.ctrlKey || e.metaKey) return;
-                  const el = e.currentTarget;
-                  const selected = (el.selectionEnd ?? 0) - (el.selectionStart ?? 0);
-                  const digits = el.value.replace(/[^\d]/g, "").length;
-                  if (digits - selected >= 11) { e.preventDefault(); setPhoneErr(PHONE_MAX_ERROR); }
-                }}
+                maxLength={16}
                 onChange={(e) => {
-                  const raw = e.target.value.replace(/[^\d]/g, "");
-                  const v = raw.slice(0, 11);
+                  const v = e.target.value.replace(/[^\d]/g, "").slice(0, 16);
                   setForm({ ...form, phone: v });
-                  if (raw.length > 11) setPhoneErr(PHONE_MAX_ERROR);
-                  else setPhoneErr(v && !PHONE_RE.test(v) ? PHONE_ERROR : "");
+                  setPhoneErr((prev) => (prev && PHONE_RE.test(v) ? "" : prev));
                 }}
-                onBlur={() => setPhoneErr(form.phone && !phoneValid ? PHONE_ERROR : "")}
                 placeholder="01XXXXXXXXX"
                 aria-invalid={Boolean(phoneErr)}
                 className={`w-full border rounded-lg px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand/40 ${phoneErr ? "border-destructive bg-destructive/5 focus:ring-destructive/40" : ""}`}
@@ -241,7 +232,7 @@ function Checkout() {
               <div className="flex justify-between font-bold text-xl pt-2 border-t mt-1.5"><span>মোট</span><span className="text-brand-dark">{taka(total)}</span></div>
             </div>
             <div className="mt-3 bg-brand-light rounded-lg p-2.5 text-xs text-center"><strong>ক্যাশ অন ডেলিভারি</strong> — পণ্য পেয়ে টাকা পরিশোধ করুন</div>
-            <button type="submit" disabled={submitting || !phoneValid} className="mt-3 w-full bg-brand text-white py-3.5 rounded-lg font-bold text-base hover:bg-brand-dark disabled:opacity-50 transition">
+            <button type="submit" disabled={submitting} className="mt-3 w-full bg-brand text-white py-3.5 rounded-lg font-bold text-base hover:bg-brand-dark disabled:opacity-50 transition">
               {submitting ? "অর্ডার হচ্ছে..." : `অর্ডার কনফার্ম করুন (${taka(total)})`}
             </button>
             <p className="text-xs text-center text-muted-foreground mt-2">অর্ডার করে আপনি আমাদের <Link to="/" className="underline">শর্তাবলী</Link> মেনে নিচ্ছেন</p>
