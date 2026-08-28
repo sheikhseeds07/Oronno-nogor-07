@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/personal-supabase/client";
 import { placeOrder } from "@/lib/place-order.functions";
 import { useCheckoutAutofill } from "@/lib/useCheckoutAutofill";
@@ -161,8 +161,26 @@ function Countdown({themeColor,hours=3,title,compact}:{themeColor:string;hours?:
 function LandingVisitTracker({slug}:{slug:string}){useEffect(()=>{trackVisit(`/landing/${slug}`)},[slug]);return null}
 function WelcomePopup({themeColor,logo,brand,title,text,cta,mode,image,delay,onCta}:{themeColor:string;logo:string;brand:string;title:string;text:string;cta:string;mode:"text"|"image";image:string;delay:number;onCta?:()=>void}){
  const[open,setOpen]=useState(false);
- useEffect(()=>{const t=setTimeout(()=>setOpen(true),delay);return()=>clearTimeout(t)},[delay]);
+ const close=useCallback(()=>{setOpen(false);try{sessionStorage.setItem("lp_welcome_seen","1")}catch{}},[]);
+ useEffect(()=>{
+  try{if(sessionStorage.getItem("lp_welcome_seen")==="1")return}catch{}
+  const wait=Math.max(Number(delay)||0,1800);
+  const t=setTimeout(()=>setOpen(true),wait);
+  return()=>clearTimeout(t);
+ },[delay]);
+ useEffect(()=>{
+  if(!open)return;
+  const onKey=(e:KeyboardEvent)=>{if(e.key==="Escape")close()};
+  window.addEventListener("keydown",onKey);
+  return()=>window.removeEventListener("keydown",onKey);
+ },[open,close]);
  if(!open)return null;
  const imageMode=mode==="image"&&!!image;
- return <div className="fixed inset-0 z-[60] flex items-center justify-center p-4"><button aria-label="close" onClick={()=>setOpen(false)} className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm animate-fade-in"/>{imageMode?<div className="relative w-full max-w-sm animate-scale-in"><button onClick={()=>setOpen(false)} aria-label="বন্ধ করুন" className="absolute right-2 top-2 z-10 grid h-9 w-9 place-items-center rounded-full bg-black/60 text-white shadow-lg hover:bg-black/75"><X className="w-5 h-5" strokeWidth={3}/></button><img src={toImg(image)} alt={title||brand} className="block max-h-[78vh] w-full rounded-2xl bg-white object-contain shadow-2xl"/></div>:<div className="relative w-full max-w-sm rounded-3xl border-2 p-6 text-center shadow-2xl animate-scale-in overflow-hidden" style={{borderColor:"#facc15",background:`linear-gradient(160deg, ${themeColor}, color-mix(in oklab, ${themeColor} 55%, #052e16))`}}><Leaf className="absolute -left-4 -top-4 w-24 h-24 text-white/10"/><Sprout className="absolute -right-5 -bottom-6 w-28 h-28 text-white/10"/><button onClick={()=>setOpen(false)} aria-label="বন্ধ করুন" className="absolute right-3 top-3 text-yellow-300 hover:text-yellow-200"><X className="w-5 h-5" strokeWidth={3}/></button><div className="relative flex flex-col items-center gap-3"><span className="grid place-items-center w-16 h-16 rounded-full bg-white/15 ring-2 ring-white/30"><img src={toImg(logo)} alt={brand} className="w-12 h-12 rounded-full object-cover"/></span><h3 className="text-[22px] font-extrabold text-white tracking-tight">{title}</h3><p className="text-[14px] leading-relaxed text-white/85">{text}</p><button onClick={()=>{onCta?.();setOpen(false)}} className="mt-1 w-full rounded-full bg-white/15 ring-1 ring-white/30 px-6 py-3 font-extrabold text-white text-[16px] transition hover:bg-white/25">{cta}</button><div className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-yellow-300"><ShieldCheck className="w-3.5 h-3.5"/> ১০০% অরিজিনাল বীজের নিশ্চয়তা</div></div></div>}</div>
+ const CloseBtn=({dark}:{dark?:boolean})=><button onClick={close} aria-label="বন্ধ করুন" className={`absolute right-2.5 top-2.5 z-20 grid h-11 w-11 place-items-center rounded-full shadow-lg ring-2 transition active:scale-95 ${dark?"bg-white/95 text-slate-900 ring-white/70 hover:bg-white":"bg-white/95 text-slate-900 ring-yellow-300/80 hover:bg-white"}`}><X className="w-6 h-6" strokeWidth={3}/></button>;
+ return <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+  <button aria-label="বন্ধ করুন" onClick={close} className="absolute inset-0 bg-slate-950/40 animate-fade-in"/>
+  {imageMode
+   ?<div className="relative w-full max-w-sm animate-scale-in"><CloseBtn dark/><img src={toImg(image)} alt={title||brand} className="block max-h-[72vh] w-full rounded-2xl bg-white object-contain shadow-2xl"/><button onClick={close} className="mx-auto mt-3 block rounded-full bg-white/90 px-4 py-2 text-[13px] font-bold text-slate-700 shadow">না, ধন্যবাদ</button></div>
+   :<div className="relative w-full max-w-sm rounded-3xl border-2 p-6 pt-8 text-center shadow-2xl animate-scale-in overflow-hidden" style={{borderColor:"#facc15",background:`linear-gradient(160deg, ${themeColor}, color-mix(in oklab, ${themeColor} 55%, #052e16))`}}><Leaf className="absolute -left-4 -top-4 w-24 h-24 text-white/10"/><Sprout className="absolute -right-5 -bottom-6 w-28 h-28 text-white/10"/><CloseBtn/><div className="relative flex flex-col items-center gap-3"><span className="grid place-items-center w-16 h-16 rounded-full bg-white/15 ring-2 ring-white/30"><img src={toImg(logo)} alt={brand} className="w-12 h-12 rounded-full object-cover"/></span><h3 className="text-[22px] font-extrabold text-white tracking-tight">{title}</h3><p className="text-[14px] leading-relaxed text-white/85">{text}</p><button onClick={()=>{onCta?.();close()}} className="mt-1 w-full rounded-full bg-white/15 ring-1 ring-white/30 px-6 py-3 font-extrabold text-white text-[16px] transition hover:bg-white/25">{cta}</button><button onClick={close} className="text-[13px] font-semibold text-white/70 underline underline-offset-2">না, ধন্যবাদ</button><div className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-yellow-300"><ShieldCheck className="w-3.5 h-3.5"/> ১০০% অরিজিনাল বীজের নিশ্চয়তা</div></div></div>}
+ </div>
 }
