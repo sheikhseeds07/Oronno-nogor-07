@@ -14,5 +14,12 @@ export function normalizeBdPhone(v: string): string {
   const d = (v || "").replace(/[^\d]/g, "");
   return d.startsWith("8801") ? d.slice(2, 13) : d.slice(0, 11);
 }
-export function isValidBdPhone(v: string): boolean { return PHONE_RE.test(normalizeBdPhone(v)); }
+export function digitsOf(v: string): string { const d = (v || "").replace(/[^\d]/g, ""); return d.startsWith("8801") ? d.slice(2) : d; }
+export function isValidBdPhone(v: string): boolean { return PHONE_RE.test(digitsOf(v)); }
+// Error shown only when the user tries to submit.
+export function phoneSubmitError(v: string): string {
+  const d = digitsOf(v);
+  if (PHONE_RE.test(d)) return "";
+  return d.length > 11 ? PHONE_MAX_ERROR : PHONE_ERROR;
+}
 export function phoneErrorFor(v: string): string { return !v || isValidBdPhone(v) ? "" : PHONE_ERROR; }
