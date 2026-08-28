@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Check, ShieldCheck, ShoppingCart, User, Phone, MapPin, Wallet } from "lucide-react";
 import { toImg } from "@/lib/img";
 import { taka } from "@/lib/format";
+import { isValidBdPhone, phoneErrorFor, PHONE_ERROR } from "@/lib/bd-phone";
 
 export const bnNum = (n: number | string) => String(n).replace(/[0-9]/g, d => "০১২৩৪৫৬৭৮৯"[Number(d)]);
 export const bnTaka = (n: number) => "৳" + bnNum(Math.round(Number(n) || 0).toLocaleString("en-US"));
@@ -103,10 +104,11 @@ export function LpCheckoutCard({ formId, onSubmit, values, onChange, packages, s
 }) {
   const themeBg10 = themeColor + "1A";
   const inputCls = "w-full border border-slate-200 rounded-lg pl-10 pr-3 py-2.5 text-sm bg-slate-50/60 outline-none focus:bg-white focus:border-emerald-500 transition";
+  const [phoneErr, setPhoneErr] = useState(""); const phoneRef = useRef<HTMLInputElement | null>(null); const phoneValid = isValidBdPhone(values.phone); const guardedSubmit = (e: React.FormEvent) => { if (!phoneValid) { e.preventDefault(); setPhoneErr(PHONE_ERROR); phoneRef.current?.focus(); phoneRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); return; } setPhoneErr(""); onSubmit(e); };
   return <div className="lp-product-checkout-group"><div className="lp-checkout-shell rounded-2xl bg-white overflow-hidden">
-    <form id={formId} onSubmit={onSubmit} className="p-3 sm:p-4 space-y-3">
+    <form id={formId} onSubmit={guardedSubmit} className="p-3 sm:p-4 space-y-3">
       <div><label className="text-[13px] font-semibold text-slate-900 block mb-1.5">আপনার নাম</label><div className="relative"><User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input required value={values.name} onChange={e => onChange("name", e.target.value)} placeholder="আপনার নাম" className={inputCls} /></div></div>
-      <div><label className="text-[13px] font-semibold text-slate-900 block mb-1.5">ফোন নম্বর</label><div className="relative"><Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input required type="tel" value={values.phone} onChange={e => onChange("phone", e.target.value)} placeholder="01XXXXXXXXX" className={inputCls} /></div></div>
+      <div><label className="text-[13px] font-semibold text-slate-900 block mb-1.5">ফোন নম্বর</label><div className="relative"><Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input ref={phoneRef} required type="tel" inputMode="numeric" maxLength={11} value={values.phone} onChange={e => { const v = e.target.value.replace(/[^\d]/g, "").slice(0, 11); onChange("phone", v); setPhoneErr(phoneErrorFor(v)); }} onBlur={() => setPhoneErr(phoneErrorFor(values.phone))} aria-invalid={Boolean(values.phone) && !phoneValid} placeholder="01XXXXXXXXX" className={`w-full border rounded-lg pl-10 pr-3 py-2.5 text-sm outline-none transition ${phoneErr ? "border-red-500 bg-red-50/60 focus:border-red-500" : "border-slate-200 bg-slate-50/60 focus:bg-white focus:border-emerald-500"}`} />{phoneErr && <p className="mt-1 text-[12px] font-medium text-red-600">{phoneErr}</p>}</div></div>
       <div><label className="text-[13px] font-semibold text-slate-900 block mb-1.5">ডেলিভারি ঠিকানা</label><div className="relative"><MapPin className="w-4 h-4 absolute left-3 top-3 text-slate-400" /><textarea required rows={3} value={values.address} onChange={e => onChange("address", e.target.value)} placeholder="গ্রাম/এলাকা, থানা, জেলা" className={inputCls + " resize-none"} /></div></div>
       <LpPackageSelector packages={packages} selected={selectedPkg} onSelect={onSelectPkg} themeColor={themeColor} title={packageTitle} />
       <div className="lp-inline-selector"><div className="lp-inline-title">পেমেন্ট মাধ্যম</div><div className="lp-inline-options">
