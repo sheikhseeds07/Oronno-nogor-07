@@ -85,16 +85,20 @@ function LandingPopupBehavior({ enabled, hideReviews, hideHeader, compact }: { e
   return <>{enabled && <style dangerouslySetInnerHTML={{__html:seedComboCheckoutCss}} />}{hideHeader && <style dangerouslySetInnerHTML={{__html:karalaCompactCss}} />}{compact && <style dangerouslySetInnerHTML={{__html:productCompactCss}} />}</>;
 }
 
+const baseSlug = (slug: string) => { let out = slug.toLowerCase(); let prev = ""; while (out !== prev) { prev = out; out = out.replace(/-copy(?:-[a-z0-9]+)?$/i, ""); } return out; };
+const isKaralaStyle = (slug: string) => baseSlug(slug) === "karala";
+
 function LandingPage() {
   const { slug } = useParams({ from: "/landing/$slug" });
   const isLegacySlug = LEGACY_SLUGS.has(slug);
   const isSeedCombo = slug === "seedcombo";
   const COMPACT_SLUGS = new Set(["odc", "bagun"]);
   const compact = COMPACT_SLUGS.has(slug);
-  const hideHeader = slug === "karala" || compact;
+  const karalaStyle = isKaralaStyle(slug);
+  const hideHeader = karalaStyle || compact;
   const { data, isLoading } = useQuery({ enabled: !isLegacySlug && !isSeedCombo, staleTime:5*60_000, gcTime:30*60_000, queryKey:["landing-template",slug], queryFn:async() => (await supabase.from("landing_pages").select("planting_steps").eq("slug",slug).maybeSingle()).data ?? null });
   const popupBehaviorEnabled = isSeedCombo || slug === "seeds-combo-24";
-  const hideReviews = isSeedCombo || slug === "karala" || compact;
+  const hideReviews = isSeedCombo || karalaStyle || compact;
   if (isLegacySlug) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} compact={compact} /><LegacyLandingPage slug={slug} /></>;
   if (isSeedCombo) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader compact={compact} /><CleanLandingPage slug={slug} /></>;
   const template = mergeContent(data?.planting_steps).template as string;
