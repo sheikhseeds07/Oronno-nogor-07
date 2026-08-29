@@ -5,11 +5,20 @@ type Props = { eager?: boolean };
 
 function loadScript() {
   if (typeof window === "undefined" || document.querySelector('script[data-oronno-fb-pixel="1"]')) return;
-  const script = document.createElement("script");
-  script.async = true;
-  script.dataset.oronnoFbPixel = "1";
-  script.src = "https://connect.facebook.net/en_US/fbevents.js";
-  document.head.appendChild(script);
+  const inject = () => {
+    if (document.querySelector('script[data-oronno-fb-pixel="1"]')) return;
+    const script = document.createElement("script");
+    script.async = true;
+    script.dataset.oronnoFbPixel = "1";
+    script.src = "https://connect.facebook.net/en_US/fbevents.js";
+    document.head.appendChild(script);
+  };
+  // Speed: fbevents.js is ~110KB and must never compete with first paint.
+  // Events fired before it loads stay in the fbq queue and flush on load,
+  // so tracking accuracy is unchanged.
+  const idle = (window as unknown as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+  if (typeof idle === "function") idle(inject, { timeout: 2500 });
+  else window.setTimeout(inject, 1200);
 }
 
 function initPixel(pixelId: string) {
