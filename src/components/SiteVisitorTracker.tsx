@@ -83,8 +83,14 @@ export function SiteVisitorTracker() {
       });
     };
 
-    void recordVisit().catch(() => {});
-    return () => { active = false; };
+    // Speed: presence tracking is analytics-only, so it must never share
+    // bandwidth with the content queries that paint the page.
+    let idleTimer = 0;
+    const startTracking = () => { void recordVisit().catch(() => {}); };
+    const idle = (window as unknown as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+    if (typeof idle === "function") idle(startTracking, { timeout: 4000 });
+    else idleTimer = window.setTimeout(startTracking, 2000);
+    return () => { active = false; if (idleTimer) window.clearTimeout(idleTimer); };
   }, [location.pathname]);
 
   return null;
