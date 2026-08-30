@@ -1,3 +1,4 @@
+# Triggered after initial workflow registration.
 name: One-time Karala CTA finalizer
 
 on:
