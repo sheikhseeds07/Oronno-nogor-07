@@ -7,6 +7,7 @@ import { CleanLandingPage } from "@/components/landing/CleanLandingPage";
 import { ProfessionalLandingPage } from "@/components/landing/ProfessionalLandingPage";
 import { ProductStyleLandingPage } from "@/components/landing/ProductStyleLandingPage";
 import { mergeContent } from "@/lib/landing-content";
+import { landingBaseSlug } from "@/lib/landing-slug";
 
 const LEGACY_SLUGS = new Set(["seeds-combo-24"]);
 export const Route = createFileRoute("/landing/$slug")({ component: LandingPage });
@@ -85,19 +86,21 @@ function LandingPopupBehavior({ enabled, hideReviews, hideHeader, compact }: { e
   return <>{enabled && <style dangerouslySetInnerHTML={{__html:seedComboCheckoutCss}} />}{hideHeader && <style dangerouslySetInnerHTML={{__html:karalaCompactCss}} />}{compact && <style dangerouslySetInnerHTML={{__html:productCompactCss}} />}</>;
 }
 
-const baseSlug = (slug: string) => { let out = slug.toLowerCase(); let prev = ""; while (out !== prev) { prev = out; out = out.replace(/-copy(?:-[a-z0-9]+)?$/i, ""); } return out; };
-const isKaralaStyle = (slug: string) => baseSlug(slug) === "karala";
+const isKaralaStyle = (slug: string) => landingBaseSlug(slug) === "karala";
 
 function LandingPage() {
   const { slug } = useParams({ from: "/landing/$slug" });
-  const isLegacySlug = LEGACY_SLUGS.has(slug);
-  const isSeedCombo = slug === "seedcombo";
+  // Copies inherit 100% of the original page behaviour: resolve every
+  // slug-specific flag from the base slug, not the suffixed copy slug.
+  const behaviorSlug = landingBaseSlug(slug);
+  const isLegacySlug = LEGACY_SLUGS.has(behaviorSlug);
+  const isSeedCombo = behaviorSlug === "seedcombo";
   const COMPACT_SLUGS = new Set(["odc", "bagun"]);
-  const compact = COMPACT_SLUGS.has(slug);
+  const compact = COMPACT_SLUGS.has(behaviorSlug);
   const karalaStyle = isKaralaStyle(slug);
   const hideHeader = karalaStyle || compact;
   const { data, isLoading } = useQuery({ enabled: !isLegacySlug && !isSeedCombo, staleTime:5*60_000, gcTime:30*60_000, queryKey:["landing-template",slug], queryFn:async() => (await supabase.from("landing_pages").select("planting_steps").eq("slug",slug).maybeSingle()).data ?? null });
-  const popupBehaviorEnabled = isSeedCombo || slug === "seeds-combo-24";
+  const popupBehaviorEnabled = isSeedCombo || behaviorSlug === "seeds-combo-24";
   const hideReviews = isSeedCombo || karalaStyle || compact;
   if (isLegacySlug) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} compact={compact} /><LegacyLandingPage slug={slug} /></>;
   if (isSeedCombo) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader compact={compact} /><CleanLandingPage slug={slug} /></>;
