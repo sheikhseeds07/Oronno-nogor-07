@@ -124,7 +124,6 @@ export function LpCheckoutCard({ formId, onSubmit, values, onChange, packages, s
         <div className="flex justify-between px-3.5"><span className="text-slate-500">ডেলিভারি ফি</span><span className="font-semibold text-slate-900">{deliveryFee === 0 ? "ফ্রি" : taka(deliveryFee)}</span></div>
         <div className="flex justify-between px-3.5 bg-emerald-50/60"><span className="font-bold text-slate-900">সর্বমোট</span><span className="font-bold text-[16px]" style={{ color: themeColor }}>{taka(total)}</span></div>
       </div>
-      <button type="submit" disabled={submitting} style={{ background: themeColor }} className="w-full text-white py-4 rounded-xl font-extrabold text-[17px] disabled:opacity-60 transition hover:brightness-95 inline-flex items-center justify-center gap-2 shadow-lg"><ShieldCheck className="w-[18px] h-[18px]" />{submitting ? "অর্ডার হচ্ছে..." : `${submitText} — ${taka(total)}`}</button>
     </form>
   </div></div>;
 }
