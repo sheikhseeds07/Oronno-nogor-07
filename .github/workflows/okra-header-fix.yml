@@ -1,0 +1,47 @@
+name: Apply Okra landing page fix
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Update Okra landing behavior
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/routes/landing.$slug.tsx')
+          s = p.read_text()
+          old1 = 'const COMPACT_SLUGS = new Set(["odc", "bagun"]);'
+          new1 = 'const COMPACT_SLUGS = new Set(["odc", "bagun", "okra"]);'
+          old2 = 'const hideReviews = isSeedCombo || karalaStyle || compact;'
+          new2 = 'const hideReviews = isSeedCombo || karalaStyle || (compact && behaviorSlug !== "okra");'
+          if old1 not in s or old2 not in s:
+              raise SystemExit('Expected source lines not found; refusing to modify anything.')
+          s = s.replace(old1, new1, 1).replace(old2, new2, 1)
+          p.write_text(s)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/routes/landing.$slug.tsx
+          git commit -m 'fix: remove header and compact okra landing page'
+          git push
+      - name: Remove temporary workflow
+        if: success()
+        shell: bash
+        run: |
+          rm -f .github/workflows/okra-header-fix.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'chore: remove temporary okra fix workflow'
+          git push
