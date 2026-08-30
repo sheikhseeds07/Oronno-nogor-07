@@ -6,12 +6,14 @@ import { VisitTracker } from "./VisitTracker";
 import { SeoFromSettings } from "./SeoFromSettings";
 
 export function SiteLayout({ children }: { children: React.ReactNode }) {
-  const isOdcLanding = typeof window !== "undefined" && window.location.pathname === "/landing/odc";
+  const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+  const isOdcLanding = pathname === "/landing/odc";
+  const isKaralaLanding = pathname === "/landing/karala";
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      {!isOdcLanding && <TopBar />}
-      {!isOdcLanding && <Header />}
+      {!isOdcLanding && !isKaralaLanding && <TopBar />}
+      {!isOdcLanding && !isKaralaLanding && <Header />}
       <main className={`flex-1 ${isOdcLanding ? "odc-landing-main" : ""}`}>
         {children}
       </main>
@@ -23,7 +25,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
           .odc-landing-main section:first-child > :first-child { margin-top: 0 !important; }
         `}</style>
       )}
-      <Footer />
+      {!isKaralaLanding && <Footer />}
       <FloatingContact />
       <VisitTracker />
       <SeoFromSettings />
