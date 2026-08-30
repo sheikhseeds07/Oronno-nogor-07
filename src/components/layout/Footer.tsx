@@ -45,6 +45,10 @@ export function Footer() {
   const name = s.site_name || "Oronno Nogor";
   const logoSrc = s.logo_url || logo;
 
+  if (typeof window !== "undefined" && window.location.pathname === "/landing/karala") {
+    return null;
+  }
+
   return (
     <footer className="bg-[#1a1a1a] text-white mt-12">
       <div className="container mx-auto px-4 py-10 text-center">
