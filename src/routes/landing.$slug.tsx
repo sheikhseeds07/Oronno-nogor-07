@@ -90,8 +90,6 @@ const isKaralaStyle = (slug: string) => landingBaseSlug(slug) === "karala";
 
 function LandingPage() {
   const { slug } = useParams({ from: "/landing/$slug" });
-  // Copies inherit 100% of the original page behaviour: resolve every
-  // slug-specific flag from the base slug, not the suffixed copy slug.
   const behaviorSlug = landingBaseSlug(slug);
   const isLegacySlug = LEGACY_SLUGS.has(behaviorSlug);
   const isSeedCombo = behaviorSlug === "seedcombo";
@@ -105,11 +103,10 @@ function LandingPage() {
   if (isLegacySlug) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} compact={compact} /><LegacyLandingPage slug={slug} /></>;
   if (isSeedCombo) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader compact={compact} /><CleanLandingPage slug={slug} /></>;
   const template = mergeContent(data?.planting_steps).template as string;
-  if (template === "product") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><ProductStyleLandingPage slug={slug} /></>;
+  if (template === "product" || template === "all-product") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><ProductStyleLandingPage slug={slug} /></>;
   if (template === "premium") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><ProfessionalLandingPage slug={slug} variant="premium" /></>;
   if (template === "modern") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><ProfessionalLandingPage slug={slug} variant="modern" /></>;
   if (isLoading && !data) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><ProductStyleLandingPage slug={slug} /></>;
   if (template === "all") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><LegacyLandingPage slug={slug} /></>;
   return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><CleanLandingPage slug={slug} /></>;
 }
-
