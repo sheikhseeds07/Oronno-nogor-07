@@ -101,6 +101,28 @@ export const getWebProcessingOrderCount = createServerFn({ method: "POST" })
     return Number(count ?? 0);
   });
 
+export const getTodayWebConfirmedOrderCount = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const role = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .in("role", ["admin", "super_admin", "employee"])
+      .limit(1);
+    if (role.error) throw new Error(role.error.message);
+    if (!role.data?.length) throw new Error("Unauthorized");
+
+    const start = new Date(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Dhaka" }) + "T00:00:00+06:00").toISOString();
+    const { count, error } = await supabaseAdmin
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("source", "web")
+      .gte("confirmed_at", start);
+    if (error) throw new Error(error.message);
+    return Number(count ?? 0);
+  });
+
 export const getOptimizedDashboardReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => RangeSchema.parse(input))
