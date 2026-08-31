@@ -1,4 +1,4 @@
-name: Remove All Product Template
+name: Ensure All Product Template
 
 on:
   workflow_dispatch:
@@ -12,39 +12,33 @@ permissions:
   contents: write
 
 jobs:
-  remove-all-product:
+  ensure-all-product:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Remove All Product template from landing page creator
+      - name: Add All Product to landing page creator
         run: |
           python3 - <<'PY'
           from pathlib import Path
 
           admin = Path('src/routes/admin/landing-pages.tsx')
           s = admin.read_text(encoding='utf-8')
-
-          old = '''                      {([\n                        ["combo", "Combo", "ফানেল স্টাইল — প্রোমো স্ক্রল, গিফট, কাউন্টডাউন, পপআপ"],\n                        ["all", "All product", "seeds-combo-24 এর মতো ফুল ডিজাইন"],\n                      ] as const).map(([val, label, hint]) => ('''
-          new = '''                      {([[\n                        "combo", "Combo", "ফানেল স্টাইল — প্রোমো স্ক্রল, গিফট, কাউন্টডাউন, পপআপ"\n                      ]] as const).map(([val, label, hint]) => ('''
-          if old not in s:
-              raise SystemExit('Expected All Product template block not found in landing-pages.tsx')
-          s = s.replace(old, new, 1)
+          old = '''                      {([\n                        ["combo", "Combo", "ফানেল স্টাইল — প্রোমো স্ক্রল, গিফট, কাউন্টডাউন, পপআপ"],\n                      ] as const).map(([val, label, hint]) => ('''
+          new = '''                      {([\n                        ["combo", "Combo", "ফানেল স্টাইল — প্রোমো স্ক্রল, গিফট, কাউন্টডাউন, পপআপ"],\n                        ["all-product", "All Product", "Karala-এর বর্তমান Product Style layout — reusable product landing template"],\n                      ] as const).map(([val, label, hint]) => ('''
+          if old in s:
+              s = s.replace(old, new, 1)
           admin.write_text(s, encoding='utf-8')
 
           content = Path('src/lib/landing-content.ts')
           s = content.read_text(encoding='utf-8')
-          old = 'export type LandingTemplate = "combo" | "all";'
-          new = 'export type LandingTemplate = "combo";'
-          if old not in s:
-              raise SystemExit('Expected LandingTemplate union not found')
-          s = s.replace(old, new, 1)
+          s = s.replace('export type LandingTemplate = "combo";', 'export type LandingTemplate = "combo" | "all-product";')
           content.write_text(s, encoding='utf-8')
           PY
 
-      - name: Commit and push
+      - name: Commit and push if changed
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
@@ -53,5 +47,5 @@ jobs:
             echo 'No changes needed'
             exit 0
           fi
-          git commit -m 'Remove All Product template from landing page creator'
+          git commit -m 'feat: add All Product template to landing page creator'
           git push
