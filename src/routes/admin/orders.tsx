@@ -1585,7 +1585,7 @@ function buildInvoicesHTML(orders: InvoiceOrder[]) {
             <div class="sumrow total"><span>মোট</span><span>৳ ${Number(o.total).toFixed(0)}</span></div>
           </div>
         </div>
-        <div class="footer">ধন্যবাদ — অরন্য নগর থেকে কেনাকাটার জন্য</div>
+        <div class="footer">ধন্যবাদ — Sheikh Seeds থেকে কেনাকাটার জন্য</div>
       </div>`;
   }).join("");
   return `<!doctype html><html><head><meta charset="utf-8"/><title>Invoices</title><style>${css}</style></head>

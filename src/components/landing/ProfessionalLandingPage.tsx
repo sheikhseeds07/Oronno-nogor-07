@@ -81,7 +81,7 @@ export function ProfessionalLandingPage({ slug, variant }: Props) {
 
   if (isLoading) return <div className="min-h-screen grid place-items-center"><div className="animate-pulse font-bold">লোড হচ্ছে...</div></div>;
   if (!page) return <div className="min-h-screen grid place-items-center">পেজ পাওয়া যায়নি</div>;
-  const brand = settings.site_name || "অরণ্য নগর";
+  const brand = settings.site_name || "Sheikh Seeds";
   const logo = settings.logo_url || brandLogoFile;
   const Cta = ({ children = C.red_cta_text }: { children?: React.ReactNode }) => <button type="button" onClick={() => document.getElementById("lp-order")?.scrollIntoView({ behavior: "smooth" })} className="w-full rounded-2xl py-4 px-6 text-white font-black text-[17px] shadow-lg transition hover:-translate-y-0.5 active:scale-[.99]" style={{ background: theme }}>{children}</button>;
 

@@ -147,7 +147,7 @@ export function LegacyLandingPage({ slug }: { slug: string }) {
   if (isLoading) return <div className="min-h-screen flex items-center justify-center"><BrandLoader /></div>;
   if (!page) return <div className="min-h-screen flex items-center justify-center">পেজ পাওয়া যায়নি</div>;
 
-  const brandName = settings.site_name || "অরন্য নগর";
+  const brandName = settings.site_name || "Sheikh Seeds";
   const brandLogo = settings.logo_url;
 
   const scrollToOrder = () => {

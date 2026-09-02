@@ -50,7 +50,7 @@ export function ProductStyleLandingPage({ slug }: Props) {
   const shipping = selectedPackage ? selectedPackage.delivery_fee : delivery;
   const total = subtotal + shipping;
   const theme = page?.theme_color || "#166534";
-  const brand = settings.site_name || "অরণ্য নগর";
+  const brand = settings.site_name || "Sheikh Seeds";
   const logo = settings.logo_url || brandLogoFile;
   useCheckoutAutofill({ form, setForm: updater => setForm(f => updater(f) as typeof f), items: selectedPackage ? [{ id: selectedPackage.product_id || `addon-${selected}`, name: selectedPackage.name, price: selectedPackage.price, quantity: 1 }] : [], subtotal, total, deliveryFee: shipping });
   useEffect(() => { const checkout = document.getElementById("product-order"); if (!checkout) return; const observer = new IntersectionObserver(([entry]) => setCheckoutVisible(Boolean(entry?.isIntersecting)), { threshold: 0.12, rootMargin: "0px 0px -10% 0px" }); observer.observe(checkout); return () => observer.disconnect(); }, [isLoading, page]);
