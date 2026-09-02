@@ -5,7 +5,7 @@ import {
   resolveSupabaseUrl,
 } from "@/integrations/supabase/public-env";
 
-const SITE = "https://oronnonogor.com";
+const SITE = "https://sheikhseeds.com";
 
 /** Builds the full sitemap XML (static pages + categories + products + landings). */
 export async function buildSitemapXml(): Promise<string> {

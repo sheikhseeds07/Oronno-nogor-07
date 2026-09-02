@@ -4,5 +4,4 @@ Disallow: /admin
 Disallow: /api/
 Allow: /api/public/sitemap
 
-Sitemap: https://oronnonogor.com/sitemap.xml
-Sitemap: https://oronnonogor.com/api/public/sitemap
+Sitemap: https://sheikhseeds.com/sitemap.xml

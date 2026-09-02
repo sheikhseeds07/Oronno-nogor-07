@@ -2,7 +2,7 @@
 
 বাংলাদেশের অনলাইন বীজ ও গার্ডেন টুলস ই-কমার্স ওয়েবসাইট।
 
-সাইট: https://oronnonogor.com
+সাইট: https://sheikhseeds.com
 
 ## Tech
 

@@ -18,8 +18,8 @@ type Settings = {
   seo_title?: string; seo_description?: string; seo_keywords?: string; seo_og_image?: string;
   seo_site_url?: string; seo_google_verification?: string; seo_robots?: string; [key: string]: unknown;
 };
-const DEFAULT_LOGO = "/sheikh-seeds-logo.svg";
-const SEO_DEFAULTS = { seo_title: "Sheikh Seeds — অরিজিনাল বীজ, গার্ডেন টুলস ও সার", seo_description: "Sheikh Seeds — অরিজিনাল সবজি, ফল ও ফুলের বীজ, গার্ডেন টুলস, সার ও কীটনাশক অনলাইনে অর্ডার করুন। সারাদেশে হোম ডেলিভারি ও ক্যাশ অন ডেলিভারি।", seo_keywords: "Sheikh Seeds, sheikh seeds, শেখ সিড, বীজ, সবজির বীজ, ফুলের বীজ, ফলের বীজ, গার্ডেন টুলস, সার, কীটনাশক, ছাদ বাগান, seeds bd, garden tools bd", seo_og_image: "https://oronnonogor.com/og-oronno-nogor.jpg", seo_site_url: "https://oronnonogor.com", seo_google_verification: "", seo_robots: "index, follow" };
+const DEFAULT_LOGO = "/icon-512-v2.png";
+const SEO_DEFAULTS = { seo_title: "Sheikh Seeds — অরিজিনাল বীজ, গার্ডেন টুলস ও সার", seo_description: "Sheikh Seeds — অরিজিনাল সবজি, ফল ও ফুলের বীজ, গার্ডেন টুলস, সার ও কীটনাশক অনলাইনে অর্ডার করুন। সারাদেশে হোম ডেলিভারি ও ক্যাশ অন ডেলিভারি।", seo_keywords: "Sheikh Seeds, sheikh seeds, শেখ সিড, বীজ, সবজির বীজ, ফুলের বীজ, ফলের বীজ, গার্ডেন টুলস, সার, কীটনাশক, ছাদ বাগান, seeds bd, garden tools bd", seo_og_image: "https://oronnonogor.com/og-sheikh-seeds.jpg", seo_site_url: "https://oronnonogor.com", seo_google_verification: "", seo_robots: "index, follow" };
 const inputCls = "w-full border rounded-xl px-3 py-2.5 mt-1 bg-white outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100";
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) { return <div><label className="text-sm font-medium text-slate-700">{label}</label>{children}{hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}</div>; }
 type Section = "delivery" | "security" | "contact" | "seo";
