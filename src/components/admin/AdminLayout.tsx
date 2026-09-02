@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useAuth, type Permissions } from "@/lib/auth";
 import { supabase } from "@/lib/personal-supabase/client";
 import logo from "@/assets/logo.jpg";
-import { LayoutDashboard, Package, ShoppingBag, Users, FolderTree, Image as ImageIcon, Tag, Settings, Globe, UserCog, LogOut, Menu, X, Layers, Clock, FileSpreadsheet, PanelLeftClose, PanelLeftOpen, ChevronRight, Sparkles, Leaf } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingBag, Users, FolderTree, Image as ImageIcon, Tag, Settings, Globe, UserCog, LogOut, Menu, X, Layers, Clock, FileSpreadsheet, PanelLeftClose, PanelLeftOpen, ChevronRight, Sparkles, Leaf, Truck } from "lucide-react";
 import { NewOrderNotifier } from "@/components/admin/NewOrderNotifier";
 import { AdminOrderStability } from "@/components/admin/AdminOrderStability";
 import { PresswayyCard } from "@/components/admin/PresswayyCard";
@@ -23,6 +23,7 @@ const NAV: NavItem[] = [
   { to: "/admin/attendance", label: "Attendance", icon: Clock, perm: "hrm", tone: "from-violet-400 to-purple-600" },
   { to: "/admin/all-api", label: "All APIs", icon: Layers, perm: "all_api", tone: "from-indigo-400 to-violet-600" },
   { to: "/admin/settings", label: "Settings", icon: Settings, perm: "settings", tone: "from-slate-300 to-slate-500" },
+  { to: "/admin/courier-notes", label: "Courier Notes", icon: Truck, perm: "courier_notes", tone: "from-orange-400 to-rose-500" },
 ];
 
 const orderUiCss = `
