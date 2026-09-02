@@ -13,7 +13,7 @@ const statusBn: Record<string, string> = {
   rts: "RTS", shipped: "ডেলিভারিতে", delivered: "ডেলিভারি সম্পন্ন", cancelled: "বাতিল", returned: "ফেরত", hold: "হোল্ড",
 };
 
-const FACEBOOK_PAGE_URL = "https://www.facebook.com/share/14mRn8hqpNy/";
+const FACEBOOK_PAGE_URL = "https://www.facebook.com/share/1DoMWrXv2i/";
 
 function OrderPage() {
   const { id } = useParams({ from: "/order/$id" });
