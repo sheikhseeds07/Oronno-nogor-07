@@ -36,7 +36,7 @@ function Checkout() {
   const runPlaceOrder = useServerFn(placeOrder);
 
   const [submitting, setSubmitting] = useState(false);
-  const { data: settingsRow } = useQuery({ queryKey: ["site-settings-public"], queryFn: async () => (await supabase.from("site_settings").select("settings").maybeSingle()).data, staleTime: 60_000 });
+  const { data: settingsRow } = useQuery({ queryKey: ["site-settings-delivery"], queryFn: async () => (await supabase.from("site_settings").select("settings").maybeSingle()).data, staleTime: 30_000, refetchOnMount: "always" });
   const settings = ((settingsRow?.settings as DeliverySettings) ?? {}) as DeliverySettings;
   const zones = zonesFromSettings(settings);
   const [form, setForm] = useState({ name: "", phone: "", address: "", note: "", zone: "all" });
