@@ -20,7 +20,7 @@ export function BrandLoader({ label, className = "" }: { label?: string; classNa
   });
   const settings = (row?.settings as SiteSettings) ?? {};
   const brandName = label || settings.site_name || "Sheikh Seeds";
-  const logo = settings.logo_url;
+  const logo = settings.logo_url || "/logo.jpg";
   const hasBranding = Boolean(logo);
 
   return (
@@ -29,7 +29,7 @@ export function BrandLoader({ label, className = "" }: { label?: string; classNa
         {hasBranding ? (
           <>
             <div className="absolute inset-0 rounded-full bg-brand/20 animate-ping" />
-            <img src={logo} alt={brandName} width={40} height={40} decoding="async" className="relative h-10 w-10 rounded-full object-cover ring-2 ring-brand/40" />
+            <img src={logo} alt={brandName} width={40} height={40} loading="eager" fetchPriority="high" decoding="async" className="relative h-10 w-10 rounded-full object-cover ring-2 ring-brand/40" />
           </>
         ) : (
           <div className="h-10 w-10 rounded-full border-2 border-brand/20 border-t-brand animate-spin" aria-hidden="true" />
