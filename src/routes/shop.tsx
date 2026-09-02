@@ -43,7 +43,7 @@ function Shop() {
         if (childError) throw childError;
         categoryIds = [selected.id, ...((children ?? []) as Array<{ id: string }>).map((c) => c.id)];
       }
-      let query = supabase.from("products").select("*").eq("is_active", true);
+      let query = supabase.from("products").select("id,name,slug,price,sale_price,images,stock,short_description,description").eq("is_active", true);
       if (categoryIds) query = query.in("category_id", categoryIds);
       if (q) query = query.ilike("name", `%${q}%`);
       const { data, error } = await query.order("created_at", { ascending: false });
