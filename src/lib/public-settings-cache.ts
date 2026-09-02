@@ -1,5 +1,5 @@
-const STORAGE_KEY = "oronno_public_site_settings_v1";
-const TTL_MS = 60 * 60 * 1000;
+const STORAGE_KEY = "sheikh_seeds_public_site_settings_v2";
+const TTL_MS = 24 * 60 * 60 * 1000;
 
 type CacheEnvelope<T> = { savedAt: number; value: T };
 
@@ -9,7 +9,7 @@ export function readPublicSettingsCache<T>(): T | undefined {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return undefined;
     const parsed = JSON.parse(raw) as CacheEnvelope<T>;
-    if (!parsed || Date.now() - parsed.savedAt >= TTL_MS) return undefined;
+    if (!parsed || !parsed.value || Date.now() - parsed.savedAt >= TTL_MS) return undefined;
     return parsed.value;
   } catch {
     return undefined;
@@ -17,7 +17,7 @@ export function readPublicSettingsCache<T>(): T | undefined {
 }
 
 export function writePublicSettingsCache<T>(value: T) {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || !value) return;
   try {
     const payload: CacheEnvelope<T> = { savedAt: Date.now(), value };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
