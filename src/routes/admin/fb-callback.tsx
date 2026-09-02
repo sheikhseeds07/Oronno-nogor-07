@@ -6,7 +6,7 @@ export const Route = createFileRoute("/admin/fb-callback")({
   component: FbCallback,
   head: () => ({
     meta: [
-      { title: "Facebook সংযোগ | অরন্য নগর অ্যাডমিন" },
+      { title: "Facebook সংযোগ | Sheikh Seeds অ্যাডমিন" },
       { name: "description", content: "ফেসবুক পেইজ সংযোগের ধাপ সম্পন্ন হচ্ছে।" },
       { name: "robots", content: "noindex" },
     ],
@@ -45,7 +45,6 @@ function FbCallback() {
       window.close();
       setMsg("এই উইন্ডো বন্ধ করতে পারেন।");
     } else {
-      // Same-tab fallback: hand the code back to the messages page.
       const target = code && state
         ? `/admin/all-api?fb_code=${encodeURIComponent(code)}&fb_state=${encodeURIComponent(state)}`
         : `/admin/all-api?fb_error=${encodeURIComponent(error || "লগইন বাতিল হয়েছে")}`;
