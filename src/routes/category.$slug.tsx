@@ -67,7 +67,7 @@ function CategoryPage() {
       const categoryIds = [cat!.id, ...children.map((c) => c.id)];
       const { data, error } = await supabase
         .from("products")
-        .select("*")
+        .select("id,name,slug,price,sale_price,images,stock,short_description,description")
         .eq("is_active", true)
         .in("category_id", categoryIds)
         .order("created_at", { ascending: false });
