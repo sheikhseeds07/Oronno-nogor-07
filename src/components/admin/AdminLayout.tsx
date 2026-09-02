@@ -1,13 +1,15 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth, type Permissions } from "@/lib/auth";
 import { supabase } from "@/lib/personal-supabase/client";
-import logo from "@/assets/logo.jpg";
+import { readPublicSettingsCache, writePublicSettingsCache } from "@/lib/public-settings-cache";
 import { LayoutDashboard, Package, ShoppingBag, Users, FolderTree, Image as ImageIcon, Tag, Settings, Globe, UserCog, LogOut, Menu, X, Layers, Clock, FileSpreadsheet, PanelLeftClose, PanelLeftOpen, ChevronRight, Sparkles, Leaf } from "lucide-react";
 import { NewOrderNotifier } from "@/components/admin/NewOrderNotifier";
 import { AdminOrderStability } from "@/components/admin/AdminOrderStability";
 import { PresswayyCard } from "@/components/admin/PresswayyCard";
 
+type SiteSettings = { site_name?: string; logo_url?: string };
 type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }>; exact?: boolean; perm?: keyof Permissions | "always"; tone: string };
 const NAV: NavItem[] = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true, perm: "always", tone: "from-emerald-400 to-cyan-500" },
@@ -85,6 +87,22 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
   const { user, isStaff, isAdmin, permissions, loading, initialized, role } = useAuth();
   const navigate = useNavigate(); const loc = useLocation();
   const [open, setOpen] = useState(false); const [mounted, setMounted] = useState(false); const [collapsed, setCollapsed] = useState(false);
+  const { data: brandRow } = useQuery({
+    queryKey: ["site-settings-public"],
+    initialData: () => {
+      const cached = readPublicSettingsCache<SiteSettings>();
+      return cached ? { settings: cached } : undefined;
+    },
+    queryFn: async () => {
+      const { data } = await supabase.from("site_settings").select("settings").maybeSingle();
+      if (data?.settings) writePublicSettingsCache(data.settings as SiteSettings);
+      return data;
+    },
+    staleTime: 60_000,
+  });
+  const brand = (brandRow?.settings as SiteSettings) ?? {};
+  const brandLogo = brand.logo_url;
+  const brandName = brand.site_name;
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => { if (!initialized) return; if (!user) navigate({ to: "/login" as any }); }, [user, initialized, navigate]);
   if (!mounted || (loading && !role)) return <div className="min-h-screen flex items-center justify-center">Please wait...</div>;
@@ -98,8 +116,8 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_15%_5%,rgba(16,185,129,.22),transparent_32%),radial-gradient(circle_at_90%_18%,rgba(59,130,246,.20),transparent_30%),radial-gradient(circle_at_70%_78%,rgba(139,92,246,.18),transparent_34%),radial-gradient(circle_at_10%_95%,rgba(6,182,212,.14),transparent_28%)]" />
       <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(135deg,rgba(255,255,255,.055),transparent_28%,rgba(255,255,255,.015)_60%,rgba(255,255,255,.04))]" />
       <div className={`relative p-4 border-b border-white/10 flex items-center gap-3 ${collapsed ? "justify-center" : ""}`}>
-        <div className="relative shrink-0"><div className="absolute -inset-1.5 rounded-2xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-violet-500 blur opacity-60" /><img src={logo} className="relative w-10 h-10 rounded-xl object-cover ring-1 ring-white/25" alt="" /></div>
-        {!collapsed && <div className="min-w-0 animate-in fade-in slide-in-from-left-2 duration-300"><div className="font-extrabold text-white truncate tracking-tight">Oronno Nogor</div><div className="text-[10px] text-slate-400 truncate flex items-center gap-1"><Sparkles className="w-3 h-3 text-emerald-300" />{isAdmin ? "Admin Panel" : "Employee Panel"}</div></div>}
+        <div className="relative shrink-0"><div className="absolute -inset-1.5 rounded-2xl bg-gradient-to-r from-emerald-400 via-cyan-400 to-violet-500 blur opacity-60" />{brandLogo ? <img src={brandLogo} className="relative w-10 h-10 rounded-xl object-cover ring-1 ring-white/25" alt={brandName ?? ""} /> : <div className="relative w-10 h-10 rounded-xl bg-white/10 ring-1 ring-white/10 animate-pulse" />}</div>
+        {!collapsed && <div className="min-w-0 animate-in fade-in slide-in-from-left-2 duration-300"><div className="font-extrabold text-white truncate tracking-tight">{brandName || ""}</div><div className="text-[10px] text-slate-400 truncate flex items-center gap-1"><Sparkles className="w-3 h-3 text-emerald-300" />{isAdmin ? "Admin Panel" : "Employee Panel"}</div></div>}
         <button onClick={() => setOpen(false)} className="lg:hidden ml-auto text-slate-300 hover:text-white"><X className="w-5 h-5" /></button>
       </div>
       <nav className="relative p-3 overflow-y-auto h-[calc(100vh-150px)] scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
