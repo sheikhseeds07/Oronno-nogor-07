@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { useCart } from "@/lib/cart-store";
@@ -17,9 +18,15 @@ export const Route = createFileRoute("/checkout")({ component: Checkout });
 const PHONE_RE = /^01[3-9][0-9]{8}$/;
 const PHONE_ERROR = "সঠিক ১১ ডিজিটের বাংলাদেশি মোবাইল নাম্বার দিন (01XXXXXXXXX)";
 const PHONE_MAX_ERROR = "সর্বোচ্চ ১১ ডিজিটের নাম্বার দেওয়া যাবে";
-const ZONES = [
-  { id: "all", label: "সারাদেশে হোম ডেলিভারি", fee: 50 },
-];
+type Zone = { id: string; label: string; fee: number };
+const DEFAULT_ZONES: Zone[] = [{ id: "all", label: "সারাদেশে হোম ডেলিভারি", fee: 50 }];
+type DeliverySettings = { delivery_zones?: Zone[]; free_delivery_above?: number };
+function zonesFromSettings(s?: DeliverySettings): Zone[] {
+  const list = (s?.delivery_zones ?? [])
+    .map((z, i) => ({ id: String(z?.id || `zone-${i + 1}`), label: String(z?.label || "").trim(), fee: Math.max(0, Math.floor(Number(z?.fee) || 0)) }))
+    .filter((z) => z.label.length > 0);
+  return list.length ? list : DEFAULT_ZONES;
+}
 
 function Checkout() {
   const items = useCart((s) => s.items);
@@ -29,12 +36,17 @@ function Checkout() {
   const runPlaceOrder = useServerFn(placeOrder);
 
   const [submitting, setSubmitting] = useState(false);
+  const { data: settingsRow } = useQuery({ queryKey: ["site-settings-public"], queryFn: async () => (await supabase.from("site_settings").select("settings").maybeSingle()).data, staleTime: 60_000 });
+  const settings = ((settingsRow?.settings as DeliverySettings) ?? {}) as DeliverySettings;
+  const zones = zonesFromSettings(settings);
   const [form, setForm] = useState({ name: "", phone: "", address: "", note: "", zone: "all" });
   const [phoneErr, setPhoneErr] = useState("");
   const placedSuccessfully = useRef(false);
   const submitLockRef = useRef(false);
 
-  const delivery = ZONES.find((z) => z.id === form.zone)?.fee ?? 50;
+  const activeZone = zones.find((z) => z.id === form.zone) ?? zones[0];
+  const freeAbove = Number(settings.free_delivery_above ?? 0);
+  const delivery = freeAbove > 0 && subtotal >= freeAbove ? 0 : (activeZone?.fee ?? 0);
   const total = subtotal + delivery;
   const phoneValid = PHONE_RE.test(form.phone);
 
@@ -56,7 +68,7 @@ function Checkout() {
     subtotal,
     total,
     deliveryFee: delivery,
-    zone: form.zone,
+    zone: activeZone?.label ?? form.zone,
   });
 
   // Save only when the checkout page is actually being left. A valid 11-digit
@@ -69,7 +81,7 @@ function Checkout() {
         phone: form.phone,
         customer_name: form.name.trim(),
         customer_address: form.address.trim(),
-        delivery_zone: form.zone,
+        delivery_zone: activeZone?.label ?? form.zone,
         delivery_fee: delivery,
         subtotal,
         total,
@@ -194,10 +206,10 @@ function Checkout() {
             <div>
               <label className="block text-sm font-semibold mb-2">ডেলিভারি এরিয়া <span className="text-destructive">*</span></label>
               <div className="grid grid-cols-1 gap-2.5">
-                {ZONES.map((z) => (
-                  <button type="button" key={z.id} onClick={() => setForm({ ...form, zone: z.id })} className={`border-2 rounded-lg p-3 text-left transition ${form.zone === z.id ? "border-brand bg-brand-light" : "border-gray-200 hover:border-gray-300"}`}>
+                {zones.map((z) => (
+                  <button type="button" key={z.id} onClick={() => setForm({ ...form, zone: z.id })} className={`border-2 rounded-lg p-3 text-left transition ${(activeZone?.id ?? form.zone) === z.id ? "border-brand bg-brand-light" : "border-gray-200 hover:border-gray-300"}`}>
                     <div className="font-semibold text-sm">{z.label}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">ডেলিভারি চার্জ {taka(z.fee)}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">ডেলিভারি চার্জ {taka(freeAbove > 0 && subtotal >= freeAbove ? 0 : z.fee)}</div>
                   </button>
                 ))}
               </div>
