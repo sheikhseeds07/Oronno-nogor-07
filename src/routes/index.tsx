@@ -57,7 +57,7 @@ const homeQueryOptions = queryOptions({
 function SectionTitle({ title, subtitle, action }: { title: string; subtitle?: string; action?: { label: string; to: string } }) {
   return (
     <div className="mb-3.5 flex items-end justify-between gap-3 sm:mb-5">
-      <div className="min-w-0">
+      <div className={`min-w-0 ${!action ? "mx-auto text-center" : ""}`}>
         <h2 className="text-lg font-extrabold tracking-tight text-brand-dark sm:text-2xl lg:text-3xl">{title}</h2>
         {subtitle && <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground sm:mt-1 sm:text-sm">{subtitle}</p>}
       </div>
