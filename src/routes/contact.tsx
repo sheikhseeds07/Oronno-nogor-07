@@ -4,7 +4,19 @@ import { SiteLayout } from "@/components/layout/SiteLayout";
 import { Phone, MessageCircle, Mail, MapPin } from "lucide-react";
 import { trackContact, trackLead } from "@/lib/fbq";
 
-export const Route = createFileRoute("/contact")({ component: Contact });
+export const Route = createFileRoute("/contact")({
+  component: Contact,
+  head: () => ({
+    meta: [
+      { title: "যোগাযোগ — Sheikh Seeds | বীজ অর্ডার ও সহায়তা" },
+      { name: "description", content: "Sheikh Seeds-এর সাথে যোগাযোগ করুন — ফোন, WhatsApp ও ইমেইলে বীজ, গার্ডেন টুলস ও সার সম্পর্কে জানুন এবং অর্ডার করুন।" },
+      { property: "og:title", content: "যোগাযোগ — Sheikh Seeds" },
+      { property: "og:description", content: "ফোন, WhatsApp ও ইমেইলে Sheikh Seeds-এর সাথে যোগাযোগ করুন।" },
+      { property: "og:url", content: "https://sheikhseeds.com/contact" },
+    ],
+    links: [{ rel: "canonical", href: "https://sheikhseeds.com/contact" }],
+  }),
+});
 
 function Contact() {
   useEffect(() => { trackLead({ content_name: "Contact page", content_category: "contact" }); }, []);
