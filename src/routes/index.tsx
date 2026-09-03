@@ -160,7 +160,7 @@ function Home() {
       )}
 
       <section className="overflow-hidden py-4 sm:py-7">
-        <div className="container mx-auto px-3 sm:px-4">
+        <div className="container mx-auto px-3 text-center sm:px-4">
           <SectionTitle title="পপুলার ক্যাটেগরি" />
         </div>
         <div className="px-3 sm:px-4">
