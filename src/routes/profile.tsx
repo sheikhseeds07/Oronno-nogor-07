@@ -8,7 +8,7 @@ import { taka } from "@/lib/format";
 import { format } from "date-fns";
 import { useEffect } from "react";
 
-export const Route = createFileRoute("/profile")({ component: Profile });
+export const Route = createFileRoute("/profile")({ component: Profile, head: () => ({ meta: [{ title: "আমার প্রোফাইল — Sheikh Seeds" }, { name: "robots", content: "noindex, nofollow" }] }) });
 
 const statusBn: Record<string, string> = {
   pending: "অপেক্ষমাণ", confirmed: "কনফার্মড", processing: "প্রস্তুত হচ্ছে",
