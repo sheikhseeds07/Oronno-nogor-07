@@ -1,6 +1,12 @@
 User-agent: *
 Allow: /
 Disallow: /admin
+Disallow: /login
+Disallow: /profile
+Disallow: /cart
+Disallow: /checkout
+Disallow: /order/
+Disallow: /presswayy
 Disallow: /api/
 Allow: /api/public/sitemap
 
