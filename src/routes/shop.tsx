@@ -7,6 +7,16 @@ import { supabase } from "@/lib/personal-supabase/client";
 import { trackSearch } from "@/lib/fbq";
 
 export const Route = createFileRoute("/shop")({
+  head: () => ({
+    meta: [
+      { title: "শপ — সব বীজ, গার্ডেন টুলস ও সার | Sheikh Seeds" },
+      { name: "description", content: "Sheikh Seeds শপ — সবজি, ফল ও ফুলের অরিজিনাল বীজ, গার্ডেন টুলস, সার ও কীটনাশকের সম্পূর্ণ কালেকশন। সারাদেশে ক্যাশ অন ডেলিভারি।" },
+      { property: "og:title", content: "শপ — সব বীজ, গার্ডেন টুলস ও সার | Sheikh Seeds" },
+      { property: "og:description", content: "অরিজিনাল বীজ, টুলস ও সারের সম্পূর্ণ কালেকশন।" },
+      { property: "og:url", content: "https://sheikhseeds.com/shop" },
+    ],
+    links: [{ rel: "canonical", href: "https://sheikhseeds.com/shop" }],
+  }),
   validateSearch: (s: Record<string, unknown>): { q?: string; cat?: string } => ({ q: typeof s.q === "string" ? s.q : undefined, cat: typeof s.cat === "string" ? s.cat : undefined }),
   component: Shop,
 });
