@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { trackInitiateCheckout, trackPurchase } from "@/lib/fbq";
 import { getFbContext } from "@/lib/fb-context";
 
-export const Route = createFileRoute("/checkout")({ component: Checkout });
+export const Route = createFileRoute("/checkout")({ component: Checkout, head: () => ({ meta: [{ title: "চেকআউট — Sheikh Seeds" }, { name: "robots", content: "noindex, nofollow" }] }) });
 
 const PHONE_RE = /^01[3-9][0-9]{8}$/;
 const PHONE_ERROR = "সঠিক ১১ ডিজিটের বাংলাদেশি মোবাইল নাম্বার দিন (01XXXXXXXXX)";
