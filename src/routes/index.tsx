@@ -228,6 +228,17 @@ function Home() {
 }
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Sheikh Seeds — অরিজিনাল বীজ, গার্ডেন টুলস ও সার | সারাদেশে ডেলিভারি" },
+      { name: "description", content: "Sheikh Seeds (শেখ সিডস) — অরিজিনাল সবজি, ফল ও ফুলের বীজ, কৃষি ও গার্ডেন টুলস, সার ও কীটনাশক অনলাইনে অর্ডার করুন। সারাদেশে হোম ডেলিভারি ও ক্যাশ অন ডেলিভারি।" },
+      { name: "keywords", content: "Sheikh Seeds, শেখ সিডস, sheikhseeds, বীজ, সবজির বীজ, ফুলের বীজ, ফলের বীজ, গার্ডেন টুলস, সার, কীটনাশক, কৃষি, অনলাইন নার্সারি, seeds bangladesh" },
+      { property: "og:title", content: "Sheikh Seeds — অরিজিনাল বীজ, গার্ডেন টুলস ও সার" },
+      { property: "og:description", content: "অরিজিনাল বীজ, গার্ডেন টুলস, সার ও কীটনাশক — সারাদেশে হোম ডেলিভারি।" },
+      { property: "og:url", content: "https://sheikhseeds.com/" },
+    ],
+    links: [{ rel: "canonical", href: "https://sheikhseeds.com/" }],
+  }),
   loader: ({ context }) => context.queryClient.ensureQueryData(homeQueryOptions),
   component: Home,
 });
