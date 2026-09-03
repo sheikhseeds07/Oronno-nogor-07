@@ -6,7 +6,7 @@ import { getPublicOrder } from "@/lib/public-order.functions";
 import { taka, bnDigits } from "@/lib/format";
 import { CheckCircle2, Facebook } from "lucide-react";
 
-export const Route = createFileRoute("/order/$id")({ component: OrderPage });
+export const Route = createFileRoute("/order/$id")({ component: OrderPage, head: () => ({ meta: [{ title: "অর্ডার — Sheikh Seeds" }, { name: "robots", content: "noindex, nofollow" }] }) });
 
 const statusBn: Record<string, string> = {
   web_pending: "ওয়েব পেন্ডিং", pending: "অপেক্ষমাণ", confirmed: "কনফার্মড", processing: "প্রস্তুত হচ্ছে",
