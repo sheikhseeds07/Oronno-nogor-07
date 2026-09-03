@@ -5,7 +5,7 @@ import { supabase } from "@/lib/personal-supabase/client";
 import { toast } from "sonner";
 import { Loader2, LogIn } from "lucide-react";
 
-export const Route = createFileRoute("/login")({ component: Login });
+export const Route = createFileRoute("/login")({ component: Login, head: () => ({ meta: [{ title: "লগইন — Sheikh Seeds" }, { name: "robots", content: "noindex, nofollow" }] }) });
 
 function Login() {
   const navigate = useNavigate();
