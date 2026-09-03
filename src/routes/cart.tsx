@@ -5,7 +5,7 @@ import { taka, bnDigits } from "@/lib/format";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { toImg } from "@/lib/img";
 
-export const Route = createFileRoute("/cart")({ component: Cart });
+export const Route = createFileRoute("/cart")({ component: Cart, head: () => ({ meta: [{ title: "কার্ট — Sheikh Seeds" }, { name: "robots", content: "noindex, nofollow" }] }) });
 
 function Cart() {
   const items = useCart((s) => s.items);
