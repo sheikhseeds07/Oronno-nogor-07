@@ -19,7 +19,7 @@ export async function buildSitemapXml(): Promise<string> {
     sb.from("landing_pages").select("slug,created_at").eq("is_published", true).limit(500),
   ]);
 
-  const staticUrls = ["/", "/shop", "/contact"];
+  const staticUrls = ["/", "/shop", "/about", "/contact"];
   const items: string[] = [];
   const push = (loc: string, lastmod?: string) =>
     items.push(
