@@ -587,3 +587,72 @@ html.theme-pearl-aurora body { background:radial-gradient(circle at 10% 0%,hsl(1
 html[class*="theme-"] body { transition: background-color .35s ease, color .35s ease; }
 .theme-swatch { transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease; }
 .theme-swatch:active { transform: scale(.92); }
+
+/* ===== Customer textures (abseed-style, CSS generated) ===== */
+html.texture-bamboo body,
+html.texture-tropical body,
+html.texture-golden body,
+html.texture-shadow body,
+html.texture-aurora body,
+html.texture-mesh body { background-color: transparent !important; }
+
+html[class*="texture-"] { background-attachment: fixed; background-size: cover; background-position: center; }
+
+html.texture-bamboo {
+  background-image:
+    linear-gradient(hsl(var(--background) / .82), hsl(var(--background) / .82)),
+    repeating-linear-gradient(115deg, #2f8f4e 0 26px, #3aa35b 26px 34px, #d8ecdc 34px 78px),
+    radial-gradient(circle at 20% 10%, #ffffff66, transparent 60%);
+}
+html.texture-tropical {
+  background-image:
+    linear-gradient(hsl(var(--background) / .8), hsl(var(--background) / .8)),
+    radial-gradient(45% 55% at 18% 20%, #1fb78366, transparent 70%),
+    radial-gradient(50% 60% at 82% 30%, #0f9d5866, transparent 70%),
+    radial-gradient(55% 65% at 50% 95%, #7bd38f66, transparent 70%),
+    repeating-conic-gradient(from 30deg at 50% 50%, #e6f6ea 0deg 12deg, #d3eddb 12deg 24deg);
+}
+html.texture-golden {
+  background-image:
+    linear-gradient(hsl(var(--background) / .78), hsl(var(--background) / .78)),
+    repeating-linear-gradient(135deg, #f6d36555 0 18px, #e0b23d55 18px 36px, #fff6dd55 36px 60px),
+    radial-gradient(60% 60% at 70% 20%, #ffe9a866, transparent 70%);
+}
+html.texture-shadow {
+  background-image:
+    linear-gradient(hsl(var(--background) / .74), hsl(var(--background) / .74)),
+    repeating-linear-gradient(45deg, #2b2f3333 0 14px, #4a515833 14px 28px),
+    radial-gradient(70% 70% at 50% 0%, #00000022, transparent 70%);
+}
+
+html.texture-aurora, html.texture-mesh { position: relative; background-color: hsl(var(--background)); }
+html.texture-aurora::before, html.texture-mesh::before {
+  content: ""; position: fixed; inset: -25%; z-index: -2; pointer-events: none; will-change: transform, filter;
+}
+html.texture-aurora::after, html.texture-mesh::after {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: hsl(var(--background) / .55);
+}
+html.texture-aurora::before {
+  background:
+    radial-gradient(38% 45% at 22% 28%, hsla(160,80%,55%,.75), transparent 70%),
+    radial-gradient(40% 50% at 78% 22%, hsla(200,85%,60%,.7), transparent 70%),
+    radial-gradient(45% 55% at 50% 88%, hsla(45,95%,62%,.65), transparent 70%),
+    radial-gradient(36% 46% at 12% 82%, hsla(285,78%,62%,.6), transparent 70%),
+    radial-gradient(40% 50% at 88% 78%, hsla(335,80%,62%,.55), transparent 70%),
+    hsl(var(--background));
+  filter: blur(20px) saturate(1.15);
+  animation: textureAuroraDrift 14s ease-in-out infinite alternate;
+}
+html.texture-mesh::before {
+  background:
+    conic-gradient(from 0deg at 35% 35%, #20df66b3, #42d3f099, #f5c73d99, #e64cb399, #477eeb99, #20df66b3),
+    radial-gradient(45% 55% at 70% 70%, hsla(160,85%,55%,.55), transparent 70%),
+    hsl(var(--background));
+  filter: blur(28px) saturate(1.2);
+  animation: textureMeshSpin 22s linear infinite;
+}
+@keyframes textureAuroraDrift { from { transform: translate3d(-2%, -1%, 0) scale(1.05); } to { transform: translate3d(2%, 2%, 0) scale(1.12); } }
+@keyframes textureMeshSpin { from { transform: rotate(0deg) scale(1.15); } to { transform: rotate(360deg) scale(1.15); } }
+@media (prefers-reduced-motion: reduce) {
+  html.texture-aurora::before, html.texture-mesh::before { animation: none !important; }
+}
