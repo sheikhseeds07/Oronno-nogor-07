@@ -19,12 +19,11 @@ alter table public.customer_blocks add column if not exists blocked_by text;
 
 create index if not exists customer_blocks_phone_active_idx on public.customer_blocks (phone) where is_active;
 create index if not exists customer_blocks_ip_active_idx on public.customer_blocks (ip_address) where is_active;
-
 grant select, insert, update on public.customer_blocks to authenticated;
 grant all on public.customer_blocks to service_role;
 alter table public.customer_blocks enable row level security;
 
--- 2) Phone normalizer (01XXXXXXXXX)
+-- 2) Phone normalizer (018XXXXXXXXX)
 create or replace function public.normalize_bd_phone(p_phone text)
 returns text
 language sql
@@ -84,6 +83,8 @@ begin
   return next v_row;
 end
 $$;
+
+drop function if exists public.unblock_customer(uuid);
 
 create or replace function public.unblock_customer(p_id uuid)
 returns void
