@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ShoppingCart, Search, X, ChevronRight, Home, Grid3x3, Phone, ArrowRight, Palette, Check, Leaf, Sprout, Flower2, TreePine, Wheat, Sun } from "lucide-react";
+import { ShoppingCart, Search, X, ChevronRight, Home, Grid3x3, Phone, ArrowRight, Palette, Check, Leaf, Sprout, Flower2, TreePine, Wheat, Sun, Sparkles, Languages } from "lucide-react";
 import { useEffect, useState } from "react";
 import { hydrateCartStore, useCart } from "@/lib/cart-store";
 import { bnDigits } from "@/lib/format";
@@ -8,6 +8,8 @@ import { supabase } from "@/lib/personal-supabase/client";
 import { publicSiteSettingsQuery } from "@/lib/site-settings-query";
 import { CartDrawer } from "@/components/shop/CartDrawer";
 import { SITE_THEMES, applyTheme, getStoredTheme } from "@/lib/theme-store";
+import { SITE_TEXTURES, applyTexture, getStoredTexture } from "@/lib/texture-store";
+import { getStoredLang, initLanguage, setLanguage, type SiteLang } from "@/lib/i18n";
 
 type NavCategory = { id: string; name: string; slug: string };
 type SiteSettings = { site_name?: string; tagline?: string; header_subtitle?: string; logo_url?: string };
@@ -22,6 +24,8 @@ export function Header() {
   const [bump, setBump] = useState(false);
   const [q, setQ] = useState("");
   const [theme, setTheme] = useState("default");
+  const [texture, setTexture] = useState("none");
+  const [lang, setLang] = useState<SiteLang>("bn");
   const navigate = useNavigate();
 
   const { data: brandRow } = useQuery(publicSiteSettingsQuery);
@@ -54,7 +58,7 @@ export function Header() {
 
   const submit = (e: React.FormEvent) => { e.preventDefault(); navigate({ to: "/shop", search: { q } as never }); setDrawer(false); };
   useEffect(() => { if (!drawer) return; const prev = document.body.style.overflow; document.body.style.overflow = "hidden"; return () => { document.body.style.overflow = prev; }; }, [drawer]);
-  useEffect(() => { void hydrateCartStore(); const t = getStoredTheme(); setTheme(t); applyTheme(t); }, []);
+  useEffect(() => { void hydrateCartStore(); const t = getStoredTheme(); setTheme(t); applyTheme(t); const tx = getStoredTexture(); setTexture(tx); applyTexture(tx); setLang(getStoredLang()); initLanguage(); }, []);
 
   const logoNode = brandLogo ? (
     <img src={brandLogo} alt={brandName} width={40} height={40} loading="eager" fetchPriority="high" decoding="async" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover ring-2 ring-brand/30 shadow-md group-hover:ring-brand group-hover:scale-110 group-hover:rotate-3 transition-all duration-300" />
@@ -190,6 +194,56 @@ export function Header() {
                 );
               })}
             </div>
+
+            <div className="drawer-item flex items-center gap-2 pt-4 pb-2 px-3" style={{ "--d": nextDelay() } as React.CSSProperties}>
+              <Sparkles className="w-3.5 h-3.5 text-brand" />
+              <span className="text-[10px] font-black text-brand-dark/70 uppercase tracking-[0.2em]">টেক্সচার</span>
+              <span className="flex-1 h-px bg-gradient-to-r from-brand/40 to-transparent" />
+            </div>
+            <div className="drawer-item grid grid-cols-4 gap-1.5 px-2 pb-2" style={{ "--d": nextDelay() } as React.CSSProperties}>
+              {SITE_TEXTURES.map((t) => {
+                const active = t.id === texture;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => { setTexture(t.id); applyTexture(t.id); }}
+                    aria-pressed={active}
+                    className={`theme-swatch flex flex-col items-center gap-1 rounded-xl px-1 py-1.5 border transition ${active ? "border-brand bg-brand-light/50 shadow-md shadow-brand/20" : "border-brand-light/70 hover:border-brand/50 hover:bg-brand-light/25"}`}
+                  >
+                    <span className="relative flex items-center justify-center w-8 h-8 rounded-lg ring-1 ring-black/10 overflow-hidden" style={{ background: t.preview, backgroundSize: "cover" }}>
+                      {active && <Check className="w-3.5 h-3.5 text-white drop-shadow" strokeWidth={3.5} />}
+                    </span>
+                    <span className={`text-[8.5px] font-bold leading-none text-center ${active ? "text-brand-dark" : "text-foreground/70"}`}>{lang === "en" ? t.nameEn : t.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="drawer-item flex items-center gap-2 pt-4 pb-2 px-3" style={{ "--d": nextDelay() } as React.CSSProperties}>
+              <Languages className="w-3.5 h-3.5 text-brand" />
+              <span className="text-[10px] font-black text-brand-dark/70 uppercase tracking-[0.2em]">ভাষা / Language</span>
+              <span className="flex-1 h-px bg-gradient-to-r from-brand/40 to-transparent" />
+            </div>
+            <div className="drawer-item px-2 pb-2" style={{ "--d": nextDelay() } as React.CSSProperties}>
+              <div className="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-brand-light/40 ring-1 ring-brand/15">
+                {([{ id: "bn", label: "বাংলা", flag: "🇧🇩" }, { id: "en", label: "English", flag: "🇬🇧" }] as const).map((l) => {
+                  const active = l.id === lang;
+                  return (
+                    <button
+                      key={l.id}
+                      type="button"
+                      onClick={() => { if (l.id === lang) return; setLang(l.id); setLanguage(l.id); }}
+                      aria-pressed={active}
+                      className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-[12px] font-bold transition ${active ? "bg-gradient-to-r from-brand to-brand-dark text-white shadow-md shadow-brand/25" : "text-brand-dark/70 hover:bg-white/60"}`}
+                    >
+                      <span className="text-[13px]">{l.flag}</span>{l.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
           </nav>
 
           <div className="px-4 py-3 border-t border-brand-light/50 bg-gradient-to-r from-brand-light/25 to-transparent">
