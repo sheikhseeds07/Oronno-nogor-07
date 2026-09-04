@@ -32,7 +32,7 @@ export const saveIncompleteCheckout = createServerFn({ method: "POST" }).inputVa
     p_note: data.note ?? null,
     p_items: data.items,
   };
-  const { data: result, error } = await supabaseAdmin.rpc("upsert_incomplete_checkout", rpcArgs);
+  const { data: result, error } = await supabaseAdmin.rpc("upsert_incomplete_checkout", rpcArgs as never);
   if (!error) return result;
 
   // Autosave requests can race each other. The DB has a unique active-phone
@@ -46,6 +46,8 @@ export const saveIncompleteCheckout = createServerFn({ method: "POST" }).inputVa
   console.error("[saveIncompleteCheckout] snapshot failed:", error.message);
   return null;
 });
+
+type Input = z.input<typeof InputSchema>;
 
 export const placeOrder = createServerFn({ method: "POST" }).inputValidator((input: Input) => InputSchema.parse(input)).handler(async ({ data }) => {
   const customerPhone = data.customer_phone;
@@ -85,7 +87,7 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
       currency: "BDT",
       phone: customerPhone,
       name: data.customer_name,
-      city: data.district ?? data.thana ?? null,
+      city: data.district ?? data.thana ?? undefined,
       country: "bd",
       contents: data.items.map((i) => ({ id: i.id, quantity: i.quantity, price: i.price })),
       clientIp,

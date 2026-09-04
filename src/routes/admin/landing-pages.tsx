@@ -118,7 +118,7 @@ function LandingPagesAdmin() {
     delete payload.id;
     const { error } = editing.id
       ? await supabase.from("landing_pages").update(payload).eq("id", editing.id)
-      : await supabase.from("landing_pages").insert(payload);
+      : await supabase.from("landing_pages").insert(payload as never);
     if (error) return toast.error(error.message);
     toast.success("সংরক্ষণ হয়েছে");
     setEditing(null);
@@ -217,7 +217,7 @@ function LandingPagesAdmin() {
                 <button onClick={() => openEdit(p)} className="flex-1 p-1.5 hover:bg-muted rounded text-xs">
                   <Edit className="w-3.5 h-3.5 inline" /> এডিট
                 </button>
-                <button onClick={() => duplicateLandingPage(p)} className="flex-1 p-1.5 hover:bg-green-50 text-green-700 rounded text-xs" title="ডুপ্লিকেট">
+                <button onClick={() => duplicateLandingPage(p as unknown as LP)} className="flex-1 p-1.5 hover:bg-green-50 text-green-700 rounded text-xs" title="ডুপ্লিকেট">
                   <Copy className="w-3.5 h-3.5 inline" /> ডুপ্লিকেট
                 </button>
                 <button onClick={() => remove(p.id)} className="p-1.5 hover:bg-destructive/10 text-destructive rounded">
@@ -241,7 +241,7 @@ function LandingPagesAdmin() {
               {([
                 ["main", "Main"],
                 ["page", "Full page"],
-                ...(C.template === "all" || C.template === "product" || C.template === "all-product" ? [] : [["content", "কনটেন্ট"] as const]),
+                ...(C.template === "product" || C.template === "all-product" ? [] : [["content", "কনটেন্ট"] as const]),
                 ["products", C.template === "product" || C.template === "all-product" ? "Product" : "Products"],
               ] as const).map(([k, l]) => (
                 <button key={k} onClick={() => setTab(k as typeof tab)}
@@ -301,7 +301,7 @@ function LandingPagesAdmin() {
                 </>
               )}
 
-              {tab === "content" && C.template !== "all" && (
+              {tab === "content" && (
                 <>
                   <div className="text-xs text-muted-foreground">পেজের প্রতিটি টেক্সট ও ইমেজ এখান থেকে বদলানো যাবে। খালি রাখলে সেই অংশ পেজে দেখাবে না।</div>
                   <div className="rounded-lg border p-3 space-y-3">

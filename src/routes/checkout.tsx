@@ -129,7 +129,6 @@ function Checkout() {
           notes: form.note?.trim() || null,
           delivery_fee: delivery,
           created_by: session?.user?.id ?? null,
-          checkout_session_id: checkoutSessionId || null,
           items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity })),
           ...fbCtx,
         },

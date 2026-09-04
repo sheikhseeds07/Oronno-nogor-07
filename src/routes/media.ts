@@ -190,7 +190,7 @@ async function pullOrigin(
             image: imageOptions,
           } as any)
         : undefined,
-    });
+    } as RequestInit);
 
     return {
       ok: origin.ok,
