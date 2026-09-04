@@ -1,18 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { MessageCircle, MessagesSquare, Phone, X } from "lucide-react";
-import { supabase } from "@/lib/personal-supabase/client";
+import { publicSiteSettingsQuery } from "@/lib/site-settings-query";
 
 type ContactSettings = { contact_page_message_url?: string; contact_phone?: string };
 
 export function FloatingContact() {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const { data: row } = useQuery({
-    queryKey: ["site-settings-public"],
-    queryFn: async () => (await supabase.from("site_settings").select("settings").maybeSingle()).data,
-    staleTime: 60_000,
-  });
+  const { data: row } = useQuery(publicSiteSettingsQuery);
   const settings = ((row?.settings as ContactSettings) ?? {}) as ContactSettings;
   const messageUrl = (settings.contact_page_message_url ?? "").trim();
   const phone = (settings.contact_phone ?? "+8809644553383").trim();

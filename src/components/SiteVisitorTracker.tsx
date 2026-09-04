@@ -17,7 +17,7 @@ const VISITOR_BEAT_KEY_PREFIX = "site-visitor-beat:";
 // One presence write per visitor per path per window. Live-visitor accuracy
 // stays useful while request volume (and its egress) stops scaling with how
 // often a visitor navigates back and forth.
-const BEAT_WINDOW_MS = 300_000;
+const BEAT_WINDOW_MS = 1_800_000;
 
 function shouldRecordBeat(path: string): boolean {
   try {
@@ -54,8 +54,11 @@ export function SiteVisitorTracker() {
 
     const getRouteIds = () => cachedRequest(`visitor-route:${path}`, async () => {
       try {
-        const cached = sessionStorage.getItem(lookupKey);
-        if (cached) return JSON.parse(cached) as { landingPageId: string | null; productId: string | null };
+        const raw = localStorage.getItem(lookupKey);
+        if (raw) {
+          const parsed = JSON.parse(raw) as { at: number; value: { landingPageId: string | null; productId: string | null } };
+          if (parsed?.value && Date.now() - parsed.at < 86_400_000) return parsed.value;
+        }
       } catch {}
 
       let landingPageId: string | null = null;
@@ -66,7 +69,7 @@ export function SiteVisitorTracker() {
         productId = data?.product_id ?? null;
       }
       const result = { landingPageId, productId };
-      try { sessionStorage.setItem(lookupKey, JSON.stringify(result)); } catch {}
+      try { localStorage.setItem(lookupKey, JSON.stringify({ at: Date.now(), value: result })); } catch {}
       return result;
     }, 900_000);
 

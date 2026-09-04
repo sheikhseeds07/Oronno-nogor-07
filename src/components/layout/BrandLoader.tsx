@@ -1,23 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/personal-supabase/client";
-import { readPublicSettingsCache, writePublicSettingsCache } from "@/lib/public-settings-cache";
+import { publicSiteSettingsQuery } from "@/lib/site-settings-query";
 
 type SiteSettings = { site_name?: string; logo_url?: string };
 
 export function BrandLoader({ label, className = "" }: { label?: string; className?: string }) {
-  const { data: row, isLoading } = useQuery({
-    queryKey: ["site-settings-public"],
-    initialData: () => {
-      const cached = readPublicSettingsCache<SiteSettings>();
-      return cached ? { settings: cached } : undefined;
-    },
-    queryFn: async () => {
-      const { data } = await supabase.from("site_settings").select("settings").maybeSingle();
-      if (data?.settings) writePublicSettingsCache(data.settings as SiteSettings);
-      return data;
-    },
-    staleTime: 60_000,
-  });
+  const { data: row, isLoading } = useQuery(publicSiteSettingsQuery);
   const settings = (row?.settings as SiteSettings) ?? {};
   const brandName = label || settings.site_name || "Sheikh Seeds";
   const logo = settings.logo_url || "/logo.jpg";

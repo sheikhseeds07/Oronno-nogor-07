@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState, useEffect, useRef } from "react";
+import { publicSiteSettingsQuery } from "@/lib/site-settings-query";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { SiteLayout } from "@/components/layout/SiteLayout";
@@ -37,7 +38,7 @@ function Checkout() {
   const runPlaceOrder = useServerFn(placeOrder);
 
   const [submitting, setSubmitting] = useState(false);
-  const { data: settingsRow } = useQuery({ queryKey: ["site-settings-delivery"], queryFn: async () => (await supabase.from("site_settings").select("settings").maybeSingle()).data, staleTime: 30_000, refetchOnMount: "always" });
+  const { data: settingsRow } = useQuery(publicSiteSettingsQuery);
   const settings = ((settingsRow?.settings as DeliverySettings) ?? {}) as DeliverySettings;
   const zones = zonesFromSettings(settings);
   const [form, setForm] = useState({ name: "", phone: "", address: "", note: "", zone: "all" });

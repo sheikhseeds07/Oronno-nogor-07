@@ -43,14 +43,24 @@ function privilegedStatusReady(_cfg?: FbConfig | null): boolean {
 
 async function loadFbConfig(): Promise<FbConfig | null> {
   const now = Date.now();
-  if (cachedConfig && now - cachedConfig.at < 60_000) return cachedConfig.value;
+  // Every pixel event used to reload this config with four separate round trips.
+  // A longer window plus a fast path (the privileged token row already carries
+  // pixel id and access token) cuts the vast majority of those requests.
+  if (cachedConfig && now - cachedConfig.at < 900_000) return cachedConfig.value;
 
-  const [{ data: integ }, { data: site }, { data: dbStatus }, { data: dbTokenRaw }] = await Promise.all([
-    supabaseAdmin.from("integrations").select("config,is_active").eq("name", "facebook_capi").maybeSingle(),
-    supabaseAdmin.from("site_settings").select("settings").limit(1).maybeSingle(),
+  const [{ data: dbStatus }, { data: dbTokenRaw }] = await Promise.all([
     (supabaseAdmin as any).rpc("get_meta_capi_status"),
     (supabaseAdmin as any).rpc("get_meta_capi_token"),
   ]);
+  const fastToken = asRecord(dbTokenRaw);
+  const hasFastConfig = typeof fastToken["pixel_id"] === "string" && String(fastToken["pixel_id"]).length > 0
+    && typeof fastToken["access_token"] === "string" && String(fastToken["access_token"]).length > 0;
+  const [{ data: integ }, { data: site }] = hasFastConfig
+    ? [{ data: null as any }, { data: null as any }]
+    : await Promise.all([
+        supabaseAdmin.from("integrations").select("config,is_active").eq("name", "facebook_capi").maybeSingle(),
+        supabaseAdmin.from("site_settings").select("settings").limit(1).maybeSingle(),
+      ]);
   const privilegedStatus = asRecord(dbStatus);
   const tokenCfg = asRecord(dbTokenRaw);
   databaseDispatcherReady = privilegedStatus.server_events_ready === true;
