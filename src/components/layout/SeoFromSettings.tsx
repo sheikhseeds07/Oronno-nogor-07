@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { publicSiteSettingsQuery } from "@/lib/site-settings-query";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/personal-supabase/client";
 import { toImg } from "@/lib/img";
@@ -40,28 +41,7 @@ function setLink(rel: string, href?: string) {
 
 /** Applies admin SEO settings without repeatedly downloading them from Supabase. */
 export function SeoFromSettings() {
-  const { data: row } = useQuery<SettingsRow | null>({
-    queryKey: ["site-settings-public"],
-    initialData: () => {
-      const settings = readPublicSettingsCache<SeoSettings>();
-      return settings ? { settings } : undefined;
-    },
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("site_settings")
-        .select("settings")
-        .maybeSingle();
-      if (error) throw error;
-      const next = (data?.settings as SeoSettings | null) ?? {};
-      writePublicSettingsCache(next);
-      return { settings: next };
-    },
-    staleTime: 60 * 60_000,
-    gcTime: 2 * 60 * 60_000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    refetchOnMount: false,
-  });
+  const { data: row } = useQuery(publicSiteSettingsQuery) as { data: SettingsRow | null | undefined };
 
   const s = row?.settings ?? {};
   const path = typeof window === "undefined" ? "/" : window.location.pathname;

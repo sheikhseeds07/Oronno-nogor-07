@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { hydrateCartStore, useCart } from "@/lib/cart-store";
 import { bnDigits } from "@/lib/format";
 import { supabase } from "@/lib/personal-supabase/client";
-import { readPublicSettingsCache, writePublicSettingsCache } from "@/lib/public-settings-cache";
+import { publicSiteSettingsQuery } from "@/lib/site-settings-query";
 import { CartDrawer } from "@/components/shop/CartDrawer";
 
 type NavCategory = { id: string; name: string; slug: string };
@@ -20,12 +20,7 @@ export function Header() {
   const [q, setQ] = useState("");
   const navigate = useNavigate();
 
-  const { data: brandRow } = useQuery({
-    queryKey: ["site-settings-public"],
-    initialData: () => { const cached = readPublicSettingsCache<SiteSettings>(); return cached ? { settings: cached } : undefined; },
-    queryFn: async () => { const { data } = await supabase.from("site_settings").select("settings").maybeSingle(); if (data?.settings) writePublicSettingsCache(data.settings as SiteSettings); return data; },
-    staleTime: 60_000,
-  });
+  const { data: brandRow } = useQuery(publicSiteSettingsQuery);
   const brand = (brandRow?.settings as SiteSettings) ?? {};
   const brandName = brand.site_name || "Sheikh Seeds";
   const brandLogo = brand.logo_url || "/logo.jpg";

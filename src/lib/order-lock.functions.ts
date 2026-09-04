@@ -3,8 +3,8 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 
-const STALE_MS = 60_000; // lock considered stale after 60s without heartbeat
-const LOCK_LIST_CACHE_TTL_MS = 15_000;
+const STALE_MS = 150_000; // tolerate a couple of missed heartbeats (heartbeat runs every 45s)
+const LOCK_LIST_CACHE_TTL_MS = 20_000;
 const DISPLAY_NAME_CACHE_TTL_MS = 5 * 60_000;
 const MAX_LOCK_CACHE_ENTRIES = 200;
 
