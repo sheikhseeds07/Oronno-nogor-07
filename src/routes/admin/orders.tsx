@@ -844,7 +844,7 @@ function OrdersTable({
       .sort((a, b) => {
         const aInvoice = (a.invoice_no ?? a.id).toUpperCase();
         const bInvoice = (b.invoice_no ?? b.id).toUpperCase();
-        return aInvoice.localeCompare(bInvoice, undefined, { numeric: true, sensitivity: "base" });
+        return bInvoice.localeCompare(aInvoice, undefined, { numeric: true, sensitivity: "base" });
       });
     if (!picked.length) return;
     const html = buildInvoicesHTML(picked);
@@ -1128,7 +1128,7 @@ function OrdersTable({
       </div>
 
       {selectedIds.size > 0 && (
-        <div className="mb-3 flex items-center gap-2 rounded-xl border border-slate-200 bg-gradient-to-r from-white via-slate-50 to-white px-3 py-2.5 text-sm flex-wrap shadow-sm">
+        <div className="mb-3 flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-gradient-to-r from-white via-slate-50 to-white px-3 py-2.5 text-sm flex-wrap overflow-visible shadow-sm">
           <span className="inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full bg-gradient-to-br from-brand to-brand-dark text-white text-xs font-bold shadow-sm">
             <span className="w-5 h-5 inline-flex items-center justify-center rounded-full bg-white/25 text-[11px]">{selectedIds.size}</span>
             সিলেক্টেড
@@ -1187,7 +1187,7 @@ function OrdersTable({
         </div>
       )}
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+      <div className="bg-white border border-slate-200 rounded-xl overflow-visible shadow-sm">
         <OrdersTableRows
           orders={displayRows}
           loading={isIncomplete ? (incompleteFetching && !incompleteRows) : (isFetching && !orderResult)}
@@ -1263,7 +1263,7 @@ function ActionBtn({ onClick, icon: Icon, tone, title, children }: {
     <button
       onClick={onClick}
       title={title}
-      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-bold shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150 ${TONE_CLASSES[tone]}`}
+      className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-1.5 rounded-lg text-white text-xs font-bold shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all duration-150 ${TONE_CLASSES[tone]}`}
     >
       <Icon className="w-3.5 h-3.5" /> {children}
     </button>
@@ -1711,8 +1711,8 @@ function OrdersTableRows({
   const colCount = (showCheckbox ? 1 : 0) + 5; // created, customer, items, courier, action
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+    <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+      <table className="w-full min-w-[980px] lg:min-w-full text-sm table-auto">
         <thead className="bg-muted">
           <tr>
             {showCheckbox && (
@@ -1723,8 +1723,8 @@ function OrdersTableRows({
             <th className="text-left p-3">Created At</th>
             <th className="text-left p-3">Customer</th>
             <th className="text-left p-3">Order Items</th>
-            <th className="text-left p-3">Courier Success Rate</th>
-            <th className="text-right p-3">Action</th>
+            <th className="text-left p-3 whitespace-nowrap min-w-[190px]">Courier Success Rate</th>
+            <th className="text-right p-3 whitespace-nowrap min-w-[150px]">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -1764,7 +1764,7 @@ function OrdersTableRows({
                       {wa && <a href={`https://wa.me/${wa}`} target="_blank" rel="noreferrer" className="p-1 rounded-full bg-green-50 text-green-600 hover:bg-green-100" title="WhatsApp"><MessageCircle className="w-3 h-3" /></a>}
                     </div>
                     <div className="font-semibold">{o.customer_name}</div>
-                    <div className="text-xs text-muted-foreground line-clamp-2">
+                    <div className="text-xs text-muted-foreground break-words leading-relaxed">
                       {[o.customer_address, o.thana, o.district].filter(Boolean).join(", ")}
                     </div>
                     <RelativeUpdatedTime value={o.updated_at ?? o.created_at} />
@@ -1776,11 +1776,11 @@ function OrdersTableRows({
                   <div className="text-xs font-bold pt-1.5 mt-1.5 border-t">টোটাল: {taka(o.total)}</div>
                 </td>
                 {/* Courier Success Rate */}
-                <td className="p-3 min-w-[180px]">
+                <td className="p-3 min-w-[190px] whitespace-nowrap">
                   <CourierSuccessCell phone={o.customer_phone} />
                 </td>
                 {/* Action */}
-                <td className="p-3 text-right">
+                <td className="p-3 text-right min-w-[150px] whitespace-nowrap">
                   {(() => {
                     const lock = lockMap?.get(o.id);
                     const lockedByOther = lock && lock.user_id !== currentUserId;

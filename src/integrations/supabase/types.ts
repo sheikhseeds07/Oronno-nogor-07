@@ -10,19 +10,87 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
+      admin_messages: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          sender_avatar_url: string | null
+          sender_id: string
+          sender_name: string
+          sender_role: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          sender_avatar_url?: string | null
+          sender_id: string
+          sender_name: string
+          sender_role: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          sender_avatar_url?: string | null
+          sender_id?: string
+          sender_name?: string
+          sender_role?: string
+        }
+        Relationships: []
+      }
+      admin_operational_notes: {
+        Row: {
+          created_at: string
+          id: string
+          owner_id: string
+          owner_name: string
+          problem: string
+          reference: string | null
+          solved_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          owner_id: string
+          owner_name?: string
+          problem: string
+          reference?: string | null
+          solved_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          owner_id?: string
+          owner_name?: string
+          problem?: string
+          reference?: string | null
+          solved_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       attendance: {
         Row: {
           check_in: string
           check_out: string | null
           created_at: string
           id: string
+          last_activity_at: string | null
           note: string | null
-          notes: string | null
-          status: string
           user_id: string
         }
         Insert: {
@@ -30,9 +98,8 @@ export type Database = {
           check_out?: string | null
           created_at?: string
           id?: string
+          last_activity_at?: string | null
           note?: string | null
-          notes?: string | null
-          status?: string
           user_id: string
         }
         Update: {
@@ -40,9 +107,8 @@ export type Database = {
           check_out?: string | null
           created_at?: string
           id?: string
+          last_activity_at?: string | null
           note?: string | null
-          notes?: string | null
-          status?: string
           user_id?: string
         }
         Relationships: []
@@ -85,6 +151,7 @@ export type Database = {
           image_url: string | null
           is_hidden_from_home: boolean
           name: string
+          parent_id: string | null
           slug: string
         }
         Insert: {
@@ -94,6 +161,7 @@ export type Database = {
           image_url?: string | null
           is_hidden_from_home?: boolean
           name: string
+          parent_id?: string | null
           slug: string
         }
         Update: {
@@ -103,9 +171,18 @@ export type Database = {
           image_url?: string | null
           is_hidden_from_home?: boolean
           name?: string
+          parent_id?: string | null
           slug?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       coupons: {
         Row: {
@@ -140,11 +217,220 @@ export type Database = {
         }
         Relationships: []
       }
+      courier_edge_throttle: {
+        Row: {
+          id: number
+          next_allowed_at: string
+        }
+        Insert: {
+          id: number
+          next_allowed_at?: string
+        }
+        Update: {
+          id?: number
+          next_allowed_at?: string
+        }
+        Relationships: []
+      }
+      courier_history_cache: {
+        Row: {
+          configured: boolean
+          error: string | null
+          expires_at: string
+          fetched_at: string
+          phone: string
+          stats: Json
+          steadfast_source: string | null
+        }
+        Insert: {
+          configured?: boolean
+          error?: string | null
+          expires_at?: string
+          fetched_at?: string
+          phone: string
+          stats?: Json
+          steadfast_source?: string | null
+        }
+        Update: {
+          configured?: boolean
+          error?: string | null
+          expires_at?: string
+          fetched_at?: string
+          phone?: string
+          stats?: Json
+          steadfast_source?: string | null
+        }
+        Relationships: []
+      }
+      courier_provider_throttle: {
+        Row: {
+          id: number
+          next_allowed_at: string
+        }
+        Insert: {
+          id: number
+          next_allowed_at?: string
+        }
+        Update: {
+          id?: number
+          next_allowed_at?: string
+        }
+        Relationships: []
+      }
+      customer_blocklist: {
+        Row: {
+          blocked_at: string
+          blocked_by: string | null
+          customer_name: string
+          id: string
+          ip_address: string | null
+          is_active: boolean
+          unblocked_at: string | null
+          unblocked_by: string | null
+        }
+        Insert: {
+          blocked_at?: string
+          blocked_by?: string | null
+          customer_name: string
+          id?: string
+          ip_address?: string | null
+          is_active?: boolean
+          unblocked_at?: string | null
+          unblocked_by?: string | null
+        }
+        Update: {
+          blocked_at?: string
+          blocked_by?: string | null
+          customer_name?: string
+          id?: string
+          ip_address?: string | null
+          is_active?: boolean
+          unblocked_at?: string | null
+          unblocked_by?: string | null
+        }
+        Relationships: []
+      }
+      customer_blocks: {
+        Row: {
+          blocked_at: string
+          blocked_by: string | null
+          customer_name: string | null
+          id: string
+          ip_address: string | null
+          is_active: boolean
+          phone: string | null
+          unblocked_at: string | null
+        }
+        Insert: {
+          blocked_at?: string
+          blocked_by?: string | null
+          customer_name?: string | null
+          id?: string
+          ip_address?: string | null
+          is_active?: boolean
+          phone?: string | null
+          unblocked_at?: string | null
+        }
+        Update: {
+          blocked_at?: string
+          blocked_by?: string | null
+          customer_name?: string | null
+          id?: string
+          ip_address?: string | null
+          is_active?: boolean
+          phone?: string | null
+          unblocked_at?: string | null
+        }
+        Relationships: []
+      }
+      dashboard_web_order_counter: {
+        Row: {
+          cancelled_count: number
+          confirmed_count: number
+          created_at: string
+          id: boolean
+          processing_count: number
+          total_received: number
+          updated_at: string
+        }
+        Insert: {
+          cancelled_count?: number
+          confirmed_count?: number
+          created_at?: string
+          id?: boolean
+          processing_count?: number
+          total_received?: number
+          updated_at?: string
+        }
+        Update: {
+          cancelled_count?: number
+          confirmed_count?: number
+          created_at?: string
+          id?: boolean
+          processing_count?: number
+          total_received?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      deleted_orders: {
+        Row: {
+          customer_name: string
+          customer_phone: string
+          deleted_at: string
+          deleted_by: string | null
+          id: string
+          invoice_no: string | null
+          items: Json
+          order_data: Json
+          original_created_at: string
+          original_status: string
+          status_logs: Json
+          total: number
+        }
+        Insert: {
+          customer_name: string
+          customer_phone: string
+          deleted_at?: string
+          deleted_by?: string | null
+          id: string
+          invoice_no?: string | null
+          items?: Json
+          order_data: Json
+          original_created_at: string
+          original_status: string
+          status_logs?: Json
+          total?: number
+        }
+        Update: {
+          customer_name?: string
+          customer_phone?: string
+          deleted_at?: string
+          deleted_by?: string | null
+          id?: string
+          invoice_no?: string | null
+          items?: Json
+          order_data?: Json
+          original_created_at?: string
+          original_status?: string
+          status_logs?: Json
+          total?: number
+        }
+        Relationships: []
+      }
       employee_permissions: {
         Row: {
           all_api: boolean
           categories: boolean
           customers: boolean
+          dashboard: boolean
+          dashboard_confirmed_sell: boolean
+          dashboard_incomplete_orders: boolean
+          dashboard_live_visitors: boolean
+          dashboard_meta_ads: boolean
+          dashboard_stock_alert: boolean
+          dashboard_time_filter: boolean
+          dashboard_web_orders: boolean
           delivery: boolean
           hrm: boolean
           landing_pages: boolean
@@ -163,6 +449,14 @@ export type Database = {
           all_api?: boolean
           categories?: boolean
           customers?: boolean
+          dashboard?: boolean
+          dashboard_confirmed_sell?: boolean
+          dashboard_incomplete_orders?: boolean
+          dashboard_live_visitors?: boolean
+          dashboard_meta_ads?: boolean
+          dashboard_stock_alert?: boolean
+          dashboard_time_filter?: boolean
+          dashboard_web_orders?: boolean
           delivery?: boolean
           hrm?: boolean
           landing_pages?: boolean
@@ -181,6 +475,14 @@ export type Database = {
           all_api?: boolean
           categories?: boolean
           customers?: boolean
+          dashboard?: boolean
+          dashboard_confirmed_sell?: boolean
+          dashboard_incomplete_orders?: boolean
+          dashboard_live_visitors?: boolean
+          dashboard_meta_ads?: boolean
+          dashboard_stock_alert?: boolean
+          dashboard_time_filter?: boolean
+          dashboard_web_orders?: boolean
           delivery?: boolean
           hrm?: boolean
           landing_pages?: boolean
@@ -199,34 +501,85 @@ export type Database = {
       }
       employees: {
         Row: {
+          achievements: Json
+          admin_notes: string
           created_at: string
           email: string | null
           id: string
           is_active: boolean
+          join_date: string | null
+          leave_balance: number
+          monthly_bonus: number
+          monthly_target: number
           name: string
           phone: string | null
           position: string | null
+          salary: number | null
           user_id: string | null
         }
         Insert: {
+          achievements?: Json
+          admin_notes?: string
           created_at?: string
           email?: string | null
           id?: string
           is_active?: boolean
+          join_date?: string | null
+          leave_balance?: number
+          monthly_bonus?: number
+          monthly_target?: number
           name: string
           phone?: string | null
           position?: string | null
+          salary?: number | null
           user_id?: string | null
         }
         Update: {
+          achievements?: Json
+          admin_notes?: string
           created_at?: string
           email?: string | null
           id?: string
           is_active?: boolean
+          join_date?: string | null
+          leave_balance?: number
+          monthly_bonus?: number
+          monthly_target?: number
           name?: string
           phone?: string | null
           position?: string | null
+          salary?: number | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      endpoint_egress_hourly: {
+        Row: {
+          bucket_hour: string
+          created_at: string
+          endpoint: string
+          method: string
+          request_count: number
+          response_bytes: number
+          status_class: number
+        }
+        Insert: {
+          bucket_hour: string
+          created_at?: string
+          endpoint: string
+          method: string
+          request_count?: number
+          response_bytes?: number
+          status_class: number
+        }
+        Update: {
+          bucket_hour?: string
+          created_at?: string
+          endpoint?: string
+          method?: string
+          request_count?: number
+          response_bytes?: number
+          status_class?: number
         }
         Relationships: []
       }
@@ -365,6 +718,7 @@ export type Database = {
           conversation_id: string
           created_at: string
           direction: string
+          external_id: string | null
           id: string
           mid: string | null
           sent_by: string | null
@@ -377,6 +731,7 @@ export type Database = {
           conversation_id: string
           created_at?: string
           direction: string
+          external_id?: string | null
           id?: string
           mid?: string | null
           sent_by?: string | null
@@ -389,6 +744,7 @@ export type Database = {
           conversation_id?: string
           created_at?: string
           direction?: string
+          external_id?: string | null
           id?: string
           mid?: string | null
           sent_by?: string | null
@@ -439,19 +795,19 @@ export type Database = {
         Row: {
           created_at: string
           event: string
-          id: string
+          id: number
           phone: string
         }
         Insert: {
           created_at?: string
           event: string
-          id?: string
+          id?: number
           phone: string
         }
         Update: {
           created_at?: string
           event?: string
-          id?: string
+          id?: number
           phone?: string
         }
         Relationships: []
@@ -464,6 +820,7 @@ export type Database = {
           delivery_fee: number
           delivery_zone: string | null
           id: string
+          ip: string | null
           items: Json
           note: string | null
           phone: string
@@ -478,6 +835,7 @@ export type Database = {
           delivery_fee?: number
           delivery_zone?: string | null
           id?: string
+          ip?: string | null
           items?: Json
           note?: string | null
           phone: string
@@ -492,6 +850,7 @@ export type Database = {
           delivery_fee?: number
           delivery_zone?: string | null
           id?: string
+          ip?: string | null
           items?: Json
           note?: string | null
           phone?: string
@@ -527,16 +886,16 @@ export type Database = {
       }
       landing_pages: {
         Row: {
-          addons: Json | null
+          addons: Json
           badges: Json
           created_at: string
           cta_text: string | null
-          delivery_inside: number | null
+          delivery_inside: number
           delivery_outside: number
           description: string | null
-          faq: Json | null
-          features: Json | null
-          gallery_images: string[] | null
+          faq: Json
+          features: Json
+          gallery_images: string[]
           guarantee_text: string | null
           hero_image: string | null
           hero_subtitle: string | null
@@ -544,15 +903,15 @@ export type Database = {
           id: string
           is_published: boolean
           main_delivery_fee: number | null
-          planting_steps: Json | null
+          planting_steps: Json
           product_id: string | null
           regular_price: number | null
-          reviews: Json | null
+          reviews: Json
           sale_price: number | null
           seeds_list: Json
-          show_faq: boolean | null
-          show_features: boolean | null
-          show_reviews: boolean | null
+          show_faq: boolean
+          show_features: boolean
+          show_reviews: boolean
           slug: string
           theme_color: string | null
           title: string
@@ -561,16 +920,16 @@ export type Database = {
           why_choose_us: Json
         }
         Insert: {
-          addons?: Json | null
+          addons?: Json
           badges?: Json
           created_at?: string
           cta_text?: string | null
-          delivery_inside?: number | null
+          delivery_inside?: number
           delivery_outside?: number
           description?: string | null
-          faq?: Json | null
-          features?: Json | null
-          gallery_images?: string[] | null
+          faq?: Json
+          features?: Json
+          gallery_images?: string[]
           guarantee_text?: string | null
           hero_image?: string | null
           hero_subtitle?: string | null
@@ -578,15 +937,15 @@ export type Database = {
           id?: string
           is_published?: boolean
           main_delivery_fee?: number | null
-          planting_steps?: Json | null
+          planting_steps?: Json
           product_id?: string | null
           regular_price?: number | null
-          reviews?: Json | null
+          reviews?: Json
           sale_price?: number | null
           seeds_list?: Json
-          show_faq?: boolean | null
-          show_features?: boolean | null
-          show_reviews?: boolean | null
+          show_faq?: boolean
+          show_features?: boolean
+          show_reviews?: boolean
           slug: string
           theme_color?: string | null
           title: string
@@ -595,16 +954,16 @@ export type Database = {
           why_choose_us?: Json
         }
         Update: {
-          addons?: Json | null
+          addons?: Json
           badges?: Json
           created_at?: string
           cta_text?: string | null
-          delivery_inside?: number | null
+          delivery_inside?: number
           delivery_outside?: number
           description?: string | null
-          faq?: Json | null
-          features?: Json | null
-          gallery_images?: string[] | null
+          faq?: Json
+          features?: Json
+          gallery_images?: string[]
           guarantee_text?: string | null
           hero_image?: string | null
           hero_subtitle?: string | null
@@ -612,15 +971,15 @@ export type Database = {
           id?: string
           is_published?: boolean
           main_delivery_fee?: number | null
-          planting_steps?: Json | null
+          planting_steps?: Json
           product_id?: string | null
           regular_price?: number | null
-          reviews?: Json | null
+          reviews?: Json
           sale_price?: number | null
           seeds_list?: Json
-          show_faq?: boolean | null
-          show_features?: boolean | null
-          show_reviews?: boolean | null
+          show_faq?: boolean
+          show_features?: boolean
+          show_reviews?: boolean
           slug?: string
           theme_color?: string | null
           title?: string
@@ -637,6 +996,114 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      meta_ads_cache: {
+        Row: {
+          cache_key: string
+          fetched_at: string
+          payload: Json
+        }
+        Insert: {
+          cache_key: string
+          fetched_at?: string
+          payload: Json
+        }
+        Update: {
+          cache_key?: string
+          fetched_at?: string
+          payload?: Json
+        }
+        Relationships: []
+      }
+      order_action_events: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          id: string
+          order_id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          order_id: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          order_id?: string
+        }
+        Relationships: []
+      }
+      order_cancellation_history: {
+        Row: {
+          cancelled_at: string
+          id: string
+          order_id: string | null
+          source: string
+        }
+        Insert: {
+          cancelled_at?: string
+          id?: string
+          order_id?: string | null
+          source: string
+        }
+        Update: {
+          cancelled_at?: string
+          id?: string
+          order_id?: string | null
+          source?: string
+        }
+        Relationships: []
+      }
+      order_distribution_members: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          name: string
+          position: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          name: string
+          position?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          name?: string
+          position?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      order_distribution_state: {
+        Row: {
+          id: boolean
+          next_position: number
+          updated_at: string
+        }
+        Insert: {
+          id?: boolean
+          next_position?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: boolean
+          next_position?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       order_items: {
         Row: {
@@ -707,6 +1174,27 @@ export type Database = {
         }
         Relationships: []
       }
+      order_rate_limit_events: {
+        Row: {
+          created_at: string
+          id: string
+          ip: string | null
+          phone: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip?: string | null
+          phone?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip?: string | null
+          phone?: string | null
+        }
+        Relationships: []
+      }
       order_status_logs: {
         Row: {
           changed_by: string | null
@@ -748,8 +1236,12 @@ export type Database = {
       orders: {
         Row: {
           assigned_to: string | null
+          client_ip: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
           coupon_code: string | null
           courier_consignment: string | null
+          courier_display_name: string | null
           courier_status: string | null
           created_at: string
           created_by: string | null
@@ -762,6 +1254,7 @@ export type Database = {
           id: string
           invoice_no: string | null
           notes: string | null
+          originated_from_incomplete: boolean
           payment_method: string | null
           printed_at: string | null
           source: Database["public"]["Enums"]["order_source"]
@@ -773,8 +1266,12 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          client_ip?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
           coupon_code?: string | null
           courier_consignment?: string | null
+          courier_display_name?: string | null
           courier_status?: string | null
           created_at?: string
           created_by?: string | null
@@ -787,6 +1284,7 @@ export type Database = {
           id?: string
           invoice_no?: string | null
           notes?: string | null
+          originated_from_incomplete?: boolean
           payment_method?: string | null
           printed_at?: string | null
           source?: Database["public"]["Enums"]["order_source"]
@@ -798,8 +1296,12 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          client_ip?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
           coupon_code?: string | null
           courier_consignment?: string | null
+          courier_display_name?: string | null
           courier_status?: string | null
           created_at?: string
           created_by?: string | null
@@ -812,6 +1314,7 @@ export type Database = {
           id?: string
           invoice_no?: string | null
           notes?: string | null
+          originated_from_incomplete?: boolean
           payment_method?: string | null
           printed_at?: string | null
           source?: Database["public"]["Enums"]["order_source"]
@@ -853,12 +1356,14 @@ export type Database = {
       products: {
         Row: {
           category_id: string | null
+          cost: number
           created_at: string
           description: string | null
           id: string
           images: string[]
           is_active: boolean
           is_featured: boolean
+          is_popular: boolean
           name: string
           price: number
           sale_price: number | null
@@ -870,12 +1375,14 @@ export type Database = {
         }
         Insert: {
           category_id?: string | null
+          cost?: number
           created_at?: string
           description?: string | null
           id?: string
           images?: string[]
           is_active?: boolean
           is_featured?: boolean
+          is_popular?: boolean
           name: string
           price?: number
           sale_price?: number | null
@@ -887,12 +1394,14 @@ export type Database = {
         }
         Update: {
           category_id?: string | null
+          cost?: number
           created_at?: string
           description?: string | null
           id?: string
           images?: string[]
           is_active?: boolean
           is_featured?: boolean
+          is_popular?: boolean
           name?: string
           price?: number
           sale_price?: number | null
@@ -960,6 +1469,48 @@ export type Database = {
         }
         Relationships: []
       }
+      site_visitors: {
+        Row: {
+          created_at: string
+          id: string
+          landing_page_id: string | null
+          last_seen: string
+          path: string
+          product_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          landing_page_id?: string | null
+          last_seen?: string
+          path?: string
+          product_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          landing_page_id?: string | null
+          last_seen?: string
+          path?: string
+          product_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_visitors_landing_page_id_fkey"
+            columns: ["landing_page_id"]
+            isOneToOne: false
+            referencedRelation: "landing_pages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "site_visitors_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_visits: {
         Row: {
           created_at: string
@@ -1010,9 +1561,70 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      top_selling_products: {
+        Row: {
+          order_count: number | null
+          product_id: string | null
+          units_sold: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      archive_orders: {
+        Args: { p_deleted_by?: string; p_ids: string[] }
+        Returns: number
+      }
+      assign_order_round_robin: {
+        Args: { p_order_id: string }
+        Returns: string
+      }
+      block_customer: {
+        Args: { p_ip: string; p_name?: string; p_phone: string }
+        Returns: {
+          blocked_at: string
+          blocked_by: string | null
+          customer_name: string | null
+          id: string
+          ip_address: string | null
+          is_active: boolean
+          phone: string | null
+          unblocked_at: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "customer_blocks"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      cancel_orders: { Args: { p_ids: string[] }; Returns: number }
+      check_and_touch_order_rate_limit: {
+        Args: {
+          p_ip: string
+          p_ip_minutes?: number
+          p_phone: string
+          p_phone_minutes?: number
+        }
+        Returns: Json
+      }
+      dashboard_confirmed_order_count: {
+        Args: { p_from: string; p_to: string }
+        Returns: number
+      }
+      dashboard_egress_summary: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
+      }
+      dashboard_egress_summary_legacy: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
+      }
+      dispatch_meta_capi_event: { Args: { p_body: Json }; Returns: boolean }
+      get_home_data_v1: { Args: never; Returns: Json }
+      get_meta_capi_status: { Args: never; Returns: Json }
+      get_meta_capi_token: { Args: never; Returns: Json }
+      get_public_order_confirmation: { Args: { p_id: string }; Returns: Json }
       has_permission: {
         Args: { _module: string; _user_id: string }
         Returns: boolean
@@ -1024,17 +1636,112 @@ export type Database = {
         }
         Returns: boolean
       }
+      heartbeat_site_visitor: {
+        Args: {
+          p_id: string
+          p_landing_page_id?: string
+          p_path: string
+          p_product_id?: string
+        }
+        Returns: undefined
+      }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_admin_staff: { Args: never; Returns: boolean }
+      is_blocked_visitor: {
+        Args: { p_ip?: string; p_phone?: string }
+        Returns: boolean
+      }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
+      list_customer_blocks: {
+        Args: never
+        Returns: {
+          blocked_at: string
+          blocked_by: string
+          customer_name: string
+          id: string
+          ip_address: string
+          is_active: boolean
+          phone: string
+          unblocked_at: string
+        }[]
+      }
+      normalize_bd_phone: { Args: { p_phone: string }; Returns: string }
+      permanently_delete_archived_order: {
+        Args: { p_id: string }
+        Returns: boolean
+      }
+      permanently_delete_archived_orders: {
+        Args: { p_ids: string[] }
+        Returns: number
+      }
+      place_public_order: {
+        Args: {
+          p_client_ip?: string
+          p_customer_address: string
+          p_customer_name: string
+          p_customer_phone: string
+          p_delivery_fee: number
+          p_items: Json
+          p_notes?: string
+        }
+        Returns: string
+      }
+      purge_visitor_telemetry: { Args: never; Returns: undefined }
+      record_endpoint_egress: { Args: { p_rows: Json }; Returns: undefined }
+      record_web_order_confirmation: {
+        Args: { p_confirmed_by: string; p_order_id: string }
+        Returns: undefined
+      }
+      refresh_top_selling_products: { Args: never; Returns: undefined }
       release_fb_lock: { Args: { _key: string }; Returns: undefined }
+      reserve_courier_edge_slot: {
+        Args: { p_gap_ms?: number }
+        Returns: number
+      }
+      reserve_courier_provider_slot: {
+        Args: { p_gap_ms?: number }
+        Returns: number
+      }
+      restore_deleted_order: {
+        Args: {
+          p_id: string
+          p_status: Database["public"]["Enums"]["order_status"]
+        }
+        Returns: boolean
+      }
+      restore_deleted_orders: {
+        Args: {
+          p_ids: string[]
+          p_status: Database["public"]["Enums"]["order_status"]
+        }
+        Returns: number
+      }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       try_fb_lock: {
         Args: { _key: string; _seconds: number }
         Returns: boolean
       }
+      unblock_customer: { Args: { p_id: string }; Returns: undefined }
+      upsert_incomplete_checkout: {
+        Args: {
+          p_customer_address: string
+          p_customer_name: string
+          p_delivery_fee: number
+          p_delivery_zone: string
+          p_ip: string
+          p_items: Json
+          p_note: string
+          p_phone: string
+          p_subtotal: number
+          p_total: number
+        }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "super_admin" | "admin" | "employee" | "customer"
-      order_source: "web" | "manual" | "messenger"
+      order_source: "web" | "manual" | "messenger" | "incomplete"
       order_status:
         | "web_pending"
         | "pending"
@@ -1061,12 +1768,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1090,11 +1797,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1115,11 +1822,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1140,11 +1847,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1157,11 +1864,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1174,7 +1881,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["super_admin", "admin", "employee", "customer"],
-      order_source: ["web", "manual", "messenger"],
+      order_source: ["web", "manual", "messenger", "incomplete"],
       order_status: [
         "web_pending",
         "pending",

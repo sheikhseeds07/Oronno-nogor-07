@@ -6,8 +6,8 @@
   "packageManager": "bun@1.2.15",
   "scripts": {
     "dev": "vite dev",
-    "build": "node scripts/fix-cloudflare-build-blockers.mjs && node scripts/apply-courier-egress-guard.mjs && node scripts/fix-dashboard-profit-range.mjs && node scripts/remove-live-website-section.mjs && node scripts/apply-invoice-desc-sort.mjs && vite build",
-    "build:dev": "node scripts/fix-cloudflare-build-blockers.mjs && node scripts/apply-courier-egress-guard.mjs && node scripts/fix-dashboard-profit-range.mjs && node scripts/remove-live-website-section.mjs && node scripts/apply-invoice-desc-sort.mjs && vite build --mode development",
+    "build": "vite build",
+    "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write ."

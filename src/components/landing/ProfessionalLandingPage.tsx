@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { Feature, WhyItem, Review } from "@/lib/landing-content";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";

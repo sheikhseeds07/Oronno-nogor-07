@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import type { Database } from "@/integrations/supabase/types";
+
+type OrderStatus = Database["public"]["Enums"]["order_status"];
 import { supabase } from "@/lib/personal-supabase/client";
 import { toast } from "sonner";
 import { useLocation, useNavigate } from "@tanstack/react-router";
@@ -47,7 +50,7 @@ function OrderStatusAction() {
   const apply = async () => {
     if (!draft || draft === status || !selected) return;
     setSaving(true);
-    const { error } = await supabase.from("orders").update({ status: draft }).eq("id", selected);
+    const { error } = await supabase.from("orders").update({ status: draft as OrderStatus }).eq("id", selected);
     setSaving(false);
     if (error) return toast.error(error.message);
     setStatus(draft); setDraft(draft); setOpen(false); toast.success("Order status updated");
