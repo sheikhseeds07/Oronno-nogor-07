@@ -1,12 +1,13 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ShoppingCart, Search, X, ChevronRight, Home, Grid3x3, Phone, ArrowRight, Leaf, Sprout, Flower2, TreePine, Wheat, Sun } from "lucide-react";
+import { ShoppingCart, Search, X, ChevronRight, Home, Grid3x3, Phone, ArrowRight, Palette, Check, Leaf, Sprout, Flower2, TreePine, Wheat, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { hydrateCartStore, useCart } from "@/lib/cart-store";
 import { bnDigits } from "@/lib/format";
 import { supabase } from "@/lib/personal-supabase/client";
 import { publicSiteSettingsQuery } from "@/lib/site-settings-query";
 import { CartDrawer } from "@/components/shop/CartDrawer";
+import { SITE_THEMES, applyTheme, getStoredTheme } from "@/lib/theme-store";
 
 type NavCategory = { id: string; name: string; slug: string };
 type SiteSettings = { site_name?: string; tagline?: string; header_subtitle?: string; logo_url?: string };
@@ -20,6 +21,7 @@ export function Header() {
   const [cartOpen, setCartOpen] = useState(false);
   const [bump, setBump] = useState(false);
   const [q, setQ] = useState("");
+  const [theme, setTheme] = useState("default");
   const navigate = useNavigate();
 
   const { data: brandRow } = useQuery(publicSiteSettingsQuery);
@@ -52,7 +54,7 @@ export function Header() {
 
   const submit = (e: React.FormEvent) => { e.preventDefault(); navigate({ to: "/shop", search: { q } as never }); setDrawer(false); };
   useEffect(() => { if (!drawer) return; const prev = document.body.style.overflow; document.body.style.overflow = "hidden"; return () => { document.body.style.overflow = prev; }; }, [drawer]);
-  useEffect(() => { void hydrateCartStore(); }, []);
+  useEffect(() => { void hydrateCartStore(); const t = getStoredTheme(); setTheme(t); applyTheme(t); }, []);
 
   const logoNode = brandLogo ? (
     <img src={brandLogo} alt={brandName} width={40} height={40} loading="eager" fetchPriority="high" decoding="async" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover ring-2 ring-brand/30 shadow-md group-hover:ring-brand group-hover:scale-110 group-hover:rotate-3 transition-all duration-300" />
@@ -163,11 +165,37 @@ export function Header() {
                 })}
               </div>
             </>}
+
+            <div className="drawer-item flex items-center gap-2 pt-5 pb-2 px-3" style={{ "--d": nextDelay() } as React.CSSProperties}>
+              <Palette className="w-3.5 h-3.5 text-brand" />
+              <span className="text-[10px] font-black text-brand-dark/70 uppercase tracking-[0.2em]">থিম</span>
+              <span className="flex-1 h-px bg-gradient-to-r from-brand/40 to-transparent" />
+            </div>
+            <div className="drawer-item grid grid-cols-3 gap-2 px-2 pb-2" style={{ "--d": nextDelay() } as React.CSSProperties}>
+              {SITE_THEMES.map((t) => {
+                const active = t.id === theme;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => { setTheme(t.id); applyTheme(t.id); }}
+                    aria-pressed={active}
+                    className={`theme-swatch flex flex-col items-center gap-1.5 rounded-2xl px-1.5 py-2 border transition ${active ? "border-brand bg-brand-light/50 shadow-md shadow-brand/20" : "border-brand-light/70 hover:border-brand/50 hover:bg-brand-light/25"}`}
+                  >
+                    <span className="relative flex items-center justify-center w-9 h-9 rounded-full ring-1 ring-black/10 overflow-hidden" style={{ background: `linear-gradient(135deg, ${t.colors[0]} 0%, ${t.colors[1]} 55%, ${t.colors[2]} 100%)` }}>
+                      {active && <Check className="w-4 h-4 text-white drop-shadow" strokeWidth={3.5} />}
+                    </span>
+                    <span className={`text-[9.5px] font-bold leading-none text-center ${active ? "text-brand-dark" : "text-foreground/70"}`}>{t.name}</span>
+                  </button>
+                );
+              })}
+            </div>
           </nav>
 
           <div className="px-4 py-3 border-t border-brand-light/50 bg-gradient-to-r from-brand-light/25 to-transparent">
             <div className="text-[10px] font-bold text-brand-dark/60 tracking-wide text-center">🌱 {brandName} — সাথেই আছে, সাথেই থাকবে</div>
           </div>
+
         </aside>
       </div>
     )}
