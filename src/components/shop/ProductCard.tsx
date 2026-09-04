@@ -1,5 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
-import { ShoppingCart, Zap, Minus, Plus, Check } from "lucide-react";
+import { ShoppingCart, Minus, Plus, Check } from "lucide-react";
 import { memo, useState } from "react";
 import { taka, bnDigits } from "@/lib/format";
 import { useCart } from "@/lib/cart-store";
@@ -24,7 +23,6 @@ export const ProductCard = memo(function ProductCard({ p }: { p: Product }) {
   const setQty = useCart((s) => s.setQty);
   const remove = useCart((s) => s.remove);
   const inCart = useCart((s) => s.items.find((i) => i.id === p.id));
-  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
   const price = p.sale_price ?? p.price;
@@ -101,13 +99,6 @@ export const ProductCard = memo(function ProductCard({ p }: { p: Product }) {
                 {justAdded ? "কার্টে যোগ হয়েছে" : "কার্টে যোগ করুন"}
               </button>
             )}
-            <button
-              disabled={p.stock <= 0}
-              onClick={() => { addItem(); navigate({ to: "/checkout" }); }}
-              className="flex items-center justify-center gap-1.5 bg-gradient-to-r from-brand to-brand-dark text-white py-2 rounded-md text-xs font-bold hover:opacity-90 disabled:opacity-50"
-            >
-              <Zap className="w-3.5 h-3.5" /> অর্ডার করুন
-            </button>
           </div>
         </div>
       </div>
