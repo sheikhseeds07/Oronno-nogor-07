@@ -51,6 +51,10 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   const customerPhone = data.customer_phone;
   const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
 
+  // Blocked customers (phone or IP) never reach order creation.
+  const { data: blocked } = await (supabase as any).rpc("is_blocked_visitor", { p_ip: clientIp, p_phone: customerPhone });
+  if (blocked === true) throw new Error(`${BLOCKED_ORDER_CODE}: ${BLOCKED_ORDER_MESSAGE}`);
+
   // Checkout must not depend on an admin/service credential. The public RPC is a
   // narrowly-scoped, validated SECURITY DEFINER endpoint that creates only orders.
   const { data: orderId, error: orderError } = await (supabase as any).rpc("place_public_order", {
