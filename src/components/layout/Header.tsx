@@ -53,19 +53,21 @@ export function Header() {
   useEffect(() => { void hydrateCartStore(); }, []);
 
   const logoNode = brandLogo ? (
-    <img src={brandLogo} alt={brandName} width={44} height={44} loading="eager" fetchPriority="high" decoding="async" className="w-10 h-10 sm:w-11 sm:h-11 rounded-[14px] object-cover ring-2 ring-brand/20 shadow-md group-hover:rounded-xl group-hover:ring-brand/50 group-hover:scale-[1.04] transition-all duration-300" />
-  ) : <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-[14px] bg-brand-light/30 animate-pulse ring-2 ring-brand/20" aria-hidden="true" />;
+    <img src={brandLogo} alt={brandName} width={48} height={48} loading="eager" fetchPriority="high" decoding="async" className="w-11 h-11 sm:w-12 sm:h-12 rounded-full object-cover ring-2 ring-brand/25 shadow-md group-hover:ring-brand/60 group-hover:scale-105 group-hover:shadow-lg transition-all duration-300" />
+  ) : <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-brand-light/30 animate-pulse ring-2 ring-brand/20" aria-hidden="true" />;
   const drawerLogoNode = brandLogo ? <img src={brandLogo} alt={brandName} width={48} height={48} decoding="async" className="w-12 h-12 rounded-2xl object-cover ring-2 ring-white/40 shadow-lg" /> : <div className="w-12 h-12 rounded-2xl bg-white/10 animate-pulse ring-2 ring-white/20" aria-hidden="true" />;
 
   return <>
-    <header className="sticky top-0 z-40 bg-white/92 backdrop-blur-2xl border-b border-brand-light/45 shadow-[0_8px_30px_rgba(0,0,0,0.06)]">
-      <div className="h-[3px] bg-gradient-to-r from-brand/20 via-brand to-brand-dark/20 relative overflow-hidden"><span className="absolute inset-y-0 -left-1/3 w-1/3 bg-white/70 blur-sm animate-[pulse_2.2s_ease-in-out_infinite]" /></div>
-      <div className="container mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex items-center gap-2 sm:gap-3">
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-2xl border-b border-brand-light/40 shadow-[0_6px_24px_rgba(0,0,0,0.05)]">
+      <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-2.5 flex items-center gap-2 sm:gap-3">
+        <button onClick={() => setDrawer(true)} className="group shrink-0 flex flex-col items-center justify-center gap-[5px] w-11 h-11 rounded-full bg-white border border-brand-light/70 shadow-sm hover:shadow-md hover:border-brand/40 hover:-translate-y-0.5 active:scale-90 transition-all duration-300" aria-label="মেনু">
+          <span className="block w-[18px] h-[2px] rounded-full bg-brand-dark group-hover:w-[14px] group-hover:bg-brand transition-all duration-300 origin-left" />
+          <span className="block w-[18px] h-[2px] rounded-full bg-brand-dark group-hover:bg-brand transition-all duration-300" />
+          <span className="block w-[12px] h-[2px] rounded-full bg-brand-dark group-hover:w-[18px] group-hover:bg-brand transition-all duration-300 origin-left" />
+        </button>
+
         <Link to="/" className="flex items-center gap-2.5 shrink-0 group">
-          <div className="relative">
-            {logoNode}
-            <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-brand rounded-full ring-2 ring-white flex items-center justify-center shadow-sm"><Sparkles className="w-2.5 h-2.5 text-white animate-pulse" /></span>
-          </div>
+          {logoNode}
           <div className="leading-tight hidden sm:block">
             <div className="font-black text-brand-dark text-[17px] lg:text-[19px] tracking-[-0.02em]">{brandName}</div>
             <div className="text-[8px] lg:text-[9px] text-muted-foreground font-bold tracking-[0.16em] mt-0.5">{brandSubtitle}</div>
@@ -73,19 +75,18 @@ export function Header() {
         </Link>
 
         <form onSubmit={submit} className="flex-1 relative max-w-2xl mx-auto group/search">
-          <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-brand/65 group-focus-within/search:text-brand transition-colors" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="পছন্দের বীজ খুঁজুন..." className="w-full h-11 bg-brand-light/20 border border-brand-light/55 rounded-2xl pl-10 pr-[76px] sm:pr-[82px] text-sm placeholder:text-muted-foreground/70 focus:outline-none focus:bg-white focus:border-brand/70 focus:ring-4 focus:ring-brand/10 transition-all duration-300 shadow-inner" />
-          <button type="submit" className="absolute right-1 top-1 bottom-1 px-3.5 sm:px-4 bg-brand text-white rounded-xl text-xs font-extrabold shadow-sm hover:bg-brand-dark hover:shadow-md active:scale-95 transition-all">খুঁজুন</button>
+          <Search className="w-[18px] h-[18px] absolute left-4 top-1/2 -translate-y-1/2 text-brand/70 group-focus-within/search:text-brand transition-colors" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="শ্যাড খুঁজুন" className="w-full h-11 sm:h-12 bg-brand-light/35 border border-transparent rounded-full pl-11 pr-4 text-sm font-medium placeholder:text-muted-foreground/80 focus:outline-none focus:bg-white focus:border-brand/60 focus:ring-4 focus:ring-brand/10 transition-all duration-300 shadow-inner" />
         </form>
 
-        <button onClick={() => setCartOpen(true)} className={`relative shrink-0 flex items-center gap-1 sm:gap-1.5 rounded-2xl bg-gradient-to-br from-brand to-brand-dark text-white pl-2.5 pr-2 py-1.5 shadow-lg shadow-brand/20 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 overflow-visible ${bump ? "ring-4 ring-brand/15 scale-[1.03]" : ""}`} aria-label="অর্ডার কার্ট">
-          <span className="flex flex-col items-start leading-none px-1"><span className="font-black text-[11px] sm:text-xs">অর্ডার</span><span className="text-[8px] text-white/70 font-semibold mt-0.5">কার্ট দেখুন</span></span>
-          <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 opacity-80" />
-          <span className="relative flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/15 ring-1 ring-white/25 backdrop-blur-sm"><ShoppingCart className={`w-[17px] h-[17px] sm:w-[18px] sm:h-[18px] ${bump ? "animate-bounce" : ""}`} />{count > 0 && <span key={bumpKey} className="badge-pop absolute -top-2 -right-2 bg-white text-brand-dark text-[10px] font-black rounded-full min-w-[20px] h-[20px] px-1 flex items-center justify-center ring-2 ring-brand shadow-md">{bnDigits(count)}</span>}</span>
-          <span className="absolute inset-0 rounded-2xl bg-white/20 animate-[ping_3.2s_ease-out_infinite] pointer-events-none opacity-10" />
+        <button onClick={() => setCartOpen(true)} className={`relative shrink-0 flex items-center gap-1.5 sm:gap-2 rounded-full bg-brand-light/30 border border-brand/25 pl-4 sm:pl-5 pr-1.5 py-1.5 shadow-sm hover:shadow-md hover:border-brand/50 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] transition-all duration-300 ${bump ? "ring-4 ring-brand/15 scale-[1.03]" : ""}`} aria-label="অর্ডার কার্ট">
+          <span className="font-black text-brand-dark text-[13px] sm:text-sm">অর্ডার</span>
+          <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-dark/80" />
+          <span className="relative flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-brand to-brand-dark text-white shadow-md">
+            <ShoppingCart className={`w-[18px] h-[18px] ${bump ? "animate-bounce" : ""}`} />
+            {count > 0 && <span key={bumpKey} className="badge-pop absolute -top-1.5 -right-1.5 bg-white text-brand-dark text-[10px] font-black rounded-full min-w-[20px] h-[20px] px-1 flex items-center justify-center ring-2 ring-brand shadow-md">{bnDigits(count)}</span>}
+          </span>
         </button>
-
-        <button onClick={() => setDrawer(true)} className="p-2.5 rounded-2xl bg-white border border-brand-light/60 text-brand-dark shadow-sm hover:bg-brand-light/25 hover:border-brand/30 hover:shadow-md hover:-translate-y-0.5 active:scale-95 transition-all shrink-0" aria-label="মেনু"><Menu className="w-5 h-5" /></button>
       </div>
 
       <div className="hidden md:block border-t border-brand-light/30 bg-white/70">
