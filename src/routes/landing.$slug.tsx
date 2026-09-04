@@ -104,13 +104,13 @@ function LandingPage() {
   const { data, isLoading } = useQuery({ enabled: !isLegacySlug && !isSeedCombo, staleTime:5*60_000, gcTime:30*60_000, queryKey:["landing-template",slug], queryFn:async() => (await supabase.from("landing_pages").select("planting_steps").eq("slug",slug).maybeSingle()).data ?? null });
   const popupBehaviorEnabled = isSeedCombo || behaviorSlug === "seeds-combo-24";
   const resolvedTemplate = mergeContent(data?.planting_steps).template as string;
-  const karalaStyle = isKaralaStyle(slug) || resolvedTemplate === "karala";
+  const karalaStyle = isKaralaStyle(slug) || resolvedTemplate === "all-product";
   const hideHeader = karalaStyle || compact;
   const hideReviews = isSeedCombo || karalaStyle || compact;
   if (isLegacySlug) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} compact={compact} /><LegacyLandingPage slug={slug} /></>;
   if (isSeedCombo) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader compact={compact} /><CleanLandingPage slug={slug} /></>;
   const template = resolvedTemplate;
-  if (template === "karala") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader hideFooter compact={compact} /><ProductStyleLandingPage slug={slug} karala /></>;
+  if (template === "all-product") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader hideFooter compact={compact} /><ProductStyleLandingPage slug={slug} karala /></>;
   if (template === "product") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} hideFooter={karalaStyle} compact={compact} /><ProductStyleLandingPage slug={slug} karala={karalaStyle} /></>;
   if (template === "premium") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><ProfessionalLandingPage slug={slug} variant="premium" /></>;
   if (template === "modern") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><ProfessionalLandingPage slug={slug} variant="modern" /></>;
