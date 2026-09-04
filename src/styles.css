@@ -196,3 +196,12 @@ div[style*="homeCategoryMarquee"] > button { display:flex;flex-direction:column;
 div[style*="homeCategoryMarquee"] > button > div:first-child { order:2;margin-bottom:0; }
 div[style*="homeCategoryMarquee"] > button > div:nth-child(2) { order:1;margin-bottom:.625rem; }
 #order #lp-order-form > p:last-child { display:none !important; }
+
+/* ===== Header drawer (left, premium) ===== */
+@keyframes drawer-in { from{transform:translateX(-108%)} to{transform:translateX(0)} }
+@keyframes drawer-backdrop { from{opacity:0} to{opacity:1} }
+@keyframes drawer-item { from{opacity:0;transform:translateX(-22px)} to{opacity:1;transform:translateX(0)} }
+.drawer-panel { animation:drawer-in .55s cubic-bezier(.22,1,.36,1) both; }
+.drawer-backdrop { animation:drawer-backdrop .35s ease both; }
+.drawer-item { animation:drawer-item .5s cubic-bezier(.22,1,.36,1) both;animation-delay:var(--d,0ms); }
+@media (prefers-reduced-motion:reduce) { .drawer-panel,.drawer-backdrop,.drawer-item{animation:none} }
