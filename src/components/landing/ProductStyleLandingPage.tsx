@@ -23,9 +23,10 @@ import { LP_SHARED_STYLE, LpHeaderCountdown, LpFloatingCta, LpOrderNote, LpCheck
 type Product = { id: string; name: string; price: number; sale_price: number | null; images: string[] | null };
 type Addon = { product_id?: string; name: string; price: number; image?: string; old_price?: number; badge?: string; delivery_fee?: number | null };
 type Page = { id: string; slug: string; title: string; top_bar_text?: string | null; hero_title?: string | null; hero_subtitle?: string | null; hero_image?: string | null; cta_text?: string | null; regular_price?: number | null; sale_price?: number | null; main_delivery_fee?: number | null; features?: Feature[] | null; why_choose_us?: WhyItem[] | null; reviews?: Review[] | null; addons?: Addon[] | null; theme_color?: string | null; planting_steps?: unknown; description?: string | null; is_published?: boolean; products?: Product | null };
-type Props = { slug: string };
+type Props = { slug: string; karala?: boolean };
 
-export function ProductStyleLandingPage({ slug }: Props) {
+export function ProductStyleLandingPage({ slug, karala }: Props) {
+  const isKaralaStyle = Boolean(karala) || landingBaseSlug(slug) === "karala";
   const navigate = useNavigate();
   const runPlaceOrder = useServerFn(placeOrder);
   const [selected, setSelected] = useState(0);
@@ -55,8 +56,8 @@ export function ProductStyleLandingPage({ slug }: Props) {
   const logo = settings.logo_url || brandLogoFile;
   useCheckoutAutofill({ form, setForm: updater => setForm(f => updater(f) as typeof f), items: selectedPackage ? [{ id: selectedPackage.product_id || `addon-${selected}`, name: selectedPackage.name, price: selectedPackage.price, quantity: 1 }] : [], subtotal, total, deliveryFee: shipping });
   useEffect(() => { const checkout = document.getElementById("product-order"); if (!checkout) return; const observer = new IntersectionObserver(([entry]) => setCheckoutVisible(Boolean(entry?.isIntersecting)), { threshold: 0.12, rootMargin: "0px 0px -10% 0px" }); observer.observe(checkout); return () => observer.disconnect(); }, [isLoading, page]);
-  const [showGuaranteePopup, setShowGuaranteePopup] = useState(landingBaseSlug(slug) === "karala" ? false : true);
-  useEffect(() => { const delay = landingBaseSlug(slug) === "karala" ? 1200 : 0; const duration = landingBaseSlug(slug) === "karala" ? 10000 : 10000; const timer = window.setTimeout(() => { if (landingBaseSlug(slug) === "karala") setShowGuaranteePopup(true); }, delay); const closeTimer = window.setTimeout(() => setShowGuaranteePopup(false), delay + duration); return () => { window.clearTimeout(timer); window.clearTimeout(closeTimer); }; }, [slug]);
+  const [showGuaranteePopup, setShowGuaranteePopup] = useState(isKaralaStyle ? false : true);
+  useEffect(() => { const delay = isKaralaStyle ? 1200 : 0; const duration = 10000; const timer = window.setTimeout(() => { if (isKaralaStyle) setShowGuaranteePopup(true); }, delay); const closeTimer = window.setTimeout(() => setShowGuaranteePopup(false), delay + duration); return () => { window.clearTimeout(timer); window.clearTimeout(closeTimer); }; }, [slug, isKaralaStyle]);
   const closeGuaranteePopup = () => setShowGuaranteePopup(false);
   const submit = async (e?: React.FormEvent) => { e?.preventDefault(); if (!form.name || !form.phone || !form.address) return toast.error("নাম, ফোন ও ঠিকানা পূরণ করুন"); if (!selectedPackage) return toast.error("প্রোডাক্ট নির্বাচন করুন"); setSubmitting(true); try { const items = [{ id: selectedPackage.product_id || `addon-${selected}`, name: selectedPackage.name, price: selectedPackage.price, quantity: 1 }]; trackInitiateCheckout(items, total); const order = await runPlaceOrder({ data: { customer_name: form.name, customer_phone: form.phone.replace(/[\s-]/g, ""), customer_address: form.address, delivery_fee: shipping, items, notes: null, ...getFbContext() } }); trackPurchase(items, total, order.id); toast.success("অর্ডার সফল হয়েছে!"); navigate({ to: "/order/$id", params: { id: order.id } }); } catch (err) { toast.error(orderErrorMessage(err)); setSubmitting(false); } };
   if (isLoading) return <div className="min-h-screen bg-[#f7f9f6]" aria-hidden="true" />;
