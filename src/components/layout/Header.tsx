@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ShoppingCart, Search, X, ChevronRight, Home, Grid3x3, Phone, ArrowRight, Palette, Check, Leaf, Sprout, Flower2, TreePine, Wheat, Sun, Sparkles, Languages } from "lucide-react";
+import { ShoppingCart, Search, X, ChevronRight, Home, Grid3x3, Phone, ArrowRight, Palette, Leaf, Sprout, Flower2, TreePine, Wheat, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { hydrateCartStore, useCart } from "@/lib/cart-store";
 import { bnDigits } from "@/lib/format";
@@ -8,8 +8,6 @@ import { supabase } from "@/lib/personal-supabase/client";
 import { publicSiteSettingsQuery } from "@/lib/site-settings-query";
 import { CartDrawer } from "@/components/shop/CartDrawer";
 import { SITE_THEMES, applyTheme, getStoredTheme } from "@/lib/theme-store";
-import { SITE_TEXTURES, applyTexture, getStoredTexture } from "@/lib/texture-store";
-import { getStoredLang, initLanguage, setLanguage, type SiteLang } from "@/lib/i18n";
 
 type NavCategory = { id: string; name: string; slug: string };
 type SiteSettings = { site_name?: string; tagline?: string; header_subtitle?: string; logo_url?: string };
@@ -24,8 +22,6 @@ export function Header() {
   const [bump, setBump] = useState(false);
   const [q, setQ] = useState("");
   const [theme, setTheme] = useState("default");
-  const [texture, setTexture] = useState("none");
-  const [lang, setLang] = useState<SiteLang>("bn");
   const navigate = useNavigate();
 
   const { data: brandRow } = useQuery(publicSiteSettingsQuery);
@@ -58,7 +54,7 @@ export function Header() {
 
   const submit = (e: React.FormEvent) => { e.preventDefault(); navigate({ to: "/shop", search: { q } as never }); setDrawer(false); };
   useEffect(() => { if (!drawer) return; const prev = document.body.style.overflow; document.body.style.overflow = "hidden"; return () => { document.body.style.overflow = prev; }; }, [drawer]);
-  useEffect(() => { void hydrateCartStore(); const t = getStoredTheme(); setTheme(t); applyTheme(t); const tx = getStoredTexture(); setTexture(tx); applyTexture(tx); setLang(getStoredLang()); initLanguage(); }, []);
+  useEffect(() => { void hydrateCartStore(); const t = getStoredTheme(); setTheme(t); applyTheme(t); }, []);
 
   const logoNode = brandLogo ? (
     <img src={brandLogo} alt={brandName} width={40} height={40} loading="eager" fetchPriority="high" decoding="async" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover ring-2 ring-brand/30 shadow-md group-hover:ring-brand group-hover:scale-110 group-hover:rotate-3 transition-all duration-300" />
@@ -117,42 +113,42 @@ export function Header() {
     {drawer && (
       <div className="fixed inset-0 z-50">
         <div className="drawer-backdrop absolute inset-0 bg-gradient-to-br from-brand-dark/60 via-black/55 to-brand-dark/60 backdrop-blur-sm" onClick={() => setDrawer(false)} />
-        <aside className="drawer-panel absolute left-0 top-0 h-full w-[86%] max-w-[340px] bg-white flex flex-col shadow-[8px_0_40px_rgba(20,83,45,0.35)] rounded-r-[28px] overflow-hidden">
+        <aside className="drawer-panel absolute left-0 top-0 h-full w-[82%] max-w-[310px] bg-white flex flex-col shadow-[8px_0_40px_rgba(20,83,45,0.35)] rounded-r-[24px] overflow-hidden">
           {/* premium gradient head */}
-          <div className="relative bg-gradient-to-br from-brand via-brand-dark to-[oklch(0.3_0.1_150)] text-white px-5 pt-6 pb-7 overflow-hidden">
-            <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-            <div className="absolute -bottom-14 -left-6 w-32 h-32 rounded-full bg-lime-300/20 blur-2xl" aria-hidden="true" />
-            <button onClick={() => setDrawer(false)} className="absolute top-3.5 right-3.5 p-2 rounded-full bg-white/15 hover:bg-white/30 hover:rotate-90 active:scale-90 transition-all duration-300" aria-label="বন্ধ করুন"><X className="w-4.5 h-4.5" /></button>
-            <div className="relative flex items-center gap-3">
+          <div className="relative bg-gradient-to-br from-brand via-brand-dark to-[oklch(0.3_0.1_150)] text-white px-4 pt-4 pb-4 overflow-hidden">
+            <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-white/10 blur-2xl pointer-events-none" aria-hidden="true" />
+            <div className="absolute -bottom-14 -left-6 w-32 h-32 rounded-full bg-lime-300/20 blur-2xl pointer-events-none" aria-hidden="true" />
+            <button type="button" onClick={() => setDrawer(false)} className="absolute top-3 right-3 z-20 flex items-center justify-center w-8 h-8 rounded-full bg-white/15 hover:bg-white/30 hover:rotate-90 active:scale-90 transition-all duration-300 cursor-pointer" aria-label="বন্ধ করুন"><X className="w-4 h-4" /></button>
+            <div className="relative flex items-center gap-2.5">
               {drawerLogoNode}
               <div>
-                <div className="font-black text-lg tracking-tight drop-shadow-sm">{brandName}</div>
-                <div className="text-[11px] text-white/85 font-medium">{brand.tagline || "দেশী ও বিদেশী বীজ"}</div>
+                <div className="font-black text-[16px] tracking-tight drop-shadow-sm">{brandName}</div>
+                <div className="text-[10px] text-white/85 font-medium">{brand.tagline || "দেশী ও বিদেশী বীজ"}</div>
               </div>
             </div>
           </div>
 
-          <nav className="flex-1 overflow-y-auto px-3 py-3">
+          <nav className="flex-1 overflow-y-auto px-2.5 py-2.5">
             <div className="space-y-1">
-              <Link to="/" onClick={() => setDrawer(false)} style={{ "--d": nextDelay() } as React.CSSProperties} className="drawer-item group flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-gradient-to-r from-brand-light/40 to-transparent hover:from-brand-light/60 transition">
-                <span className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-brand to-brand-dark text-white shadow-sm shadow-brand/30 group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-300"><Home className="w-4 h-4" /></span>
-                <span className="font-bold text-[14px] text-brand-dark">হোম</span>
+              <Link to="/" onClick={() => setDrawer(false)} style={{ "--d": nextDelay() } as React.CSSProperties} className="drawer-item group flex items-center gap-2.5 px-2.5 py-2 rounded-xl bg-gradient-to-r from-brand-light/40 to-transparent hover:from-brand-light/60 transition">
+                <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br from-brand to-brand-dark text-white shadow-sm shadow-brand/30 group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-300"><Home className="w-3.5 h-3.5" /></span>
+                <span className="font-bold text-[13px] text-brand-dark">হোম</span>
                 <ChevronRight className="w-4 h-4 ml-auto text-brand/50 group-hover:translate-x-1 group-hover:text-brand transition-all" />
               </Link>
-              <Link to="/shop" onClick={() => setDrawer(false)} style={{ "--d": nextDelay() } as React.CSSProperties} className="drawer-item group flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-gradient-to-r hover:from-brand-light/60 hover:to-transparent transition">
-                <span className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-lime-500 to-brand text-white shadow-sm shadow-brand/30 group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-300"><Grid3x3 className="w-4 h-4" /></span>
-                <span className="font-bold text-[14px]">সকল পণ্য</span>
+              <Link to="/shop" onClick={() => setDrawer(false)} style={{ "--d": nextDelay() } as React.CSSProperties} className="drawer-item group flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-gradient-to-r hover:from-brand-light/60 hover:to-transparent transition">
+                <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br from-lime-500 to-brand text-white shadow-sm shadow-brand/30 group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-300"><Grid3x3 className="w-3.5 h-3.5" /></span>
+                <span className="font-bold text-[13px]">সকল পণ্য</span>
                 <ChevronRight className="w-4 h-4 ml-auto text-brand/50 group-hover:translate-x-1 group-hover:text-brand transition-all" />
               </Link>
-              <Link to="/contact" onClick={() => setDrawer(false)} style={{ "--d": nextDelay() } as React.CSSProperties} className="drawer-item group flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-gradient-to-r hover:from-brand-light/60 hover:to-transparent transition">
-                <span className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-sm shadow-amber-500/30 group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-300"><Phone className="w-4 h-4" /></span>
-                <span className="font-bold text-[14px]">যোগাযোগ</span>
+              <Link to="/contact" onClick={() => setDrawer(false)} style={{ "--d": nextDelay() } as React.CSSProperties} className="drawer-item group flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-gradient-to-r hover:from-brand-light/60 hover:to-transparent transition">
+                <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-sm shadow-amber-500/30 group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-300"><Phone className="w-3.5 h-3.5" /></span>
+                <span className="font-bold text-[13px]">যোগাযোগ</span>
                 <ChevronRight className="w-4 h-4 ml-auto text-brand/50 group-hover:translate-x-1 group-hover:text-brand transition-all" />
               </Link>
             </div>
 
             {categories.length > 0 && <>
-              <div className="drawer-item flex items-center gap-2 pt-5 pb-2 px-3" style={{ "--d": nextDelay() } as React.CSSProperties}>
+              <div className="drawer-item flex items-center gap-2 pt-3.5 pb-1.5 px-2.5" style={{ "--d": nextDelay() } as React.CSSProperties}>
                 <span className="text-[10px] font-black text-brand-dark/70 uppercase tracking-[0.2em]">ক্যাটাগরি</span>
                 <span className="flex-1 h-px bg-gradient-to-r from-brand/40 to-transparent" />
               </div>
@@ -160,9 +156,9 @@ export function Header() {
                 {categories.map((c, i) => {
                   const Icon = CAT_ICONS[i % CAT_ICONS.length];
                   return (
-                    <Link key={c.id} to="/category/$slug" params={{ slug: c.slug }} onClick={() => setDrawer(false)} style={{ "--d": nextDelay() } as React.CSSProperties} className="drawer-item group flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-gradient-to-r hover:from-brand-light/60 hover:to-transparent transition">
-                      <span className="flex items-center justify-center w-8 h-8 rounded-xl bg-brand-light/50 text-brand-dark ring-1 ring-brand/20 group-hover:bg-gradient-to-br group-hover:from-brand group-hover:to-brand-dark group-hover:text-white group-hover:scale-110 group-hover:-rotate-6 transition-all duration-300"><Icon className="w-4 h-4" /></span>
-                      <span className="font-semibold text-[13px]">{c.name}</span>
+                    <Link key={c.id} to="/category/$slug" params={{ slug: c.slug }} onClick={() => setDrawer(false)} style={{ "--d": nextDelay() } as React.CSSProperties} className="drawer-item group flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-gradient-to-r hover:from-brand-light/60 hover:to-transparent transition">
+                      <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-brand-light/50 text-brand-dark ring-1 ring-brand/20 group-hover:bg-gradient-to-br group-hover:from-brand group-hover:to-brand-dark group-hover:text-white group-hover:scale-110 group-hover:-rotate-6 transition-all duration-300"><Icon className="w-3.5 h-3.5" /></span>
+                      <span className="font-semibold text-[12.5px]">{c.name}</span>
                       <ChevronRight className="w-4 h-4 ml-auto text-brand/40 group-hover:translate-x-1 group-hover:text-brand transition-all" />
                     </Link>
                   );
@@ -170,12 +166,12 @@ export function Header() {
               </div>
             </>}
 
-            <div className="drawer-item flex items-center gap-2 pt-5 pb-2 px-3" style={{ "--d": nextDelay() } as React.CSSProperties}>
+            <div className="drawer-item flex items-center gap-2 pt-4 pb-2 px-2.5" style={{ "--d": nextDelay() } as React.CSSProperties}>
               <Palette className="w-3.5 h-3.5 text-brand" />
               <span className="text-[10px] font-black text-brand-dark/70 uppercase tracking-[0.2em]">থিম</span>
               <span className="flex-1 h-px bg-gradient-to-r from-brand/40 to-transparent" />
             </div>
-            <div className="drawer-item grid grid-cols-3 gap-2 px-2 pb-2" style={{ "--d": nextDelay() } as React.CSSProperties}>
+            <div className="drawer-item flex flex-wrap gap-1.5 px-2 pb-2" style={{ "--d": nextDelay() } as React.CSSProperties}>
               {SITE_THEMES.map((t) => {
                 const active = t.id === theme;
                 return (
@@ -184,64 +180,13 @@ export function Header() {
                     type="button"
                     onClick={() => { setTheme(t.id); applyTheme(t.id); }}
                     aria-pressed={active}
-                    className={`theme-swatch flex flex-col items-center gap-1.5 rounded-2xl px-1.5 py-2 border transition ${active ? "border-brand bg-brand-light/50 shadow-md shadow-brand/20" : "border-brand-light/70 hover:border-brand/50 hover:bg-brand-light/25"}`}
+                    className={`theme-swatch flex items-center gap-1.5 rounded-full pl-2 pr-2.5 py-1.5 border transition ${active ? "border-brand ring-2 ring-brand/25 bg-brand-light/40 shadow-sm" : "border-brand-light/70 hover:border-brand/50 hover:bg-brand-light/20"}`}
                   >
-                    <span className="relative flex items-center justify-center w-9 h-9 rounded-full ring-1 ring-black/10 overflow-hidden" style={{ background: `linear-gradient(135deg, ${t.colors[0]} 0%, ${t.colors[1]} 55%, ${t.colors[2]} 100%)` }}>
-                      {active && <Check className="w-4 h-4 text-white drop-shadow" strokeWidth={3.5} />}
-                    </span>
-                    <span className={`text-[9.5px] font-bold leading-none text-center ${active ? "text-brand-dark" : "text-foreground/70"}`}>{t.name}</span>
+                    <span className="w-3.5 h-3.5 rounded-full ring-1 ring-black/15 shrink-0" style={{ background: `linear-gradient(135deg, ${t.colors[0]} 0%, ${t.colors[1]} 100%)` }} />
+                    <span className={`text-[11px] font-bold leading-none ${active ? "text-brand-dark" : "text-foreground/75"}`}>{t.name}</span>
                   </button>
                 );
               })}
-            </div>
-
-            <div className="drawer-item flex items-center gap-2 pt-4 pb-2 px-3" style={{ "--d": nextDelay() } as React.CSSProperties}>
-              <Sparkles className="w-3.5 h-3.5 text-brand" />
-              <span className="text-[10px] font-black text-brand-dark/70 uppercase tracking-[0.2em]">টেক্সচার</span>
-              <span className="flex-1 h-px bg-gradient-to-r from-brand/40 to-transparent" />
-            </div>
-            <div className="drawer-item grid grid-cols-4 gap-1.5 px-2 pb-2" style={{ "--d": nextDelay() } as React.CSSProperties}>
-              {SITE_TEXTURES.map((t) => {
-                const active = t.id === texture;
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => { setTexture(t.id); applyTexture(t.id); }}
-                    aria-pressed={active}
-                    className={`theme-swatch flex flex-col items-center gap-1 rounded-xl px-1 py-1.5 border transition ${active ? "border-brand bg-brand-light/50 shadow-md shadow-brand/20" : "border-brand-light/70 hover:border-brand/50 hover:bg-brand-light/25"}`}
-                  >
-                    <span className="relative flex items-center justify-center w-8 h-8 rounded-lg ring-1 ring-black/10 overflow-hidden" style={{ background: t.preview, backgroundSize: "cover" }}>
-                      {active && <Check className="w-3.5 h-3.5 text-white drop-shadow" strokeWidth={3.5} />}
-                    </span>
-                    <span className={`text-[8.5px] font-bold leading-none text-center ${active ? "text-brand-dark" : "text-foreground/70"}`}>{lang === "en" ? t.nameEn : t.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="drawer-item flex items-center gap-2 pt-4 pb-2 px-3" style={{ "--d": nextDelay() } as React.CSSProperties}>
-              <Languages className="w-3.5 h-3.5 text-brand" />
-              <span className="text-[10px] font-black text-brand-dark/70 uppercase tracking-[0.2em]">ভাষা / Language</span>
-              <span className="flex-1 h-px bg-gradient-to-r from-brand/40 to-transparent" />
-            </div>
-            <div className="drawer-item px-2 pb-2" style={{ "--d": nextDelay() } as React.CSSProperties}>
-              <div className="grid grid-cols-2 gap-1 p-1 rounded-2xl bg-brand-light/40 ring-1 ring-brand/15">
-                {([{ id: "bn", label: "বাংলা", flag: "🇧🇩" }, { id: "en", label: "English", flag: "🇬🇧" }] as const).map((l) => {
-                  const active = l.id === lang;
-                  return (
-                    <button
-                      key={l.id}
-                      type="button"
-                      onClick={() => { if (l.id === lang) return; setLang(l.id); setLanguage(l.id); }}
-                      aria-pressed={active}
-                      className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-[12px] font-bold transition ${active ? "bg-gradient-to-r from-brand to-brand-dark text-white shadow-md shadow-brand/25" : "text-brand-dark/70 hover:bg-white/60"}`}
-                    >
-                      <span className="text-[13px]">{l.flag}</span>{l.label}
-                    </button>
-                  );
-                })}
-              </div>
             </div>
 
           </nav>
