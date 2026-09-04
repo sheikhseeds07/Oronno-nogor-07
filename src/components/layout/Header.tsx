@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ShoppingCart, Search, X, ChevronRight, Home, Grid3x3, Phone, ArrowRight, Palette, Leaf, Sprout, Flower2, TreePine, Wheat, Sun } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { hydrateCartStore, useCart } from "@/lib/cart-store";
 import { bnDigits } from "@/lib/format";
 import { supabase } from "@/lib/personal-supabase/client";
@@ -52,7 +52,15 @@ export function Header() {
     retry: 1,
   });
 
-  const submit = (e: React.FormEvent) => { e.preventDefault(); navigate({ to: "/shop", search: { q } as never }); setDrawer(false); };
+  const [closing, setClosing] = useState(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeDrawer = useCallback(() => {
+    if (closing) return;
+    setClosing(true);
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => { setDrawer(false); setClosing(false); }, 340);
+  }, [closing]);
+  const submit = (e: React.FormEvent) => { e.preventDefault(); navigate({ to: "/shop", search: { q } as never }); closeDrawer(); };
   useEffect(() => { if (!drawer) return; const prev = document.body.style.overflow; document.body.style.overflow = "hidden"; return () => { document.body.style.overflow = prev; }; }, [drawer]);
   useEffect(() => { void hydrateCartStore(); const t = getStoredTheme(); setTheme(t); applyTheme(t); }, []);
 
@@ -85,7 +93,7 @@ export function Header() {
 
         <form onSubmit={submit} className="flex-1 relative max-w-2xl mx-auto group/search">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-brand group-focus-within/search:text-brand-dark transition-colors" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="শ্যাড খুঁজুন" className="w-full h-9 sm:h-10 bg-gradient-to-r from-brand-light/40 to-lime-100/50 border border-brand-light/70 rounded-full pl-10 pr-4 text-[13px] font-medium placeholder:text-brand-dark/50 focus:outline-none focus:bg-white focus:border-brand/70 focus:ring-4 focus:ring-brand/15 transition-all duration-300" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="পণ্য খুঁজুন" className="w-full h-9 sm:h-10 bg-gradient-to-r from-brand-light/40 to-lime-100/50 border border-brand-light/70 rounded-full pl-10 pr-4 text-[13px] font-medium placeholder:text-brand-dark/50 focus:outline-none focus:bg-white focus:border-brand/70 focus:ring-4 focus:ring-brand/15 transition-all duration-300" />
         </form>
 
         <button onClick={() => setCartOpen(true)} className={`relative shrink-0 flex items-center gap-1 sm:gap-1.5 rounded-full bg-gradient-to-r from-brand to-brand-dark pl-3 sm:pl-4 pr-1 py-1 shadow-md shadow-brand/30 hover:shadow-lg hover:shadow-brand/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all duration-300 ${bump ? "ring-4 ring-brand/20 scale-[1.05]" : ""}`} aria-label="অর্ডার কার্ট">
@@ -111,14 +119,14 @@ export function Header() {
     </header>
 
     {drawer && (
-      <div className="fixed inset-0 z-50">
-        <div className="drawer-backdrop absolute inset-0 bg-gradient-to-br from-brand-dark/60 via-black/55 to-brand-dark/60 backdrop-blur-sm" onClick={() => setDrawer(false)} />
+      <div className={`fixed inset-0 z-50 ${closing ? "drawer-exit" : ""}`}>
+        <div className="drawer-backdrop absolute inset-0 bg-gradient-to-br from-brand-dark/60 via-black/55 to-brand-dark/60 backdrop-blur-sm" onClick={closeDrawer} />
         <aside className="drawer-panel absolute left-0 top-0 h-full w-[82%] max-w-[310px] bg-white flex flex-col shadow-[8px_0_40px_rgba(20,83,45,0.35)] rounded-r-[24px] overflow-hidden">
           {/* premium gradient head */}
           <div className="relative bg-gradient-to-br from-brand via-brand-dark to-[oklch(0.3_0.1_150)] text-white px-4 pt-4 pb-4 overflow-hidden">
             <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-white/10 blur-2xl pointer-events-none" aria-hidden="true" />
             <div className="absolute -bottom-14 -left-6 w-32 h-32 rounded-full bg-lime-300/20 blur-2xl pointer-events-none" aria-hidden="true" />
-            <button type="button" onClick={() => setDrawer(false)} className="absolute top-3 right-3 z-20 flex items-center justify-center w-8 h-8 rounded-full bg-white/15 hover:bg-white/30 hover:rotate-90 active:scale-90 transition-all duration-300 cursor-pointer" aria-label="বন্ধ করুন"><X className="w-4 h-4" /></button>
+            <button type="button" onClick={closeDrawer} className="absolute top-3 right-3 z-20 flex items-center justify-center w-8 h-8 rounded-full bg-white/15 hover:bg-white/30 hover:rotate-90 active:scale-90 transition-all duration-300 cursor-pointer" aria-label="বন্ধ করুন"><X className="w-4 h-4" /></button>
             <div className="relative flex items-center gap-2.5">
               {drawerLogoNode}
               <div>
@@ -130,17 +138,17 @@ export function Header() {
 
           <nav className="flex-1 overflow-y-auto px-2.5 py-2.5">
             <div className="space-y-1">
-              <Link to="/" onClick={() => setDrawer(false)} style={{ "--d": nextDelay() } as React.CSSProperties} className="drawer-item group flex items-center gap-2.5 px-2.5 py-2 rounded-xl bg-gradient-to-r from-brand-light/40 to-transparent hover:from-brand-light/60 transition">
+              <Link to="/" onClick={closeDrawer} style={{ "--d": nextDelay() } as React.CSSProperties} className="drawer-item group flex items-center gap-2.5 px-2.5 py-2 rounded-xl bg-gradient-to-r from-brand-light/40 to-transparent hover:from-brand-light/60 transition">
                 <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br from-brand to-brand-dark text-white shadow-sm shadow-brand/30 group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-300"><Home className="w-3.5 h-3.5" /></span>
                 <span className="font-bold text-[13px] text-brand-dark">হোম</span>
                 <ChevronRight className="w-4 h-4 ml-auto text-brand/50 group-hover:translate-x-1 group-hover:text-brand transition-all" />
               </Link>
-              <Link to="/shop" onClick={() => setDrawer(false)} style={{ "--d": nextDelay() } as React.CSSProperties} className="drawer-item group flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-gradient-to-r hover:from-brand-light/60 hover:to-transparent transition">
+              <Link to="/shop" onClick={closeDrawer} style={{ "--d": nextDelay() } as React.CSSProperties} className="drawer-item group flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-gradient-to-r hover:from-brand-light/60 hover:to-transparent transition">
                 <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br from-lime-500 to-brand text-white shadow-sm shadow-brand/30 group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-300"><Grid3x3 className="w-3.5 h-3.5" /></span>
                 <span className="font-bold text-[13px]">সকল পণ্য</span>
                 <ChevronRight className="w-4 h-4 ml-auto text-brand/50 group-hover:translate-x-1 group-hover:text-brand transition-all" />
               </Link>
-              <Link to="/contact" onClick={() => setDrawer(false)} style={{ "--d": nextDelay() } as React.CSSProperties} className="drawer-item group flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-gradient-to-r hover:from-brand-light/60 hover:to-transparent transition">
+              <Link to="/contact" onClick={closeDrawer} style={{ "--d": nextDelay() } as React.CSSProperties} className="drawer-item group flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-gradient-to-r hover:from-brand-light/60 hover:to-transparent transition">
                 <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-sm shadow-amber-500/30 group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-300"><Phone className="w-3.5 h-3.5" /></span>
                 <span className="font-bold text-[13px]">যোগাযোগ</span>
                 <ChevronRight className="w-4 h-4 ml-auto text-brand/50 group-hover:translate-x-1 group-hover:text-brand transition-all" />
@@ -156,7 +164,7 @@ export function Header() {
                 {categories.map((c, i) => {
                   const Icon = CAT_ICONS[i % CAT_ICONS.length];
                   return (
-                    <Link key={c.id} to="/category/$slug" params={{ slug: c.slug }} onClick={() => setDrawer(false)} style={{ "--d": nextDelay() } as React.CSSProperties} className="drawer-item group flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-gradient-to-r hover:from-brand-light/60 hover:to-transparent transition">
+                    <Link key={c.id} to="/category/$slug" params={{ slug: c.slug }} onClick={closeDrawer} style={{ "--d": nextDelay() } as React.CSSProperties} className="drawer-item group flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-gradient-to-r hover:from-brand-light/60 hover:to-transparent transition">
                       <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-brand-light/50 text-brand-dark ring-1 ring-brand/20 group-hover:bg-gradient-to-br group-hover:from-brand group-hover:to-brand-dark group-hover:text-white group-hover:scale-110 group-hover:-rotate-6 transition-all duration-300"><Icon className="w-3.5 h-3.5" /></span>
                       <span className="font-semibold text-[12.5px]">{c.name}</span>
                       <ChevronRight className="w-4 h-4 ml-auto text-brand/40 group-hover:translate-x-1 group-hover:text-brand transition-all" />

@@ -198,12 +198,19 @@ div[style*="homeCategoryMarquee"] > button > div:nth-child(2) { order:1;margin-b
 #order #lp-order-form > p:last-child { display:none !important; }
 
 /* ===== Header drawer (left, premium) ===== */
-@keyframes drawer-in { from{transform:translateX(-108%)} to{transform:translateX(0)} }
+@keyframes drawer-in { from{transform:translate3d(-104%,0,0)} to{transform:translate3d(0,0,0)} }
+@keyframes drawer-out { from{transform:translate3d(0,0,0)} to{transform:translate3d(-104%,0,0)} }
 @keyframes drawer-backdrop { from{opacity:0} to{opacity:1} }
-@keyframes drawer-item { from{opacity:0;transform:translateX(-22px)} to{opacity:1;transform:translateX(0)} }
-.drawer-panel { animation:drawer-in .55s cubic-bezier(.22,1,.36,1) both; }
-.drawer-backdrop { animation:drawer-backdrop .35s ease both; }
-.drawer-item { animation:drawer-item .5s cubic-bezier(.22,1,.36,1) both;animation-delay:var(--d,0ms); }
+@keyframes drawer-backdrop-out { from{opacity:1} to{opacity:0} }
+@keyframes drawer-item { from{opacity:0;transform:translate3d(-22px,0,0)} to{opacity:1;transform:translate3d(0,0,0)} }
+@keyframes drawer-item-out { from{opacity:1;transform:translate3d(0,0,0)} to{opacity:0;transform:translate3d(-14px,0,0)} }
+.drawer-panel { animation:drawer-in .45s cubic-bezier(.22,1,.36,1) both;will-change:transform; }
+.drawer-backdrop { animation:drawer-backdrop .3s ease-out both; }
+.drawer-item { animation:drawer-item .45s cubic-bezier(.22,1,.36,1) both;animation-delay:var(--d,0ms); }
+.drawer-exit { pointer-events:none; }
+.drawer-exit .drawer-panel { animation:drawer-out .32s cubic-bezier(.4,0,.6,1) both; }
+.drawer-exit .drawer-backdrop { animation:drawer-backdrop-out .3s ease-in both; }
+.drawer-exit .drawer-item { animation:drawer-item-out .22s ease-in both;animation-delay:0ms; }
 @media (prefers-reduced-motion:reduce) { .drawer-panel,.drawer-backdrop,.drawer-item{animation:none} }
 
 /* ===== Customer themes (abseed-style) ===== */
