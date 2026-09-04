@@ -83,10 +83,13 @@ const orderUiCss = `
 }
 `;
 
+const SIDEBAR_COLLAPSED_KEY = "admin-sidebar-collapsed";
+
 export function AdminLayout({ children, headerExtra }: { children: React.ReactNode; headerExtra?: React.ReactNode }) {
   const { user, isStaff, isAdmin, permissions, loading, initialized, role } = useAuth();
   const navigate = useNavigate(); const loc = useLocation();
-  const [open, setOpen] = useState(false); const [mounted, setMounted] = useState(false); const [collapsed, setCollapsed] = useState(false);
+  const [open, setOpen] = useState(false); const [mounted, setMounted] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const { data: brandRow } = useQuery({
     queryKey: ["site-settings-public"],
     initialData: () => {
@@ -104,6 +107,15 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
   const brandLogo = brand.logo_url;
   const brandName = brand.site_name;
   useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    try {
+      setCollapsed(window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1");
+    } catch { /* localStorage may be unavailable */ }
+  }, []);
+  useEffect(() => {
+    if (!mounted) return;
+    try { window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? "1" : "0"); } catch { /* ignore storage errors */ }
+  }, [collapsed, mounted]);
   useEffect(() => { if (!initialized) return; if (!user) navigate({ to: "/login" as any }); }, [user, initialized, navigate]);
   if (!mounted || (loading && !role)) return <div className="min-h-screen flex items-center justify-center">Please wait...</div>;
   if (!isStaff) return <div className="min-h-screen flex items-center justify-center bg-muted px-4"><div className="max-w-md rounded-xl border bg-card p-6 text-center shadow-sm"><h1 className="text-xl font-bold text-brand-dark">Access Denied</h1><p className="mt-2 text-sm text-muted-foreground">You do not have permission to view this page.</p><button onClick={() => navigate({ to: "/" })} className="mt-5 rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-primary-foreground">Go Home</button></div></div>;
