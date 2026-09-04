@@ -241,8 +241,8 @@ function LandingPagesAdmin() {
               {([
                 ["main", "Main"],
                 ["page", "Full page"],
-                ...(C.template === "all" || C.template === "product" ? [] : [["content", "কনটেন্ট"] as const]),
-                ["products", C.template === "product" ? "Product" : "Products"],
+                ...(C.template === "all" || C.template === "product" || C.template === "all-product" ? [] : [["content", "কনটেন্ট"] as const]),
+                ["products", C.template === "product" || C.template === "all-product" ? "Product" : "Products"],
               ] as const).map(([k, l]) => (
                 <button key={k} onClick={() => setTab(k as typeof tab)}
                   className={`px-4 py-2 rounded-t-lg font-semibold ${tab === k ? "bg-brand text-white" : "hover:bg-muted"}`}>
@@ -256,7 +256,7 @@ function LandingPagesAdmin() {
                 <>
                   <Field label="টেমপ্লেট">
                     <div className="grid grid-cols-2 gap-2">
-                      {([["combo", "Combo", "ফানেল স্টাইল — প্রোমো স্ক্রল, গিফট, কাউন্টডাউন, পপআপ"]] as const).map(([val, label, hint]) => (
+                      {([["combo", "Combo", "ফানেল স্টাইল — প্রোমো স্ক্রল, গিফট, কাউন্টডাউন, পপআপ"], ["all-product", "All product", "লাইভ Karala landing page-এর হুবহু ডিজাইন ও ফিচার"]] as const).map(([val, label, hint]) => (
                         <button key={val} type="button" onClick={() => setC({ template: val })}
                           className={`text-left border rounded-lg p-3 ${C.template === val ? "border-brand bg-brand/5" : "hover:bg-muted"}`}>
                           <div className="font-bold text-sm">{label}</div>
