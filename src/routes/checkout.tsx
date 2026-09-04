@@ -12,6 +12,7 @@ import { clearCheckoutSessionId, useCheckoutAutofill } from "@/lib/useCheckoutAu
 import { toast } from "sonner";
 import { trackInitiateCheckout, trackPurchase } from "@/lib/fbq";
 import { getFbContext } from "@/lib/fb-context";
+import { BLOCKED_ORDER_MESSAGE, isBlockedOrderError } from "@/lib/order-block";
 
 export const Route = createFileRoute("/checkout")({ component: Checkout, head: () => ({ meta: [{ title: "চেকআউট — Sheikh Seeds" }, { name: "robots", content: "noindex, nofollow" }] }) });
 
@@ -41,6 +42,7 @@ function Checkout() {
   const zones = zonesFromSettings(settings);
   const [form, setForm] = useState({ name: "", phone: "", address: "", note: "", zone: "all" });
   const [phoneErr, setPhoneErr] = useState("");
+  const [blockedOpen, setBlockedOpen] = useState(false);
   const placedSuccessfully = useRef(false);
   const submitLockRef = useRef(false);
 
@@ -147,6 +149,7 @@ function Checkout() {
     } catch (err) {
       submitLockRef.current = false;
       setSubmitting(false);
+      if (isBlockedOrderError(err)) { setBlockedOpen(true); return; }
       toast.error("অর্ডার করতে সমস্যা: " + (err instanceof Error ? err.message : "অজানা"));
     }
   };
@@ -280,6 +283,17 @@ function Checkout() {
           </div>
         </form>
       </div>
+          {blockedOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm" role="dialog" aria-modal="true" onClick={() => setBlockedOpen(false)}>
+          <div className="w-full max-w-sm animate-in fade-in zoom-in-95 rounded-2xl border border-red-100 bg-white p-6 text-center shadow-2xl duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-full bg-red-50 text-3xl">🚫</div>
+            <h2 className="text-lg font-extrabold text-slate-900">অর্ডার করা সম্ভব নয়</h2>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">{BLOCKED_ORDER_MESSAGE}</p>
+            <p className="mt-2 text-xs text-slate-500">কোনো ভুল হয়েছে মনে হলে আমাদের সাথে যোগাযোগ করুন।</p>
+            <button type="button" onClick={() => setBlockedOpen(false)} className="mt-5 w-full rounded-xl bg-slate-900 py-3 text-sm font-bold text-white transition hover:bg-slate-800">ঠিক আছে</button>
+          </div>
+        </div>
+      )}
     </SiteLayout>
   );
 }

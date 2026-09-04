@@ -9,6 +9,7 @@ import { taka } from "@/lib/format";
 import logoUrl from "@/assets/logo.jpg";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { BlockCustomerButton } from "@/components/admin/CustomerBlockList";
 import { Search, Plus, Globe, ListOrdered, Trash2, CheckCircle2, Phone, MessageCircle, ExternalLink, Send, Printer, Copy, X, Loader2, AlertCircle, ShoppingCart, Check, ArrowRightLeft } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useServerFn } from "@tanstack/react-start";
@@ -2626,6 +2627,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
               <select value={delivery} onChange={(e) => setDelivery(e.target.value as Courier)} className="w-full border rounded-lg px-3 py-2 text-sm bg-blue-50/40">
                 {COURIERS.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
+              <BlockCustomerButton name={name} orderId={detail.id} />
             </div>
             <div className="sm:col-span-3">
               <label className="text-xs font-semibold mb-1 block">Address</label>

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 import { supabase } from "@/integrations/supabase/client";
 import { sendPurchaseEvent } from "@/lib/facebook-capi.server";
+import { BLOCKED_ORDER_CODE, BLOCKED_ORDER_MESSAGE } from "@/lib/order-block";
 
 const PHONE_RE = /^01[3-9][0-9]{8}$/;
 const ItemSchema = z.object({ id: z.string().min(1).max(64), name: z.string().min(1).max(500), price: z.number().min(0).max(10_000_000), quantity: z.number().int().min(1).max(1000) });
@@ -62,7 +63,12 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
     p_client_ip: clientIp,
   });
 
-  if (orderError) throw new Error(orderError.message ?? "Order create failed");
+  if (orderError) {
+    const rpcMessage = orderError.message ?? "";
+    // Blocked customers get one clean Bengali message instead of a raw DB error.
+    if (/blocked/i.test(rpcMessage)) throw new Error(`${BLOCKED_ORDER_CODE}: ${BLOCKED_ORDER_MESSAGE}`);
+    throw new Error(rpcMessage || "Order create failed");
+  }
   if (!orderId || typeof orderId !== "string") throw new Error("Order create failed");
 
   const total = data.items.reduce((sum, item) => sum + item.price * item.quantity, 0) + data.delivery_fee;

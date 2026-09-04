@@ -9,6 +9,7 @@ import { placeOrder } from "@/lib/place-order.functions";
 import { useCheckoutAutofill } from "@/lib/useCheckoutAutofill";
 import { taka } from "@/lib/format";
 import { toast } from "sonner";
+import { orderErrorMessage } from "@/lib/order-block";
 import { trackInitiateCheckout, trackPurchase } from "@/lib/fbq";
 import { getFbContext } from "@/lib/fb-context";
 import { FacebookPixel } from "@/components/layout/FacebookPixel";
@@ -57,7 +58,7 @@ export function ProductStyleLandingPage({ slug }: Props) {
   const [showGuaranteePopup, setShowGuaranteePopup] = useState(landingBaseSlug(slug) === "karala" ? false : true);
   useEffect(() => { const delay = landingBaseSlug(slug) === "karala" ? 1200 : 0; const duration = landingBaseSlug(slug) === "karala" ? 10000 : 10000; const timer = window.setTimeout(() => { if (landingBaseSlug(slug) === "karala") setShowGuaranteePopup(true); }, delay); const closeTimer = window.setTimeout(() => setShowGuaranteePopup(false), delay + duration); return () => { window.clearTimeout(timer); window.clearTimeout(closeTimer); }; }, [slug]);
   const closeGuaranteePopup = () => setShowGuaranteePopup(false);
-  const submit = async (e?: React.FormEvent) => { e?.preventDefault(); if (!form.name || !form.phone || !form.address) return toast.error("নাম, ফোন ও ঠিকানা পূরণ করুন"); if (!selectedPackage) return toast.error("প্রোডাক্ট নির্বাচন করুন"); setSubmitting(true); try { const items = [{ id: selectedPackage.product_id || `addon-${selected}`, name: selectedPackage.name, price: selectedPackage.price, quantity: 1 }]; trackInitiateCheckout(items, total); const order = await runPlaceOrder({ data: { customer_name: form.name, customer_phone: form.phone.replace(/[\s-]/g, ""), customer_address: form.address, delivery_fee: shipping, items, notes: null, ...getFbContext() } }); trackPurchase(items, total, order.id); toast.success("অর্ডার সফল হয়েছে!"); navigate({ to: "/order/$id", params: { id: order.id } }); } catch (err) { toast.error(err instanceof Error ? err.message : "অর্ডার করতে সমস্যা হয়েছে"); setSubmitting(false); } };
+  const submit = async (e?: React.FormEvent) => { e?.preventDefault(); if (!form.name || !form.phone || !form.address) return toast.error("নাম, ফোন ও ঠিকানা পূরণ করুন"); if (!selectedPackage) return toast.error("প্রোডাক্ট নির্বাচন করুন"); setSubmitting(true); try { const items = [{ id: selectedPackage.product_id || `addon-${selected}`, name: selectedPackage.name, price: selectedPackage.price, quantity: 1 }]; trackInitiateCheckout(items, total); const order = await runPlaceOrder({ data: { customer_name: form.name, customer_phone: form.phone.replace(/[\s-]/g, ""), customer_address: form.address, delivery_fee: shipping, items, notes: null, ...getFbContext() } }); trackPurchase(items, total, order.id); toast.success("অর্ডার সফল হয়েছে!"); navigate({ to: "/order/$id", params: { id: order.id } }); } catch (err) { toast.error(orderErrorMessage(err)); setSubmitting(false); } };
   if (isLoading) return <div className="min-h-screen bg-[#f7f9f6]" aria-hidden="true" />;
   if (!page) return <div className="min-h-screen grid place-items-center">পেজ পাওয়া যায়নি</div>;
   const goOrder = () => {
