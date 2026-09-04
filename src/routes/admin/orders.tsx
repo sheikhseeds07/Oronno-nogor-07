@@ -2627,7 +2627,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
               <select value={delivery} onChange={(e) => setDelivery(e.target.value as Courier)} className="w-full border rounded-lg px-3 py-2 text-sm bg-blue-50/40">
                 {COURIERS.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
-              <BlockCustomerButton name={name} orderId={detail.id} />
+              <BlockCustomerButton name={name} phone={phoneVal} orderId={detail.id} />
             </div>
             <div className="sm:col-span-3">
               <label className="text-xs font-semibold mb-1 block">Address</label>

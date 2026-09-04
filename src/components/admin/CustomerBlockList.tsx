@@ -2,11 +2,13 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ban, CheckCircle2, Loader2, ShieldAlert, Unlock, X } from "lucide-react";
 import { supabase } from "@/lib/personal-supabase/client";
+import { normalizeBdPhone } from "@/lib/bd-phone";
 import { toast } from "sonner";
 
 type BlockRow = {
   id: string;
   customer_name: string;
+  phone: string | null;
   ip_address: string | null;
   is_active: boolean;
   blocked_at: string;
@@ -48,24 +50,29 @@ function ConfirmModal({ title, tone, children, confirmLabel, busy, onConfirm, on
   );
 }
 
-export function BlockCustomerButton({ name, orderId }: { name: string; orderId: string }) {
+export function BlockCustomerButton({ name, phone, orderId }: { name: string; phone?: string | null; orderId: string }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [ip, setIp] = useState<string | null>(null);
   const [loadingIp, setLoadingIp] = useState(false);
 
+  const [orderPhone, setOrderPhone] = useState<string | null>(null);
+  const blockPhone = normalizeBdPhone(phone || "") || orderPhone;
+
   const openModal = async () => {
     setOpen(true);
     setLoadingIp(true);
-    const { data: order } = await supabase.from("orders").select("client_ip").eq("id", orderId).maybeSingle();
-    setIp((order as { client_ip?: string | null } | null)?.client_ip ?? null);
+    const { data: order } = await supabase.from("orders").select("client_ip,customer_phone").eq("id", orderId).maybeSingle();
+    const row = order as { client_ip?: string | null; customer_phone?: string | null } | null;
+    setIp(row?.client_ip ?? null);
+    setOrderPhone(normalizeBdPhone(row?.customer_phone || "") || null);
     setLoadingIp(false);
   };
 
   const confirm = async () => {
     setBusy(true);
-    const { data, error } = await supabase.rpc("block_customer", { p_name: name, p_ip: ip });
+    const { data, error } = await supabase.rpc("block_customer", { p_phone: blockPhone, p_ip: ip, p_name: name } as never);
     setBusy(false);
     if (error) return toast.error(error.message);
     setOpen(false);
@@ -84,9 +91,10 @@ export function BlockCustomerButton({ name, orderId }: { name: string; orderId: 
         <ConfirmModal title="Customer Block করবেন?" tone="danger" confirmLabel="Block Customer" busy={busy} onConfirm={confirm} onClose={() => !busy && setOpen(false)}>
           <div className="rounded-xl border border-red-100 bg-red-50/50 p-3 space-y-1.5">
             <div className="flex justify-between gap-3"><span className="text-xs font-semibold text-slate-500">Customer Name</span><span className="truncate text-xs font-bold text-slate-900">{name}</span></div>
+            <div className="flex justify-between gap-3"><span className="text-xs font-semibold text-slate-500">Mobile Number</span><span className="font-mono text-xs font-bold text-slate-900">{loadingIp ? "…" : blockPhone || "Not available"}</span></div>
             <div className="flex justify-between gap-3"><span className="text-xs font-semibold text-slate-500">IP Address</span><span className="font-mono text-xs font-bold text-slate-900">{loadingIp ? "…" : ip || "Not available"}</span></div>
           </div>
-          <p className="text-xs text-slate-500">Name এবং IP — দুই দিক থেকেই block হবে। এরপর এই customer আর অর্ডার করতে পারবে না।</p>
+          <p className="text-xs text-slate-500">Mobile Number এবং IP — দুই দিক থেকেই block হবে। এরপর এই customer সাইটে ঢুকতে বা অর্ডার করতে পারবে না।</p>
         </ConfirmModal>
       )}
     </>
@@ -122,7 +130,7 @@ export function CustomerBlockListPanel() {
     <div className="rounded-2xl border border-red-100 bg-white p-5 shadow-sm space-y-4">
       <div className="flex items-start gap-3 rounded-xl border border-red-100 bg-red-50/60 p-4">
         <div className="rounded-xl bg-red-100 p-2.5 text-red-700"><ShieldAlert className="h-5 w-5" /></div>
-        <div><h2 className="font-extrabold text-slate-900">Blocked Customers</h2><p className="mt-0.5 text-xs text-slate-500">Customer name + IP অনুযায়ী block করা তালিকা। শুধু Admin এখান থেকে unblock করতে পারবে।</p></div>
+        <div><h2 className="font-extrabold text-slate-900">Blocked Customers</h2><p className="mt-0.5 text-xs text-slate-500">Mobile Number + IP অনুযায়ী block করা তালিকা। শুধু Admin এখান থেকে unblock করতে পারবে।</p></div>
       </div>
       {isLoading && <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>}
       {isError && <div className="rounded-xl bg-red-50 p-4 text-sm text-red-700">Block list load করা যায়নি।</div>}
@@ -137,7 +145,7 @@ export function CustomerBlockListPanel() {
                   ? <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-extrabold text-red-700">BLOCKED</span>
                   : <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-extrabold text-slate-600">UNBLOCKED</span>}
               </div>
-              <div className="mt-1 text-[11px] text-slate-500">IP: <span className="font-mono">{row.ip_address || "Not available"}</span> · Block Date: {new Date(row.blocked_at).toLocaleString("en-BD")}</div>
+              <div className="mt-1 text-[11px] text-slate-500">Phone: <span className="font-mono">{row.phone || "N/A"}</span> · IP: <span className="font-mono">{row.ip_address || "Not available"}</span> · Block Date: {new Date(row.blocked_at).toLocaleString("en-BD")}</div>
               <div className="text-[11px] text-slate-500">Blocked By: <span className="font-semibold text-slate-600">{row.blocked_by || "Admin"}</span></div>
             </div>
             {row.is_active
@@ -151,6 +159,7 @@ export function CustomerBlockListPanel() {
           <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3 space-y-1.5">
             <div className="flex justify-between gap-3"><span className="text-xs font-semibold text-slate-500">Customer Name</span><span className="truncate text-xs font-bold text-slate-900">{target.customer_name}</span></div>
             <div className="flex justify-between gap-3"><span className="text-xs font-semibold text-slate-500">IP Address</span><span className="font-mono text-xs font-bold text-slate-900">{target.ip_address || "Not available"}</span></div>
+            <div className="flex justify-between gap-3"><span className="text-xs font-semibold text-slate-500">Mobile Number</span><span className="font-mono text-xs font-bold text-slate-900">{target.phone || "Not available"}</span></div>
           </div>
           <p className="text-xs text-slate-500">Unblock করলে এই customer আবার অর্ডার করতে পারবে।</p>
         </ConfirmModal>
