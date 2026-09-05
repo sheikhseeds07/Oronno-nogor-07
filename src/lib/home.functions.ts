@@ -20,7 +20,19 @@ async function getHomeDataFallback(): Promise<HomeData> {
   return { banners: (bannersRes.data ?? []) as HomeBanner[], categories, subcategories, products: (popularRes.data ?? []) as HomeProduct[] };
 }
 
+// Short-lived cache so an SSR render (and repeated client calls) reuse one
+// Supabase response instead of paying egress on every page view.
+const HOME_TTL_MS = 5 * 60_000;
+let homeCache: { data: HomeData; at: number } | null = null;
+
 export async function getHomeData(): Promise<HomeData> {
+  if (homeCache && Date.now() - homeCache.at < HOME_TTL_MS) return homeCache.data;
+  const fresh = await fetchHomeData();
+  homeCache = { data: fresh, at: Date.now() };
+  return fresh;
+}
+
+async function fetchHomeData(): Promise<HomeData> {
   const { data, error } = (await supabase.rpc("get_home_data_v1" as never)) as { data: unknown; error: { message: string } | null };
   if (!error && data && typeof data === "object") {
     const payload = data as Partial<HomeData>;
