@@ -1,14 +1,112 @@
-import { useEffect,useState } from "react";
-import { supabase } from "@/lib/personal-supabase/client";
-import type { Session,User } from "@supabase/supabase-js";
-export type StaffRole="super_admin"|"admin"|"employee"|null;
-export type Permissions={orders:boolean;web_orders:boolean;new_order:boolean;products:boolean;categories:boolean;customers:boolean;marketing:boolean;delivery:boolean;reports:boolean;hrm:boolean;settings:boolean;landing_pages:boolean;all_api:boolean;messages:boolean;dashboard:boolean;dashboard_live_visitors:boolean;dashboard_web_orders:boolean;dashboard_incomplete_orders:boolean;dashboard_stock_alert:boolean;dashboard_confirmed_sell:boolean;dashboard_meta_ads:boolean;dashboard_time_filter:boolean};
-export const ALL_TRUE:Permissions={orders:true,web_orders:true,new_order:true,products:true,categories:true,customers:true,marketing:true,delivery:true,reports:true,hrm:true,settings:true,landing_pages:true,all_api:true,messages:true,dashboard:true,dashboard_live_visitors:true,dashboard_web_orders:true,dashboard_incomplete_orders:true,dashboard_stock_alert:true,dashboard_confirmed_sell:true,dashboard_meta_ads:true,dashboard_time_filter:true};
-const ALL_FALSE:Permissions=Object.fromEntries(Object.keys(ALL_TRUE).map(k=>[k,false])) as Permissions;
-const listeners=new Set<(s:any)=>void>();let state:any={session:null,user:null,role:null,permissions:ALL_FALSE,loading:true,initialized:false};
-if(typeof window!=="undefined")try{const raw=window.localStorage.getItem("ss_auth_cache_v1");if(raw){const c=JSON.parse(raw);if(c?.permissions)state={...state,role:c.role,permissions:c.permissions}}}catch{}
-function setState(p:Partial<typeof state>){state={...state,...p};listeners.forEach(l=>l(state));}
-const readPerms=(p:any):Permissions=>({orders:!!p.orders,web_orders:!!p.web_orders,new_order:!!p.new_order,products:!!p.products,categories:!!p.categories,customers:!!p.customers,marketing:!!p.marketing,delivery:!!p.delivery,reports:!!p.reports,hrm:!!p.hrm,settings:!!p.settings,landing_pages:!!p.landing_pages,all_api:!!p.all_api,messages:!!p.messages,dashboard:p.dashboard!==false,dashboard_live_visitors:p.dashboard_live_visitors!==false,dashboard_web_orders:p.dashboard_web_orders!==false,dashboard_incomplete_orders:p.dashboard_incomplete_orders!==false,dashboard_stock_alert:p.dashboard_stock_alert!==false,dashboard_confirmed_sell:p.dashboard_confirmed_sell!==false,dashboard_meta_ads:p.dashboard_meta_ads!==false,dashboard_time_filter:p.dashboard_time_filter!==false});
-let bootstrapped=false;function bootstrap(){if(bootstrapped||typeof window==="undefined")return;bootstrapped=true;const load=async(s:Session|null)=>{if(!s?.user){try{window.localStorage.removeItem("ss_auth_cache_v1")}catch{}setState({session:s,user:null,role:null,permissions:ALL_FALSE,loading:false,initialized:true});return;}const{data:roles}=await supabase.from("user_roles").select("role").eq("user_id",s.user.id);const list=(roles??[]).map(x=>x.role as string);const meta=(s.user.app_metadata?.role??s.user.app_metadata?.app_role) as string|undefined;let r:StaffRole=null;if(list.includes("super_admin")||meta==="super_admin")r="super_admin";else if(list.includes("admin")||meta==="admin")r="admin";else if(list.includes("employee"))r="employee";let perms=ALL_FALSE;if(r){const{data:p}=await supabase.from("employee_permissions").select("*").eq("user_id",s.user.id).maybeSingle();perms=p?readPerms(p):ALL_TRUE;}try{window.localStorage.setItem("ss_auth_cache_v1",JSON.stringify({role:r,permissions:perms}))}catch{}setState({session:s,user:s.user,role:r,permissions:perms,loading:false,initialized:true});};supabase.auth.onAuthStateChange((_e,s)=>load(s));supabase.auth.getSession().then(({data:{session:s}})=>load(s));}
-function hideIncompleteForEmployee(role:StaffRole){if(typeof document==="undefined")return;const apply=()=>{if(role!=="employee")return;document.querySelectorAll("button").forEach((el)=>{const text=(el.textContent||"").trim().toLowerCase();if(text.startsWith("incomplete")){(el as HTMLElement).style.display="none";}});};apply();const observer=new MutationObserver(apply);observer.observe(document.body,{childList:true,subtree:true});return()=>observer.disconnect();}
-export function useAuth(){bootstrap();const[snap,setSnap]=useState<any>(state);useEffect(()=>{const l=(s:any)=>setSnap(s);listeners.add(l);if(snap!==state)setSnap(state);return()=>{listeners.delete(l)}},[]);useEffect(()=>hideIncompleteForEmployee(snap.role),[snap.role]);const isAdmin=snap.role==="admin"||snap.role==="super_admin";return{session:snap.session,user:snap.user,role:snap.role,isAdmin,isStaff:isAdmin||snap.role==="employee",permissions:snap.permissions,loading:snap.loading&&!snap.initialized&&snap.role===null,initialized:snap.initialized};}
+import { useEffect, useState } from "react";
+import { staffSupabase, customerSupabase } from "@/integrations/supabase/client";
+import type { Session } from "@supabase/supabase-js";
+
+export type StaffRole = "super_admin" | "admin" | "employee" | null;
+export type Permissions = { orders: boolean; web_orders: boolean; new_order: boolean; products: boolean; categories: boolean; customers: boolean; marketing: boolean; delivery: boolean; reports: boolean; hrm: boolean; settings: boolean; landing_pages: boolean; all_api: boolean; messages: boolean; dashboard: boolean; dashboard_live_visitors: boolean; dashboard_web_orders: boolean; dashboard_incomplete_orders: boolean; dashboard_stock_alert: boolean; dashboard_confirmed_sell: boolean; dashboard_meta_ads: boolean; dashboard_time_filter: boolean };
+export const ALL_TRUE: Permissions = { orders: true, web_orders: true, new_order: true, products: true, categories: true, customers: true, marketing: true, delivery: true, reports: true, hrm: true, settings: true, landing_pages: true, all_api: true, messages: true, dashboard: true, dashboard_live_visitors: true, dashboard_web_orders: true, dashboard_incomplete_orders: true, dashboard_stock_alert: true, dashboard_confirmed_sell: true, dashboard_meta_ads: true, dashboard_time_filter: true };
+const ALL_FALSE: Permissions = Object.fromEntries(Object.keys(ALL_TRUE).map(k => [k, false])) as Permissions;
+
+type AuthSnapshot = { session: Session | null; user: Session["user"] | null; role: StaffRole; permissions: Permissions; loading: boolean; initialized: boolean };
+const staffState: AuthSnapshot = { session: null, user: null, role: null, permissions: ALL_FALSE, loading: true, initialized: false };
+const customerState: AuthSnapshot = { session: null, user: null, role: null, permissions: ALL_FALSE, loading: true, initialized: false };
+const listeners = new Set<() => void>();
+let bootstrapped = false;
+
+if (typeof window !== "undefined") {
+  try {
+    const raw = window.localStorage.getItem("ss_auth_cache_v1");
+    if (raw) {
+      const c = JSON.parse(raw);
+      if (c?.permissions) Object.assign(staffState, { role: c.role ?? null, permissions: c.permissions });
+    }
+  } catch {}
+}
+
+function notify() { listeners.forEach(l => l()); }
+function setStaff(p: Partial<AuthSnapshot>) { Object.assign(staffState, p); notify(); }
+function setCustomer(p: Partial<AuthSnapshot>) { Object.assign(customerState, p); notify(); }
+
+const readPerms = (p: any): Permissions => ({ orders: !!p.orders, web_orders: !!p.web_orders, new_order: !!p.new_order, products: !!p.products, categories: !!p.categories, customers: !!p.customers, marketing: !!p.marketing, delivery: !!p.delivery, reports: !!p.reports, hrm: !!p.hrm, settings: !!p.settings, landing_pages: !!p.landing_pages, all_api: !!p.all_api, messages: !!p.messages, dashboard: p.dashboard !== false, dashboard_live_visitors: p.dashboard_live_visitors !== false, dashboard_web_orders: p.dashboard_web_orders !== false, dashboard_incomplete_orders: p.dashboard_incomplete_orders !== false, dashboard_stock_alert: p.dashboard_stock_alert !== false, dashboard_confirmed_sell: p.dashboard_confirmed_sell !== false, dashboard_meta_ads: p.dashboard_meta_ads !== false, dashboard_time_filter: p.dashboard_time_filter !== false });
+
+function isStaffRoute() {
+  if (typeof window === "undefined") return true;
+  const path = window.location.pathname;
+  return path === "/login" || path === "/admin" || path.startsWith("/admin/");
+}
+
+async function loadStaff(s: Session | null) {
+  if (!s?.user) {
+    try { window.localStorage.removeItem("ss_auth_cache_v1"); } catch {}
+    setStaff({ session: s, user: null, role: null, permissions: ALL_FALSE, loading: false, initialized: true });
+    return;
+  }
+  const { data: roles } = await staffSupabase.from("user_roles").select("role").eq("user_id", s.user.id);
+  const list = (roles ?? []).map(x => x.role as string);
+  const meta = (s.user.app_metadata?.role ?? s.user.app_metadata?.app_role) as string | undefined;
+  let role: StaffRole = null;
+  if (list.includes("super_admin") || meta === "super_admin") role = "super_admin";
+  else if (list.includes("admin") || meta === "admin") role = "admin";
+  else if (list.includes("employee")) role = "employee";
+  let permissions = ALL_FALSE;
+  if (role) {
+    const { data: p } = await staffSupabase.from("employee_permissions").select("*").eq("user_id", s.user.id).maybeSingle();
+    permissions = p ? readPerms(p) : ALL_TRUE;
+  }
+  try { window.localStorage.setItem("ss_auth_cache_v1", JSON.stringify({ role, permissions })); } catch {}
+  setStaff({ session: s, user: s.user, role, permissions, loading: false, initialized: true });
+}
+
+async function loadCustomer(s: Session | null) {
+  setCustomer({ session: s, user: s?.user ?? null, role: null, permissions: ALL_FALSE, loading: false, initialized: true });
+}
+
+function bootstrap() {
+  if (bootstrapped || typeof window === "undefined") return;
+  bootstrapped = true;
+  staffSupabase.auth.onAuthStateChange((_e, s) => { void loadStaff(s); });
+  customerSupabase.auth.onAuthStateChange((_e, s) => { void loadCustomer(s); });
+  void staffSupabase.auth.getSession().then(({ data: { session } }) => loadStaff(session));
+  void customerSupabase.auth.getSession().then(({ data: { session } }) => loadCustomer(session));
+}
+
+function hideIncompleteForEmployee(role: StaffRole) {
+  if (typeof document === "undefined") return;
+  const apply = () => {
+    if (role !== "employee") return;
+    document.querySelectorAll("button").forEach(el => {
+      const text = (el.textContent || "").trim().toLowerCase();
+      if (text.startsWith("incomplete")) (el as HTMLElement).style.display = "none";
+    });
+  };
+  apply();
+  const observer = new MutationObserver(apply);
+  observer.observe(document.body, { childList: true, subtree: true });
+  return () => observer.disconnect();
+}
+
+export function useAuth() {
+  bootstrap();
+  const [, force] = useState(0);
+  useEffect(() => {
+    const listener = () => force(v => v + 1);
+    listeners.add(listener);
+    return () => { listeners.delete(listener); };
+  }, []);
+
+  const customerMode = !isStaffRoute();
+  const snap = customerMode ? customerState : staffState;
+  useEffect(() => hideIncompleteForEmployee(staffState.role), [staffState.role]);
+
+  const isAdmin = !customerMode && (snap.role === "admin" || snap.role === "super_admin");
+  return {
+    session: snap.session,
+    user: snap.user,
+    role: snap.role,
+    isAdmin,
+    isStaff: !customerMode && (isAdmin || snap.role === "employee"),
+    permissions: snap.permissions,
+    loading: snap.loading && !snap.initialized && snap.role === null,
+    initialized: snap.initialized,
+  };
+}
