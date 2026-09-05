@@ -18,6 +18,28 @@ export function CustomerBottomNav({ hidden = false }: { hidden?: boolean }) {
 
   return (
     <>
+      <style>{`
+        /* Checkout's sticky Place Order bar must sit against the actual screen edge.
+           It is identified by the existing co-cta class, so other bottom UI is untouched. */
+        @media (max-width: 1023px) {
+          .fixed:has(.co-cta) {
+            bottom: 0 !important;
+            padding: 9px 12px calc(9px + env(safe-area-inset-bottom)) !important;
+            border-top: 1px solid rgba(20, 120, 70, .10) !important;
+            background: rgba(255,255,255,.94) !important;
+            box-shadow: 0 -18px 45px -24px rgba(15, 70, 40, .38) !important;
+            backdrop-filter: blur(22px) saturate(150%) !important;
+          }
+          .fixed:has(.co-cta) > div {
+            gap: 10px !important;
+          }
+          .fixed:has(.co-cta) .co-cta {
+            min-height: 48px;
+            border-radius: 16px;
+            box-shadow: 0 12px 28px -14px rgba(15, 100, 55, .58) !important;
+          }
+        }
+      `}</style>
       <nav
         aria-hidden={hidden}
         className={`fixed inset-x-2 bottom-2 z-[70] mx-auto grid max-w-xl grid-cols-5 rounded-2xl border border-brand/10 bg-background/95 p-1 shadow-[0_14px_40px_rgba(15,70,40,.18)] backdrop-blur-xl transition-all duration-350 ease-[cubic-bezier(.22,1,.36,1)] sm:bottom-3 sm:rounded-2xl ${hidden ? "pointer-events-none translate-y-[140%] scale-[.94] opacity-0" : "translate-y-0 scale-100 opacity-100"}`}
