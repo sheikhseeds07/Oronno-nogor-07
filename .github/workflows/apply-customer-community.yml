@@ -19,7 +19,7 @@ jobs:
       - name: Apply and verify
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SHEIKH }}
-          PROJECT_REF: bvuhvzcczziuniujeogng
+          PROJECT_REF: bvuhvzccziuniujeogng
         run: |
           python3 - <<'PYCODE'
           import json, os, urllib.request, urllib.error
@@ -41,7 +41,6 @@ jobs:
                       return response.status, response.read().decode()
               except urllib.error.HTTPError as exc:
                   detail = exc.read().decode()
-                  print('HTTP', exc.code, detail)
                   raise SystemExit('Query failed: ' + detail)
 
           sql = Path('supabase/migrations/20260906000000_customer_community.sql').read_text()
