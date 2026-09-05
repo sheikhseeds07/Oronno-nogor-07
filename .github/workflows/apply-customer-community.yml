@@ -22,7 +22,7 @@ jobs:
           PROJECT_REF: bvuhvzcczziuniujeogng
         run: |
           python3 - <<'PYCODE'
-          import json, os, urllib.request
+          import json, os, urllib.request, urllib.error
           from pathlib import Path
 
           def run(query, timeout=180):
@@ -36,8 +36,13 @@ jobs:
                   },
                   method='POST',
               )
-              with urllib.request.urlopen(req, timeout=timeout) as response:
-                  return response.status, response.read().decode()
+              try:
+                  with urllib.request.urlopen(req, timeout=timeout) as response:
+                      return response.status, response.read().decode()
+              except urllib.error.HTTPError as exc:
+                  detail = exc.read().decode()
+                  print('HTTP', exc.code, detail)
+                  raise SystemExit('Query failed: ' + detail)
 
           sql = Path('supabase/migrations/20260906000000_customer_community.sql').read_text()
           print('migrate status:', run(sql)[0])
