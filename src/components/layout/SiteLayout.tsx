@@ -25,7 +25,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
       {!isCleanShell && !isCheckout && <FloatingContact />}
       <VisitTracker />
       <SeoFromSettings />
-      {!isOdcLanding && !isKaralaLanding && <CustomerBottomNav />}
+      {!isOdcLanding && !isKaralaLanding && !isCart && !isCheckout && <CustomerBottomNav />}
     </div>
   );
 }
