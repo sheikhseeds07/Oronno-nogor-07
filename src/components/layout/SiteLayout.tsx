@@ -19,13 +19,13 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen flex-col bg-background">
       {!isCleanShell && <TopBar />}
       {!isCleanShell && <Header />}
-      <main className={`flex-1 ${isOdcLanding ? "odc-landing-main" : ""}`}>{children}</main>
+      <main className={`relative z-0 flex-1 pb-24 ${isOdcLanding ? "odc-landing-main" : ""}`}>{children}</main>
       {isOdcLanding && <style>{`.odc-landing-main > :first-child { margin-top: 0 !important; }.odc-landing-main > :first-child > :first-child { margin-top: 0 !important; padding-top: 0 !important; }.odc-landing-main section:first-child { margin-top: 0 !important; }.odc-landing-main section:first-child > :first-child { margin-top: 0 !important; }`}</style>}
       {!isCleanShell && <Footer />}
       {!isCleanShell && <FloatingContact />}
       <VisitTracker />
       <SeoFromSettings />
-      {!isOdcLanding && !isKaralaLanding && !isCart && !isCheckout && <CustomerBottomNav />}
+      {!isOdcLanding && !isKaralaLanding && <CustomerBottomNav />}
     </div>
   );
 }
