@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "@tanstack/react-router";
 import { X, Minus, Plus, ShoppingCart, Zap } from "lucide-react";
 import { taka, bnDigits } from "@/lib/format";
@@ -17,9 +18,10 @@ export function ProductQuickView({ product, onClose }: { product: Product & { de
   const img = product.images?.[0] || "/placeholder.svg";
 
   useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     trackViewContent({ id: product.id, name: product.name, price });
-    return () => { document.body.style.overflow = ""; };
+    return () => { document.body.style.overflow = previousOverflow; };
   }, [product.id, product.name, price]);
 
   const addItem = () => {
@@ -39,8 +41,8 @@ export function ProductQuickView({ product, onClose }: { product: Product & { de
     navigate({ to: "/checkout" });
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center animate-fade-in">
+  const modal = (
+    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center animate-fade-in" role="dialog" aria-modal="true" aria-label={product.name}>
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative bg-white w-full sm:max-w-2xl sm:rounded-2xl rounded-t-2xl shadow-2xl max-h-[92vh] overflow-y-auto animate-scale-in">
         <button
@@ -110,4 +112,6 @@ export function ProductQuickView({ product, onClose }: { product: Product & { de
       </div>
     </div>
   );
+
+  return typeof document !== "undefined" ? createPortal(modal, document.body) : null;
 }
