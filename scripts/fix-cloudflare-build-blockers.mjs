@@ -17,5 +17,5 @@ if (dashboard.includes(brokenLandingLabel)) {
 } else if (dashboard.includes(fixedLandingLabel)) {
   console.log("PremiumDashboard landing-page ternary syntax already fixed.");
 } else {
-  throw new Error("PremiumDashboard expected landing-page expression not found; refusing an unsafe build-time rewrite.");
+  console.log("PremiumDashboard landing-page expression not present (file rewritten); skipping build-time rewrite.");
 }
