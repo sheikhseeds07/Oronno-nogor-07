@@ -15,5 +15,57 @@ export function Footer() {
   const s = ((row?.settings as Settings) ?? {}) as Settings;
   const phone = s.phone || "+৮৮০ ৯৬৪৪-৫৫৩৩৮৩"; const email = s.email || "info@sheikhseeds.com"; const address = s.address || "গোপালগঞ্জ সদর, পাবলিক হল রোড"; const name = s.site_name || "Sheikh Seeds"; const logoSrc = s.logo_url || DEFAULT_LOGO;
   if (typeof window !== "undefined" && window.location.pathname === "/landing/karala") return null;
-  return <footer className="bg-[#1a1a1a] text-white mt-12"><div className="container mx-auto px-4 py-10 text-center"><img src={toImg(logoSrc)} alt={name} width={64} height={64} loading="lazy" decoding="async" className="w-16 h-16 rounded-full mx-auto mb-3 object-cover" /><p className="text-sm text-white/85 mb-5">{s.tagline || "দেশী ও বিদেশী বীজ এর একটি বিশ্বস্ত প্রতিষ্ঠান"}</p><div className="flex flex-row flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs sm:text-sm text-white/85 mb-4"><a href={`tel:${phone}`} className="flex items-center gap-1.5 hover:text-brand"><Phone className="w-4 h-4 text-brand" /><span>{phone}</span></a><span className="text-white/30">|</span><a href={`mailto:${email}`} className="flex items-center gap-1.5 hover:text-brand"><Mail className="w-4 h-4 text-brand" /><span>{email}</span></a></div><div className="flex items-center justify-center gap-2 text-sm text-white/85 mb-5"><MapPin className="w-4 h-4 text-brand" /><span>{address}</span></div><div className="flex items-center justify-center gap-3 mb-6"><a href="https://www.facebook.com/share/1DoMWrXv2i/" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center hover:scale-110 transition"><FacebookIcon /></a>{s.youtube && <a href={s.youtube} target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center hover:scale-110 transition"><YoutubeIcon /></a>}{s.tiktok && <a href={s.tiktok} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="w-10 h-10 rounded-full bg-black flex items-center justify-center hover:scale-110 transition"><TikTokIcon /></a>}</div><div className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-xs text-white/70 mb-4"><Link to="/" className="hover:text-white">হোম</Link><Link to="/shop" className="hover:text-white">সকল পণ্য</Link><Link to="/contact" className="hover:text-white">যোগাযোগ</Link><Link to="/profile" className="hover:text-white">আমার একাউন্ট</Link></div><div className="border-t border-white/10 pt-4 text-xs text-white/60">© {new Date().getFullYear()} {name}। সর্বস্বত্ব সংরক্ষিত।</div></div></footer>;
+  return (
+    <footer className="relative mt-10 overflow-hidden bg-[#0f1a13] text-white">
+      <span className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-brand via-emerald-400 to-brand" />
+      <span className="pointer-events-none absolute -left-16 -top-16 h-44 w-44 rounded-full bg-brand/20 blur-3xl" />
+      <span className="pointer-events-none absolute -bottom-20 -right-10 h-48 w-48 rounded-full bg-emerald-500/10 blur-3xl" />
+
+      <div className="container relative mx-auto px-4 py-7 sm:py-9">
+        <div className="grid gap-6 text-center sm:grid-cols-[1.2fr_1fr_1fr] sm:gap-8 sm:text-left">
+          <div className="reveal-up">
+            <div className="flex items-center justify-center gap-2.5 sm:justify-start">
+              <img src={toImg(logoSrc)} alt={name} width={44} height={44} loading="lazy" decoding="async" className="h-11 w-11 shrink-0 rounded-full object-cover ring-2 ring-brand/50" />
+              <div className="min-w-0">
+                <div className="truncate text-sm font-extrabold tracking-tight">{name}</div>
+                <div className="truncate text-[11px] text-white/60">{s.tagline || "বিশ্বাসে গড়া সবুজ ভবিষ্যৎ"}</div>
+              </div>
+            </div>
+            <p className="mx-auto mt-2.5 max-w-xs text-[11.5px] leading-relaxed text-white/65 sm:mx-0">
+              অরিজিনাল বীজ, গার্ডেন টুলস ও সার — সারা বাংলাদেশে ক্যাশ অন ডেলিভারিতে।
+            </p>
+            <div className="mt-3 flex items-center justify-center gap-2 sm:justify-start">
+              <a href="https://www.facebook.com/share/1DoMWrXv2i/" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="flex h-8 w-8 items-center justify-center rounded-full bg-white/8 text-white/80 ring-1 ring-white/10 transition-all duration-300 hover:-translate-y-0.5 hover:bg-blue-600 hover:text-white"><FacebookIcon className="h-4 w-4" /></a>
+              {s.youtube && <a href={s.youtube} target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="flex h-8 w-8 items-center justify-center rounded-full bg-white/8 text-white/80 ring-1 ring-white/10 transition-all duration-300 hover:-translate-y-0.5 hover:bg-red-600 hover:text-white"><YoutubeIcon className="h-4 w-4" /></a>}
+              {s.tiktok && <a href={s.tiktok} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="flex h-8 w-8 items-center justify-center rounded-full bg-white/8 text-white/80 ring-1 ring-white/10 transition-all duration-300 hover:-translate-y-0.5 hover:bg-black hover:text-white"><TikTokIcon className="h-4 w-4" /></a>}
+            </div>
+          </div>
+
+          <div className="reveal-up" style={{ animationDelay: "70ms" }}>
+            <div className="mb-2 text-[11px] font-bold uppercase tracking-widest text-brand/90">দ্রুত লিংক</div>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12px] text-white/70 sm:grid-cols-1">
+              <Link to="/" className="transition-colors hover:text-brand">হোম</Link>
+              <Link to="/shop" className="transition-colors hover:text-brand">সকল পণ্য</Link>
+              <Link to="/contact" className="transition-colors hover:text-brand">যোগাযোগ</Link>
+              <Link to="/profile" className="transition-colors hover:text-brand">আমার একাউন্ট</Link>
+            </div>
+          </div>
+
+          <div className="reveal-up" style={{ animationDelay: "140ms" }}>
+            <div className="mb-2 text-[11px] font-bold uppercase tracking-widest text-brand/90">যোগাযোগ</div>
+            <div className="space-y-1.5 text-[12px] text-white/70">
+              <a href={`tel:${phone}`} className="flex items-center justify-center gap-2 transition-colors hover:text-brand sm:justify-start"><Phone className="h-3.5 w-3.5 shrink-0 text-brand" /><span className="truncate">{phone}</span></a>
+              <a href={`mailto:${email}`} className="flex items-center justify-center gap-2 transition-colors hover:text-brand sm:justify-start"><Mail className="h-3.5 w-3.5 shrink-0 text-brand" /><span className="truncate">{email}</span></a>
+              <div className="flex items-center justify-center gap-2 sm:justify-start"><MapPin className="h-3.5 w-3.5 shrink-0 text-brand" /><span className="truncate">{address}</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-col items-center justify-between gap-1.5 border-t border-white/10 pt-3.5 text-[11px] text-white/50 sm:flex-row">
+          <span>© {new Date().getFullYear()} {name}। সর্বস্বত্ব সংরক্ষিত।</span>
+          <span>ক্যাশ অন ডেলিভারি • সারা বাংলাদেশে</span>
+        </div>
+      </div>
+    </footer>
+  );
 }
