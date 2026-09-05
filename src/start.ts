@@ -39,15 +39,24 @@ const dynamicCacheMiddleware = createMiddleware().server(async ({ request, next 
   // /media validates the Supabase Storage bucket itself and sets the correct
   // cache headers. Let those headers reach Cloudflare unchanged so the /media
   // Cache Rule can actually cache public image responses at the edge.
-  if (pathname === "/media") {
+  if (pathname === "/media" || pathname === "/api/public/pg") {
     return result;
   }
 
   const hasAuth = Boolean(request.headers.get("authorization"));
-  const hasCookie = Boolean(request.headers.get("cookie"));
-  const isPublicPage = method === "GET" && (pathname === "/" || pathname.startsWith("/landing/"));
+  // Only a real session cookie makes a page personal. Analytics/preference
+  // cookies used to disable edge caching for almost every returning visitor,
+  // which meant every visit re-rendered on the server and re-read the database.
+  const cookieHeader = request.headers.get("cookie") || "";
+  const hasSessionCookie = /(^|;\s*)sb-[^=]*auth-token/i.test(cookieHeader);
+  const isPublicPage =
+    method === "GET" &&
+    (pathname === "/" ||
+      pathname.startsWith("/landing/") ||
+      pathname.startsWith("/product/") ||
+      pathname.startsWith("/category/"));
 
-  if (isPublicPage && !hasAuth && !hasCookie) {
+  if (isPublicPage && !hasAuth && !hasSessionCookie) {
     result.response.headers.set("Cache-Control", PUBLIC_CACHE);
     result.response.headers.set("CDN-Cache-Control", PUBLIC_CACHE);
     result.response.headers.set("Cloudflare-CDN-Cache-Control", PUBLIC_CACHE);
