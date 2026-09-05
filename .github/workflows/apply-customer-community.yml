@@ -1,0 +1,49 @@
+name: Apply customer community migration
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-customer-community.yml'
+      - 'supabase/migrations/20260906000000_customer_community.sql'
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply and verify
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SHEIKH }}
+          PROJECT_REF: bvuhvzcczziuniujeogng
+        run: |
+          python3 - <<'PYCODE'
+          import json, os, urllib.request
+          from pathlib import Path
+
+          def run(query, timeout=180):
+              req = urllib.request.Request(
+                  f"https://api.supabase.com/v1/projects/{os.environ['PROJECT_REF']}/database/query",
+                  data=json.dumps({'query': query}).encode(),
+                  headers={
+                      'Authorization': f"Bearer {os.environ['SUPABASE_ACCESS_TOKEN']}",
+                      'Content-Type': 'application/json',
+                      'User-Agent': 'GitHub-Actions-Community/1.0',
+                  },
+                  method='POST',
+              )
+              with urllib.request.urlopen(req, timeout=timeout) as response:
+                  return response.status, response.read().decode()
+
+          sql = Path('supabase/migrations/20260906000000_customer_community.sql').read_text()
+          print('migrate status:', run(sql)[0])
+          _, body = run("select table_name from information_schema.tables where table_schema='public' and table_name in ('customer_profiles','product_reviews','product_questions','social_posts','social_post_likes','social_post_comments')", 60)
+          print('verify:', body)
+          for table in ['customer_profiles', 'product_reviews', 'product_questions', 'social_posts', 'social_post_likes', 'social_post_comments']:
+              if table not in body:
+                  raise SystemExit('Missing table: ' + table)
+          PYCODE
