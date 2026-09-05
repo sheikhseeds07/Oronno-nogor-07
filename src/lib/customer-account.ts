@@ -7,6 +7,8 @@ export type CustomerProfile = {
   phone: string | null;
   full_name: string | null;
   avatar_url: string | null;
+  cover_url: string | null;
+  bio: string | null;
   address: string | null;
   district: string | null;
   thana: string | null;
@@ -23,7 +25,7 @@ export function useCustomer() {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("customer_profiles")
-        .select("id, phone, full_name, avatar_url, address, district, thana")
+        .select("id, phone, full_name, avatar_url, cover_url, bio, address, district, thana")
         .eq("id", user!.id)
         .maybeSingle();
       return (data as CustomerProfile | null) ?? null;
