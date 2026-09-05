@@ -1,5 +1,6 @@
 import { ShoppingCart, Minus, Plus, Check } from "lucide-react";
 import { memo, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { taka, bnDigits } from "@/lib/format";
 import { useCart } from "@/lib/cart-store";
 import { trackAddToCart } from "@/lib/fbq";
@@ -61,9 +62,9 @@ export const ProductCard = memo(function ProductCard({ p }: { p: Product }) {
           )}
         </button>
         <div className="p-3 flex flex-col flex-1">
-          <button onClick={() => setOpen(true)} className="text-left">
+          <Link to="/product/$slug" params={{ slug: p.slug }} className="text-left">
             <h3 className="font-semibold text-sm line-clamp-2 min-h-[2.5rem] hover:text-brand">{p.name}</h3>
-          </button>
+          </Link>
           <div className="mt-2 flex items-baseline justify-center gap-2">
             <span className="text-brand-dark font-extrabold text-lg sm:text-xl tracking-tight leading-none">{taka(price)}</span>
             {p.sale_price && p.sale_price < p.price && (

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, Link } from "@tanstack/react-router";
 import { X, Minus, Plus, ShoppingCart, Zap } from "lucide-react";
 import { taka, bnDigits } from "@/lib/format";
 import { useCart } from "@/lib/cart-store";
@@ -8,6 +8,11 @@ import { toastAddedToCart } from "@/lib/cart-toast";
 import type { Product } from "./ProductCard";
 import { trackAddToCart, trackViewContent } from "@/lib/fbq";
 import { toImg, imgSrcSet } from "@/lib/img";
+import { ProductTabs } from "@/components/community/ProductTabs";
+
+function isUuid(v: unknown) {
+  return typeof v === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+}
 
 export function ProductQuickView({ product, onClose }: { product: Product & { description?: string; short_description?: string }; onClose: () => void }) {
   const add = useCart((s) => s.add);
@@ -64,7 +69,9 @@ export function ProductQuickView({ product, onClose }: { product: Product & { de
           </div>
 
           <div className="p-4 sm:p-6 flex flex-col gap-3">
-            <h2 className="text-base sm:text-lg font-bold leading-snug">{product.name}</h2>
+            <Link to="/product/$slug" params={{ slug: product.slug }} onClick={onClose} className="text-base sm:text-lg font-bold leading-snug hover:text-brand transition">
+              {product.name}
+            </Link>
 
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-extrabold text-brand-dark">{taka(price)}</span>
@@ -107,8 +114,23 @@ export function ProductQuickView({ product, onClose }: { product: Product & { de
                 <Zap className="w-4 h-4" /> এখনই অর্ডার
               </button>
             </div>
+
+            <Link
+              to="/product/$slug"
+              params={{ slug: product.slug }}
+              onClick={onClose}
+              className="text-center text-xs font-bold text-brand-dark underline underline-offset-4 hover:text-brand"
+            >
+              সম্পূর্ণ বিবরণ, রিভিউ ও প্রশ্ন দেখুন →
+            </Link>
           </div>
         </div>
+
+        {isUuid(product.id) && (
+          <div className="px-4 sm:px-6 pb-6 border-t">
+            <ProductTabs productId={String(product.id)} description={product.description} />
+          </div>
+        )}
       </div>
     </div>
   );

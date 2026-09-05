@@ -9,16 +9,41 @@ function emailForPhone(phone: string) {
   return `c${toDigits(phone)}@customer.sheikhseeds.app`;
 }
 
+
+async function bridge(body: Record<string, unknown>) {
+  const { supabaseAdmin } = await import("@/lib/personal-supabase/client.server");
+  const { data, error } = await supabaseAdmin.functions.invoke("phone-otp-bridge", { body });
+  if (error) {
+    let detail = "";
+    try {
+      const ctx = (error as unknown as { context?: Response }).context;
+      if (ctx) {
+        const raw = await ctx.clone().text();
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw) as { message?: unknown; error?: unknown };
+            const d = parsed?.message ?? parsed?.error;
+            if (typeof d === "string" && d.trim()) detail = d.trim();
+          } catch {
+            detail = raw.replace(/\s+/g, " ").trim().slice(0, 300);
+          }
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail || error.message || "OTP সার্ভিসে সমস্যা");
+  }
+  const payload = data as { error?: unknown } | null;
+  if (payload?.error) throw new Error(String(payload.error));
+  return payload as Record<string, unknown> | null;
+}
+
 /** Send a login code to a customer phone number. */
 export const customerSendOtp = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ phone: z.string().min(6).max(20) }).parse(input))
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/lib/personal-supabase/client.server");
-    const { data: res, error } = await supabaseAdmin.functions.invoke("phone-otp-bridge", {
-      body: { action: "send", phone: data.phone },
-    });
-    if (error) throw new Error(error.message || "OTP পাঠানো যায়নি");
-    if ((res as { error?: unknown } | null)?.error) throw new Error(String((res as { error: unknown }).error));
+    await bridge({ action: "send", phone: toDigits(data.phone) });
     return { ok: true as const };
   });
 
@@ -39,12 +64,10 @@ export const customerVerifyOtp = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/lib/personal-supabase/client.server");
 
-    const { data: res, error } = await supabaseAdmin.functions.invoke("phone-otp-bridge", {
-      body: { action: "verify", phone: data.phone, code: data.code },
-    });
-    if (error) throw new Error(error.message || "কোড মিলেনি");
-    const payload = res as { error?: unknown; verified?: boolean } | null;
-    if (payload?.error) throw new Error(String(payload.error));
+    const code = data.code.replace(/[^0-9]/g, "");
+    const payload = (await bridge({ action: "verify", phone: toDigits(data.phone), code })) as
+      | { verified?: boolean }
+      | null;
     if (payload?.verified === false) throw new Error("কোড সঠিক নয়");
 
     const phone = toDigits(data.phone);
