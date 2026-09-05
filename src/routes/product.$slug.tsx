@@ -10,6 +10,7 @@ import { Minus, Plus, ShoppingCart, Zap, ShieldCheck, Truck } from "lucide-react
 import { toastAddedToCart } from "@/lib/cart-toast";
 import { trackAddToCart, trackViewContent } from "@/lib/fbq";
 import { toImg, imgSrcSet } from "@/lib/img";
+import { ProductTabs } from "@/components/community/ProductTabs";
 
 export const Route = createFileRoute("/product/$slug")({
   component: ProductPage,
@@ -149,15 +150,25 @@ function ProductPage() {
               <div className="bg-brand-light rounded-lg p-2 flex items-center gap-2">💵 ক্যাশ অন ডেলিভারি</div>
             </div>
 
-            {p.description && (
-              <div className="mt-8">
-                <h3 className="font-bold mb-2">বিবরণ</h3>
-                <div className="prose prose-sm max-w-none whitespace-pre-wrap text-muted-foreground">{p.description}</div>
-              </div>
-            )}
+
           </div>
         </div>
+
+        {isUuid(p.id) ? (
+          <ProductTabs productId={String(p.id)} description={p.description} />
+        ) : (
+          p.description && (
+            <div className="mt-8">
+              <h3 className="font-bold mb-2">বিবরণ</h3>
+              <div className="prose prose-sm max-w-none whitespace-pre-wrap text-muted-foreground">{p.description}</div>
+            </div>
+          )
+        )}
       </div>
     </SiteLayout>
   );
+}
+
+function isUuid(v: unknown) {
+  return typeof v === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 }
