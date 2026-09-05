@@ -21,40 +21,42 @@ export function Footer() {
   if (typeof window !== "undefined" && window.location.pathname === "/landing/karala") return null;
 
   return (
-    <footer className="relative mt-8 overflow-hidden bg-[#07110c] text-white sm:mt-10">
-      <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-brand to-transparent" />
-      <div className="pointer-events-none absolute left-1/2 top-0 h-48 w-96 -translate-x-1/2 rounded-full bg-brand/10 blur-3xl" />
-      <div className="container relative mx-auto px-4 py-8 sm:py-9">
-        <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
-          <Link to="/" className="group inline-flex flex-col items-center">
-            <img src={toImg(logoSrc)} alt={name} width={52} height={52} loading="lazy" decoding="async" className="h-12 w-12 rounded-full object-cover ring-2 ring-brand/25 shadow-xl transition-transform duration-300 group-hover:scale-105" />
-            <span className="mt-2 text-[17px] font-black tracking-tight">{name}</span>
-          </Link>
-          <p className="mt-1.5 max-w-lg text-[11px] leading-relaxed text-white/50">{s.tagline || "বিশ্বাসে গড়া সবুজ ভবিষ্যৎ"} • অরিজিনাল বীজ, গার্ডেন টুলস ও সার — মানসম্মত পণ্য ও নির্ভরযোগ্য ডেলিভারি।</p>
+    <footer className="relative mt-8 overflow-hidden bg-[#07110b] text-white sm:mt-10">
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand/80 to-transparent" />
+      <div className="pointer-events-none absolute left-1/2 top-0 h-36 w-80 -translate-x-1/2 rounded-full bg-brand/10 blur-3xl" />
+      <div className="relative mx-auto flex max-w-2xl flex-col items-center px-4 py-7 text-center sm:py-8">
+        <Link to="/" className="group flex flex-col items-center" aria-label={name}>
+          <span className="rounded-[18px] bg-white/[0.045] p-1.5 ring-1 ring-white/10 shadow-2xl shadow-black/20 transition-all duration-300 group-hover:-translate-y-0.5 group-hover:ring-brand/40">
+            <img src={toImg(logoSrc)} alt={name} width={46} height={46} loading="lazy" decoding="async" className="h-11 w-11 rounded-[13px] object-cover" />
+          </span>
+          <span className="mt-2 text-[16px] font-black tracking-tight">{name}</span>
+          <span className="mt-0.5 text-[10.5px] text-white/40">{s.tagline || "বিশ্বাসে গড়া সবুজ ভবিষ্যৎ"}</span>
+        </Link>
 
-          <nav className="mt-5 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[11.5px] font-semibold text-white/65">
-            <Link to="/" className="transition-colors hover:text-brand">হোম</Link>
-            <Link to="/shop" className="transition-colors hover:text-brand">সকল পণ্য</Link>
-            <Link to="/contact" className="transition-colors hover:text-brand">যোগাযোগ</Link>
-            <Link to="/profile" className="transition-colors hover:text-brand">আমার একাউন্ট</Link>
-          </nav>
+        <div className="mt-5 h-px w-16 bg-brand/60" />
 
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[10.5px] text-white/50">
-            <a href={`tel:${phone}`} className="inline-flex items-center gap-1.5 transition-colors hover:text-brand"><Phone className="h-3.5 w-3.5 text-brand" />{phone}</a>
-            <a href={`mailto:${email}`} className="inline-flex items-center gap-1.5 transition-colors hover:text-brand"><Mail className="h-3.5 w-3.5 text-brand" />{email}</a>
-            <span className="inline-flex max-w-full items-center gap-1.5"><MapPin className="h-3.5 w-3.5 shrink-0 text-brand" />{address}</span>
-          </div>
+        <nav aria-label="Footer navigation" className="mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[11.5px] font-semibold text-white/65">
+          <Link to="/" className="transition-colors hover:text-brand">হোম</Link>
+          <Link to="/shop" className="transition-colors hover:text-brand">সকল পণ্য</Link>
+          <Link to="/contact" className="transition-colors hover:text-brand">যোগাযোগ</Link>
+          <Link to="/profile" className="transition-colors hover:text-brand">আমার একাউন্ট</Link>
+        </nav>
 
-          <div className="mt-4 flex items-center justify-center gap-2">
-            <a href={s.facebook || "https://www.facebook.com/share/1DoMWrXv2i/"} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.05] text-white/60 ring-1 ring-white/[0.09] transition-all duration-200 hover:-translate-y-1 hover:bg-blue-600 hover:text-white"><FacebookIcon /></a>
-            {s.youtube && <a href={s.youtube} target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.05] text-white/60 ring-1 ring-white/[0.09] transition-all duration-200 hover:-translate-y-1 hover:bg-red-600 hover:text-white"><YoutubeIcon /></a>}
-            {s.tiktok && <a href={s.tiktok} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.05] text-white/60 ring-1 ring-white/[0.09] transition-all duration-200 hover:-translate-y-1 hover:bg-black hover:text-white"><TikTokIcon /></a>}
-          </div>
+        <div className="mt-4 flex max-w-full flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[10.5px] text-white/45">
+          <a href={`tel:${phone}`} className="inline-flex items-center gap-1.5 transition-colors hover:text-brand"><Phone className="h-3.5 w-3.5 text-brand/90" />{phone}</a>
+          <a href={`mailto:${email}`} className="inline-flex items-center gap-1.5 transition-colors hover:text-brand"><Mail className="h-3.5 w-3.5 text-brand/90" />{email}</a>
+          <span className="inline-flex max-w-full items-center gap-1.5"><MapPin className="h-3.5 w-3.5 shrink-0 text-brand/90" />{address}</span>
         </div>
 
-        <div className="mx-auto mt-5 flex max-w-3xl flex-col items-center gap-1.5 border-t border-white/[0.07] pt-3 text-center text-[9.5px] text-white/30 sm:flex-row sm:justify-between">
+        <div className="mt-4 flex items-center justify-center gap-2">
+          <a href={s.facebook || "https://www.facebook.com/share/1DoMWrXv2i/"} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.045] text-white/55 transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-500/40 hover:bg-blue-600 hover:text-white"><FacebookIcon /></a>
+          {s.youtube && <a href={s.youtube} target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.045] text-white/55 transition-all duration-200 hover:-translate-y-0.5 hover:border-red-500/40 hover:bg-red-600 hover:text-white"><YoutubeIcon /></a>}
+          {s.tiktok && <a href={s.tiktok} target="_blank" rel="noopener noreferrer" aria-label="TikTok" className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.045] text-white/55 transition-all duration-200 hover:-translate-y-0.5 hover:bg-black hover:text-white"><TikTokIcon /></a>}
+        </div>
+
+        <div className="mt-5 flex w-full flex-col items-center gap-1 border-t border-white/[0.07] pt-3 text-[9.5px] text-white/30 sm:flex-row sm:justify-between">
           <span>© {new Date().getFullYear()} {name} • সর্বস্বত্ব সংরক্ষিত</span>
-          <span className="inline-flex items-center gap-1"><Leaf className="h-3 w-3 text-brand/80" /> সারা বাংলাদেশে ক্যাশ অন ডেলিভারি</span>
+          <span className="inline-flex items-center gap-1"><Leaf className="h-3 w-3 text-brand/70" /> সারা বাংলাদেশে ক্যাশ অন ডেলিভারি</span>
         </div>
       </div>
     </footer>
