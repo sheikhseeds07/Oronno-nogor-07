@@ -9,6 +9,8 @@ import { CustomerBottomNav } from "./CustomerBottomNav";
 export function SiteLayout({ children }: { children: React.ReactNode }) {
   const pathname = typeof window !== "undefined" ? window.location.pathname : "";
   const isProfile = pathname === "/profile";
+  const isCart = pathname === "/cart";
+  const isCheckout = pathname === "/checkout";
   const isOdcLanding = pathname === "/landing/odc";
   const isKaralaLanding = pathname === "/landing/karala";
   const isCleanShell = isProfile || isOdcLanding || isKaralaLanding;
@@ -23,7 +25,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
       {!isCleanShell && <FloatingContact />}
       <VisitTracker />
       <SeoFromSettings />
-      {!isOdcLanding && !isKaralaLanding && <CustomerBottomNav />}
+      {!isOdcLanding && !isKaralaLanding && !isCart && !isCheckout && <CustomerBottomNav />}
     </div>
   );
 }
