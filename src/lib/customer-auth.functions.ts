@@ -5,11 +5,6 @@ function toDigits(phone: string) {
   return phone.replace(/[^0-9]/g, "");
 }
 
-function emailForPhone(phone: string) {
-  return `c${toDigits(phone)}@customer.sheikhseeds.app`;
-}
-
-
 async function bridge(body: Record<string, unknown>) {
   const { supabaseAdmin } = await import("@/lib/personal-supabase/client.server");
   const { data, error } = await supabaseAdmin.functions.invoke("phone-otp-bridge", { body });
@@ -50,6 +45,9 @@ export const customerSendOtp = createServerFn({ method: "POST" })
 /**
  * Verify the code and hand back a one-time email token the browser can exchange
  * for a real Supabase session (so RLS works for reviews / questions / posts).
+ *
+ * Account creation is handled by phone-otp-bridge using its service-role client,
+ * so the request-scoped publishable-key client never performs Auth Admin calls.
  */
 export const customerVerifyOtp = createServerFn({ method: "POST" })
   .inputValidator((input) =>
@@ -62,58 +60,17 @@ export const customerVerifyOtp = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/lib/personal-supabase/client.server");
-
-    const code = data.code.replace(/[^0-9]/g, "");
-    const payload = (await bridge({ action: "verify", phone: toDigits(data.phone), code })) as
-      | { verified?: boolean }
-      | null;
-    if (payload?.verified === false) throw new Error("কোড সঠিক নয়");
-
     const phone = toDigits(data.phone);
-    const email = emailForPhone(phone);
+    const code = data.code.replace(/[^0-9]/g, "");
+    const payload = (await bridge({
+      action: "verify",
+      phone,
+      code,
+      fullName: data.fullName?.trim() || undefined,
+    })) as { verified?: boolean; tokenHash?: string; email?: string } | null;
 
-    // Find or create the auth user behind this phone number.
-    const { data: existingProfile } = await (supabaseAdmin as any)
-      .from("customer_profiles")
-      .select("id, full_name")
-      .eq("phone", phone)
-      .maybeSingle();
+    if (payload?.verified === false) throw new Error("কোড সঠিক নয়");
+    if (!payload?.tokenHash) throw new Error("লগইন টোকেন তৈরি হয়নি");
 
-    let userId = existingProfile?.id as string | undefined;
-
-    if (!userId) {
-      const created = await supabaseAdmin.auth.admin.createUser({
-        email,
-        email_confirm: true,
-        user_metadata: { phone, full_name: data.fullName ?? null, customer: true },
-      });
-      if (created.error && !/already/i.test(created.error.message)) {
-        throw new Error(created.error.message);
-      }
-      userId = created.data?.user?.id;
-      if (!userId) {
-        // User already existed for this synthetic email – look it up.
-        const list = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
-        userId = list.data?.users?.find((u) => u.email === email)?.id;
-      }
-      if (!userId) throw new Error("অ্যাকাউন্ট তৈরি করা যায়নি");
-    }
-
-    await (supabaseAdmin as any).from("customer_profiles").upsert(
-      {
-        id: userId,
-        phone,
-        full_name: data.fullName?.trim() || existingProfile?.full_name || `কাস্টমার ${phone.slice(-4)}`,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "id" },
-    );
-
-    const link = await supabaseAdmin.auth.admin.generateLink({ type: "magiclink", email });
-    if (link.error) throw new Error(link.error.message);
-    const tokenHash = link.data?.properties?.hashed_token;
-    if (!tokenHash) throw new Error("লগইন টোকেন তৈরি হয়নি");
-
-    return { tokenHash, email };
+    return { tokenHash: payload.tokenHash, email: payload.email };
   });
