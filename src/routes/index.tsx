@@ -3,7 +3,7 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { ProductCard, type Product } from "@/components/shop/ProductCard";
-import { ShieldCheck, Truck, Headphones, ArrowRight, Sparkles } from "lucide-react";
+import { Truck, Headphones, ArrowRight, Sparkles, Sprout, Wallet } from "lucide-react";
 import { getHomeData, type HomeData } from "@/lib/home.functions";
 import { toImg, imgSrcSet } from "@/lib/img";
 
@@ -196,33 +196,61 @@ function Home() {
         )}
       </section>
 
-      <section className="py-7 sm:py-10">
+      <section className="py-7 sm:py-11">
         <div className="container mx-auto px-3 sm:px-4">
-          <div className="mb-5 text-center sm:mb-7">
-            <span className="inline-flex items-center gap-1 rounded-full bg-brand-light/60 px-2.5 py-1 text-[10px] font-bold tracking-wide text-brand-dark ring-1 ring-brand/10 sm:text-xs"><Sparkles className="h-3 w-3" />কেন আমরা আলাদা</span>
-            <h2 className="mt-2 text-xl font-extrabold tracking-tight text-brand-dark sm:text-2xl lg:text-3xl">আমাদের বিশেষ সুবিধা</h2>
-            <p className="mx-auto mt-1 max-w-2xl text-xs text-muted-foreground sm:text-sm">ছাদ বাগান থেকে বাণিজ্যিক চাষ — প্রতিটি ধাপে আমরা পাশে আছি।</p>
-          </div>
-          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-3">
-            {[
-              { icon: ShieldCheck, t: "অরিজিনাল বীজ", s: "পরীক্ষিত ও উচ্চ অংকুরোদগম হার নিশ্চিত। প্রতিটি পণ্য গুণগত মান যাচাই করে পাঠানো হয়।", n: "০১" },
-              { icon: Truck, t: "দ্রুত ডেলিভারি", s: "সারা বাংলাদেশে নিরাপদ প্যাকেজিং ও দ্রুত পৌঁছে যায়। ক্যাশ অন ডেলিভারি সুবিধা।", n: "০২" },
-              { icon: Headphones, t: "কৃষি পরামর্শ", s: "অভিজ্ঞ কৃষিবিদদের কাছ থেকে বপন, পরিচর্যা ও রোগবালাই নিয়ে সরাসরি পরামর্শ।", n: "০৩" },
-            ].map(({ icon: Icon, t, s, n }) => (
-              <div key={t} className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-brand/25 hover:shadow-lg sm:p-5">
-                <span className="pointer-events-none absolute -right-1 -top-4 select-none text-6xl font-black text-brand/5">{n}</span>
-                <span className="absolute inset-x-0 top-0 h-0.5 origin-left scale-x-0 bg-gradient-to-r from-brand to-brand-dark transition-transform duration-500 group-hover:scale-x-100" />
-                <div className="relative flex items-start gap-3 sm:block">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-light/70 text-brand-dark ring-1 ring-brand/10 transition-colors duration-300 group-hover:bg-brand group-hover:text-primary-foreground sm:mb-3 sm:h-11 sm:w-11">
-                    <Icon className="h-5 w-5 sm:h-5.5 sm:w-5.5" />
+          <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[26px] border border-brand/15 bg-gradient-to-br from-brand-light/45 via-card to-card p-4 shadow-sm sm:p-7">
+            <span className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-brand/10 blur-3xl" />
+            <span className="pointer-events-none absolute -bottom-20 -left-14 h-44 w-44 rounded-full bg-brand/10 blur-3xl" />
+
+            <div className="relative mb-5 text-center sm:mb-7">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-card/80 px-3 py-1 text-[10px] font-bold tracking-wide text-brand-dark ring-1 ring-brand/15 backdrop-blur sm:text-xs">
+                <Sparkles className="h-3 w-3" />শেখ সিডস প্রতিশ্রুতি
+              </span>
+              <h2 className="mt-2.5 text-xl font-extrabold leading-snug tracking-tight text-brand-dark sm:text-2xl lg:text-[28px]">
+                হাজারো বাগানির আস্থা, প্রতিটি প্যাকেটে
+              </h2>
+              <p className="mx-auto mt-1.5 max-w-xl text-xs leading-relaxed text-muted-foreground sm:text-sm">
+                বীজ বাছাই থেকে আপনার হাতে পৌঁছানো — প্রতিটি ধাপে আমরা মান ও যত্নের নিশ্চয়তা দিই।
+              </p>
+            </div>
+
+            <div className="relative grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
+              {[
+                { icon: Sprout, t: "উচ্চ অঙ্কুরোদগম", s: "প্রতিটি ব্যাচ ল্যাব-টেস্ট করা, তাই চারা গজানোর হার সর্বোচ্চ।" },
+                { icon: Truck, t: "৪৮ ঘণ্টায় ডেলিভারি", s: "নিরাপদ প্যাকেজিংয়ে সারা বাংলাদেশে দ্রুত পৌঁছে যায়।" },
+                { icon: Wallet, t: "ক্যাশ অন ডেলিভারি", s: "পণ্য হাতে পেয়ে দেখে তারপর মূল্য পরিশোধ করুন।" },
+                { icon: Headphones, t: "ফ্রি কৃষি পরামর্শ", s: "অভিজ্ঞ কৃষিবিদের কাছ থেকে বপন ও পরিচর্যার দিকনির্দেশনা।" },
+              ].map(({ icon: Icon, t, s }) => (
+                <div
+                  key={t}
+                  className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card/85 p-3.5 shadow-sm backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-brand/30 hover:shadow-lg sm:p-4"
+                >
+                  <div className="mb-2.5 flex h-9 w-9 items-center justify-center rounded-xl bg-brand-light/70 text-brand-dark ring-1 ring-brand/10 transition-colors duration-300 group-hover:bg-brand group-hover:text-primary-foreground sm:h-10 sm:w-10">
+                    <Icon className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
                   </div>
-                  <div><div className="mb-0.5 text-sm font-bold text-foreground sm:text-base">{t}</div><div className="text-xs leading-relaxed text-muted-foreground sm:text-sm">{s}</div></div>
+                  <div className="mb-1 text-[13px] font-bold text-foreground sm:text-sm">{t}</div>
+                  <div className="text-[11px] leading-relaxed text-muted-foreground sm:text-xs">{s}</div>
+                  <span className="absolute inset-x-0 bottom-0 h-0.5 origin-left scale-x-0 bg-gradient-to-r from-brand to-brand-dark transition-transform duration-500 group-hover:scale-x-100" />
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+
+            <div className="relative mt-4 grid grid-cols-3 divide-x divide-border/60 rounded-2xl border border-border/60 bg-card/70 py-3 text-center backdrop-blur sm:mt-5">
+              {[
+                { v: "২০,০০০+", l: "সন্তুষ্ট বাগানি" },
+                { v: "৫০০+", l: "বীজ ও পণ্য" },
+                { v: "৬৪", l: "জেলায় ডেলিভারি" },
+              ].map(({ v, l }) => (
+                <div key={l} className="px-1">
+                  <div className="text-base font-extrabold text-brand-dark sm:text-xl">{v}</div>
+                  <div className="mt-0.5 text-[10px] text-muted-foreground sm:text-xs">{l}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
+
     </SiteLayout>
   );
 }
