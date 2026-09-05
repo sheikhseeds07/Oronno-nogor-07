@@ -71,7 +71,7 @@ function SocialPage() {
     enabled: !!user?.id,
     queryFn: async () => {
       const { data } = await db.from("social_post_likes").select("post_id").eq("user_id", user!.id);
-      return new Set((data ?? []).map((l) => l.post_id as string));
+      return new Set((data ?? []).map((l: { post_id: string }) => l.post_id));
     },
   });
 
