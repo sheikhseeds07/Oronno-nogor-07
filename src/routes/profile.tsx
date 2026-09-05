@@ -7,137 +7,48 @@ import { supabase } from "@/lib/personal-supabase/client";
 import { taka } from "@/lib/format";
 import { format } from "date-fns";
 import { useEffect, useRef, useState } from "react";
-import { Camera, ImagePlus, Loader2, Pencil, Save, X } from "lucide-react";
+import { Camera, ImagePlus, Loader2, Pencil, Save, X, ShoppingBag, Star, MessageSquareWarning, LogOut, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/profile")({ component: Profile, head: () => ({ meta: [{ title: "আমার প্রোফাইল — Sheikh Seeds" }, { name: "robots", content: "noindex, nofollow" }] }) });
-
-const statusBn: Record<string, string> = {
-  pending: "অপেক্ষমাণ", confirmed: "কনফার্মড", processing: "প্রস্তুত হচ্ছে",
-  shipped: "ডেলিভারিতে", delivered: "ডেলিভারি সম্পন্ন", cancelled: "বাতিল",
-};
+const statusBn: Record<string, string> = { pending: "অপেক্ষমাণ", confirmed: "কনফার্মড", processing: "প্রস্তুত হচ্ছে", shipped: "ডেলিভারিতে", delivered: "ডেলিভারি সম্পন্ন", cancelled: "বাতিল" };
+const DEFAULT_COVER = "/customer-profile-cover.svg", DEFAULT_AVATAR = "/customer-profile-avatar.svg";
+type Tab = "orders" | "reviews" | "complaints";
 
 function Profile() {
-  const { user, loading } = useAuth();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const avatarRef = useRef<HTMLInputElement>(null);
-  const coverRef = useRef<HTMLInputElement>(null);
-  const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [name, setName] = useState("");
-  const [bio, setBio] = useState("");
-  const [avatar, setAvatar] = useState<string | null>(null);
-  const [cover, setCover] = useState<string | null>(null);
+  const { user, loading } = useAuth(); const navigate = useNavigate(); const queryClient = useQueryClient();
+  const avatarRef = useRef<HTMLInputElement>(null), coverRef = useRef<HTMLInputElement>(null);
+  const [editing, setEditing] = useState(false), [saving, setSaving] = useState(false), [tab, setTab] = useState<Tab>("orders");
+  const [name, setName] = useState(""), [bio, setBio] = useState(""), [avatar, setAvatar] = useState<string | null>(null), [cover, setCover] = useState<string | null>(null);
+  const [complaintTitle, setComplaintTitle] = useState(""), [complaintMessage, setComplaintMessage] = useState(""), [complaintSaving, setComplaintSaving] = useState(false);
 
-  useEffect(() => {
-    if (!loading && !user) navigate({ to: "/login" });
-  }, [user, loading, navigate]);
+  useEffect(() => { if (!loading && !user) navigate({ to: "/login" }); }, [user, loading, navigate]);
+  const { data: profile } = useQuery({ queryKey: ["customer-profile-edit", user?.id], enabled: !!user, queryFn: async () => { if (!user) return null; const { data } = await (supabase as any).from("customer_profiles").select("id, phone, full_name, avatar_url, cover_url, bio").eq("id", user.id).maybeSingle(); return data; } });
+  useEffect(() => { if (profile) { setName(profile.full_name ?? ""); setBio(profile.bio ?? ""); setAvatar(profile.avatar_url ?? null); setCover(profile.cover_url ?? null); } }, [profile]);
+  const { data: orders, isLoading: ordersLoading } = useQuery({ queryKey: ["my-orders", user?.id], enabled: !!user, queryFn: async () => { if (!user) return []; const { data } = await supabase.from("orders").select("*").eq("created_by", user.id).order("created_at", { ascending: false }); return data ?? []; } });
+  const { data: reviews, isLoading: reviewsLoading } = useQuery({ queryKey: ["my-reviews", user?.id], enabled: !!user, queryFn: async () => { if (!user) return []; const { data } = await (supabase as any).from("product_reviews").select("*").eq("user_id", user.id).order("created_at", { ascending: false }); return data ?? []; } });
+  const { data: complaints, isLoading: complaintsLoading } = useQuery({ queryKey: ["my-complaints", user?.id], enabled: !!user, queryFn: async () => { if (!user) return []; const { data } = await (supabase as any).from("customer_complaints").select("*").eq("customer_id", user.id).order("created_at", { ascending: false }); return data ?? []; } });
 
-  const { data: profile } = useQuery({
-    queryKey: ["customer-profile-edit", user?.id],
-    queryFn: async () => {
-      if (!user) return null;
-      const { data } = await (supabase as any).from("customer_profiles")
-        .select("id, phone, full_name, avatar_url, cover_url, bio")
-        .eq("id", user.id).maybeSingle();
-      return data;
-    },
-    enabled: !!user,
-  });
-
-  useEffect(() => {
-    if (profile) {
-      setName(profile.full_name ?? "");
-      setBio(profile.bio ?? "");
-      setAvatar(profile.avatar_url ?? null);
-      setCover(profile.cover_url ?? null);
-    }
-  }, [profile]);
-
-  const { data: orders } = useQuery({
-    queryKey: ["my-orders", user?.id],
-    queryFn: async () => {
-      if (!user) return [];
-      const { data } = await supabase.from("orders").select("*").eq("created_by", user.id).order("created_at", { ascending: false });
-      return data ?? [];
-    },
-    enabled: !!user,
-  });
-
-  const uploadImage = async (file: File, kind: "avatar" | "cover") => {
-    if (!user) return;
-    if (!file.type.startsWith("image/")) return toast.error("শুধু ছবি আপলোড করুন");
-    if (file.size > 5 * 1024 * 1024) return toast.error("ছবির সাইজ সর্বোচ্চ ৫MB হতে পারবে");
-    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    const path = `${user.id}/${kind}-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("customer-profiles").upload(path, file, { upsert: true, contentType: file.type });
-    if (error) return toast.error(error.message);
-    const { data } = supabase.storage.from("customer-profiles").getPublicUrl(path);
-    if (kind === "avatar") setAvatar(data.publicUrl); else setCover(data.publicUrl);
-  };
-
-  const saveProfile = async () => {
-    if (!user) return;
-    if (!name.trim()) return toast.error("আপনার নাম লিখুন");
-    setSaving(true);
-    try {
-      const { error } = await (supabase as any).from("customer_profiles").upsert({
-        id: user.id, phone: profile?.phone ?? user.user_metadata?.phone ?? null,
-        full_name: name.trim(), bio: bio.trim() || null,
-        avatar_url: avatar, cover_url: cover, updated_at: new Date().toISOString(),
-      }, { onConflict: "id" });
-      if (error) throw error;
-      await queryClient.invalidateQueries({ queryKey: ["customer-profile-edit", user.id] });
-      await queryClient.invalidateQueries({ queryKey: ["customer-profile", user.id] });
-      setEditing(false);
-      toast.success("প্রোফাইল আপডেট হয়েছে");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "প্রোফাইল আপডেট করা যায়নি");
-    } finally { setSaving(false); }
-  };
-
+  const uploadImage = async (file: File, kind: "avatar" | "cover") => { if (!user) return; if (!file.type.startsWith("image/")) return toast.error("শুধু ছবি আপলোড করুন"); if (file.size > 5 * 1024 * 1024) return toast.error("ছবির সাইজ সর্বোচ্চ ৫MB হতে পারবে"); const ext = file.name.split(".").pop()?.toLowerCase() || "jpg"; const path = `${user.id}/${kind}-${Date.now()}.${ext}`; const { error } = await supabase.storage.from("customer-profiles").upload(path, file, { upsert: true, contentType: file.type }); if (error) return toast.error(error.message); const { data } = supabase.storage.from("customer-profiles").getPublicUrl(path); if (kind === "avatar") setAvatar(data.publicUrl); else setCover(data.publicUrl); };
+  const saveProfile = async () => { if (!user) return; if (!name.trim()) return toast.error("আপনার নাম লিখুন"); setSaving(true); try { const { error } = await (supabase as any).from("customer_profiles").upsert({ id: user.id, phone: profile?.phone ?? user.user_metadata?.phone ?? null, full_name: name.trim(), bio: bio.trim() || null, avatar_url: avatar, cover_url: cover, updated_at: new Date().toISOString() }, { onConflict: "id" }); if (error) throw error; await queryClient.invalidateQueries({ queryKey: ["customer-profile-edit", user.id] }); await queryClient.invalidateQueries({ queryKey: ["customer-profile", user.id] }); setEditing(false); toast.success("প্রোফাইল আপডেট হয়েছে"); } catch (e) { toast.error(e instanceof Error ? e.message : "প্রোফাইল আপডেট করা যায়নি"); } finally { setSaving(false); } };
+  const submitComplaint = async () => { if (!user || !complaintTitle.trim() || !complaintMessage.trim()) return toast.error("বিষয় ও অভিযোগের বিস্তারিত লিখুন"); setComplaintSaving(true); try { const { error } = await (supabase as any).from("customer_complaints").insert({ customer_id: user.id, title: complaintTitle.trim(), message: complaintMessage.trim() }); if (error) throw error; setComplaintTitle(""); setComplaintMessage(""); await queryClient.invalidateQueries({ queryKey: ["my-complaints", user.id] }); toast.success("অভিযোগ পাঠানো হয়েছে"); } catch (e) { toast.error(e instanceof Error ? e.message : "অভিযোগ পাঠানো যায়নি"); } finally { setComplaintSaving(false); } };
   const logout = async () => { await supabase.auth.signOut(); navigate({ to: "/" }); };
-
   if (loading || !user) return <SiteLayout><div className="container mx-auto px-3 py-12"><BrandLoader /></div></SiteLayout>;
-
   const displayName = profile?.full_name || user.user_metadata?.full_name || "কাস্টমার";
+  const tabs = [{ id: "orders" as Tab, label: "অর্ডার", icon: ShoppingBag, count: orders?.length }, { id: "reviews" as Tab, label: "রিভিউ", icon: Star, count: reviews?.length }, { id: "complaints" as Tab, label: "অভিযোগ", icon: MessageSquareWarning, count: complaints?.length }];
 
-  return (
-    <SiteLayout>
-      <div className="container mx-auto px-3 py-6 max-w-3xl">
-        <div className="bg-white border rounded-2xl overflow-hidden mb-5 shadow-sm">
-          <div className="relative h-36 sm:h-44 bg-gradient-to-br from-brand/30 via-brand-light to-muted">
-            {cover && <img src={cover} alt="কভার" className="w-full h-full object-cover" />}
-            {editing && <button onClick={() => coverRef.current?.click()} className="absolute right-3 top-3 bg-black/60 text-white rounded-full px-3 py-2 text-xs font-bold flex items-center gap-1.5"><ImagePlus className="w-4 h-4" /> কভার বদলান</button>}
-            <input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0], "cover")} />
-          </div>
-          <div className="px-5 pb-5">
-            <div className="flex items-end justify-between -mt-10 relative">
-              <div className="relative">
-                <div className="w-20 h-20 rounded-full border-4 border-white bg-brand-light overflow-hidden shadow-md flex items-center justify-center">
-                  {avatar ? <img src={avatar} alt={displayName} className="w-full h-full object-cover" /> : <span className="text-2xl font-black text-brand-dark">{displayName.slice(0, 1)}</span>}
-                </div>
-                {editing && <button onClick={() => avatarRef.current?.click()} className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-brand text-white flex items-center justify-center border-2 border-white"><Camera className="w-3.5 h-3.5" /></button>}
-                <input ref={avatarRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0], "avatar")} />
-              </div>
-              <div className="flex gap-2">
-                {editing ? <><button onClick={() => setEditing(false)} className="border rounded-xl px-3 py-2 text-sm font-semibold flex items-center gap-1"><X className="w-4 h-4" /> বাতিল</button><button onClick={saveProfile} disabled={saving} className="bg-brand text-white rounded-xl px-3 py-2 text-sm font-bold flex items-center gap-1 disabled:opacity-60">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} সেভ</button></> : <button onClick={() => setEditing(true)} className="border rounded-xl px-3 py-2 text-sm font-semibold flex items-center gap-1 hover:border-brand"><Pencil className="w-4 h-4" /> প্রোফাইল সাজান</button>}
-              </div>
-            </div>
-            <div className="mt-3">
-              {editing ? <div className="space-y-3"><input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} className="w-full border rounded-xl px-3 py-2.5 outline-none focus:border-brand font-semibold" placeholder="আপনার নাম" /><textarea value={bio} onChange={(e) => setBio(e.target.value)} maxLength={300} rows={3} className="w-full border rounded-xl px-3 py-2.5 outline-none focus:border-brand resize-none" placeholder="নিজের সম্পর্কে ছোট করে লিখুন..." /></div> : <><h1 className="text-xl font-extrabold">{displayName}</h1><p className="text-sm text-muted-foreground mt-1">{profile?.bio || "আপনার প্রোফাইলটি নিজের মতো করে সাজান 🌱"}</p><p className="text-xs text-muted-foreground mt-2">{profile?.phone || ""}</p></>}
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white border rounded-xl p-5 mb-5 flex items-center justify-between">
-          <div><div className="font-bold text-lg">আমার একাউন্ট</div><div className="text-sm text-muted-foreground">{user.email}</div></div>
-          <button onClick={logout} className="text-destructive font-semibold text-sm">লগআউট</button>
-        </div>
-        <h2 className="text-xl font-bold mb-3">আমার অর্ডার</h2>
-        {orders && orders.length > 0 ? <div className="space-y-3">{orders.map((o) => <Link key={o.id} to="/order/$id" params={{ id: o.id }} className="block bg-white border rounded-xl p-4 hover:border-brand"><div className="flex justify-between items-start"><div><div className="font-bold">#{o.id.slice(0, 8).toUpperCase()}</div><div className="text-xs text-muted-foreground">{format(new Date(o.created_at), "dd MMM yyyy, hh:mm a")}</div></div><span className="bg-brand-light text-brand-dark text-xs font-bold px-2 py-1 rounded">{statusBn[o.status] ?? o.status}</span></div><div className="mt-2 font-bold text-brand-dark">{taka(o.total)}</div></Link>)}</div> : <div className="text-center py-12 text-muted-foreground">কোনো অর্ডার নেই</div>}
-      </div>
-    </SiteLayout>
-  );
+  return <SiteLayout><div className="min-h-screen bg-gradient-to-b from-muted/30 to-background py-4 sm:py-7"><div className="container mx-auto px-3 max-w-4xl">
+    <section className="overflow-hidden rounded-[28px] border bg-background shadow-xl shadow-black/5 animate-in fade-in slide-in-from-bottom-3 duration-500">
+      <div className="relative h-44 sm:h-56 overflow-hidden bg-gradient-to-br from-brand/30 via-brand-light to-muted"><img src={cover || DEFAULT_COVER} alt="কভার" className="h-full w-full object-cover transition-transform duration-700 hover:scale-[1.02]" />{editing && <button onClick={() => coverRef.current?.click()} className="absolute right-3 top-3 rounded-full bg-black/60 px-3 py-2 text-xs font-bold text-white backdrop-blur flex items-center gap-1.5"><ImagePlus className="w-4 h-4" /> কভার বদলান</button>}<input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && uploadImage(e.target.files[0], "cover")} /></div>
+      <div className="px-4 pb-5 sm:px-7"><div className="-mt-12 flex items-end justify-between gap-3 relative"><div className="relative"><img src={avatar || DEFAULT_AVATAR} alt={displayName} className="h-24 w-24 rounded-full border-4 border-background object-cover shadow-lg bg-brand-light" />{editing && <button onClick={() => avatarRef.current?.click()} className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-brand text-white flex items-center justify-center border-2 border-background"><Camera className="h-4 w-4" /></button>}<input ref={avatarRef} type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && uploadImage(e.target.files[0], "avatar")} /></div><div className="flex gap-2">{editing ? <><button onClick={() => setEditing(false)} className="rounded-xl border px-3 py-2 text-sm font-semibold"><X className="inline h-4 w-4 mr-1" />বাতিল</button><button onClick={saveProfile} disabled={saving} className="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white disabled:opacity-60">{saving ? <Loader2 className="inline h-4 w-4 mr-1 animate-spin" /> : <Save className="inline h-4 w-4 mr-1" />}সেভ</button></> : <button onClick={() => setEditing(true)} className="rounded-xl border px-3 py-2 text-sm font-semibold hover:border-brand transition"><Pencil className="inline h-4 w-4 mr-1" />প্রোফাইল সাজান</button>}</div></div>
+      <div className="mt-3">{editing ? <div className="space-y-3"><input value={name} onChange={e => setName(e.target.value)} maxLength={80} className="w-full rounded-xl border px-3 py-2.5 font-semibold outline-none focus:border-brand" placeholder="আপনার নাম" /><textarea value={bio} onChange={e => setBio(e.target.value)} maxLength={300} rows={3} className="w-full resize-none rounded-xl border px-3 py-2.5 outline-none focus:border-brand" placeholder="নিজের সম্পর্কে ছোট করে লিখুন..." /></div> : <><div className="flex items-center gap-2"><h1 className="text-2xl font-black tracking-tight">{displayName}</h1><Sparkles className="h-4 w-4 text-brand" /></div><p className="mt-1 text-sm text-muted-foreground">{profile?.bio || "আপনার বাগান ও কেনাকাটার গল্প এখানে 🌱"}</p><p className="mt-2 text-xs text-muted-foreground">{profile?.phone || ""}</p></>}</div></div>
+    </section>
+    <div className="mt-4 grid grid-cols-3 rounded-2xl border bg-background p-1 shadow-sm">{tabs.map(t => { const Icon=t.icon; return <button key={t.id} onClick={() => setTab(t.id)} className={`relative rounded-xl px-2 py-3 text-xs sm:text-sm font-bold transition-all duration-300 ${tab===t.id ? "bg-brand text-white shadow-md scale-[.99]" : "text-muted-foreground hover:bg-muted"}`}><Icon className="mx-auto mb-1 h-4 w-4" /><span>{t.label}</span>{typeof t.count === "number" && <span className="ml-1 opacity-75">({t.count})</span>}</button> })}</div>
+    <section className="mt-4 rounded-2xl border bg-background p-4 sm:p-6 shadow-sm animate-in fade-in duration-300">
+      {tab === "orders" && <>{ordersLoading ? <BrandLoader /> : orders?.length ? <div className="space-y-3">{orders.map(o => <Link key={o.id} to="/order/$id" params={{id:o.id}} className="block rounded-2xl border p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-brand hover:shadow-md"><div className="flex justify-between gap-3"><div><b>#{o.id.slice(0,8).toUpperCase()}</b><div className="text-xs text-muted-foreground mt-1">{format(new Date(o.created_at), "dd MMM yyyy, hh:mm a")}</div></div><span className="rounded-full bg-brand-light px-2.5 py-1 text-xs font-bold text-brand-dark">{statusBn[o.status] ?? o.status}</span></div><div className="mt-2 font-black text-brand-dark">{taka(o.total)}</div></Link>)}</div> : <Empty icon={ShoppingBag} title="এখনও কোনো অর্ডার নেই" text="আপনার করা অর্ডারগুলো এখানে দেখা যাবে।" />}</>}
+      {tab === "reviews" && <>{reviewsLoading ? <BrandLoader /> : reviews?.length ? <div className="space-y-3">{reviews.map((r:any) => <div key={r.id} className="rounded-2xl border p-4 transition hover:border-brand"><div className="flex justify-between gap-3"><div className="font-bold">{r.product_name || r.product_title || `পণ্য #${String(r.product_id || "").slice(0,8)}`}</div><div className="text-sm">{"★".repeat(Math.max(0,Math.min(5,Number(r.rating)||0)))}<span className="text-muted-foreground">{"★".repeat(5-Math.max(0,Math.min(5,Number(r.rating)||0)))}</span></div></div>{r.review_text || r.comment || r.review ? <p className="mt-2 text-sm text-muted-foreground">{r.review_text || r.comment || r.review}</p> : null}<div className="mt-2 text-xs text-muted-foreground">{r.created_at ? format(new Date(r.created_at), "dd MMM yyyy") : ""}</div></div>)}</div> : <Empty icon={Star} title="এখনও কোনো রিভিউ নেই" text="আপনার দেওয়া পণ্যের রিভিউগুলো এখানে থাকবে।" />}</>}
+      {tab === "complaints" && <div className="space-y-5"><div className="rounded-2xl border bg-muted/20 p-4"><h3 className="font-extrabold mb-3">নতুন অভিযোগ জানান</h3><div className="space-y-3"><input value={complaintTitle} onChange={e=>setComplaintTitle(e.target.value)} placeholder="অভিযোগের বিষয়" className="w-full rounded-xl border bg-background px-3 py-2.5 outline-none focus:border-brand" /><textarea value={complaintMessage} onChange={e=>setComplaintMessage(e.target.value)} rows={4} placeholder="বিস্তারিত লিখুন..." className="w-full resize-none rounded-xl border bg-background px-3 py-2.5 outline-none focus:border-brand" /><button onClick={submitComplaint} disabled={complaintSaving} className="rounded-xl bg-brand px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60">{complaintSaving ? <Loader2 className="inline h-4 w-4 animate-spin mr-1"/> : null}অভিযোগ পাঠান</button></div></div>{complaintsLoading ? <BrandLoader /> : complaints?.length ? <div className="space-y-3">{complaints.map((c:any)=><div key={c.id} className="rounded-2xl border p-4"><div className="flex justify-between gap-3"><b>{c.title}</b><span className="rounded-full bg-muted px-2.5 py-1 text-xs font-bold">{c.status || "pending"}</span></div><p className="mt-2 text-sm text-muted-foreground">{c.message}</p><div className="mt-2 text-xs text-muted-foreground">{c.created_at ? format(new Date(c.created_at), "dd MMM yyyy, hh:mm a") : ""}</div></div>)}</div> : <Empty icon={MessageSquareWarning} title="কোনো অভিযোগ নেই" text="সমস্যা হলে উপরের ফর্ম থেকে আমাদের জানান।" />}</div>}
+    </section><button onClick={logout} className="mt-4 w-full rounded-2xl border bg-background py-3 text-sm font-bold text-destructive transition hover:bg-destructive/5"><LogOut className="inline h-4 w-4 mr-1"/> লগআউট</button>
+  </div></div></SiteLayout>;
 }
+function Empty({icon:Icon,title,text}:{icon:any,title:string,text:string}) { return <div className="py-12 text-center"><div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-brand-light text-brand-dark"><Icon className="h-6 w-6"/></div><h3 className="font-extrabold">{title}</h3><p className="mt-1 text-sm text-muted-foreground">{text}</p></div>; }
