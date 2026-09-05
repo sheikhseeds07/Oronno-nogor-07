@@ -22,10 +22,10 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
       <main className={`relative z-0 flex-1 pb-24 ${isOdcLanding ? "odc-landing-main" : ""}`}>{children}</main>
       {isOdcLanding && <style>{`.odc-landing-main > :first-child { margin-top: 0 !important; }.odc-landing-main > :first-child > :first-child { margin-top: 0 !important; padding-top: 0 !important; }.odc-landing-main section:first-child { margin-top: 0 !important; }.odc-landing-main section:first-child > :first-child { margin-top: 0 !important; }`}</style>}
       {!isCleanShell && <Footer />}
-      {!isCleanShell && <FloatingContact />}
+      {!isCleanShell && !isCheckout && <FloatingContact />}
       <VisitTracker />
       <SeoFromSettings />
-      {!isOdcLanding && !isKaralaLanding && <CustomerBottomNav />}
+      {!isOdcLanding && !isKaralaLanding && !isCheckout && <CustomerBottomNav />}
     </div>
   );
 }
