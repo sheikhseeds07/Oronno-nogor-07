@@ -19,40 +19,40 @@ export function CustomerBottomNav({ hidden = false }: { hidden?: boolean }) {
   return (
     <>
       <style>{`
-        /* Checkout's sticky Place Order bar must sit against the actual screen edge.
-           It is identified by the existing co-cta class, so other bottom UI is untouched. */
+        /* Checkout action stays above the customer nav. Other drawers/sheets use
+           higher z-index values, so the floating nav always remains underneath them. */
         @media (max-width: 1023px) {
           .fixed:has(.co-cta) {
             bottom: 0 !important;
-            padding: 9px 12px calc(9px + env(safe-area-inset-bottom)) !important;
+            padding: 8px 10px calc(8px + env(safe-area-inset-bottom)) !important;
             border-top: 1px solid rgba(20, 120, 70, .10) !important;
             background: rgba(255,255,255,.94) !important;
             box-shadow: 0 -18px 45px -24px rgba(15, 70, 40, .38) !important;
             backdrop-filter: blur(22px) saturate(150%) !important;
           }
           .fixed:has(.co-cta) > div {
-            gap: 10px !important;
+            gap: 8px !important;
           }
           .fixed:has(.co-cta) .co-cta {
             min-height: 48px;
-            border-radius: 16px;
+            border-radius: 15px;
             box-shadow: 0 12px 28px -14px rgba(15, 100, 55, .58) !important;
           }
         }
       `}</style>
       <nav
         aria-hidden={hidden}
-        className={`fixed inset-x-2 bottom-2 z-[70] mx-auto grid max-w-xl grid-cols-5 rounded-2xl border border-brand/10 bg-background/95 p-1 shadow-[0_14px_40px_rgba(15,70,40,.18)] backdrop-blur-xl transition-all duration-350 ease-[cubic-bezier(.22,1,.36,1)] sm:bottom-3 sm:rounded-2xl ${hidden ? "pointer-events-none translate-y-[140%] scale-[.94] opacity-0" : "translate-y-0 scale-100 opacity-100"}`}
+        className={`fixed inset-x-1 bottom-0 z-[30] mx-auto grid max-w-xl grid-cols-5 rounded-t-[18px] border border-b-0 border-brand/10 bg-background/96 px-1 py-0.5 shadow-[0_-8px_28px_rgba(15,70,40,.14)] backdrop-blur-xl transition-all duration-350 ease-[cubic-bezier(.22,1,.36,1)] sm:inset-x-2 sm:bottom-1 sm:rounded-2xl sm:border-b sm:px-1 sm:py-1 ${hidden ? "pointer-events-none translate-y-[140%] scale-[.94] opacity-0" : "translate-y-0 scale-100 opacity-100"}`}
       >
         {items.map(({ label, to, icon: Icon }) => (
-          <Link key={to} to={to} activeOptions={{ exact: to === "/" }} activeProps={{ className: "bg-gradient-to-br from-brand to-brand-dark text-white shadow-md" }} className="group flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[9px] font-black text-muted-foreground transition-all duration-300 hover:bg-brand-light/60 hover:text-brand-dark sm:py-2 sm:text-[10px]">
-            <Icon className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:scale-110 sm:h-[17px] sm:w-[17px]" />
-            <span className="truncate">{label}</span>
+          <Link key={to} to={to} activeOptions={{ exact: to === "/" }} activeProps={{ className: "bg-gradient-to-br from-brand to-brand-dark text-white shadow-md" }} className="group flex min-w-0 flex-col items-center justify-center gap-0 rounded-xl px-1 py-1 text-[8px] font-black text-muted-foreground transition-all duration-300 hover:bg-brand-light/60 hover:text-brand-dark sm:gap-0.5 sm:py-1.5 sm:text-[10px]">
+            <Icon className="h-[15px] w-[15px] transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:scale-110 sm:h-[17px] sm:w-[17px]" />
+            <span className="truncate leading-tight">{label}</span>
           </Link>
         ))}
-        <button type="button" onClick={() => setContactOpen(true)} className="group flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[9px] font-black text-muted-foreground transition-all duration-300 hover:bg-brand-light/60 hover:text-brand-dark sm:py-2 sm:text-[10px]">
-          <Headset className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:scale-110 sm:h-[17px] sm:w-[17px]" />
-          <span className="truncate">যোগাযোগ</span>
+        <button type="button" onClick={() => setContactOpen(true)} className="group flex min-w-0 flex-col items-center justify-center gap-0 rounded-xl px-1 py-1 text-[8px] font-black text-muted-foreground transition-all duration-300 hover:bg-brand-light/60 hover:text-brand-dark sm:gap-0.5 sm:py-1.5 sm:text-[10px]">
+          <Headset className="h-[15px] w-[15px] transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:scale-110 sm:h-[17px] sm:w-[17px]" />
+          <span className="truncate leading-tight">যোগাযোগ</span>
         </button>
       </nav>
       {contactOpen && (
