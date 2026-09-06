@@ -1,11 +1,9 @@
-// Compatibility shim for browsers/WebViews (including Facebook's in-app browser)
-// where Web Crypto exists but crypto.randomUUID is missing or cannot be added
-// directly to the Crypto instance.
+// WebView compatibility for Supabase/Auth and Community Feed.
+// Some Facebook in-app browsers expose Web Crypto but not crypto.randomUUID.
+type CryptoUUID = Crypto & { randomUUID?: () => string };
 
-type CryptoWithUUID = Crypto & { randomUUID?: () => string };
-
-function fallbackUUID(): string {
-  const cryptoApi = (typeof globalThis !== "undefined" ? globalThis.crypto : undefined) as CryptoWithUUID | undefined;
+const makeUUID = (): string => {
+  const cryptoApi = (typeof globalThis !== "undefined" ? globalThis.crypto : undefined) as CryptoUUID | undefined;
   const bytes = new Uint8Array(16);
 
   if (cryptoApi && typeof cryptoApi.getRandomValues === "function") {
@@ -18,61 +16,67 @@ function fallbackUUID(): string {
 
   bytes[6] = (bytes[6] & 0x0f) | 0x40;
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0"));
-  return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex.slice(6, 8).join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10, 16).join("")}`;
-}
+  const h = Array.from(bytes, (b) => b.toString(16).padStart(2, "0"));
+  return `${h.slice(0, 4).join("")}-${h.slice(4, 6).join("")}-${h.slice(6, 8).join("")}-${h.slice(8, 10).join("")}-${h.slice(10).join("")}`;
+};
 
 export function ensureCryptoRandomUUID(): void {
   if (typeof globalThis === "undefined") return;
 
-  let cryptoObject = globalThis.crypto as CryptoWithUUID | undefined;
+  const cryptoApi = globalThis.crypto as CryptoUUID | undefined;
 
-  // Normal modern browsers.
   try {
-    if (cryptoObject && typeof cryptoObject.randomUUID === "function") return;
+    if (cryptoApi && typeof cryptoApi.randomUUID === "function") return;
   } catch {
-    // Continue with the compatibility paths below.
+    // Continue with the fallback installation.
   }
 
-  // Facebook/older WebViews may expose Crypto as a non-extensible object.
-  // In that case patch its prototype instead of the instance.
-  if (cryptoObject) {
-    const install = (target: object): boolean => {
-      try {
-        Object.defineProperty(target, "randomUUID", {
+  if (cryptoApi) {
+    // First try the instance. This is supported by most WebViews.
+    try {
+      Object.defineProperty(cryptoApi, "randomUUID", {
+        configurable: true,
+        enumerable: false,
+        writable: true,
+        value: makeUUID,
+      });
+      if (typeof cryptoApi.randomUUID === "function") return;
+    } catch {
+      // Some WebViews expose a non-extensible Crypto object.
+    }
+
+    // Then try Crypto.prototype, which works when the instance is frozen.
+    try {
+      const proto = Object.getPrototypeOf(cryptoApi);
+      if (proto) {
+        Object.defineProperty(proto, "randomUUID", {
           configurable: true,
           enumerable: false,
           writable: true,
-          value: fallbackUUID,
+          value: makeUUID,
         });
-        return typeof (cryptoObject as CryptoWithUUID).randomUUID === "function";
-      } catch {
-        return false;
+        if (typeof (globalThis.crypto as CryptoUUID).randomUUID === "function") return;
       }
-    };
-
-    if (install(cryptoObject)) return;
-    const proto = Object.getPrototypeOf(cryptoObject);
-    if (proto && install(proto)) return;
+    } catch {
+      // Continue; Community Feed also uses safe UUID fallbacks.
+    }
   }
 
-  // Very old embedded browsers can expose no Web Crypto at all. If the
-  // global property is writable, install a minimal compatibility object.
+  // Very old embedded browsers may not expose Web Crypto at all.
+  // Only replace globalThis.crypto when the host allows it.
   try {
-    if (!cryptoObject) {
-      const compatibilityCrypto = {
+    if (!cryptoApi) {
+      (globalThis as unknown as { crypto: Crypto }).crypto = {
+        randomUUID: makeUUID,
         getRandomValues<T extends ArrayBufferView>(array: T): T {
-          const view = new Uint8Array(array.buffer, array.byteOffset, array.byteLength);
+          const view = new Uint8Array(array.buffer as ArrayBuffer, array.byteOffset, array.byteLength);
           for (let i = 0; i < view.length; i += 1) view[i] = Math.floor(Math.random() * 256);
           return array;
         },
-        randomUUID: fallbackUUID,
-      } as unknown as Crypto;
-      (globalThis as typeof globalThis & { crypto?: Crypto }).crypto = compatibilityCrypto;
-      cryptoObject = compatibilityCrypto as CryptoWithUUID;
+      } as Crypto;
     }
   } catch {
-    // Nothing else is required here; the app has its own UUID fallbacks.
+    // Host does not allow replacing crypto. Nothing else to do here.
   }
 }
 
