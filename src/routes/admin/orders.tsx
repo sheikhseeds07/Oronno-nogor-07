@@ -21,6 +21,7 @@ import { getOrderStatusCounts } from "@/lib/reports.functions";
 import { acquireOrderLock, heartbeatOrderLock, releaseOrderLock, listOrderLocks } from "@/lib/order-lock.functions";
 import { useAuth } from "@/lib/auth";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { safeUUID } from "@/lib/uuid";
 
 
 
@@ -2421,7 +2422,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
     setItems((prev) => {
       const exist = prev.find((x) => x.product_id === p.id);
       if (exist) return prev.map((x) => x.product_id === p.id ? { ...x, quantity: x.quantity + 1, subtotal: (x.quantity + 1) * Number(x.price) } : x);
-      return [...prev, { id: crypto.randomUUID(), product_id: p.id, product_name: p.name, price, quantity: 1, subtotal: price }];
+      return [...prev, { id: safeUUID(), product_id: p.id, product_name: p.name, price, quantity: 1, subtotal: price }];
     });
   };
 

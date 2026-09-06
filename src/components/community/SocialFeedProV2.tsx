@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/personal-supabase/client";
 import { useCustomer } from "@/lib/customer-account";
 import { useCart } from "@/lib/cart-store";
+import { safeUUID } from "@/lib/uuid";
 
 type Post={id:string;user_id:string|null;author_name:string;author_avatar:string|null;title:string|null;body:string;image_urls:string[];like_count:number;comment_count:number;view_count:number;created_at:string};
 type Story={id:string;user_id:string|null;author_name:string;author_avatar:string|null;body:string|null;image_url:string|null;text_x:number;text_y:number;created_at:string;expires_at:string};
@@ -15,7 +16,7 @@ const R=[['like','👍'],['love','❤️'],['haha','😂'],['wow','😮'],['sad'
 const T=[['feed','নিউজ ফিড',Users],['videos','ভিডিও',Play],['explore','এক্সপ্লোর',Compass],['top','সেরা',Trophy]] as const;
 const ago=(s:string)=>{const d=(Date.now()-new Date(s).getTime())/1000;return d<60?'এইমাত্র':d<3600?`${Math.floor(d/60)} মিনিট আগে`:d<86400?`${Math.floor(d/3600)} ঘণ্টা আগে`:new Date(s).toLocaleDateString('bn-BD',{day:'numeric',month:'short'})};
 const isVideo=(x:string)=>/\.(mp4|webm|mov|m4v)(\?|$)/i.test(x)||x.startsWith('data:video/');
-const visitorKey=()=>{try{const k='sheikh-seeds-community-visitor';let v=localStorage.getItem(k);if(!v){v=crypto.randomUUID();localStorage.setItem(k,v)}return v}catch{return `v-${crypto.randomUUID()}`}};
+const visitorKey=()=>{try{const k='sheikh-seeds-community-visitor';let v=localStorage.getItem(k);if(!v){v=safeUUID();localStorage.setItem(k,v)}return v}catch{return `v-${safeUUID()}`}};
 function Avatar({name,src,sm=false}:{name:string;src?:string|null;sm?:boolean}){return src?<img src={src} alt="" className={`${sm?'h-8 w-8':'h-10 w-10'} shrink-0 rounded-full object-cover`}/>:<div className={`${sm?'h-8 w-8 text-xs':'h-10 w-10'} shrink-0 rounded-full bg-brand-light text-brand font-black flex items-center justify-center`}>{name?.slice(0,1)||'🌱'}</div>}
 
 export function SocialFeedProV2(){
@@ -34,7 +35,7 @@ export function SocialFeedProV2(){
  useEffect(()=>{const key=visitorKey();(posts.data??[]).forEach(p=>{void (supabase as any).from('social_post_views').upsert({post_id:p.id,visitor_key:key,user_id:user?.id??null},{onConflict:'post_id,visitor_key',ignoreDuplicates:true})})},[posts.data,user?.id]);
  const visible=useMemo(()=>{let a=[...(posts.data??[])];if(tab==='videos')a=a.filter(p=>p.image_urls?.some(isVideo));if(tab==='top')a.sort((a,b)=>(b.like_count+b.comment_count+b.view_count)-(a.like_count+a.comment_count+a.view_count));return a},[posts.data,tab]);
  const dataUrl=(f:File)=>new Promise<string>((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result));r.onerror=no;r.readAsDataURL(f)});
- const upload=async(f:File,folder:string)=>{if(!user)throw new Error('লগইন প্রয়োজন');const ext=(f.name.split('.').pop()||'bin').toLowerCase();const path=`${user.id}/${folder}/${crypto.randomUUID()}.${ext}`;const {error}=await (supabase as any).storage.from('community-media').upload(path,f,{upsert:false,contentType:f.type,cacheControl:'31536000'});if(error)throw error;return(supabase as any).storage.from('community-media').getPublicUrl(path).data.publicUrl as string};
+ const upload=async(f:File,folder:string)=>{if(!user)throw new Error('লগইন প্রয়োজন');const ext=(f.name.split('.').pop()||'bin').toLowerCase();const path=`${user.id}/${folder}/${safeUUID()}.${ext}`;const {error}=await (supabase as any).storage.from('community-media').upload(path,f,{upsert:false,contentType:f.type,cacheControl:'31536000'});if(error)throw error;return(supabase as any).storage.from('community-media').getPublicUrl(path).data.publicUrl as string};
  const chooseStory=async(fs:FileList|null)=>{const f=fs?.[0];if(!f)return;if(!/^(image|video)\//.test(f.type))return toast.error('শুধু ছবি বা ভিডিও দিন');if(f.size>25*1024*1024)return toast.error('সর্বোচ্চ ২৫MB');setStoryFile(f);setStoryPreview(await dataUrl(f));setStoryOpen(true);setStoryPos({x:50,y:82})};
  const choosePost=async(fs:FileList|null)=>{const a=Array.from(fs??[]).filter(f=>/^(image|video)\//.test(f.type));if(a.length>6)return toast.error('সর্বোচ্চ ৬টি মিডিয়া');if(a.some(f=>f.size>25*1024*1024))return toast.error('প্রতিটি ফাইল সর্বোচ্চ ২৫MB');setPostFiles(a);setPostPreviews(await Promise.all(a.map(dataUrl)))};
  const chooseComment=async(fs:FileList|null)=>{const f=fs?.[0];if(!f)return;if(!f.type.startsWith('image/'))return toast.error('কমেন্টে শুধু ছবি দিন');if(f.size>10*1024*1024)return toast.error('সর্বোচ্চ ১০MB');setCommentFile(f);setCommentPreview(await dataUrl(f))};

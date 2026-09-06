@@ -1,3 +1,4 @@
+import "@/lib/crypto-polyfill";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Outlet, Link, createRootRouteWithContext, useRouter, HeadContent, Scripts } from "@tanstack/react-router";
 import { useEffect } from "react";

@@ -1,4 +1,5 @@
 import { getFbContext } from "@/lib/fb-context";
+import { safeUUID } from "@/lib/uuid";
 
 type FbqArgs = unknown[];
 type Fbq = (...args: FbqArgs) => void;
@@ -70,8 +71,7 @@ function alreadySent(id: string) {
 }
 
 function uuid() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+  return safeUUID() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
 }
 
 export function getCachedPixelId() {
