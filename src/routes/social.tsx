@@ -1,3 +1,4 @@
+import "@/lib/crypto-polyfill";
 import { createFileRoute } from "@tanstack/react-router";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { SocialFeedProV2 } from "@/components/community/SocialFeedProV2";
