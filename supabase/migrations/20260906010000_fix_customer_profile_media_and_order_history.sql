@@ -1,5 +1,10 @@
--- Fix customer profile media setup and customer order history access.
+-- Fix customer profile media, profile fields and customer order history access.
 -- Keeps existing OTP, order creation, admin, and community logic intact.
+
+alter table public.customer_profiles add column if not exists bio text;
+alter table public.customer_profiles add column if not exists cover_url text;
+create index if not exists idx_customer_profiles_phone on public.customer_profiles(phone);
+create index if not exists idx_product_reviews_user_id on public.product_reviews(user_id);
 
 -- Ensure the profile media bucket exists in every environment.
 insert into storage.buckets (id, name, public)
@@ -39,9 +44,10 @@ create policy customer_profile_media_read
 on storage.objects for select to public
 using (bucket_id = 'customer-profiles');
 
--- Orders are protected by staff-oriented RLS, so the customer-facing RPC must
--- run as a definer while still restricting results to the authenticated user's
--- own id/phone. This also includes cancelled orders because no status filter is used.
+-- Orders are protected by staff-oriented RLS, so the customer-facing RPC runs as
+-- a definer while restricting results to the authenticated user's own id/phone.
+-- The phone fallback also uses auth.users.phone when the customer profile is not
+-- populated yet. No status filter means cancelled orders remain visible.
 create or replace function public.get_my_customer_orders()
 returns setof public.orders
 language sql
@@ -54,8 +60,8 @@ as $$
   where auth.uid() is not null
     and (
       o.created_by = auth.uid()
-      or regexp_replace(coalesce(o.customer_phone,''), '[^0-9]', '', 'g') = regexp_replace(coalesce((select cp.phone from public.customer_profiles cp where cp.id = auth.uid() limit 1),''), '[^0-9]', '', 'g')
-      or regexp_replace(regexp_replace(coalesce(o.customer_phone,''), '[^0-9]', '', 'g'), '^88', '') = regexp_replace(regexp_replace(coalesce((select cp.phone from public.customer_profiles cp where cp.id = auth.uid() limit 1),''), '[^0-9]', '', 'g'), '^88', '')
+      or regexp_replace(coalesce(o.customer_phone,''), '[^0-9]', '', 'g') = regexp_replace(coalesce((select coalesce(cp.phone, u.phone) from auth.users u left join public.customer_profiles cp on cp.id = u.id where u.id = auth.uid() limit 1),''), '[^0-9]', '', 'g')
+      or regexp_replace(regexp_replace(coalesce(o.customer_phone,''), '[^0-9]', '', 'g'), '^88', '') = regexp_replace(regexp_replace(coalesce((select coalesce(cp.phone, u.phone) from auth.users u left join public.customer_profiles cp on cp.id = u.id where u.id = auth.uid() limit 1),''), '[^0-9]', '', 'g'), '^88', '')
     )
   order by o.created_at desc;
 $$;
