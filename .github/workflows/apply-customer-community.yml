@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/apply-customer-community.yml'
       - 'supabase/migrations/20260906000000_customer_community.sql'
+      - 'supabase/migrations/20260906040000_community_media_storage.sql'
 
 permissions:
   contents: read
@@ -40,14 +41,23 @@ jobs:
                   with urllib.request.urlopen(req, timeout=timeout) as response:
                       return response.status, response.read().decode()
               except urllib.error.HTTPError as exc:
-                  detail = exc.read().decode()
-                  raise SystemExit('Query failed: ' + detail)
+                  raise SystemExit('Query failed: ' + exc.read().decode())
 
-          sql = Path('supabase/migrations/20260906000000_customer_community.sql').read_text()
-          print('migrate status:', run(sql)[0])
-          _, body = run("select table_name from information_schema.tables where table_schema='public' and table_name in ('customer_profiles','product_reviews','product_questions','social_posts','social_post_likes','social_post_comments')", 60)
-          print('verify:', body)
-          for table in ['customer_profiles', 'product_reviews', 'product_questions', 'social_posts', 'social_post_likes', 'social_post_comments']:
-              if table not in body:
+          for path in [
+              'supabase/migrations/20260906000000_customer_community.sql',
+              'supabase/migrations/20260906040000_community_media_storage.sql',
+          ]:
+              print('applying:', path)
+              print('status:', run(Path(path).read_text())[0])
+
+          _, tables = run("select table_name from information_schema.tables where table_schema='public' and table_name in ('customer_profiles','product_reviews','product_questions','social_posts','social_post_likes','social_post_comments','social_post_reactions','social_stories','social_story_views')", 60)
+          print('tables:', tables)
+          for table in ['social_posts','social_post_reactions','social_stories']:
+              if table not in tables:
                   raise SystemExit('Missing table: ' + table)
+
+          _, bucket = run("select id, public from storage.buckets where id='community-media'", 60)
+          print('community-media bucket:', bucket)
+          if 'community-media' not in bucket:
+              raise SystemExit('Missing community-media bucket')
           PYCODE
