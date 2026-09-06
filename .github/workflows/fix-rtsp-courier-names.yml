@@ -11,17 +11,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch orders.tsx
+      - name: Patch orders and community UI
+        shell: bash
         run: |
           python3 <<'PY'
           from pathlib import Path
+
+          # Existing RTS courier-name patch.
           p = Path('src/routes/admin/orders.tsx')
           s = p.read_text()
-          if 'courier-display-names-rts' in s:
-              print('RTS courier display-name patch already present')
-              raise SystemExit(0)
-          marker = '  const qc = useQueryClient();\n  const sendBulk = useServerFn(sendOrdersToSteadfast);'
-          insert = '''  const qc = useQueryClient();
+          if 'courier-display-names-rts' not in s:
+              marker = '  const qc = useQueryClient();\n  const sendBulk = useServerFn(sendOrdersToSteadfast);'
+              insert = '''  const qc = useQueryClient();
   const sendBulk = useServerFn(sendOrdersToSteadfast);
   const [courierDisplayNames, setCourierDisplayNames] = useState<Record<1 | 2, string>>({ 1: "Courier 1", 2: "Courier 2" });
   useEffect(() => {
@@ -40,23 +41,38 @@ jobs:
     return () => { alive = false; };
   }, []);
   const courier1Name = courierDisplayNames[1];
-  const courier2Name = courierDisplayNames[2];'''
-          if marker not in s: raise SystemExit('ERROR: OrdersTable marker not found')
-          s = s.replace(marker, insert, 1)
-          old1 = 'কুরিয়ার ১ এ পাঠান (Steadfast)'
-          old2 = 'কুরিয়ার ২ এ পাঠান (Steadfast)'
-          if old1 not in s or old2 not in s: raise SystemExit(f'ERROR: RTS labels not found: old1={old1 in s}, old2={old2 in s}')
-          s = s.replace(old1, '{courier1Name} এ পাঠান', 1)
-          s = s.replace(old2, '{courier2Name} এ পাঠান', 1)
-          s = s.replace('  const courier1Name = courierDisplayNames[1];', '  const courier1Name = courierDisplayNames[1]; // courier-display-names-rts')
-          p.write_text(s)
+  const courier2Name = courierDisplayNames[2]; // courier-display-names-rts'''
+              if marker in s:
+                  s = s.replace(marker, insert, 1)
+                  s = s.replace('কুরিয়ার ১ এ পাঠান (Steadfast)', '{courier1Name} এ পাঠান', 1)
+                  s = s.replace('কুরিয়ার ২ এ পাঠান (Steadfast)', '{courier2Name} এ পাঠান', 1)
+                  p.write_text(s)
+
+          # Community UI patch: keep the normal composer input, remove the redundant prompt,
+          # remove the default yellow reaction icon, and make reaction clicking toggle off.
+          p = Path('src/components/community/SocialFeedProV2.tsx')
+          s = p.read_text(encoding='utf-8')
+          original = s
+          s = s.replace('placeholder="SHAWON, আজ কী শেয়ার করবেন?" className="min-w-0 flex-1 rounded-xl bg-muted px-3 py-2 text-xs font-medium outline-none"', 'placeholder="কিছু লিখতে চাইলে লিখুন..." className="min-w-0 flex-1 rounded-xl bg-muted px-3 py-2 text-xs font-medium outline-none"')
+          s = s.replace("<span>{mine?reactions.find(r=>r[0]===mine.reaction)?.[1]:'👍'}</span>", "<span>{mine?reactions.find(r=>r[0]===mine.reaction)?.[1]:''}</span>")
+          s = s.replace("onClick={()=>setReaction(reactionPost===p.id?null:p.id)}", "onClick={()=>{if(mine)void react(p,mine.reaction);else setReaction(reactionPost===p.id?null:p.id)}}")
+          marker = 'return <div className="min-h-screen bg-[#f3f5f4] pb-8">'
+          style = 'return <><style>{`[placeholder="SHAWON, আজ কী শেয়ার করবেন?"]{display:none!important}.community-composer{display:flex;align-items:center;gap:8px}.community-composer textarea,.community-composer input{min-width:0}.community-composer .mt-1\\.5{margin-top:0!important}.community-composer .mt-1\\.5{display:flex!important;align-items:center!important;gap:6px!important;flex:1!important}.community-composer .mt-1\\.5>*{flex-shrink:0}.community-composer .mt-1\\.5 input{flex:1!important}.community-composer button{white-space:nowrap}`}</style><div className="min-h-screen bg-[#f3f5f4] pb-8">'
+          if marker in s:
+              s = s.replace(marker, style, 1)
+          s = s.replace('<section className="border-b bg-background px-3 py-2.5 sm:mt-2 sm:rounded-2xl sm:border">', '<section className="community-composer border-b bg-background px-3 py-2.5 sm:mt-2 sm:rounded-2xl sm:border">', 1)
+          if s != original:
+              p.write_text(s, encoding='utf-8')
           PY
           git diff --check
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/routes/admin/orders.tsx
-          git commit -m 'Fix RTS courier display names'
-          git push origin HEAD:main
-          git rm .github/workflows/fix-rtsp-courier-names.yml
-          git commit -m 'Remove temporary RTS courier-name workflow'
+          git add src/routes/admin/orders.tsx src/components/community/SocialFeedProV2.tsx
+          git rm -f .github/workflows/community-ui-fix.yml || true
+          if ! git diff --cached --quiet; then
+            git commit -m 'fix: compact community composer and reaction display'
+            git push origin HEAD:main
+          fi
+          git rm -f .github/workflows/fix-rtsp-courier-names.yml
+          git commit -m 'chore: remove temporary patch workflow'
           git push origin HEAD:main
