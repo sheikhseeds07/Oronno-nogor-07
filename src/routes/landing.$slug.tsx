@@ -1,6 +1,7 @@
 import { createFileRoute, useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/personal-supabase/client";
 import { LegacyLandingPage } from "@/components/landing/LegacyLandingPage";
 import { CleanLandingPage } from "@/components/landing/CleanLandingPage";
@@ -101,7 +102,9 @@ function LandingPage() {
   const isSeedCombo = behaviorSlug === "seedcombo";
   const COMPACT_SLUGS = new Set(["odc", "bagun"]);
   const compact = COMPACT_SLUGS.has(behaviorSlug);
-  const { data, isLoading } = useQuery({ enabled: !isLegacySlug && !isSeedCombo, staleTime:5*60_000, gcTime:30*60_000, queryKey:["landing-template",slug], queryFn:async() => (await supabase.from("landing_pages").select("planting_steps").eq("slug",slug).maybeSingle()).data ?? null });
+  const queryClient = useQueryClient();
+  useEffect(() => { queryClient.invalidateQueries({ queryKey: ["landing-template", slug] }); queryClient.invalidateQueries({ queryKey: ["landing-product-style", slug] }); }, [queryClient, slug]);
+  const { data, isLoading } = useQuery({ enabled: !isLegacySlug && !isSeedCombo, staleTime:10_000, gcTime:60_000, refetchOnMount:"always", queryKey:["landing-template",slug], queryFn:async() => (await supabase.from("landing_pages").select("planting_steps").eq("slug",slug).maybeSingle()).data ?? null });
   const popupBehaviorEnabled = isSeedCombo || behaviorSlug === "seeds-combo-24";
   const resolvedTemplate = mergeContent(data?.planting_steps).template as string;
   const karalaStyle = isKaralaStyle(slug) || resolvedTemplate === "all-product";
@@ -114,7 +117,7 @@ function LandingPage() {
   if (template === "product") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} hideFooter={karalaStyle} compact={compact} /><ProductStyleLandingPage slug={slug} karala={karalaStyle} /></>;
   if (template === "premium") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><ProfessionalLandingPage slug={slug} variant="premium" /></>;
   if (template === "modern") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><ProfessionalLandingPage slug={slug} variant="modern" /></>;
-  if (isLoading && !data) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} hideFooter={karalaStyle} compact={compact} /><ProductStyleLandingPage slug={slug} karala={karalaStyle} /></>;
+  if (isLoading && !data) return <div className="min-h-screen bg-[#f7f9f6]" aria-hidden="true" />;
   if (template === "all") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><LegacyLandingPage slug={slug} /></>;
   return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><CleanLandingPage slug={slug} /></>;
 }
