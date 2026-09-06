@@ -52,7 +52,7 @@ export function ProductQuickView({ product, onClose }: { product: Product & { de
           </div>
 
           <div className="mx-auto mt-3 max-w-[430px] text-center">
-            <div className="inline-flex items-center gap-1 rounded-full bg-brand-light/70 px-2.5 py-1 text-[9px] font-extrabold text-brand-dark"><PackageCheck className="h-3 w-3"/> AB Seed · প্রিমিয়াম বীজ</div>
+            <div className="inline-flex items-center gap-1 rounded-full bg-brand-light/70 px-2.5 py-1 text-[9px] font-extrabold text-brand-dark"><PackageCheck className="h-3 w-3"/> SK Seed</div>
             <h2 className="mt-1.5 text-[17px] font-black leading-tight tracking-tight sm:text-lg">{product.name}</h2>
             <button type="button" onClick={()=>setActiveSection("reviews")} className="mt-1.5 inline-flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground hover:text-brand-dark"><span className="inline-flex items-center gap-0.5 text-amber-500"><Star className="h-3 w-3 fill-amber-400"/> 5.0</span><span>({bnDigits(reviewsQ.data??0)}টি রিভিউ)</span></button>
           </div>
