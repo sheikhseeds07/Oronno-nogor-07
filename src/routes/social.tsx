@@ -1,7 +1,7 @@
 import "@/lib/crypto-polyfill";
 import { createFileRoute } from "@tanstack/react-router";
 import { SiteLayout } from "@/components/layout/SiteLayout";
-import { SocialFeedProV2 } from "@/components/community/SocialFeedProV2";
+import { CommunityFeedStable } from "@/components/community/CommunityFeedStable";
 
 export const Route = createFileRoute("/social")({
   component: SocialPage,
@@ -14,5 +14,5 @@ export const Route = createFileRoute("/social")({
 });
 
 function SocialPage() {
-  return <SiteLayout><SocialFeedProV2 /></SiteLayout>;
+  return <SiteLayout><CommunityFeedStable /></SiteLayout>;
 }
