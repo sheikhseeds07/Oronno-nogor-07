@@ -4,14 +4,33 @@ import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 
 const RangeSchema = z.object({ from: z.string().datetime(), to: z.string().datetime() });
 
+const isRetryable = (error: unknown) => {
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error ?? "").toLowerCase();
+  return !/401|403|unauthorized|forbidden|invalid token|permission denied|invalid date/.test(message);
+};
+
+async function invokeMeta(supabase: any, body: Record<string, unknown>) {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data, error } = await supabase.functions.invoke("admin-bridge", { body });
+    if (!error) {
+      if (data?.error && data?.connected !== false) throw new Error(String(data.error));
+      return data;
+    }
+    lastError = error;
+    if (!isRetryable(error) || attempt === 2) break;
+    await new Promise(resolve => setTimeout(resolve, 300 * 2 ** attempt));
+  }
+  throw lastError instanceof Error ? lastError : new Error("Meta Ads request failed");
+}
+
 export const getMetaAdsDashboard = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => RangeSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { data: result, error } = await context.supabase.functions.invoke("admin-bridge", {
-      body: { action: "meta_dashboard", from: data.from, to: data.to },
+    return invokeMeta(context.supabase, {
+      action: "meta_dashboard",
+      from: data.from,
+      to: data.to,
     });
-    if (error) throw new Error(error.message || "Meta Ads request failed");
-    if (result?.error && result?.connected !== false) throw new Error(String(result.error));
-    return result;
   });
