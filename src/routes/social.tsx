@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { SiteLayout } from "@/components/layout/SiteLayout";
-import { SocialFeed } from "@/components/community/SocialFeed";
+import { SocialFeedPro } from "@/components/community/SocialFeedPro";
 
 export const Route = createFileRoute("/social")({
   component: SocialPage,
@@ -13,5 +13,5 @@ export const Route = createFileRoute("/social")({
 });
 
 function SocialPage() {
-  return <SiteLayout><SocialFeed /></SiteLayout>;
+  return <SiteLayout><SocialFeedPro /></SiteLayout>;
 }
