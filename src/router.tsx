@@ -1,6 +1,7 @@
 import { QueryClient, dehydrate, hydrate } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
+import { staffSupabase, customerSupabase } from "@/integrations/supabase/client";
 
 const isRetryableQueryError = (error: unknown) => {
   const message = error instanceof Error ? error.message.toLowerCase() : String(error ?? "").toLowerCase();
@@ -28,6 +29,26 @@ export const getRouter = () => {
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
       refetchOnMount: false,
+    });
+  }
+
+  // Never let a previous staff/customer session reuse user-scoped query data.
+  // A new session gets a clean cache, while normal token refreshes keep the cache warm.
+  if (typeof window !== "undefined") {
+    let staffUserId: string | null = null;
+    let customerUserId: string | null = null;
+    staffSupabase.auth.getSession().then(({ data }) => { staffUserId = data.session?.user.id ?? null; }).catch(() => undefined);
+    customerSupabase.auth.getSession().then(({ data }) => { customerUserId = data.session?.user.id ?? null; }).catch(() => undefined);
+
+    staffSupabase.auth.onAuthStateChange((event, session) => {
+      const nextUserId = session?.user.id ?? null;
+      if (event === "SIGNED_OUT" || (event === "SIGNED_IN" && staffUserId !== nextUserId)) queryClient.clear();
+      staffUserId = nextUserId;
+    });
+    customerSupabase.auth.onAuthStateChange((event, session) => {
+      const nextUserId = session?.user.id ?? null;
+      if (event === "SIGNED_OUT" || (event === "SIGNED_IN" && customerUserId !== nextUserId)) queryClient.clear();
+      customerUserId = nextUserId;
     });
   }
 
