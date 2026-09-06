@@ -38,7 +38,7 @@ AS $$
     AND (
       o.created_by = auth.uid()
       OR right(regexp_replace(COALESCE(o.customer_phone,''), '[^0-9]', '', 'g'), 11) = right(regexp_replace(COALESCE((SELECT u.phone FROM auth.users u WHERE u.id = auth.uid()), ''), '[^0-9]', '', 'g'), 11)
-      OR right(regexp_replace(COALESCE(o.customer_phone,''), '[^0-9]', '', 'g'), 11) = right(regexp_replace(COALESCE((SELECT cp.phone FROM public.customer_profiles cp WHERE cp.id = auth.uid()), '[^0-9]', '', 'g'), 11)
+      OR right(regexp_replace(COALESCE(o.customer_phone,''), '[^0-9]', '', 'g'), 11) = right(regexp_replace(COALESCE((SELECT cp.phone FROM public.customer_profiles cp WHERE cp.id = auth.uid()), ''), '[^0-9]', '', 'g'), 11)
     );
 $$;
 
