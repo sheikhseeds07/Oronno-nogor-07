@@ -34,17 +34,17 @@ export function ProductQuickView({ product, onClose }: { product: Product & { de
     {id:"qa" as Section,label:`💬 জিজ্ঞাসা${questionsQ.data?` (${questionsQ.data})`:""}`,icon:MessageCircle}
   ];
 
-  const modal=<div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-3 backdrop-blur-[4px] animate-fade-in sm:p-5" role="dialog" aria-modal="true" aria-label={product.name}>
+  const modal=<div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 px-3 py-[7vh] backdrop-blur-[4px] animate-fade-in sm:px-5 sm:py-[8vh]" role="dialog" aria-modal="true" aria-label={product.name}>
     <div className="absolute inset-0" onClick={onClose}/>
-    <div className="relative flex w-full max-w-[620px] flex-col overflow-hidden rounded-[24px] border border-white/25 bg-background shadow-[0_30px_100px_rgba(0,0,0,.38)] ring-1 ring-black/5 animate-scale-in sm:max-w-[680px] sm:rounded-[28px]">
+    <div className="relative flex h-full max-h-[720px] w-full max-w-[620px] flex-col overflow-hidden rounded-[24px] border border-white/25 bg-background shadow-[0_30px_100px_rgba(0,0,0,.38)] ring-1 ring-black/5 animate-scale-in sm:max-w-[680px] sm:rounded-[28px]">
       <div className="shrink-0 border-b border-border/60 bg-background px-2.5 py-2 sm:px-3.5 sm:py-2.5">
         <div className="flex items-center gap-1 rounded-[14px] border border-border/50 bg-muted/45 p-1 shadow-inner">
           {nav.map(item=>{const Icon=item.icon,active=activeSection===item.id;return <button key={item.id} type="button" onClick={()=>setActiveSection(item.id)} className={`relative flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-[10px] px-1 py-2 text-[10px] font-black transition-all duration-200 sm:text-xs ${active?"bg-background text-brand-dark shadow-[0_3px_12px_rgba(0,0,0,.08)] ring-1 ring-black/5":"text-muted-foreground hover:bg-background/60 hover:text-foreground"}`}><Icon className={`h-3.5 w-3.5 ${active&&item.id==="reviews"?"fill-amber-400 text-amber-400":""}`}/><span className="truncate">{item.label}</span></button>})}
         </div>
       </div>
 
-      <div className="min-h-0 overflow-hidden">
-        {activeSection==="desc" && <div className="flex flex-col px-3 pb-3 pt-3 sm:px-5 sm:pb-4 sm:pt-4">
+      <div className="flex min-h-0 flex-1 flex-col">
+        {activeSection==="desc" && <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pb-3 pt-3 sm:px-5 sm:pb-4 sm:pt-4">
           <div className="relative mx-auto h-[235px] w-full max-w-[590px] shrink-0 overflow-hidden rounded-[18px] bg-muted/40 ring-1 ring-border/60 shadow-sm sm:h-[285px] sm:max-w-[640px] sm:rounded-[20px]">
             <img src={toImg(img,{w:900,q:86})} srcSet={imgSrcSet(img,[450,700,900])} sizes="(min-width:640px) 640px, 100vw" decoding="async" alt={product.name} className="h-full w-full object-contain"/>
             {discount>0&&<span className="absolute left-2.5 top-2.5 rounded-full bg-destructive px-2.5 py-1 text-[9px] font-black text-white shadow">{discount}% ছাড়</span>}
@@ -63,7 +63,7 @@ export function ProductQuickView({ product, onClose }: { product: Product & { de
             {discount>0&&<span className="rounded-md bg-destructive/10 px-1.5 py-0.5 text-[9px] font-black text-destructive">{discount}% ছাড়</span>}
           </div>
 
-          <p className="mx-auto mt-1 max-w-[590px] line-clamp-2 text-center text-[11px] leading-4.5 text-muted-foreground">{product.short_description||product.description||"সঠিক যত্নে চমৎকার ফলন পাওয়ার জন্য বাছাই করা মানসম্মত বীজ।"}</p>
+          <p className="mx-auto mt-1 max-w-[590px] line-clamp-3 text-center text-[12px] leading-5 text-muted-foreground">{product.short_description||product.description||"সঠিক যত্নে চমৎকার ফলন পাওয়ার জন্য বাছাই করা মানসম্মত বীজ।"}</p>
 
           <div className="mx-auto mt-2.5 flex w-full max-w-[590px] items-center justify-between rounded-xl border border-brand/10 bg-brand-light/30 px-3 py-2">
             <div className={`flex items-center gap-1.5 text-[11px] font-black ${product.stock>0?"text-emerald-600":"text-destructive"}`}><span className={`h-1.5 w-1.5 rounded-full ${product.stock>0?"bg-emerald-500":"bg-red-500"}`}/>{product.stock>0?"✓ স্টকে আছে":"স্টক নেই"}</div>
@@ -75,9 +75,10 @@ export function ProductQuickView({ product, onClose }: { product: Product & { de
           <Link to="/product/$slug" params={{slug:product.slug}} onClick={onClose} className="mx-auto mt-1.5 flex w-fit items-center gap-1 text-[10px] font-extrabold text-brand-dark underline underline-offset-4">সম্পূর্ণ পণ্য পেজ দেখুন <ChevronRight className="h-3 w-3"/></Link>
         </div>}
 
-        {activeSection!=="desc" && isUuid(product.id) && <div className="h-[430px] overflow-y-auto px-2 pb-3 pt-1.5 sm:h-[500px] sm:px-3"><ProductTabs productId={String(product.id)} description={product.description} activeTab={activeSection} onTabChange={setActiveSection} hideNav/></div>}
+        {activeSection!=="desc" && isUuid(product.id) && <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3 pt-1.5 sm:px-3"><ProductTabs productId={String(product.id)} description={product.description} activeTab={activeSection} onTabChange={setActiveSection} hideNav/></div>}
       </div>
     </div>
   </div>;
   return typeof document!=="undefined"?createPortal(modal,document.body):null;
 }
+
