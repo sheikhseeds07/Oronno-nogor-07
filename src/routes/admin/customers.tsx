@@ -6,6 +6,7 @@ import { supabase } from "@/lib/personal-supabase/client";
 import { format } from "date-fns";
 import { Search, UserRound, Phone, MapPin, CalendarDays, ShieldCheck, ShieldOff, Eye, Pencil, X, ShoppingBag, Ban, CheckCircle2, Loader2, RefreshCw } from "lucide-react";
 import { listCustomersAdmin, setCustomerBlocked, updateCustomerAdmin } from "@/lib/customer-admin.functions";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/customers")({ component: Customers });
 
@@ -14,8 +15,8 @@ type Customer = { id:string; phone:string|null; full_name:string|null; avatar_ur
 function Customers(){
  const qc=useQueryClient(); const [search,setSearch]=useState(""); const [status,setStatus]=useState<"all"|"active"|"blocked">("all"); const [selected,setSelected]=useState<Customer|null>(null); const [editing,setEditing]=useState(false); const [form,setForm]=useState({full_name:"",phone:"",address:"",district:"",thana:""});
  const customers=useQuery({queryKey:["admin-customers-v2"],queryFn:async()=>(await listCustomersAdmin()) as Customer[]});
- const blockMutation=useMutation({mutationFn:(v:{id:string;blocked:boolean})=>setCustomerBlocked(v),onSuccess:async()=>{await qc.invalidateQueries({queryKey:["admin-customers-v2"]});setSelected(null);}});
- const updateMutation=useMutation({mutationFn:(v:any)=>updateCustomerAdmin(v),onSuccess:(row)=>{qc.invalidateQueries({queryKey:["admin-customers-v2"]});setSelected(row as Customer);setEditing(false);}});
+ const blockMutation=useMutation({mutationFn:(v:{id:string;blocked:boolean})=>setCustomerBlocked({data:v}),onSuccess:async(row:any)=>{await qc.invalidateQueries({queryKey:["admin-customers-v2"]});setSelected(s=>s?{...s,is_blocked:Boolean(row?.is_blocked),blocked_at:row?.blocked_at??null}:s);toast.success(row?.is_blocked?"কাস্টমারকে ব্লক করা হয়েছে":"কাস্টমারের ব্লক তুলে নেওয়া হয়েছে");},onError:(e:any)=>{toast.error(e?.message?`ব্লক করা যায়নি: ${e.message}`:"ব্লক করা যায়নি, আবার চেষ্টা করুন");}});
+ const updateMutation=useMutation({mutationFn:(v:any)=>updateCustomerAdmin({data:v}),onSuccess:(row)=>{qc.invalidateQueries({queryKey:["admin-customers-v2"]});setSelected(row as Customer);setEditing(false);}});
  const rows=useMemo(()=>{const q=search.trim().toLowerCase();return(customers.data??[]).filter(c=>{const hay=`${c.full_name??""} ${c.phone??""} ${c.address??""} ${c.district??""} ${c.thana??""}`.toLowerCase();return(!q||hay.includes(q))&&(status==="all"||(status==="blocked"?c.is_blocked:!c.is_blocked));});},[customers.data,search,status]);
  const activeCount=(customers.data??[]).filter(c=>!c.is_blocked).length,blockedCount=(customers.data??[]).filter(c=>c.is_blocked).length;
  const openProfile=(c:Customer)=>{setSelected(c);setEditing(false);setForm({full_name:c.full_name??"",phone:c.phone??"",address:c.address??"",district:c.district??"",thana:c.thana??""});};

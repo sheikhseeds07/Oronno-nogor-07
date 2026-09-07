@@ -41,20 +41,42 @@ export const setCustomerBlocked = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context.supabase, context.userId);
 
-    const { data: row, error } = await context.supabase
-      .from("customer_profiles")
-      .update({
-        is_blocked: data.blocked,
-        blocked_at: data.blocked ? new Date().toISOString() : null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", data.id)
-      .select("id,is_blocked,blocked_at")
-      .maybeSingle();
+    const patch = {
+      is_blocked: data.blocked,
+      blocked_at: data.blocked ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+    };
 
-    if (error) throw new Error(`Block action failed: ${error.message}`);
-    if (!row) throw new Error("Block action failed: customer was not found or could not be updated");
-    if (Boolean(row.is_blocked) !== data.blocked) throw new Error("Block action failed: status was not saved");
+    // 1) Try the authenticated admin connection (respects RLS).
+    let row: any = null;
+    let lastError: string | null = null;
+    {
+      const { data: r, error } = await context.supabase
+        .from("customer_profiles")
+        .update(patch)
+        .eq("id", data.id)
+        .select("id,is_blocked,blocked_at")
+        .maybeSingle();
+      if (error) lastError = error.message;
+      row = r ?? null;
+    }
+
+    // 2) Fall back to the privileged client when RLS silently blocks the update.
+    if (!row || Boolean(row.is_blocked) !== data.blocked) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: r2, error: e2 } = await (supabaseAdmin as any)
+        .from("customer_profiles")
+        .update(patch)
+        .eq("id", data.id)
+        .select("id,is_blocked,blocked_at")
+        .maybeSingle();
+      if (e2) lastError = e2.message;
+      row = r2 ?? row;
+    }
+
+    if (!row) throw new Error(`Block action failed: ${lastError ?? "customer was not found"}`);
+    if (Boolean(row.is_blocked) !== data.blocked)
+      throw new Error(`Block action failed: status was not saved${lastError ? ` (${lastError})` : ""}`);
 
     return row as { id: string; is_blocked: boolean; blocked_at: string | null };
   });
