@@ -16,18 +16,32 @@ function readCache(): CacheShape {
   }
 }
 
+function FeedSkeleton() {
+  return (
+    <div className="min-h-screen bg-[#f3f5f4] pb-8">
+      <div className="mx-auto max-w-2xl space-y-2 px-3 pt-3">
+        <div className="h-16 animate-pulse rounded-2xl bg-black/5" />
+        <div className="h-24 animate-pulse rounded-2xl bg-black/5" />
+        <div className="h-64 animate-pulse rounded-2xl bg-black/5" />
+        <div className="h-64 animate-pulse rounded-2xl bg-black/5" />
+      </div>
+    </div>
+  );
+}
+
 export function CommunityFeedStable() {
   const qc = useQueryClient();
-  const hydrated = useRef(false);
   const [ready, setReady] = useState(false);
+  const hydrated = useRef(false);
 
-  if (!hydrated.current) {
+  useEffect(() => {
+    if (hydrated.current) return;
     hydrated.current = true;
     const cache = readCache();
     if (cache.posts) qc.setQueryData(["community-posts"], cache.posts);
     if (cache.stories) qc.setQueryData(["community-stories"], cache.stories);
     setReady(true);
-  }
+  }, [qc]);
 
   useEffect(() => {
     const save = () => {
@@ -47,6 +61,6 @@ export function CommunityFeedStable() {
     return unsub;
   }, [qc]);
 
-  if (!ready) return null;
+  if (!ready) return <FeedSkeleton />;
   return <SocialFeedProV2 />;
 }
