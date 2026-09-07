@@ -4,6 +4,7 @@ import { SiteLayout } from "@/components/layout/SiteLayout";
 import { CommunityFeedStable } from "@/components/community/CommunityFeedStable";
 
 export const Route = createFileRoute("/social")({
+  ssr: false,
   component: SocialPage,
   head: () => ({
     meta: [
