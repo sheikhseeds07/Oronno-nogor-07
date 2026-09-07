@@ -36,6 +36,8 @@ Deno.serve(async req => {
     const cfg = (i.config || {}) as Record<string, unknown>;
     if (a === "test") { await sms(cfg, phone, String(b.message || "Sheikh Seeds SMS Provider Test সফল হয়েছে।")); return out({ ok: true, sent: true, message: "Test SMS পাঠানো হয়েছে" }); }
     if (a === "send") {
+      const { data: blocked } = await db.from("customer_profiles").select("is_blocked").eq("phone", phone).maybeSingle();
+      if (blocked?.is_blocked) return out({ ok: false, sent: false, blocked: true, message: "এই কাস্টমার অ্যাকাউন্টটি ব্লক করা হয়েছে।" }, 403);
       const m1 = new Date(Date.now() - 60000).toISOString(), mh = new Date(Date.now() - 3600000).toISOString();
       const [{ data: r }, { data: h }] = await Promise.all([db.from("phone_otp_codes").select("id").eq("phone", phone).gte("created_at", m1).limit(1), db.from("phone_otp_codes").select("id").eq("phone", phone).gte("created_at", mh).limit(6)]);
       if (r?.length) return out({ ok: false, sent: false, message: "এক মিনিট পরে আবার চেষ্টা করুন" }, 429); if ((h?.length || 0) >= 5) return out({ ok: false, sent: false, message: "এক ঘণ্টায় সর্বোচ্চ ৫টি OTP পাঠানো যাবে" }, 429);
@@ -45,75 +47,31 @@ Deno.serve(async req => {
       return out({ ok: true, sent: true, message: "OTP পাঠানো হয়েছে" });
     }
     if (a === "verify") {
+      const { data: blocked } = await db.from("customer_profiles").select("is_blocked").eq("phone", phone).maybeSingle();
+      if (blocked?.is_blocked) return out({ ok: false, verified: false, blocked: true, message: "এই কাস্টমার অ্যাকাউন্টটি ব্লক করা হয়েছে।" }, 403);
       const code = String(b.code || ""); if (!/^\d{4}$/.test(code)) return out({ ok: false, message: "৪ সংখ্যার OTP দিন" }, 400);
       const ch = await sha(`${phone}:${code}`); const { data: o } = await db.from("phone_otp_codes").select("id,expires_at,consumed").eq("phone", phone).eq("code_hash", ch).order("created_at", { ascending: false }).limit(1).maybeSingle();
       if (!o) return out({ ok: false, message: "OTP সঠিক নয়" }, 400); if (o.consumed) return out({ ok: false, message: "OTP ইতিমধ্যে ব্যবহার হয়েছে" }, 400); if (new Date(o.expires_at).getTime() < Date.now()) return out({ ok: false, message: "OTP-এর মেয়াদ শেষ হয়েছে" }, 400);
       const ce = await db.from("phone_otp_codes").update({ consumed: true }).eq("id", o.id).eq("consumed", false); if (ce.error) throw Error(ce.error.message);
-
-      // Customer OTP authentication is intentionally isolated from employee/admin auth.
-      // The same phone number may exist in both systems, but customer login must NEVER
-      // reuse an employee/profile auth user. Customers always use their own deterministic
-      // customer-only auth identity.
       const email = customerEmail(phone);
-      const { data: cp } = await db.from("customer_profiles").select("id,full_name").eq("phone", phone).maybeSingle();
+      const { data: cp } = await db.from("customer_profiles").select("id,full_name,is_blocked").eq("phone", phone).maybeSingle();
+      if (cp?.is_blocked) return out({ ok: false, verified: false, blocked: true, message: "এই কাস্টমার অ্যাকাউন্টটি ব্লক করা হয়েছে।" }, 403);
       let uid: string | null = null;
       let existingCustomerId = cp?.id || null;
-
-      // Reuse the customer auth user only when the existing customer profile points to
-      // the customer-only email. If an old record was accidentally linked to an employee
-      // auth user, create/use the separate customer identity instead.
       if (existingCustomerId) {
         const { data: cu } = await db.auth.admin.getUserById(existingCustomerId);
         if (cu?.user?.email?.toLowerCase() === email.toLowerCase()) uid = existingCustomerId;
       }
-
       if (!uid) {
-        const created = await db.auth.admin.createUser({
-          email,
-          email_confirm: true,
-          user_metadata: {
-            phone,
-            full_name: typeof b.fullName === "string" ? b.fullName.trim() || null : null,
-            customer: true,
-          },
-        });
+        const created = await db.auth.admin.createUser({ email, email_confirm: true, user_metadata: { phone, full_name: typeof b.fullName === "string" ? b.fullName.trim() || null : null, customer: true } });
         if (!created.error) uid = created.data?.user?.id || null;
         else if (!/already/i.test(created.error.message)) throw Error(created.error.message);
-
-        // The deterministic customer email is the source of truth. Find that user if it
-        // already exists, without inspecting employee/profile records at all.
-        if (!uid) {
-          for (let page = 1; page <= 20 && !uid; page++) {
-            const { data: users, error: ue } = await db.auth.admin.listUsers({ page, perPage: 1000 });
-            if (ue) throw Error(ue.message);
-            uid = users.users.find(u => u.email?.toLowerCase() === email.toLowerCase())?.id || null;
-            if (users.users.length < 1000) break;
-          }
-        }
+        if (!uid) for (let page = 1; page <= 20 && !uid; page++) { const { data: users, error: ue } = await db.auth.admin.listUsers({ page, perPage: 1000 }); if (ue) throw Error(ue.message); uid = users.users.find(u => u.email?.toLowerCase() === email.toLowerCase())?.id || null; if (users.users.length < 1000) break; }
       }
-
       if (!uid) throw Error("কাস্টমার অ্যাকাউন্ট তৈরি করা যায়নি");
-
-      const fallbackName = typeof b.fullName === "string" && b.fullName.trim()
-        ? b.fullName.trim()
-        : (cp?.full_name || `কাস্টমার ${phone.slice(-4)}`);
-
-      // If an old customer profile was accidentally attached to an employee auth id,
-      // move only the customer profile row to the dedicated customer auth id. This does
-      // not modify the employee account, employee roles, or employee login session.
-      if (existingCustomerId && existingCustomerId !== uid) {
-        const moved = await db.from("customer_profiles")
-          .update({ id: uid, phone, full_name: fallbackName, updated_at: new Date().toISOString() })
-          .eq("phone", phone);
-        if (moved.error) throw Error(`Customer profile save failed: ${moved.error.message}`);
-      } else {
-        const up = await db.from("customer_profiles").upsert(
-          { id: uid, phone, full_name: fallbackName, updated_at: new Date().toISOString() },
-          { onConflict: "id" },
-        );
-        if (up.error) throw Error(`Customer profile save failed: ${up.error.message}`);
-      }
-
+      const fallbackName = typeof b.fullName === "string" && b.fullName.trim() ? b.fullName.trim() : (cp?.full_name || `কাস্টমার ${phone.slice(-4)}`);
+      if (existingCustomerId && existingCustomerId !== uid) { const moved = await db.from("customer_profiles").update({ id: uid, phone, full_name: fallbackName, updated_at: new Date().toISOString() }).eq("phone", phone); if (moved.error) throw Error(`Customer profile save failed: ${moved.error.message}`); }
+      else { const up = await db.from("customer_profiles").upsert({ id: uid, phone, full_name: fallbackName, updated_at: new Date().toISOString() }, { onConflict: "id" }); if (up.error) throw Error(`Customer profile save failed: ${up.error.message}`); }
       const { data: l, error: le } = await db.auth.admin.generateLink({ type: "magiclink", email }); if (le) throw Error(le.message); const tokenHash = l?.properties?.hashed_token; if (!tokenHash) throw Error("লগইন টোকেন তৈরি হয়নি");
       return out({ ok: true, verified: true, tokenHash, action_link: l?.properties?.action_link || null, email });
     }
