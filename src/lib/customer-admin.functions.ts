@@ -32,7 +32,11 @@ export const updateCustomerAdmin = createServerFn({ method: "POST" }).middleware
 
 export const setCustomerBlocked = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator((input) => z.object({ id: z.string().uuid(), blocked: z.boolean() }).parse(input)).handler(async ({ data, context }) => {
   await assertAdmin(context.supabase, context.userId);
-  const { data: row, error } = await context.supabase.rpc("admin_set_customer_blocked", { p_customer_id: data.id, p_blocked: data.blocked });
-  if (error) throw new Error(error.message);
-  return row;
+  const { data: result, error } = await context.supabase.rpc("admin_set_customer_blocked_v2", {
+    p_customer_id: data.id,
+    p_blocked: data.blocked,
+  });
+  if (error) throw new Error(`Block action failed: ${error.message}`);
+  if (!result?.id) throw new Error("Block action failed: customer was not updated");
+  return result as { id: string; is_blocked: boolean; blocked_at: string | null };
 });
