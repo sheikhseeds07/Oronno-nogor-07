@@ -30,13 +30,31 @@ export const updateCustomerAdmin = createServerFn({ method: "POST" }).middleware
   return row;
 });
 
-export const setCustomerBlocked = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator((input) => z.object({ id: z.string().uuid(), blocked: z.boolean() }).parse(input)).handler(async ({ data, context }) => {
-  await assertAdmin(context.supabase, context.userId);
-  const { data: result, error } = await context.supabase.rpc("admin_set_customer_blocked_v2", {
-    p_customer_id: data.id,
-    p_blocked: data.blocked,
+/**
+ * Block/unblock is intentionally performed as a direct update against customer_profiles.
+ * This uses the same authenticated admin connection already used by the customer list,
+ * avoiding RPC/function deployment or return-shape issues.
+ */
+export const setCustomerBlocked = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ id: z.string().uuid(), blocked: z.boolean() }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+
+    const { data: row, error } = await context.supabase
+      .from("customer_profiles")
+      .update({
+        is_blocked: data.blocked,
+        blocked_at: data.blocked ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", data.id)
+      .select("id,is_blocked,blocked_at")
+      .maybeSingle();
+
+    if (error) throw new Error(`Block action failed: ${error.message}`);
+    if (!row) throw new Error("Block action failed: customer was not found or could not be updated");
+    if (Boolean(row.is_blocked) !== data.blocked) throw new Error("Block action failed: status was not saved");
+
+    return row as { id: string; is_blocked: boolean; blocked_at: string | null };
   });
-  if (error) throw new Error(`Block action failed: ${error.message}`);
-  if (!result?.id) throw new Error("Block action failed: customer was not updated");
-  return result as { id: string; is_blocked: boolean; blocked_at: string | null };
-});
