@@ -10,7 +10,7 @@ import { taka } from "@/lib/format";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/profile")({ ssr: false, component: Profile, head: () => ({ meta: [{ title: "আমার প্রোফাইল — Sheikh Seeds" }, { name: "robots", content: "noindex, nofollow" }] }) });
+export const Route = createFileRoute("/profile")({ ssr: false, component: Profile, pendingMs: 0, pendingComponent: () => (<SiteLayout><ProfileSkeleton /></SiteLayout>), head: () => ({ meta: [{ title: "আমার প্রোফাইল — Sheikh Seeds" }, { name: "robots", content: "noindex, nofollow" }] }) });
 
 const DEFAULT_COVER = "/customer-profile-cover.svg";
 const DEFAULT_AVATAR = "/customer-profile-avatar.svg";
