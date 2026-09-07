@@ -2,7 +2,7 @@
 // The whole object is stored in landing_pages.planting_steps (jsonb) so no schema
 // change is needed, and every single string / image is editable from admin.
 
-export type SeedRow = { name: string; qty: string };
+export type SeedRow = { name: string; qty: string; image?: string };
 export type Feature = { title: string; text?: string; icon?: string };
 export type WhyItem = { title: string; text?: string; icon?: string };
 export type Review = { name: string; rating: number; text: string };
@@ -61,10 +61,10 @@ export type LandingContent = {
 export const DEFAULT_SEEDS: SeedRow[] = [
   { name: "বিটরুট", qty: "৫ পিস" }, { name: "কেরালা শিম", qty: "৫ পিস" }, { name: "করলা", qty: "৫ পিস" }, { name: "উস্তে", qty: "৫ পিস" },
   { name: "লাউ", qty: "৫ পিস" }, { name: "শষা", qty: "২০+ পিস" }, { name: "চিচিঙ্গা", qty: "৫ পিস" }, { name: "মিষ্টি কুমড়া", qty: "৫ পিস" },
-  { name: "মরিচ", qty: "২০+ পিস" }, { name: "বেগুন", qty: "২০+ পিস" }, { name: "ঢেরষ", qty: "৬৫+ বীজ" }, { name: "বরবটি", qty: "৪০+ পিস" },
-  { name: "ধুন্দল", qty: "৭+ পিস" }, { name: "ঝিঙা", qty: "৭+ পিস" }, { name: "চালকুমড়া", qty: "৮+ পিস" }, { name: "ধনিয়া", qty: "৬ জিপার" },
-  { name: "পালন শাক", qty: "৬ জিপার" }, { name: "পুই শাক", qty: "৬ জিপার" }, { name: "কলমি শাক", qty: "৬ জিপার" }, { name: "সবুজ শাক", qty: "৬ জিপার" },
-  { name: "লাল শাক", qty: "৬ জিপার" }, { name: "ডাটা শাক", qty: "৬ জিপার" }, { name: "সুগন্ধি শাক", qty: "৬ জিপার" }, { name: "নাফা শাক", qty: "৬ জিপার" },
+  { name: "মরিচ", qty: "২০+ পিস" }, { name: "বেগুন", qty: "২০+ পিস" }, { name: "ঢেরষ", qty: "১৫+ বীজ" }, { name: "বরবটি", qty: "৭+ পিস" },
+  { name: "ধুন্দল", qty: "৭+ পিস" }, { name: "ঝিঙা", qty: "৭+ পিস" }, { name: "চালকুমড়া", qty: "৮+ পিস" }, { name: "ধনিয়া", qty: "১ জিপার" },
+  { name: "পালন শাক", qty: "১ জিপার" }, { name: "পুই শাক", qty: "১ জিপার" }, { name: "কলমি শাক", qty: "১ জিপার" }, { name: "সবুজ শাক", qty: "১ জিপার" },
+  { name: "লাল শাক", qty: "১ জিপার" }, { name: "ডাটা শাক", qty: "১ জিপার" }, { name: "সুগন্ধি শাক", qty: "১ জিপার" }, { name: "নাফা শাক", qty: "১ জিপার" },
 ];
 
 export const DEFAULT_FEATURES: Feature[] = [
@@ -140,7 +140,6 @@ export const DEFAULT_CONTENT: LandingContent = {
 export function mergeContent(raw: unknown): LandingContent {
   const value = (raw && typeof raw === "object" ? raw : {}) as Partial<LandingContent>;
   const out = { ...DEFAULT_CONTENT, ...value, seed_table: Array.isArray(value.seed_table) && value.seed_table.length ? value.seed_table : DEFAULT_CONTENT.seed_table } as LandingContent;
-  // Keep the existing Combo template's legacy checkout labels exactly as they are today.
   if (out.template === "combo") {
     out.package_kicker = "";
     out.package_title = "";
