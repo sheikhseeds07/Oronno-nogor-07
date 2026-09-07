@@ -10,7 +10,7 @@ import { taka } from "@/lib/format";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/profile")({ component: Profile, head: () => ({ meta: [{ title: "আমার প্রোফাইল — Sheikh Seeds" }, { name: "robots", content: "noindex, nofollow" }] }) });
+export const Route = createFileRoute("/profile")({ ssr: false, component: Profile, head: () => ({ meta: [{ title: "আমার প্রোফাইল — Sheikh Seeds" }, { name: "robots", content: "noindex, nofollow" }] }) });
 
 const DEFAULT_COVER = "/customer-profile-cover.svg";
 const DEFAULT_AVATAR = "/customer-profile-avatar.svg";
@@ -129,7 +129,7 @@ function Profile() {
     finally { setComplaintSaving(false); }
   };
 
-  if (!initialized || loading || !user) return <SiteLayout><div className="container mx-auto px-3 py-12"><BrandLoader /></div></SiteLayout>;
+  if (!initialized || loading || !user) return <SiteLayout><ProfileSkeleton /></SiteLayout>;
 
   const displayName = profile?.full_name || user.user_metadata?.full_name || "কাস্টমার";
   const orders = ordersQ.data ?? [];
@@ -185,5 +185,28 @@ function Profile() {
         </div>
       </div>
     </SiteLayout>
+  );
+}
+
+function ProfileSkeleton() {
+  return (
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_hsl(var(--brand-light)/.35),_transparent_35%)] pb-24 pt-3 sm:pt-5">
+      <div className="container mx-auto max-w-4xl px-2.5 sm:px-3">
+        <section className="overflow-hidden rounded-[22px] border border-brand-light/70 bg-background shadow-[0_12px_40px_rgba(20,83,45,.10)]">
+          <div className="h-[104px] w-full animate-pulse bg-brand-light/60 sm:h-[132px]" />
+          <div className="px-3.5 pb-4 sm:px-5">
+            <div className="-mt-9 h-[76px] w-[76px] animate-pulse rounded-[24px] border-[4px] border-background bg-muted sm:-mt-11 sm:h-24 sm:w-24" />
+            <div className="mt-3 h-5 w-40 animate-pulse rounded-md bg-muted" />
+            <div className="mt-2 h-3 w-64 animate-pulse rounded-md bg-muted/70" />
+          </div>
+        </section>
+        <div className="mt-3 grid grid-cols-3 gap-1 rounded-xl border bg-background p-1 shadow-sm">
+          {[0, 1, 2].map(i => <div key={i} className="h-10 animate-pulse rounded-lg bg-muted/70" />)}
+        </div>
+        <section className="mt-2.5 space-y-2 rounded-[18px] border bg-background p-3 shadow-sm">
+          {[0, 1, 2, 3].map(i => <div key={i} className="h-14 animate-pulse rounded-xl bg-muted/60" />)}
+        </section>
+      </div>
+    </div>
   );
 }
