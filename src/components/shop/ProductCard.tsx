@@ -41,26 +41,10 @@ export const ProductCard = memo(function ProductCard({ p }: { p: Product }) {
     <>
       <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border/70 bg-white shadow-[0_5px_18px_-14px_rgba(20,83,45,.5)] transition-all duration-300 hover:-translate-y-0.5 hover:border-brand/25 hover:shadow-[0_12px_28px_-16px_rgba(20,83,45,.42)]">
         <button onClick={() => setOpen(true)} className="relative block aspect-square w-full overflow-hidden bg-muted text-left" aria-label={`${p.name} বিস্তারিত দেখুন`}>
-          <img
-            src={toImg(img, { w: 500, q: 78 })}
-            srcSet={imgSrcSet(img, [200, 400, 600])}
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 220px"
-            alt={p.name}
-            width={500}
-            height={500}
-            loading="lazy"
-            decoding="async"
-            className="h-full w-full object-cover transition duration-500 ease-out group-hover:scale-[1.045]"
-          />
+          <img src={toImg(img, { w: 500, q: 78 })} srcSet={imgSrcSet(img, [200, 400, 600])} sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 220px" alt={p.name} width={500} height={500} loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-500 ease-out group-hover:scale-[1.045]" />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-black/10 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-          {discount > 0 && (
-            <span className="absolute left-1.5 top-1.5 inline-flex items-center gap-0.5 rounded-lg bg-destructive px-2 py-1 text-[10px] font-extrabold text-white shadow-sm sm:left-2 sm:top-2 sm:text-xs">
-              <Sparkles className="h-3 w-3" /> -{discount}%
-            </span>
-          )}
-          {p.stock > 0 && p.stock <= 5 && (
-            <span className="absolute bottom-1.5 right-1.5 rounded-full bg-white/92 px-2 py-0.5 text-[9px] font-bold text-brand-dark shadow-sm backdrop-blur">শেষ {bnDigits(p.stock)} টি</span>
-          )}
+          {discount > 0 && <span className="absolute left-1.5 top-1.5 inline-flex items-center gap-0.5 rounded-lg bg-destructive px-2 py-1 text-[10px] font-extrabold text-white shadow-sm sm:left-2 sm:top-2 sm:text-xs"><Sparkles className="h-3 w-3" /> -{discount}%</span>}
+          {p.stock > 0 && p.stock <= 5 && <span className="absolute bottom-1.5 right-1.5 rounded-full bg-white/92 px-2 py-0.5 text-[9px] font-bold text-brand-dark shadow-sm backdrop-blur">শেষ {bnDigits(p.stock)} টি</span>}
           {p.stock <= 0 && <span className="absolute inset-0 flex items-center justify-center bg-black/50 text-sm font-extrabold text-white backdrop-blur-[1px]">স্টক নেই</span>}
         </button>
 
@@ -69,7 +53,7 @@ export const ProductCard = memo(function ProductCard({ p }: { p: Product }) {
             <h3 className="line-clamp-2 min-h-[2.3rem] text-[12px] font-bold leading-[1.45] text-foreground transition-colors group-hover:text-brand sm:text-sm">{p.name}</h3>
           </Link>
 
-          <div className="mt-1.5 flex items-baseline gap-1.5">
+          <div className="mt-1.5 flex items-baseline justify-center gap-1.5 text-center">
             <span className="text-[17px] font-extrabold leading-none tracking-tight text-brand-dark sm:text-lg">{taka(price)}</span>
             {p.sale_price && p.sale_price < p.price && <span className="text-[10px] leading-none text-muted-foreground line-through sm:text-xs">{taka(p.price)}</span>}
           </div>
@@ -77,20 +61,12 @@ export const ProductCard = memo(function ProductCard({ p }: { p: Product }) {
           <div className="mt-2.5">
             {inCart ? (
               <div className="flex h-9 items-center justify-between overflow-hidden rounded-lg border-2 border-brand bg-brand/5">
-                <button onClick={() => (inCart.quantity <= 1 ? remove(p.id) : setQty(p.id, inCart.quantity - 1))} className="flex h-full w-9 items-center justify-center text-brand transition-colors hover:bg-brand-light/70 active:scale-90" aria-label="কমান">
-                  <Minus className="h-3.5 w-3.5" />
-                </button>
+                <button onClick={() => (inCart.quantity <= 1 ? remove(p.id) : setQty(p.id, inCart.quantity - 1))} className="flex h-full w-9 items-center justify-center text-brand transition-colors hover:bg-brand-light/70 active:scale-90" aria-label="কমান"><Minus className="h-3.5 w-3.5" /></button>
                 <span className="text-xs font-extrabold text-brand-dark">{bnDigits(inCart.quantity)}</span>
-                <button onClick={() => setQty(p.id, Math.min(inCart.quantity + 1, p.stock || 999))} className="flex h-full w-9 items-center justify-center text-brand transition-colors hover:bg-brand-light/70 active:scale-90" aria-label="বাড়ান">
-                  <Plus className="h-3.5 w-3.5" />
-                </button>
+                <button onClick={() => setQty(p.id, Math.min(inCart.quantity + 1, p.stock || 999))} className="flex h-full w-9 items-center justify-center text-brand transition-colors hover:bg-brand-light/70 active:scale-90" aria-label="বাড়ান"><Plus className="h-3.5 w-3.5" /></button>
               </div>
             ) : (
-              <button
-                disabled={p.stock <= 0}
-                onClick={addItem}
-                className={`flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border text-[11px] font-extrabold transition-all duration-200 active:scale-[.97] disabled:cursor-not-allowed disabled:opacity-45 sm:text-xs ${justAdded ? "border-brand bg-brand text-white shadow-sm" : "border-brand/70 text-brand hover:bg-brand-light/55 hover:border-brand"}`}
-              >
+              <button disabled={p.stock <= 0} onClick={addItem} className={`flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border text-[11px] font-extrabold transition-all duration-200 active:scale-[.97] disabled:cursor-not-allowed disabled:opacity-45 sm:text-xs ${justAdded ? "border-brand bg-brand text-white shadow-sm" : "border-brand/70 text-brand hover:bg-brand-light/55 hover:border-brand"}`}>
                 {justAdded ? <Check className="h-3.5 w-3.5" /> : <ShoppingCart className="h-3.5 w-3.5" />}
                 {justAdded ? "কার্টে যোগ হয়েছে" : "কার্টে যোগ করুন"}
               </button>
