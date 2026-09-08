@@ -1,16 +1,18 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Star, MessageCircleQuestion, MessagesSquare, Trash2, Send, Loader2, CheckCircle2, Clock3, Image as ImageIcon } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { listCustomerFeedback, replyCustomerReview, answerCustomerQuestion, replyPostComment, deleteCustomerReview, deleteCustomerQuestion, deletePostComment } from "@/lib/customer-feedback-admin.functions";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route=createFileRoute("/admin/customer-feedback")({component:CustomerFeedback});
 type Tab="reviews"|"questions"|"comments";type Filter="all"|"unreplied"|"replied";
 function CustomerFeedback(){
  const nav=useNavigate();const qc=useQueryClient();const [tab,setTab]=useState<Tab>("reviews");const [filter,setFilter]=useState<Filter>("all");const [replying,setReplying]=useState<string|null>(null);const [reply,setReply]=useState("");
- const q=useQuery({queryKey:["admin-customer-feedback"],queryFn:()=>listCustomerFeedback()});
+ const q=useQuery({queryKey:["admin-customer-feedback"],queryFn:()=>listCustomerFeedback(),refetchInterval:20000,refetchOnWindowFocus:true,refetchOnMount:"always",staleTime:0});
+ useEffect(()=>{const invalidate=()=>qc.invalidateQueries({queryKey:["admin-customer-feedback"]});const ch=supabase.channel("admin-customer-feedback-live").on("postgres_changes",{event:"*",schema:"public",table:"product_reviews"},invalidate).on("postgres_changes",{event:"*",schema:"public",table:"product_questions"},invalidate).on("postgres_changes",{event:"*",schema:"public",table:"social_post_comments"},invalidate).subscribe();return()=>{supabase.removeChannel(ch)}},[qc]);
  const mutate=useMutation({mutationFn:async(v:{kind:"review"|"question"|"comment";id:string;reply?:string|null;delete?:boolean})=>{if(v.delete)return v.kind==="review"?deleteCustomerReview({data:{id:v.id}}):v.kind==="question"?deleteCustomerQuestion({data:{id:v.id}}):deletePostComment({data:{id:v.id}});return v.kind==="review"?replyCustomerReview({data:{id:v.id,reply:v.reply??null}}):v.kind==="question"?answerCustomerQuestion({data:{id:v.id,reply:v.reply??null}}):replyPostComment({data:{id:v.id,reply:v.reply??null}})},onSuccess:()=>{qc.invalidateQueries({queryKey:["admin-customer-feedback"]});setReplying(null);setReply("");toast.success("সফলভাবে আপডেট হয়েছে")},onError:(e:any)=>toast.error(e?.message||"অ্যাকশন সম্পন্ন হয়নি")});
  const data=q.data??{reviews:[],questions:[],comments:[],products:[],posts:[]};const productMap=useMemo(()=>new Map(data.products.map((p:any)=>[p.id,p.name])),[data.products]);const postMap=useMemo(()=>new Map(data.posts.map((p:any)=>[p.id,p.body])),[data.posts]);
  const counts={reviews:data.reviews.length,questions:data.questions.length,comments:data.comments.length};
