@@ -13,15 +13,19 @@ export type PublicSiteSettings = Record<string, unknown> & {
   tiktok?: string;
   contact_phone?: string;
   contact_page_message_url?: string;
+  delivery_charge_inside?: number;
+  delivery_charge_outside?: number;
+  free_delivery_above?: number;
+  delivery_zones?: Array<{ id: string; label: string; fee: number }>;
 };
 
 export type PublicSiteSettingsRow = { settings: PublicSiteSettings } | null;
 
 /**
- * Every public surface (header, footer, floating contact, loader, SEO, checkout)
- * needs the same settings row. Sharing one query key, one long stale window and
- * the persisted localStorage copy keeps this to roughly one request per visitor
- * per day instead of one request per component mount.
+ * Public settings are configuration, not long-lived content. In particular,
+ * delivery charges must reflect the admin setting on the next checkout visit.
+ * localStorage is kept only for fast first paint; it is immediately
+ * revalidated against Supabase so old delivery charges cannot persist for hours.
  */
 export const publicSiteSettingsQuery = {
   queryKey: ["site-settings-public"] as const,
@@ -30,14 +34,15 @@ export const publicSiteSettingsQuery = {
     return cached ? { settings: cached } : undefined;
   },
   queryFn: async (): Promise<PublicSiteSettingsRow> => {
-    const { data } = await supabase.from("site_settings").select("settings").maybeSingle();
+    const { data, error } = await supabase.from("site_settings").select("settings").maybeSingle();
+    if (error) throw error;
     const settings = (data?.settings as PublicSiteSettings | null) ?? {};
     writePublicSettingsCache(settings);
     return { settings };
   },
-  staleTime: 6 * 60 * 60_000,
+  staleTime: 0,
   gcTime: 12 * 60 * 60_000,
-  refetchOnMount: false,
-  refetchOnWindowFocus: false,
-  refetchOnReconnect: false,
+  refetchOnMount: true,
+  refetchOnWindowFocus: true,
+  refetchOnReconnect: true,
 };
