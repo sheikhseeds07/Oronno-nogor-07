@@ -19,28 +19,10 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
           p = Path('src/routes/admin/orders.tsx')
           s = p.read_text()
           old = '''      const { data } = await supabase.from("orders").select("id,invoice_no,status,total,created_at,customer_name,customer_address,thana,district,order_items(product_name,quantity)").in("customer_phone", phoneVariants(lookupPhone)).order("created_at", { ascending: false });\n      return data ?? [];'''
-          new = '''      // Our Record must search the real orders table by phone, regardless of the current order source/status.
-      // This is especially important when the currently opened row is an incomplete checkout draft.
-      const digits = normalizePhone(lookupPhone);
-      const variants = phoneVariants(lookupPhone);
-      const patterns = Array.from(new Set([
-        ...variants,
-        ...(digits.length >= 10 ? [digits.slice(-11)] : []),
-      ].filter(Boolean)));
-      const orQuery = patterns
-        .map((v) => `customer_phone.ilike.%${String(v).replace(/[%(),]/g, "")}%`)
-        .join(",");
-      const { data, error } = await supabase
-        .from("orders")
-        .select("id,invoice_no,status,total,created_at,customer_name,customer_address,thana,district,order_items(product_name,quantity)")
-        .or(orQuery)
-        .order("created_at", { ascending: false });
-      if (error) throw new Error(error.message);
-      return data ?? [];'''
+          new = '''      // Our Record searches the real orders table by normalized phone across every status/source.\n      const digits = normalizePhone(lookupPhone);\n      const variants = phoneVariants(lookupPhone);\n      const patterns = Array.from(new Set([\n        ...variants,\n        ...(digits.length >= 10 ? [digits.slice(-11)] : []),\n      ].filter(Boolean)));\n      const orQuery = patterns\n        .map((v) => `customer_phone.ilike.%${String(v).replace(/[%(),]/g, "")}%`)\n        .join(",");\n      const { data, error } = await supabase\n        .from("orders")\n        .select("id,invoice_no,status,total,created_at,customer_name,customer_address,thana,district,order_items(product_name,quantity)")\n        .or(orQuery)\n        .order("created_at", { ascending: false });\n      if (error) throw new Error(error.message);\n      return data ?? [];'''
           if old not in s:
               raise SystemExit('Target Our Record lookup block not found; no change made.')
           p.write_text(s.replace(old, new, 1))
