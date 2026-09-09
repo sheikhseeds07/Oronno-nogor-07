@@ -11,13 +11,6 @@ const ItemSchema = z.object({ id: z.string().min(1).max(64), name: z.string().mi
 const InputSchema = z.object({ customer_name: z.string().min(1).max(255), customer_phone: z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number. Use 01XXXXXXXXX."), customer_address: z.string().min(1).max(1000), district: z.string().max(100).optional().nullable(), thana: z.string().max(100).optional().nullable(), notes: z.string().max(2000).optional().nullable(), delivery_fee: z.number().min(0).max(10000).default(50), items: z.array(ItemSchema).min(1).max(100), created_by: z.string().uuid().optional().nullable(), fbp: z.string().max(200).optional().nullable(), fbc: z.string().max(500).optional().nullable(), source_url: z.string().max(2000).optional().nullable() });
 const IncompleteInputSchema = z.object({ customer_name: z.string().max(255).optional().nullable(), customer_phone: z.string().regex(PHONE_RE), customer_address: z.string().max(1000).optional().nullable(), delivery_zone: z.string().max(100).optional().nullable(), delivery_fee: z.number().min(0).max(10000), subtotal: z.number().min(0).max(10_000_000), total: z.number().min(0).max(10_000_000), note: z.string().max(2000).optional().nullable(), items: z.array(ItemSchema).min(1).max(100) });
 
-const REPEAT_ORDER_MESSAGE = "আপনার অর্ডারটি ইতোমধ্যে গ্রহণ করা হয়েছে। 💚\n\nআমাদের টিম খুব শিগগিরই আপনাকে ফোন করে অর্ডারটি কনফার্ম করবে।\n\nএকই নম্বর থেকে নতুন অর্ডার দেওয়ার প্রয়োজন নেই। অনুগ্রহ করে একটু অপেক্ষা করুন। 😊";
-
-function isRepeatOrderError(message: string) {
-  const text = message.toLowerCase();
-  return text.includes("already") || text.includes("repeat") || text.includes("rate") || text.includes("cooldown") || text.includes("wait") || text.includes("order_rate") || message.includes("ইতোমধ্যে একটি অর্ডার") || message.includes("পরবর্তী অর্ডার করতে") || message.includes("আরও") && message.includes("মিনিট অপেক্ষা");
-}
-
 export const lookupCustomerByPhone = createServerFn({ method: "POST" }).inputValidator((input) => z.object({ phone: z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number") }).parse(input)).handler(async ({ data }) => {
   const { data: order } = await supabaseAdmin.from("orders").select("customer_name,customer_address").eq("customer_phone", data.phone).order("created_at", { ascending: false }).limit(1).maybeSingle();
   return order ? { name: order.customer_name, address: order.customer_address } : null;
@@ -56,7 +49,6 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   if (orderError) {
     const rpcMessage = orderError.message ?? "";
     if (/blocked/i.test(rpcMessage)) throw new Error(`${BLOCKED_ORDER_CODE}: ${BLOCKED_ORDER_MESSAGE}`);
-    if (isRepeatOrderError(rpcMessage)) throw new Error(REPEAT_ORDER_MESSAGE);
     throw new Error(rpcMessage || "Order create failed");
   }
   if (!orderId || typeof orderId !== "string") throw new Error("Order create failed");
