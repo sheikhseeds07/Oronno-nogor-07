@@ -4,79 +4,33 @@ import { useServerFn } from "@tanstack/react-start";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { getPublicOrder } from "@/lib/public-order.functions";
 import { taka, bnDigits } from "@/lib/format";
-import { CheckCircle2, Facebook } from "lucide-react";
+import { CheckCircle2, Facebook, Download, ShoppingBag, UserPlus, Truck, ArrowRight, Sparkles } from "lucide-react";
 
-export const Route = createFileRoute("/order/$id")({ component: OrderPage, head: () => ({ meta: [{ title: "অর্ডার — Sheikh Seeds" }, { name: "robots", content: "noindex, nofollow" }] }) });
-
-const statusBn: Record<string, string> = {
-  web_pending: "ওয়েব পেন্ডিং", pending: "অপেক্ষমাণ", confirmed: "কনফার্মড", processing: "প্রস্তুত হচ্ছে",
-  rts: "RTS", shipped: "ডেলিভারিতে", delivered: "ডেলিভারি সম্পন্ন", cancelled: "বাতিল", returned: "ফেরত", hold: "হোল্ড",
-};
-
+export const Route = createFileRoute("/order/$id")({ component: OrderPage, head: () => ({ meta: [{ title: "অর্ডার সফল — Sheikh Seeds" }, { name: "robots", content: "noindex, nofollow" }] }) });
+const statusBn: Record<string, string> = { web_pending: "ওয়েব পেন্ডিং", pending: "অপেক্ষমাণ", confirmed: "কনফার্মড", processing: "প্রস্তুত হচ্ছে", rts: "RTS", shipped: "ডেলিভারিতে", delivered: "ডেলিভারি সম্পন্ন", cancelled: "বাতিল", returned: "ফেরত", hold: "হোল্ড" };
 const FACEBOOK_PAGE_URL = "https://www.facebook.com/share/1DoMWrXv2i/";
 
 function OrderPage() {
   const { id } = useParams({ from: "/order/$id" });
   const fetchOrder = useServerFn(getPublicOrder);
-  const { data: order } = useQuery({
-    queryKey: ["order", id],
-    queryFn: () => fetchOrder({ data: { id } }),
-  });
-
+  const { data: order } = useQuery({ queryKey: ["order", id], queryFn: () => fetchOrder({ data: { id } }) });
+  const downloadInvoice = () => {
+    if (!order) return;
+    const no = `#${order.id.slice(0, 8).toUpperCase()}`;
+    const rows = order.order_items?.map((i: any) => `<tr><td>${escapeHtml(i.product_name)}</td><td>${i.quantity}</td><td>${taka(i.subtotal)}</td></tr>`).join("") ?? "";
+    const html = `<!doctype html><html lang="bn"><head><meta charset="utf-8"><title>Invoice ${no} — Sheikh Seeds</title><style>body{font-family:Arial,"Noto Sans Bengali",sans-serif;background:#f5f8f6;color:#17231c;margin:0}.sheet{max-width:760px;margin:30px auto;background:#fff;padding:36px;border-radius:18px}h1{color:#166534;margin:0}.top{display:flex;justify-content:space-between;border-bottom:1px solid #e2e8f0;padding-bottom:20px}.muted{color:#64748b}.box{background:#f8fafc;padding:15px;border-radius:12px;margin-top:20px}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{padding:11px 6px;border-bottom:1px solid #e2e8f0;text-align:left}th{font-size:12px;color:#64748b}td:nth-child(2),td:nth-child(3),th:nth-child(2),th:nth-child(3){text-align:right}.total{max-width:300px;margin:14px 0 0 auto}.line{display:flex;justify-content:space-between;padding:6px 0}.grand{font-weight:800;font-size:19px;border-top:2px solid #166534;padding-top:10px}@media print{body{background:#fff}.sheet{margin:0;max-width:none}}</style></head><body><main class="sheet"><div class="top"><div><h1>Sheikh Seeds</h1><div class="muted">অরিজিনাল বীজ ও গার্ডেন পণ্য</div></div><div style="text-align:right"><b>INVOICE</b><div>${no}</div><div class="muted">${new Date(order.created_at).toLocaleDateString("bn-BD")}</div></div></div><div class="box"><b>কাস্টমার</b><p>${escapeHtml(order.customer_name)}</p><p>${escapeHtml(order.customer_phone)}</p><p>${escapeHtml([order.thana,order.district].filter(Boolean).join(", "))}</p></div><h3>অর্ডারের বিবরণ</h3><table><thead><tr><th>পণ্য</th><th>পরিমাণ</th><th>মূল্য</th></tr></thead><tbody>${rows}</tbody></table><div class="total"><div class="line"><span>সাবটোটাল</span><span>${taka(order.subtotal)}</span></div><div class="line"><span>ডেলিভারি</span><span>${taka(order.delivery_fee)}</span></div><div class="line grand"><span>সর্বমোট</span><span>${taka(order.total)}</span></div></div></main><script>onload=()=>setTimeout(()=>print(),250)</script></body></html>`;
+    const url = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
+    const w = window.open(url, "_blank", "noopener,noreferrer");
+    if (!w) { const a = document.createElement("a"); a.href = url; a.download = `sheikh-seeds-invoice-${order.id.slice(0,8)}.html`; a.click(); }
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  };
   if (!order) return <SiteLayout><div className="container mx-auto px-3 py-12 text-center">অর্ডার পাওয়া যায়নি</div></SiteLayout>;
-
-  return (
-    <SiteLayout>
-      <div className="container mx-auto px-3 py-6 max-w-2xl">
-        <div className="bg-white border rounded-xl p-6 text-center">
-          <CheckCircle2 className="w-16 h-16 text-brand mx-auto mb-3" />
-          <h1 className="text-2xl font-bold">অর্ডার সফল হয়েছে!</h1>
-          <p className="text-muted-foreground mt-2">অর্ডার নং: <strong>#{order.id.slice(0, 8).toUpperCase()}</strong></p>
-          <p className="mt-1">স্ট্যাটাস: <span className="font-bold text-brand-dark">{statusBn[order.status] ?? order.status}</span></p>
-        </div>
-
-        <div className="mt-4 rounded-xl border border-brand/15 bg-gradient-to-br from-brand/5 to-white p-6 text-center shadow-sm">
-          <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-[#1877F2]/10">
-            <Facebook className="h-6 w-6 text-[#1877F2]" fill="currentColor" />
-          </div>
-          <h3 className="text-lg font-bold">পরবর্তীতে আমাদের খুঁজে পেতে পেইজটি ফলো করে রাখুন।</h3>
-          <p className="mt-1 text-sm text-muted-foreground">নতুন অফার, পণ্য ও আপডেট সবার আগে পেতে আমাদের পেইজে থাকুন।</p>
-          <a
-            href={FACEBOOK_PAGE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#1877F2] px-5 py-3 font-bold text-white transition hover:opacity-90 active:scale-[0.99]"
-          >
-            <Facebook className="h-5 w-5" fill="currentColor" />
-            ফেইজ ফলো করুন
-          </a>
-        </div>
-
-        <div className="bg-white border rounded-xl p-5 mt-4">
-          <h3 className="font-bold mb-3">অর্ডারের বিবরণ</h3>
-          <div className="space-y-2">
-            {order.order_items?.map((i: { id: string; product_name: string; quantity: number; price: number; subtotal: number }) => (
-              <div key={i.id} className="flex justify-between text-sm py-2 border-b">
-                <div>{i.product_name} × {bnDigits(i.quantity)}</div>
-                <div className="font-bold">{taka(i.subtotal)}</div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-3 space-y-1 text-sm">
-            <div className="flex justify-between"><span>সাবটোটাল</span><span>{taka(order.subtotal)}</span></div>
-            <div className="flex justify-between"><span>ডেলিভারি</span><span>{taka(order.delivery_fee)}</span></div>
-            <div className="flex justify-between font-bold text-lg border-t pt-2"><span>মোট</span><span className="text-brand-dark">{taka(order.total)}</span></div>
-          </div>
-        </div>
-
-        <div className="bg-white border rounded-xl p-5 mt-4 text-sm">
-          <h3 className="font-bold mb-2">ডেলিভারি ঠিকানা</h3>
-          <p>{order.customer_name} — {order.customer_phone}</p>
-          <p className="text-muted-foreground mt-1">{[order.thana, order.district].filter(Boolean).join(", ")}</p>
-        </div>
-
-        <Link to="/shop" className="mt-4 block text-center bg-brand text-white py-3 rounded-lg font-bold">আরও কেনাকাটা করুন</Link>
-      </div>
-    </SiteLayout>
-  );
+  return <SiteLayout><div className="min-h-[calc(100vh-160px)] bg-gradient-to-b from-brand/[0.04] to-background py-5 sm:py-8"><div className="container mx-auto max-w-2xl px-3 sm:px-4">
+    <section className="relative overflow-hidden rounded-[28px] border border-brand/15 bg-white p-5 text-center shadow-[0_20px_70px_rgba(20,83,45,.10)] sm:p-7"><div className="absolute -right-16 -top-20 h-44 w-44 rounded-full bg-emerald-300/15 blur-3xl"/><div className="relative mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-brand/10 text-brand-dark"><CheckCircle2 className="h-9 w-9"/></div><p className="text-xs font-bold uppercase tracking-[.18em] text-brand-dark">Order Confirmed</p><h1 className="mt-1 text-2xl font-black sm:text-3xl">অর্ডার সফল হয়েছে! 🎉</h1><p className="mt-2 text-sm text-muted-foreground">আপনার অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে।</p><div className="mt-4 inline-flex rounded-full bg-muted/60 px-4 py-2 text-sm font-bold">অর্ডার নং <span className="ml-1 text-brand-dark">#{order.id.slice(0,8).toUpperCase()}</span></div><p className="mt-2 text-xs font-bold text-brand-dark">স্ট্যাটাস: {statusBn[order.status] ?? order.status}</p><div className="mt-5 grid grid-cols-2 gap-2.5"><button onClick={downloadInvoice} className="inline-flex items-center justify-center gap-2 rounded-xl border border-brand/20 px-3 py-3 text-sm font-extrabold text-brand-dark shadow-sm hover:bg-brand/5"><Download className="h-4 w-4"/> ইনভয়েস ডাউনলোড</button><Link to="/shop" className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-3 py-3 text-sm font-extrabold text-white shadow-lg shadow-brand/20 hover:bg-brand-dark"><ShoppingBag className="h-4 w-4"/> আরও কেনাকাটা</Link></div></section>
+    <section className="mt-3 rounded-2xl border border-[#1877F2]/15 bg-white p-4 shadow-sm sm:p-5"><div className="flex items-center gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#1877F2]/10 text-[#1877F2]"><Facebook className="h-6 w-6" fill="currentColor"/></div><div className="flex-1"><h3 className="text-sm font-extrabold sm:text-base">নতুন অফার ও আপডেট পেতে আমাদের পেইজে থাকুন</h3><p className="text-xs text-muted-foreground">গার্ডেনিং টিপস, নতুন পণ্য ও বিশেষ অফার সবার আগে।</p></div></div><a href={FACEBOOK_PAGE_URL} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1877F2] px-4 py-3 text-sm font-extrabold text-white"><Facebook className="h-4 w-4" fill="currentColor"/> ফেইজ ফলো করুন <ArrowRight className="h-4 w-4"/></a></section>
+    <section className="mt-3 rounded-2xl border border-brand/15 bg-gradient-to-br from-brand/[0.06] to-white p-4 shadow-sm sm:p-5"><div className="flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand-dark"><UserPlus className="h-5 w-5"/></div><div className="flex-1"><div className="flex items-center gap-2"><h3 className="text-sm font-extrabold sm:text-base">আপনার ফ্রি কাস্টমার অ্যাকাউন্ট তৈরি করুন</h3><Sparkles className="h-4 w-4 text-amber-500"/></div><p className="mt-1 text-xs leading-5 text-muted-foreground">অর্ডার ট্র্যাকিং, আগের অর্ডার দেখা, প্রোফাইল ম্যানেজমেন্ট ও ভবিষ্যতের বিশেষ সুবিধা পেতে এখনই অ্যাকাউন্ট তৈরি করুন।</p></div></div><Link to="/customer-login" className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 text-sm font-extrabold text-white shadow-lg shadow-brand/20">অ্যাকাউন্ট তৈরি করুন <ArrowRight className="h-4 w-4"/></Link></section>
+    <section className="mt-3 rounded-2xl border bg-white p-4 shadow-sm sm:p-5"><div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand-dark"><Truck className="h-5 w-5"/></div><div><h3 className="text-sm font-extrabold">অর্ডারের বিবরণ</h3><p className="text-[11px] text-muted-foreground">আপনার অর্ডারের সংক্ষিপ্ত তথ্য</p></div></div><div className="mt-4 space-y-1.5">{order.order_items?.map((i:any)=><div key={i.id} className="flex justify-between gap-3 border-b py-2 text-sm last:border-0"><span className="min-w-0 flex-1">{i.product_name} <span className="text-muted-foreground">× {bnDigits(i.quantity)}</span></span><span className="shrink-0 font-bold">{taka(i.subtotal)}</span></div>)}</div><div className="mt-2 space-y-1.5 border-t pt-3 text-sm"><div className="flex justify-between"><span>সাবটোটাল</span><span>{taka(order.subtotal)}</span></div><div className="flex justify-between"><span>ডেলিভারি</span><span>{taka(order.delivery_fee)}</span></div><div className="flex justify-between border-t pt-2 text-base font-black"><span>মোট</span><span className="text-brand-dark">{taka(order.total)}</span></div></div></section>
+    <section className="mt-3 rounded-2xl border bg-white p-4 text-sm shadow-sm sm:p-5"><h3 className="font-extrabold">ডেলিভারি তথ্য</h3><p className="mt-2 font-semibold">{order.customer_name} — {order.customer_phone}</p><p className="mt-1 text-muted-foreground">{[order.thana,order.district].filter(Boolean).join(", ")}</p></section>
+  </div></div></SiteLayout>;
 }
+function escapeHtml(value: unknown){return String(value??"").replace(/[&<>\'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c] as string));}
