@@ -29,7 +29,34 @@ function drawInvoice(order: any): HTMLCanvasElement {
   return canvas;
 }
 
-function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> { return new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error("PNG generation failed")),"image/png",1)); }
+function canvasToBlob(canvas: HTMLCanvasElement, type = "image/png"): Promise<Blob> { return new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error("Invoice image generation failed")),type,0.98)); }
+
+function isAndroid(): boolean { return /Android/i.test(navigator.userAgent); }
+
+async function saveInvoiceImage(canvas: HTMLCanvasElement, filename: string) {
+  const png = await canvasToBlob(canvas, "image/png");
+  const file = new File([png], filename, { type: "image/png", lastModified: Date.now() });
+  if (typeof navigator.share === "function") {
+    try {
+      const canShareFiles = typeof navigator.canShare !== "function" || navigator.canShare({ files: [file] });
+      if (canShareFiles) {
+        await navigator.share({ title: "Sheikh Seeds Invoice", text: "আপনার Sheikh Seeds ইনভয়েস", files: [file] });
+        return "shared" as const;
+      }
+    } catch (error: any) {
+      if (error?.name === "AbortError") return "cancelled" as const;
+      console.warn("Native invoice share failed; opening save view", error);
+    }
+  }
+  const url = URL.createObjectURL(png);
+  const saveWindow = window.open(url, "_blank", "noopener,noreferrer");
+  if (saveWindow) {
+    window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+    return "opened" as const;
+  }
+  const a = document.createElement("a"); a.href = url; a.download = filename; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+  return "downloaded" as const;
+}
 
 function OrderPage() {
   const { id } = useParams({ from: "/order/$id" }); const fetchOrder = useServerFn(getPublicOrder); const { data: order, isLoading } = useQuery({ queryKey:["order",id], queryFn:()=>fetchOrder({data:{id}}) });
@@ -37,13 +64,11 @@ function OrderPage() {
     if(!order)return;
     try {
       toast.loading("ইনভয়েস প্রস্তুত হচ্ছে...",{id:"invoice"});
-      const canvas=drawInvoice(order); const blob=await canvasToBlob(canvas); const filename=`sheikh-seeds-invoice-${order.id.slice(0,8)}.png`;
-      // Prefer the native Android share sheet when available: it exposes “Save to Photos/Gallery” on supported devices.
-      if(typeof navigator.share === "function" && typeof navigator.canShare === "function") {
-        const file=new File([blob],filename,{type:"image/png"});
-        if(navigator.canShare({files:[file]})) { await navigator.share({title:"Sheikh Seeds Invoice",text:"আপনার Sheikh Seeds ইনভয়েস",files:[file]}); toast.success("ইনভয়েসটি সেভ করার অপশন দেওয়া হয়েছে",{id:"invoice",duration:3000}); return; }
-      }
-      const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=filename; a.rel="noopener"; a.style.display="none"; document.body.appendChild(a); a.click(); a.remove(); window.setTimeout(()=>URL.revokeObjectURL(url),10000);
+      const canvas=drawInvoice(order); const filename=`sheikh-seeds-invoice-${order.id.slice(0,8)}.png`;
+      const result = await saveInvoiceImage(canvas, filename);
+      if(result === "cancelled") { toast.dismiss("invoice"); return; }
+      if(result === "shared") { toast.success("ইনভয়েসটি সেভ করার জন্য অপশন দেওয়া হয়েছে",{id:"invoice",duration:3500}); return; }
+      if(result === "opened") { toast.success(isAndroid() ? "ইনভয়েস ওপেন হয়েছে — ছবিটি চেপে ধরে Save/Download করুন" : "ইনভয়েস ওপেন হয়েছে",{id:"invoice",duration:4500}); return; }
       toast.success("ইনভয়েস ডাউনলোড শুরু হয়েছে",{id:"invoice",duration:2500});
     } catch(e:any) {
       if(e?.name === "AbortError") { toast.dismiss("invoice"); return; }
