@@ -48,3 +48,5 @@ jobs:
           git add src/routes/admin/orders.tsx .github/workflows/fix-incomplete-our-record.yml
           git commit -m 'Fix Our Record for incomplete orders'
           git push
+
+# one-time retrigger
