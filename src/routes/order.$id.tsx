@@ -11,7 +11,7 @@ export const Route = createFileRoute("/order/$id")({ component: OrderPage, head:
 const statusBn: Record<string, string> = { web_pending: "ওয়েব পেন্ডিং", pending: "অপেক্ষমাণ", confirmed: "কনফার্মড", processing: "প্রস্তুত হচ্ছে", rts: "RTS", shipped: "ডেলিভারিতে", delivered: "ডেলিভারি সম্পন্ন", cancelled: "বাতিল", returned: "ফেরত", hold: "হোল্ড" };
 const FACEBOOK_PAGE_URL = "https://www.facebook.com/share/1DoMWrXv2i/";
 
-function drawInvoice(order: any): Promise<Blob> {
+function drawInvoice(order: any): Promise<HTMLCanvasElement> {
   return new Promise((resolve, reject) => {
     const canvas = document.createElement("canvas");
     canvas.width = 1000; canvas.height = 1380;
@@ -45,7 +45,7 @@ function drawInvoice(order: any): Promise<Blob> {
     y += 28; ctx.strokeStyle = "#166534"; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(585, y); ctx.lineTo(W - 85, y); ctx.stroke(); y += 48;
     ctx.textAlign = "left"; ctx.fillStyle = "#17231c"; ctx.font = "900 27px Arial, 'Noto Sans Bengali', sans-serif"; ctx.fillText("সর্বমোট", 610, y); ctx.textAlign = "right"; ctx.fillStyle = "#166534"; ctx.fillText(taka(order.total), W - 85, y);
     ctx.textAlign = "center"; ctx.fillStyle = "#94a3b8"; ctx.font = "18px Arial, 'Noto Sans Bengali', sans-serif"; ctx.fillText("ধন্যবাদ — Sheikh Seeds-এর সাথে থাকার জন্য 🌱", W / 2, canvas.height - 90);
-    canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("Invoice generation failed")), "image/png", 1);
+    resolve(canvas);
   });
 }
 
@@ -58,23 +58,20 @@ function OrderPage() {
     if (!order) return;
     try {
       toast.loading("ইনভয়েস প্রস্তুত হচ্ছে...", { id: "invoice" });
-      const blob = await drawInvoice(order);
-      const file = new File([blob], `sheikh-seeds-invoice-${order.id.slice(0, 8)}.png`, { type: "image/png" });
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        try {
-          await navigator.share({ title: "Sheikh Seeds Invoice", files: [file] });
-          toast.success("ইনভয়েস গ্যালারিতে সেভ হয়েছে", { id: "invoice", duration: 2200 });
-          return;
-        } catch (e) {
-          if (e instanceof DOMException && e.name === "AbortError") { toast.dismiss("invoice"); return; }
-        }
-      }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a"); a.href = url; a.download = file.name; a.style.display = "none";
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1500);
-      toast.success("ইনভয়েস গ্যালারিতে সেভ হয়েছে", { id: "invoice", duration: 2200 });
+      const canvas = await drawInvoice(order);
+      const dataUrl = canvas.toDataURL("image/png");
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `sheikh-seeds-invoice-${order.id.slice(0, 8)}.png`;
+      a.setAttribute("download", a.download);
+      a.style.position = "fixed";
+      a.style.left = "-9999px";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      toast.success("ইনভয়েস গ্যালারিতে সেভ হয়েছে", { id: "invoice", duration: 2500 });
     } catch (e) {
+      console.error("Invoice download failed", e);
       toast.error("ইনভয়েস ডাউনলোড করা যায়নি। আবার চেষ্টা করুন।", { id: "invoice" });
     }
   };
