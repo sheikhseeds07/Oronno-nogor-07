@@ -41,7 +41,7 @@ async function shareInvoiceFile(blob: Blob, filename: string) {
   const canShareFiles = typeof navigator.canShare !== "function" || navigator.canShare({ files: [file] });
   if (!canShareFiles) return false;
   try {
-    await navigator.share({ title: "Sheikh Seeds Invoice", text: "আপনার Sheikh Seeds ইনভয়েস", files: [file] });
+    await navigator.share({ files: [file] });
     return true;
   } catch (error: any) {
     if (error?.name === "AbortError") return true;
@@ -52,22 +52,20 @@ async function shareInvoiceFile(blob: Blob, filename: string) {
 
 async function saveBlobToDevice(blob: Blob, filename: string) {
   const file = new File([blob], filename, { type: blob.type || "image/png", lastModified: Date.now() });
-  if (isFacebookInAppBrowser() && typeof navigator.share === "function") {
+  if (isFacebookInAppBrowser() && isAndroid() && typeof navigator.share === "function") {
     const canShareFiles = typeof navigator.canShare !== "function" || navigator.canShare({ files: [file] });
     if (canShareFiles) {
       try {
-        await navigator.share({ title: "Sheikh Seeds Invoice", text: "আপনার Sheikh Seeds ইনভয়েস", files: [file] });
+        await navigator.share({ files: [file] });
         return "shared" as const;
       } catch (error: any) {
         if (error?.name === "AbortError") return "cancelled" as const;
-        console.warn("Facebook in-app invoice share failed", error);
+        console.warn("Facebook Android invoice share failed", error);
       }
     }
   }
   const url = URL.createObjectURL(blob);
   try {
-    const saveWindow = window.open(url, "_blank", "noopener,noreferrer");
-    if (saveWindow) return "opened" as const;
     const a = document.createElement("a"); a.href = url; a.download = filename; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove();
     return "downloaded" as const;
   } finally {
@@ -101,8 +99,7 @@ function OrderPage() {
     try {
       const result = await saveBlobToDevice(invoiceBlob, invoiceFilename);
       if(result === "cancelled") { toast.dismiss("invoice"); return; }
-      if(result === "shared") { toast.success("ইনভয়েস সেভ করার জন্য ফোনের অপশন চালু হয়েছে", { duration: 4000 }); return; }
-      if(result === "opened") { toast.success(isAndroid() ? "ইনভয়েস ওপেন হয়েছে — ছবিটি চেপে ধরে Save/Download করুন" : "ইনভয়েস ওপেন হয়েছে", { duration: 4500 }); return; }
+      if(result === "shared") { toast.success("ফোনের সেভ অপশন চালু হয়েছে — Photos/Gallery বেছে নিন", { duration: 4500 }); return; }
       toast.success(isAndroid() ? "ইনভয়েস ডাউনলোড শুরু হয়েছে — Downloads/Files-এ পাবেন" : "ইনভয়েস ডাউনলোড শুরু হয়েছে", { duration: 3500 });
     } catch(e:any) {
       if(e?.name === "AbortError") { toast.dismiss("invoice"); return; }
