@@ -9,7 +9,6 @@ permissions:
 
 jobs:
   patch:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -19,16 +18,39 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p = Path('src/routes/admin/orders.tsx')
           s = p.read_text()
-          old = '''      const { data } = await supabase.from("orders").select("id,invoice_no,status,total,created_at,customer_name,customer_address,thana,district,order_items(product_name,quantity)").in("customer_phone", phoneVariants(lookupPhone)).order("created_at", { ascending: false });\n      return data ?? [];'''
-          new = '''      // Our Record searches the real orders table by normalized phone across every status/source.\n      const digits = normalizePhone(lookupPhone);\n      const variants = phoneVariants(lookupPhone);\n      const patterns = Array.from(new Set([\n        ...variants,\n        ...(digits.length >= 10 ? [digits.slice(-11)] : []),\n      ].filter(Boolean)));\n      const orQuery = patterns\n        .map((v) => `customer_phone.ilike.%${String(v).replace(/[%(),]/g, "")}%`)\n        .join(",");\n      const { data, error } = await supabase\n        .from("orders")\n        .select("id,invoice_no,status,total,created_at,customer_name,customer_address,thana,district,order_items(product_name,quantity)")\n        .or(orQuery)\n        .order("created_at", { ascending: false });\n      if (error) throw new Error(error.message);\n      return data ?? [];'''
-          if old not in s:
-              raise SystemExit('Target Our Record lookup block not found; no change made.')
-          p.write_text(s.replace(old, new, 1))
+          pattern = re.compile(r'      const \{ data \} = await supabase\.from\("orders"\)\.select\("id,invoice_no,status,total,created_at,customer_name,customer_address,thana,district,order_items\(product_name,quantity\)"\)\.in\("customer_phone", phoneVariants\(lookupPhone\)\)\.order\("created_at", \{ ascending: false \}\);\n      return data \?\? \[\];')
+          new = '''      // Our Record searches the real orders table by normalized phone across every status/source.
+      const digits = normalizePhone(lookupPhone);
+      const variants = phoneVariants(lookupPhone);
+      const patterns = Array.from(new Set([
+        ...variants,
+        ...(digits.length >= 10 ? [digits.slice(-11)] : []),
+      ].filter(Boolean)));
+      const orQuery = patterns
+        .map((v) => `customer_phone.ilike.%${String(v).replace(/[%(),]/g, "")}%`)
+        .join(",");
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id,invoice_no,status,total,created_at,customer_name,customer_address,thana,district,order_items(product_name,quantity)")
+        .or(orQuery)
+        .order("created_at", { ascending: false });
+      if (error) throw new Error(error.message);
+      return data ?? [];'''
+          if pattern.search(s):
+              p.write_text(pattern.sub(new, s, count=1))
+          else:
+              print('Target already patched or not found; nothing to do.')
           PY
-      - name: Commit patch
+      - name: Commit patch if needed
+        shell: bash
         run: |
+          if git diff --quiet -- src/routes/admin/orders.tsx; then
+            echo 'No source change needed.'
+            exit 0
+          fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add src/routes/admin/orders.tsx
