@@ -33,6 +33,7 @@ function drawInvoice(order: any): HTMLCanvasElement {
 function canvasToBlob(canvas: HTMLCanvasElement, type = "image/png"): Promise<Blob> { return new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error("Invoice image generation failed")),type,0.98)); }
 
 function isAndroid(): boolean { return /Android/i.test(navigator.userAgent); }
+function isFacebookInAppBrowser(): boolean { return /FBAN|FBAV|FB_IAB|FB4A|FB4B/i.test(navigator.userAgent); }
 
 async function shareInvoiceFile(blob: Blob, filename: string) {
   const file = new File([blob], filename, { type: "image/png", lastModified: Date.now() });
@@ -49,10 +50,29 @@ async function shareInvoiceFile(blob: Blob, filename: string) {
   }
 }
 
-function saveBlobToDevice(blob: Blob, filename: string) {
+async function saveBlobToDevice(blob: Blob, filename: string) {
+  const file = new File([blob], filename, { type: blob.type || "image/png", lastModified: Date.now() });
+  if (isFacebookInAppBrowser() && typeof navigator.share === "function") {
+    const canShareFiles = typeof navigator.canShare !== "function" || navigator.canShare({ files: [file] });
+    if (canShareFiles) {
+      try {
+        await navigator.share({ title: "Sheikh Seeds Invoice", text: "আপনার Sheikh Seeds ইনভয়েস", files: [file] });
+        return "shared" as const;
+      } catch (error: any) {
+        if (error?.name === "AbortError") return "cancelled" as const;
+        console.warn("Facebook in-app invoice share failed", error);
+      }
+    }
+  }
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a"); a.href = url; a.download = filename; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+  try {
+    const saveWindow = window.open(url, "_blank", "noopener,noreferrer");
+    if (saveWindow) return "opened" as const;
+    const a = document.createElement("a"); a.href = url; a.download = filename; a.rel = "noopener"; document.body.appendChild(a); a.click(); a.remove();
+    return "downloaded" as const;
+  } finally {
+    window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
 }
 
 function OrderPage() {
@@ -76,10 +96,18 @@ function OrderPage() {
     }
   };
 
-  const saveInvoice = () => {
+  const saveInvoice = async () => {
     if(!invoiceBlob)return;
-    saveBlobToDevice(invoiceBlob, invoiceFilename);
-    toast.success(isAndroid() ? "সেভ শুরু হয়েছে — ফোনের Downloads/Files থেকে ইনভয়েসটি পাবেন" : "ইনভয়েস ডাউনলোড শুরু হয়েছে", { duration: 3500 });
+    try {
+      const result = await saveBlobToDevice(invoiceBlob, invoiceFilename);
+      if(result === "cancelled") { toast.dismiss("invoice"); return; }
+      if(result === "shared") { toast.success("ইনভয়েস সেভ করার জন্য ফোনের অপশন চালু হয়েছে", { duration: 4000 }); return; }
+      if(result === "opened") { toast.success(isAndroid() ? "ইনভয়েস ওপেন হয়েছে — ছবিটি চেপে ধরে Save/Download করুন" : "ইনভয়েস ওপেন হয়েছে", { duration: 4500 }); return; }
+      toast.success(isAndroid() ? "ইনভয়েস ডাউনলোড শুরু হয়েছে — Downloads/Files-এ পাবেন" : "ইনভয়েস ডাউনলোড শুরু হয়েছে", { duration: 3500 });
+    } catch(e:any) {
+      if(e?.name === "AbortError") { toast.dismiss("invoice"); return; }
+      console.error("Invoice save failed",e); toast.error("ইনভয়েস সেভ করা যায়নি। আবার চেষ্টা করুন।",{duration:3500});
+    }
   };
 
   const shareInvoice = async () => {
@@ -92,7 +120,7 @@ function OrderPage() {
   if(isLoading)return <main className="min-h-screen grid place-items-center bg-[#f5faf7]"><div className="h-10 w-10 animate-spin rounded-full border-4 border-brand/20 border-t-brand"/></main>;
   if(!order)return <main className="min-h-screen grid place-items-center bg-[#f5faf7] px-4 text-center"><div><p className="text-lg font-bold">অর্ডার পাওয়া যায়নি</p><Link to="/shop" className="mt-4 inline-flex rounded-xl bg-brand px-5 py-3 font-bold text-white">শপে ফিরে যান</Link></div></main>;
   return <main className="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,#dcfce7_0%,#f7fbf8_32%,#f8faf9_100%)] px-3 py-4 sm:px-5 sm:py-8"><div className="pointer-events-none fixed inset-0 overflow-hidden"><div className="absolute -left-24 top-20 h-52 w-52 animate-pulse rounded-full bg-emerald-300/15 blur-3xl"/><div className="absolute -right-24 top-60 h-64 w-64 animate-pulse rounded-full bg-lime-300/10 blur-3xl [animation-delay:900ms]"/></div><div className="relative mx-auto w-full max-w-xl">
-  <section className="animate-[fadeIn_.45s_ease-out] overflow-hidden rounded-[26px] border border-emerald-100/80 bg-white/95 p-5 text-center shadow-[0_18px_60px_rgba(20,83,45,.11)] backdrop-blur sm:p-7"><div className="mx-auto flex h-[68px] w-[68px] animate-[pop_.5s_cubic-bezier(.2,.8,.2,1)] items-center justify-center rounded-full bg-emerald-50 ring-8 ring-emerald-50/60"><CheckCircle2 className="h-10 w-10 text-emerald-600" strokeWidth={2.5}/></div><div className="mt-3 text-[10px] font-black uppercase tracking-[.22em] text-emerald-700">ORDER CONFIRMED</div><h1 className="mt-1 text-[25px] font-black tracking-tight text-slate-900 sm:text-3xl">অর্ডার সফল হয়েছে! 🎉</h1><p className="mx-auto mt-1.5 max-w-sm text-xs leading-5 text-slate-500">আপনার অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে। খুব শীঘ্রই আমাদের টিম আপনার সাথে যোগাযোগ করবে।</p><div className="mx-auto mt-4 inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-4 py-2 text-xs font-bold text-slate-600 ring-1 ring-slate-100">অর্ডার <span className="text-emerald-700">#{order.id.slice(0,8).toUpperCase()}</span><span className="mx-1 h-1 w-1 rounded-full bg-slate-300"/><span className="text-emerald-700">{statusBn[order.status]??order.status}</span></div><div className="mt-4 grid grid-cols-2 gap-2.5"><button onClick={downloadInvoice} className="group inline-flex items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-2 py-3 text-xs font-extrabold text-emerald-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-50 active:scale-[.98]"><Download className="h-4 w-4 transition group-hover:translate-y-0.5"/> ইনভয়েস ডাউনলোড</button><Link to="/shop" className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-2 py-3 text-xs font-extrabold text-white shadow-lg shadow-emerald-600/20 transition hover:-translate-y-0.5 hover:bg-emerald-700 active:scale-[.98]"><ShoppingBag className="h-4 w-4"/> আরও কেনাকাটা</Link></div></section>
+  <section className="animate-[fadeIn_.45s_ease-out] overflow-hidden rounded-[26px] border border-emerald-100/80 bg-white/95 p-5 text-center shadow-[0_18px_60px_rgba(20,83,45,.11)] backdrop-blur sm:p-7"><div className="mx-auto flex h-[68px] w-[68px] animate-[pop_.5s_cubic-bezier(.2,.8,.2,1)] items-center justify-center rounded-full bg-emerald-50 ring-8 ring-emerald-50/60"><CheckCircle2 className="h-10 w-10 text-emerald-600" strokeWidth={2.5}/></div><div className="mt-3 text-[10px] font-black uppercase tracking-[.22em] text-emerald-700">ORDER CONFIRMED</div><h1 className="mt-1 text-[25px] font-black tracking-tight text-slate-900 sm:text-3xl">অর্ডার সফল হয়েছে! 🎉</h1><p className="mx-auto mt-1.5 max-w-sm text-xs leading-5 text-slate-500">আপনার অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে। খুব শীঘ্রই আমাদের টিম আপনার সাথে যোগাযোগ করবে।</p><div className="mx-auto mt-4 inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-4 py-2 text-xs font-bold text-slate-600 ring-1 ring-slate-100">অর্ডার <span className="text-emerald-700">#{order.id.slice(0,8).toUpperCase()}</span><span className="mx-1 h-1 w-1 rounded-full bg-slate-300"/><span className="text-emerald-700">{statusBn[order.status]??order.status}</span></div><div className="mt-4 grid grid-cols-2 gap-2.5"><button onClick={downloadInvoice} className="group inline-flex items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-2 py-3 text-xs font-extrabold text-emerald-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-emerald-50 active:scale-[.98]"><Download className="h-4 w-4 transition group-hover:translate-y-0.5"/> ইনভয়েস ডাউনলোড</button><Link to="/shop" className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-2 py-3 text-xs font-extrabold text-white shadow-lg shadow-emerald-600/20 transition hover:-translate-y-0.5 hover:bg-emerald-700 active:scale-[.99]"><ShoppingBag className="h-4 w-4"/> আরও কেনাকাটা</Link></div></section>
   <section className="mt-2.5 animate-[fadeIn_.5s_.08s_both] rounded-2xl border border-blue-100 bg-white p-4 shadow-sm sm:p-4.5"><div className="flex items-center gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#1877F2]"><Facebook className="h-5 w-5" fill="currentColor"/></div><div className="min-w-0 flex-1"><h2 className="text-sm font-extrabold text-slate-800">নতুন অফার ও আপডেট পেতে পেইজে থাকুন</h2><p className="mt-0.5 text-[11px] text-slate-500">গার্ডেনিং টিপস, নতুন পণ্য ও বিশেষ অফার সবার আগে।</p></div></div><a href={FACEBOOK_PAGE_URL} target="_blank" rel="noopener noreferrer" className="mt-2.5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1877F2] py-2.5 text-xs font-extrabold text-white transition hover:brightness-95 active:scale-[.99]"><Facebook className="h-4 w-4" fill="currentColor"/> ফেইজ ফলো করুন <ArrowRight className="h-3.5 w-3.5"/></a></section>
   <section className="mt-2.5 animate-[fadeIn_.5s_.14s_both] rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50/80 via-white to-white p-4 shadow-sm sm:p-4.5"><div className="flex items-start gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700"><User className="h-5 w-5"/></div><div className="min-w-0 flex-1"><div className="flex items-center gap-1.5"><h2 className="text-sm font-extrabold text-slate-800">ফ্রি কাস্টমার অ্যাকাউন্ট তৈরি করুন</h2><Sparkles className="h-3.5 w-3.5 text-amber-500"/></div><p className="mt-0.5 text-[11px] leading-5 text-slate-500">অর্ডার ট্র্যাকিং, বোনাস, গিফট এবং কৃষি কমিউনিটির টিপস পেতে এখনই অ্যাকাউন্ট তৈরি করুন।</p><Link to="/customer-login" className="mt-2.5 inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-extrabold text-white shadow-md shadow-emerald-600/15 transition hover:-translate-y-0.5 hover:bg-emerald-700 active:scale-[.99]">অ্যাকাউন্ট তৈরি করুন <ArrowRight className="h-3.5 w-3.5"/></Link></div></div></section>
   <section className="mt-2.5 grid gap-2.5 sm:grid-cols-2"><div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm"><div className="flex items-center gap-2 text-emerald-700"><ShoppingBag className="h-4 w-4"/><span className="text-xs font-black">অর্ডারের তথ্য</span></div><div className="mt-2 space-y-1 text-[11px] text-slate-600"><div className="flex justify-between gap-3"><span>সাবটোটাল</span><b>{taka(order.subtotal)}</b></div><div className="flex justify-between gap-3"><span>ডেলিভারি</span><b>{taka(order.delivery_fee)}</b></div><div className="flex justify-between gap-3 border-t border-slate-100 pt-1.5 text-slate-900"><span className="font-extrabold">সর্বমোট</span><b className="text-emerald-700">{taka(order.total)}</b></div></div></div><div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm"><div className="flex items-center gap-2 text-emerald-700"><MapPin className="h-4 w-4"/><span className="text-xs font-black">ডেলিভারি তথ্য</span></div><div className="mt-2 text-[11px] leading-5 text-slate-600"><b className="text-slate-800">{order.customer_name}</b><br/>{order.customer_phone}<br/>{[order.address,order.thana,order.district].filter(Boolean).join(", ")}</div></div></section>
