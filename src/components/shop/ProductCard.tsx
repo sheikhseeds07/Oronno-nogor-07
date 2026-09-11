@@ -60,15 +60,25 @@ export const ProductCard = memo(function ProductCard({ p }: { p: Product }) {
 
           <div className="mt-2.5">
             {inCart ? (
-              <div className="flex h-9 items-center justify-between overflow-hidden rounded-lg border-2 border-brand bg-brand/5">
+              <div className="flex h-9 items-center justify-between overflow-hidden rounded-xl border-2 border-brand bg-brand/5 shadow-[0_3px_10px_-7px_rgba(20,83,45,.55)]">
                 <button onClick={() => (inCart.quantity <= 1 ? remove(p.id) : setQty(p.id, inCart.quantity - 1))} className="flex h-full w-9 items-center justify-center text-brand transition-colors hover:bg-brand-light/70 active:scale-90" aria-label="কমান"><Minus className="h-3.5 w-3.5" /></button>
                 <span className="text-xs font-extrabold text-brand-dark">{bnDigits(inCart.quantity)}</span>
                 <button onClick={() => setQty(p.id, Math.min(inCart.quantity + 1, p.stock || 999))} className="flex h-full w-9 items-center justify-center text-brand transition-colors hover:bg-brand-light/70 active:scale-90" aria-label="বাড়ান"><Plus className="h-3.5 w-3.5" /></button>
               </div>
             ) : (
-              <button disabled={p.stock <= 0} onClick={addItem} className={`flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border text-[11px] font-extrabold transition-all duration-200 active:scale-[.97] disabled:cursor-not-allowed disabled:opacity-45 sm:text-xs ${justAdded ? "border-brand bg-brand text-white shadow-sm" : "border-brand/70 text-brand hover:bg-brand-light/55 hover:border-brand"}`}>
-                {justAdded ? <Check className="h-3.5 w-3.5" /> : <ShoppingCart className="h-3.5 w-3.5" />}
-                {justAdded ? "কার্টে যোগ হয়েছে" : "কার্টে যোগ করুন"}
+              <button
+                disabled={p.stock <= 0}
+                onClick={addItem}
+                className={`group/cart relative flex h-10 w-full items-center justify-center gap-2 overflow-hidden rounded-xl border text-[11px] font-extrabold tracking-[-0.01em] transition-all duration-300 active:scale-[.975] disabled:cursor-not-allowed disabled:opacity-45 sm:h-10 sm:text-xs ${justAdded
+                  ? "border-brand bg-brand text-white shadow-[0_7px_18px_-9px_rgba(20,83,45,.8)]"
+                  : "border-brand/60 bg-gradient-to-r from-brand via-brand to-brand-dark text-white shadow-[0_6px_16px_-10px_rgba(20,83,45,.9)] hover:-translate-y-0.5 hover:border-brand hover:shadow-[0_10px_22px_-10px_rgba(20,83,45,.9)]"
+                }`}
+              >
+                <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/15 to-transparent transition-transform duration-700 group-hover/cart:translate-x-full" />
+                <span className={`relative flex h-6 w-6 items-center justify-center rounded-full border border-white/20 bg-white/10 transition-all duration-300 ${justAdded ? "scale-110 bg-white/15" : "group-hover/cart:scale-110 group-hover/cart:bg-white/15"}`}>
+                  {justAdded ? <Check className="h-3.5 w-3.5" /> : <ShoppingCart className="h-3.5 w-3.5 transition-transform duration-300 group-hover/cart:-rotate-6" />}
+                </span>
+                <span className="relative">{justAdded ? "কার্টে যোগ হয়েছে" : "কার্টে যোগ করুন"}</span>
               </button>
             )}
           </div>
