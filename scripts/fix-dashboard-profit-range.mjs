@@ -53,11 +53,28 @@ landing = landing
     '.hook-delivery{font-size:16px;opacity:.95;display:flex;justify-content:center;align-items:center;gap:6px}',
   );
 
-if (landing !== landingOriginal) {
+// The landing background previously used a viewport-fixed, noise-heavy pseudo-element
+// with background-attachment:fixed. On mobile browsers that can force expensive repainting
+// during every scroll frame and make the page feel like it is catching/stuttering.
+// Keep the exact visual assets, but let them scroll with the document instead.
+const landingSmoothOriginal = landing;
+landing = landing
+  .replace(
+    '.lp-agri-bg::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;',
+    '.lp-agri-bg::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;',
+  )
+  .replace('background-attachment:fixed;', 'background-attachment:scroll;')
+  .replace(
+    '.lp-root{max-width:100%}',
+    '.lp-root{max-width:100%;-webkit-overflow-scrolling:touch;overscroll-behavior-y:auto;scroll-behavior:smooth}',
+  );
+
+if (landing !== landingOriginal || landing !== landingSmoothOriginal) {
   await writeFile(landingPath, landing, "utf8");
-  console.log("Applied Seed Combo patch: restore dark-green headline background");
+  if (landing !== landingOriginal) console.log("Applied Seed Combo patch: restore dark-green headline background");
+  if (landing !== landingSmoothOriginal) console.log("Applied Seed Combo patch: smooth scrolling performance");
 } else {
-  console.log("Seed Combo dark-green headline patch already applied or source pattern not found; continuing build.");
+  console.log("Seed Combo landing patches already applied or source pattern not found; continuing build.");
 }
 
 console.log(`Dashboard range fix complete. dashboardChanged=${dashboardChanged}`);
