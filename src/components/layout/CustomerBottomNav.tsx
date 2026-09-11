@@ -56,8 +56,8 @@ export function CustomerBottomNav({ hidden = false }: { hidden?: boolean }) {
           border-radius:20px;
           background:rgba(255,255,255,.97);
           box-shadow:0 14px 42px -22px rgba(15,70,40,.58);
-          -webkit-mask:radial-gradient(circle 29px at 50% 0, transparent 0 28px, #000 29px);
-          mask:radial-gradient(circle 29px at 50% 0, transparent 0 28px, #000 29px);
+          -webkit-mask:radial-gradient(circle 43px at 50% 0, transparent 0 42px, #000 43px);
+          mask:radial-gradient(circle 43px at 50% 0, transparent 0 42px, #000 43px);
         }
         .customer-bottom-nav > div { z-index:1; }
         .customer-bottom-nav.is-minimized { transform: translateY(2px); }
@@ -85,7 +85,6 @@ export function CustomerBottomNav({ hidden = false }: { hidden?: boolean }) {
       `}</style>
 
       <nav aria-label="কাস্টমার নেভিগেশন" aria-hidden={hidden} className={`customer-bottom-nav fixed inset-x-2 bottom-[max(7px,env(safe-area-inset-bottom))] z-[30] mx-auto max-w-[500px] rounded-[20px] p-1 sm:inset-x-3 sm:bottom-3 sm:p-1.5 ${minimized ? "is-minimized" : ""} ${hidden ? "is-hidden" : ""}`}>
-        <div className="pointer-events-none absolute inset-x-10 -top-px h-px bg-gradient-to-r from-transparent via-emerald-300/80 to-transparent" />
         <div className="relative flex items-center gap-0 sm:gap-0.5">
           <Link to="/shop" className={itemClass}><span className="customer-nav-icon flex h-6 w-6 items-center justify-center rounded-[9px] bg-emerald-50 text-emerald-700 shadow-[inset_0_1px_0_white] group-hover:bg-emerald-100"><PackageSearch className="h-4 w-4" strokeWidth={2.25} /></span><span className="customer-nav-label mt-0.5 text-[8.5px] font-black leading-none sm:text-[9px]">সকল পণ্য</span></Link>
           <Link to="/offers" className={itemClass}><span className="relative customer-nav-icon flex h-6 w-6 items-center justify-center rounded-[9px] bg-amber-50 text-amber-600 shadow-[inset_0_1px_0_white] group-hover:bg-amber-100"><Tag className="h-4 w-4" strokeWidth={2.25} /><span className="customer-nav-dot absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-amber-400" /></span><span className="customer-nav-label mt-0.5 text-[8.5px] font-black leading-none sm:text-[9px]">অফার</span></Link>
