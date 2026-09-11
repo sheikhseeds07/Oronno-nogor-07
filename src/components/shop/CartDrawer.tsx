@@ -16,6 +16,8 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const { data: settingsRow } = useQuery(publicSiteSettingsQuery);
   const deliveryRules = (settingsRow?.settings?.delivery_rules ?? undefined) as Array<{ id: string; min_order: number; fee: number }> | undefined;
   const { delivery, total, freeRule, amountToFree } = getDeliveryInfo(subtotal, deliveryRules);
+  const progressTarget = freeRule?.min_order ?? (delivery === 0 ? subtotal : 0);
+  const progressPercent = progressTarget > 0 ? Math.min(100, Math.max(0, (subtotal / progressTarget) * 100)) : 100;
 
   useEffect(() => {
     if (!open) return;
@@ -71,15 +73,28 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
             </div>
 
             <div className="border-t p-4 space-y-2 bg-muted/30">
-              {delivery === 0 ? (
-                <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm font-extrabold text-emerald-800">
-                  <Sparkles className="h-4 w-4 shrink-0" /> ডেলিভারি চার্জ ফ্রি 🎉
+              <div className={`relative overflow-hidden rounded-2xl border p-3.5 shadow-sm ${delivery === 0 ? "border-emerald-200 bg-gradient-to-br from-emerald-50 to-white" : "border-brand/15 bg-gradient-to-br from-brand-light/60 via-white to-amber-50/40"}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl shadow-sm ${delivery === 0 ? "bg-emerald-100 text-emerald-700" : "bg-white text-brand-dark"}`}>
+                      {delivery === 0 ? <Sparkles className="h-4 w-4" /> : <Truck className="h-4 w-4" />}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="text-xs font-black tracking-tight text-slate-900">{delivery === 0 ? "ডেলিভারি চার্জ সম্পূর্ণ ফ্রি 🎉" : "ফ্রি ডেলিভারির পথে আপনি"}</div>
+                      <div className="mt-0.5 text-[10px] font-semibold text-slate-500">{delivery === 0 ? "আপনার বর্তমান কার্ট ফ্রি ডেলিভারির যোগ্য" : `আরও ${taka(amountToFree)} কিনলেই ডেলিভারি ফ্রি`}</div>
+                    </div>
+                  </div>
+                  <div className="shrink-0 rounded-full bg-white/90 px-2 py-1 text-[10px] font-black text-brand-dark shadow-sm">{taka(subtotal)}</div>
                 </div>
-              ) : freeRule ? (
-                <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs font-bold text-amber-900">
-                  <Truck className="h-4 w-4 shrink-0" /> আরও {taka(amountToFree)} কিনলেই ডেলিভারি চার্জ ফ্রি 🎉
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200/80 shadow-inner">
+                  <div className="h-full rounded-full bg-gradient-to-r from-brand via-emerald-500 to-emerald-400 shadow-[0_0_12px_rgba(16,185,129,.35)] transition-[width] duration-500 ease-out" style={{ width: `${progressPercent}%` }} />
                 </div>
-              ) : null}
+                <div className="mt-1.5 flex items-center justify-between text-[9px] font-bold text-slate-400">
+                  <span>কার্টে {taka(subtotal)}</span>
+                  {delivery === 0 ? <span className="font-black text-emerald-700">১০০% সম্পন্ন</span> : <span>লক্ষ্য {taka(progressTarget)}</span>}
+                </div>
+              </div>
+
               <div className="flex justify-between text-sm"><span>সাবটোটাল</span><span className="font-bold">{taka(subtotal)}</span></div>
               <div className="flex justify-between text-sm"><span>ডেলিভারি</span><span className={delivery === 0 ? "font-bold text-emerald-700" : "text-muted-foreground"}>{delivery === 0 ? "ফ্রি" : taka(delivery)}</span></div>
               <div className="flex justify-between font-bold text-lg pt-2 border-t"><span>মোট</span><span className="text-brand-dark">{taka(total)}</span></div>
