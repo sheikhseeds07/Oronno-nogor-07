@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { Phone, Mail, MapPin, Leaf } from "lucide-react";
 import { publicSiteSettingsQuery } from "@/lib/site-settings-query";
 import { toImg } from "@/lib/img";
@@ -18,6 +19,51 @@ export function Footer() {
   const address = s.address || "গোপালগঞ্জ সদর, পাবলিক হল রোড";
   const name = s.site_name || "Sheikh Seeds";
   const logoSrc = s.logo_url || DEFAULT_LOGO;
+  const isCheckout = typeof window !== "undefined" && window.location.pathname === "/checkout";
+
+  useEffect(() => {
+    if (!isCheckout) return;
+    const applyCheckoutPolish = () => {
+      const elements = Array.from(document.querySelectorAll<HTMLElement>("p,span,h2,h3,div"));
+      const exact = (text: string) => elements.find((el) => el.children.length === 0 && el.textContent?.trim() === text);
+
+      const deliveryTitle = exact("সারাদেশে হোম ডেলিভারি");
+      if (deliveryTitle) {
+        deliveryTitle.style.display = "none";
+        const deliveryDescription = deliveryTitle.parentElement?.querySelector<HTMLElement>("p");
+        if (deliveryDescription) deliveryDescription.style.display = "none";
+        const deliveryCard = deliveryTitle.parentElement?.parentElement as HTMLElement | null;
+        if (deliveryCard) deliveryCard.style.display = "none";
+      }
+
+      const orderTitle = exact("আপনার অর্ডার");
+      if (orderTitle) {
+        const header = orderTitle.parentElement as HTMLElement | null;
+        const card = header?.parentElement as HTMLElement | null;
+        if (header) {
+          header.style.padding = "10px 12px";
+          header.style.minHeight = "auto";
+        }
+        if (card) {
+          card.style.borderRadius = "18px";
+          card.style.boxShadow = "0 12px 34px -28px rgba(20,80,45,.55)";
+        }
+      }
+
+      const count = elements.find((el) => el.children.length === 0 && /^\d+টি পণ্য$/.test(el.textContent?.trim() || ""));
+      if (count) {
+        count.style.fontSize = "10px";
+        count.style.padding = "3px 7px";
+      }
+    };
+
+    applyCheckoutPolish();
+    const observer = new MutationObserver(applyCheckoutPolish);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [isCheckout]);
+
+  if (isCheckout) return null;
   if (typeof window !== "undefined" && window.location.pathname === "/landing/karala") return null;
 
   return (
