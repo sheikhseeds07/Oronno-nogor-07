@@ -56,7 +56,15 @@ const dynamicCacheMiddleware = createMiddleware().server(async ({ request, next 
       pathname.startsWith("/product/") ||
       pathname.startsWith("/category/"));
 
-  if (isPublicPage && !hasAuth && !hasSessionCookie) {
+  // Landing pages are edited from the admin and must reflect database changes
+  // immediately. Keep the other public pages on the existing edge cache policy.
+  const isLandingPage = method === "GET" && pathname.startsWith("/landing/");
+
+  if (isLandingPage) {
+    result.response.headers.set("Cache-Control", NO_STORE);
+    result.response.headers.set("CDN-Cache-Control", NO_STORE);
+    result.response.headers.set("Cloudflare-CDN-Cache-Control", NO_STORE);
+  } else if (isPublicPage && !hasAuth && !hasSessionCookie) {
     result.response.headers.set("Cache-Control", PUBLIC_CACHE);
     result.response.headers.set("CDN-Cache-Control", PUBLIC_CACHE);
     result.response.headers.set("Cloudflare-CDN-Cache-Control", PUBLIC_CACHE);
