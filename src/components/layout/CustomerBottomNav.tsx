@@ -47,8 +47,21 @@ export function CustomerBottomNav({ hidden = false }: { hidden?: boolean }) {
   return (
     <>
       <style>{`
-        .customer-bottom-nav { transition: transform .5s cubic-bezier(.22,1,.36,1), opacity .35s ease, box-shadow .4s ease; }
-        .customer-bottom-nav.is-minimized { transform: translateY(3px); box-shadow: 0 12px 38px -18px rgba(15,70,40,.45); }
+        .customer-bottom-nav { transition: transform .5s cubic-bezier(.22,1,.36,1), opacity .35s ease; }
+        .customer-bottom-nav::before {
+          content:"";
+          position:absolute;
+          inset:0;
+          z-index:-1;
+          border:1px solid rgba(255,255,255,.92);
+          border-radius:23px;
+          background:rgba(255,255,255,.96);
+          box-shadow:0 18px 55px -24px rgba(15,70,40,.52);
+          -webkit-mask:radial-gradient(circle 38px at 50% 0, transparent 0 37px, #000 38px);
+          mask:radial-gradient(circle 38px at 50% 0, transparent 0 37px, #000 38px);
+        }
+        .customer-bottom-nav.is-minimized { transform: translateY(3px); }
+        .customer-bottom-nav.is-minimized::before { box-shadow:0 12px 38px -18px rgba(15,70,40,.45); }
         .customer-bottom-nav.is-hidden { transform: translateY(150%); opacity: 0; pointer-events:none; }
         .customer-nav-icon { transition: transform .45s cubic-bezier(.22,1,.36,1), opacity .35s ease, height .45s ease, margin .45s ease; }
         .customer-bottom-nav.is-minimized .customer-nav-icon { transform: scale(.12); opacity:0; height:2px; margin-bottom:-2px; }
@@ -71,7 +84,7 @@ export function CustomerBottomNav({ hidden = false }: { hidden?: boolean }) {
         @media (prefers-reduced-motion: reduce) { .customer-bottom-nav,.customer-nav-icon,.customer-nav-label,.customer-nav-home,.customer-nav-live,.customer-nav-shine,.customer-nav-dot,.contact-modal-card,.contact-modal-backdrop,.contact-glow{animation:none!important;transition:none!important} }
       `}</style>
 
-      <nav aria-label="কাস্টমার নেভিগেশন" aria-hidden={hidden} className={`customer-bottom-nav fixed inset-x-2 bottom-[max(7px,env(safe-area-inset-bottom))] z-[30] mx-auto max-w-[540px] rounded-[23px] border border-white/90 bg-white/95 p-1 shadow-[0_18px_55px_-24px_rgba(15,70,40,.52)] backdrop-blur-2xl sm:inset-x-3 sm:bottom-3 sm:rounded-[26px] sm:p-1.5 ${minimized ? "is-minimized" : ""} ${hidden ? "is-hidden" : ""}`}>
+      <nav aria-label="কাস্টমার নেভিগেশন" aria-hidden={hidden} className={`customer-bottom-nav fixed inset-x-2 bottom-[max(7px,env(safe-area-inset-bottom))] z-[30] mx-auto max-w-[540px] rounded-[23px] p-1 sm:inset-x-3 sm:bottom-3 sm:rounded-[26px] sm:p-1.5 ${minimized ? "is-minimized" : ""} ${hidden ? "is-hidden" : ""}`}>
         <div className="pointer-events-none absolute inset-x-10 -top-px h-px bg-gradient-to-r from-transparent via-emerald-300/80 to-transparent" />
         <div className="relative flex items-center gap-0.5 sm:gap-1">
           <Link to="/shop" className={itemClass}>
@@ -82,7 +95,7 @@ export function CustomerBottomNav({ hidden = false }: { hidden?: boolean }) {
             <span className="relative customer-nav-icon flex h-7 w-7 items-center justify-center rounded-[10px] bg-amber-50 text-amber-600 shadow-[inset_0_1px_0_white] group-hover:bg-amber-100"><Tag className="h-[17px] w-[17px]" strokeWidth={2.25} /><span className="customer-nav-dot absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-amber-400" /></span>
             <span className="customer-nav-label mt-1 text-[9px] font-black leading-none sm:text-[10px]">অফার</span>
           </Link>
-          <Link to="/" activeOptions={{ exact: true }} className="group relative flex h-[58px] w-[72px] shrink-0 flex-col items-center justify-center rounded-[20px] text-emerald-800 transition-all duration-300 active:scale-95 sm:h-[62px] sm:w-[80px]">
+          <Link to="/" activeOptions={{ exact: true }} className="group relative z-10 flex h-[58px] w-[72px] shrink-0 flex-col items-center justify-center rounded-[20px] text-emerald-800 transition-all duration-300 active:scale-95 sm:h-[62px] sm:w-[80px]">
             <span className="customer-nav-home customer-nav-live relative -mt-5 flex h-[52px] w-[52px] items-center justify-center overflow-hidden rounded-full border-[3px] border-white bg-gradient-to-br from-[#064e3b] via-[#15803d] to-[#84cc16] text-white ring-1 ring-emerald-300/90 shadow-[0_10px_28px_-8px_rgba(22,101,52,.7)]">
               <span className="customer-nav-shine absolute inset-y-0 -left-1/2 w-1/2 skew-x-[-22deg] bg-white/40 blur-md" />
               <span className="absolute inset-1 rounded-full border border-white/15" />
