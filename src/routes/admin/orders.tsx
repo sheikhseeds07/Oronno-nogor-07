@@ -14,6 +14,7 @@ import { Search, Plus, Globe, ListOrdered, Trash2, CheckCircle2, Phone, MessageC
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useServerFn } from "@tanstack/react-start";
 import { fetchCourierHistory } from "@/lib/courier-history.functions";
+import { getCustomerHistory } from "@/lib/customer-history.functions";
 import { sendOrdersToSteadfast, syncSteadfastStatuses } from "@/lib/courier-test.functions";
 import { createManualOrder, updateAdminOrder, markOrdersPrinted, deleteOrders } from "@/lib/admin-order.functions";
 import { ensureOrderInvoices, reserveInvoiceNos } from "@/lib/order-invoice.functions";
@@ -2049,31 +2050,39 @@ function phoneVariants(phone: string) {
 
 const HISTORY_SELECT = "id,invoice_no,status,total,created_at,customer_name,customer_address,thana,district,order_items(product_name,quantity)";
 
-// Robust customer history lookup: matches stored numbers regardless of +88/88 prefix,
-// dashes, or spaces by also doing a suffix match on the last 9 digits.
+// Our Record lookup. Runs through a staff-authorized server function that uses
+// the service client, so every employee sees the customer's complete order
+// history regardless of who the older orders are assigned to and regardless of
+// source (web / incomplete / manual). Falls back to the direct (RLS-scoped)
+// query only if the server call fails.
 async function fetchCustomerHistory(phone: string) {
   const digits = normalizePhone(phone);
   if (digits.length < 10) return [] as any[];
   const last9 = digits.slice(-9);
-  const filters = [
-    ...phoneVariants(phone).map((v) => `customer_phone.eq.${v}`),
-    `customer_phone.ilike.%${last9}`,
-    `customer_phone.ilike.%${last9}%`,
-  ].join(",");
-  const { data, error } = await supabase
-    .from("orders")
-    .select(HISTORY_SELECT)
-    .or(filters)
-    .order("created_at", { ascending: false });
-  if (error) {
-    const { data: fallback } = await supabase
+  try {
+    const rows = await getCustomerHistory({ data: { phone } });
+    return (rows ?? []) as any[];
+  } catch {
+    const filters = [
+      ...phoneVariants(phone).map((v) => `customer_phone.eq.${v}`),
+      `customer_phone.ilike.%${last9}`,
+      `customer_phone.ilike.%${last9}%`,
+    ].join(",");
+    const { data, error } = await supabase
       .from("orders")
       .select(HISTORY_SELECT)
-      .in("customer_phone", phoneVariants(phone))
+      .or(filters)
       .order("created_at", { ascending: false });
-    return fallback ?? [];
+    if (error) {
+      const { data: fallback } = await supabase
+        .from("orders")
+        .select(HISTORY_SELECT)
+        .in("customer_phone", phoneVariants(phone))
+        .order("created_at", { ascending: false });
+      return fallback ?? [];
+    }
+    return data ?? [];
   }
-  return data ?? [];
 }
 
 function CourierCard({ name, total, success, cancelled, highlight, clickable }: { name: string; total: number; success: number; cancelled: number; highlight?: boolean; clickable?: boolean }) {
