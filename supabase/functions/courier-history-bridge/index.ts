@@ -81,21 +81,23 @@ async function getHoorinConfig(admin: ReturnType<typeof createClient>) {
 function parseStats(payload: unknown): CourierStat[] {
   if (!payload || typeof payload !== "object") return [];
   const root = payload as JsonRecord;
-  const summaries = (root.Summaries ?? root.summaries ?? root.courierData ?? root.data ?? root) as unknown;
+  const data = root.data && typeof root.data === "object" && !Array.isArray(root.data) ? root.data as JsonRecord : root;
+  const summaries = (data.Summaries ?? data.summaries ?? data.courierData ?? data.data ?? root.Summaries ?? root.summaries ?? root.courierData ?? root.data ?? root) as unknown;
   if (!summaries || typeof summaries !== "object" || Array.isArray(summaries)) return [];
   const out: CourierStat[] = [];
   for (const [key, raw] of Object.entries(summaries as JsonRecord)) {
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
     const row = raw as JsonRecord;
     const inner = row.summary && typeof row.summary === "object" && !Array.isArray(row.summary) ? row.summary as JsonRecord : row;
-    const hasKnown = ["Total Parcels","Total Delivery","total_parcel","total","totalParcel","Delivered Parcels","Successful Delivery","success_parcel","success","delivered","Canceled Parcels","Canceled Delivery","Cancelled Parcels","cancelled_parcel","cancel","cancelled"].some((k) => Object.prototype.hasOwnProperty.call(inner, k));
+    const total = num(inner["Total Parcels"] ?? inner["Total Delivery"] ?? inner.total_parcel ?? inner.totalParcel ?? inner.total ?? inner["total_parcel_count"]);
+    const success = num(inner["Delivered Parcels"] ?? inner["Successful Delivery"] ?? inner.success_parcel ?? inner.successParcel ?? inner.success ?? inner.delivered ?? inner["delivered_parcel"]);
+    const cancelled = num(inner["Canceled Parcels"] ?? inner["Canceled Delivery"] ?? inner["Cancelled Parcels"] ?? inner.cancelled_parcel ?? inner.cancelledParcel ?? inner.cancel ?? inner.cancelled ?? inner["cancelled_parcel"]);
+    const hasKnown = [total, success, cancelled].some((v) => v !== 0) || ["Total Parcels","Total Delivery","total_parcel","totalParcel","total","Delivered Parcels","Successful Delivery","success_parcel","successParcel","success","delivered","Canceled Parcels","Canceled Delivery","Cancelled Parcels","cancelled_parcel","cancelledParcel","cancel","cancelled"].some((k) => Object.prototype.hasOwnProperty.call(inner, k));
     if (!hasKnown) continue;
-    const total = num(inner["Total Parcels"] ?? inner["Total Delivery"] ?? inner.total_parcel ?? inner.total ?? inner.totalParcel);
-    const success = num(inner["Delivered Parcels"] ?? inner["Successful Delivery"] ?? inner.success_parcel ?? inner.success ?? inner.delivered);
-    const cancelled = num(inner["Canceled Parcels"] ?? inner["Canceled Delivery"] ?? inner["Cancelled Parcels"] ?? inner.cancelled_parcel ?? inner.cancel ?? inner.cancelled);
-    out.push({ name: pretty(key), total, success, cancelled });
+    const name = typeof inner.name === "string" && inner.name.trim() ? inner.name.trim() : pretty(key);
+    out.push({ name, total, success, cancelled });
   }
-  return out.sort((a, b) => b.total - a.total);
+  return out.filter((row) => row.total > 0 || row.success > 0 || row.cancelled > 0).sort((a, b) => b.total - a.total);
 }
 
 async function readPersistent(admin: ReturnType<typeof createClient>, phone: string): Promise<PersistentHit | null> {
