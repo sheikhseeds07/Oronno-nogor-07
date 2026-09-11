@@ -17,6 +17,7 @@ export type PublicSiteSettings = Record<string, unknown> & {
   delivery_charge_outside?: number;
   free_delivery_above?: number;
   delivery_zones?: Array<{ id: string; label: string; fee: number }>;
+  delivery_rules?: Array<{ id: string; min_order: number; fee: number }>;
 };
 
 export type PublicSiteSettingsRow = { settings: PublicSiteSettings } | null;
