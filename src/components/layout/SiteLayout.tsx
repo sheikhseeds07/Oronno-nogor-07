@@ -44,6 +44,26 @@ export function SiteLayout({ children }: Props) {
     return () => document.removeEventListener("click", onClick, true);
   }, [isProfile]);
 
+  // The mobile checkout CTA sits outside the checkout <form>. It previously used
+  // document.querySelector("form"), which can select the Header search form first
+  // and navigate away instead of submitting the checkout form. Handle that CTA
+  // at capture phase and explicitly submit the checkout form only.
+  useEffect(() => {
+    if (!isCheckout) return;
+    const onClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      const button = target?.closest(".co-submit") as HTMLButtonElement | null;
+      if (!button || button.disabled) return;
+      const checkoutForm = document.querySelector(".co-checkout-shell form") as HTMLFormElement | null;
+      if (!checkoutForm) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      checkoutForm.requestSubmit();
+    };
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, [isCheckout]);
+
   const detailQ = useQuery({
     queryKey: ["profile-order-detail", selectedOrderId],
     enabled: isProfile && !!selectedOrderId,
@@ -62,7 +82,7 @@ export function SiteLayout({ children }: Props) {
       {!isCleanShell && <TopBar />}
       {!isCleanShell && <Header />}
       <main className={`relative z-0 flex-1 pb-24 ${isOdcLanding ? "odc-landing-main" : ""}`}>{children}</main>
-      {isOdcLanding && <style>{`.odc-landing-main > :first-child { margin-top: 0 !important; }.odc-landing-main > :first-child > :first-child { margin-top: 0 !important; padding-top: 0 !important; }.odc-landing-main section:first-child { margin-top: 0 !important; }.odc-landing-main section:first-child > :first-child { margin-top: 0 !important; }`}</style>}
+      {isOdcLanding && <style>{`.odc-landing-main > :first-child { margin-top: 0 !important; }.odc-landing-main > :first-child > :first-child { margin-top: 0 !important; padding-top: 0 !important; }.odc-landing-main section:first-child { margin-top: 0 !important; }.odc-landing-main section:first-child > :first-child { margin-top: 0 !important; padding-top: 0 !important; }`}</style>}
       {!isCleanShell && <Footer />}
       <VisitTracker />
       <SeoFromSettings />
