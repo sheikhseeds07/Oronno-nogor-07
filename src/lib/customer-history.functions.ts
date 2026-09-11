@@ -18,8 +18,9 @@ function digitsOf(phone: string) {
 
 // Our Record must show every real order for a phone number, no matter which
 // employee it is assigned to and no matter the source (web / incomplete /
-// manual). Row level security narrows visibility per employee, so this runs
-// with the service client after verifying the caller is staff.
+// manual). Per-employee row level security would hide other staff members'
+// orders, so we go through a SECURITY DEFINER database function that returns
+// the full, site-wide history for staff callers.
 export const getCustomerHistory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => PhoneSchema.parse(input))
@@ -27,6 +28,12 @@ export const getCustomerHistory = createServerFn({ method: "POST" })
     await assertIsStaff(context.userId);
     const digits = digitsOf(data.phone);
     if (digits.length < 10) return [] as any[];
+
+    const rpc = await (supabaseAdmin as any).rpc("staff_customer_history", {
+      _phone: data.phone,
+    });
+    if (!rpc.error && Array.isArray(rpc.data)) return rpc.data as any[];
+
     const last9 = digits.slice(-9);
     const variants = Array.from(
       new Set([data.phone.trim(), digits, `88${digits}`, `+88${digits}`].filter(Boolean)),
