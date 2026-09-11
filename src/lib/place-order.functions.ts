@@ -2,13 +2,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader, getRequestIP } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
-import { supabase } from "@/integrations/supabase/client";
 import { sendPurchaseEvent } from "@/lib/facebook-capi.server";
 import { BLOCKED_ORDER_CODE, BLOCKED_ORDER_MESSAGE } from "@/lib/order-block";
 
 const PHONE_RE = /^01[3-9][0-9]{8}$/;
 const ItemSchema = z.object({ id: z.string().min(1).max(64), name: z.string().min(1).max(500), price: z.number().min(0).max(10_000_000), quantity: z.number().int().min(1).max(1000) });
 const InputSchema = z.object({ customer_name: z.string().min(1).max(255), customer_phone: z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number. Use 01XXXXXXXXX."), customer_address: z.string().min(1).max(1000), district: z.string().max(100).optional().nullable(), thana: z.string().max(100).optional().nullable(), notes: z.string().max(2000).optional().nullable(), delivery_fee: z.number().min(0).max(10000).default(50), items: z.array(ItemSchema).min(1).max(100), created_by: z.string().uuid().optional().nullable(), fbp: z.string().max(200).optional().nullable(), fbc: z.string().max(500).optional().nullable(), source_url: z.string().max(2000).optional().nullable() });
+type Input = z.infer<typeof InputSchema>;
 const IncompleteInputSchema = z.object({ customer_name: z.string().max(255).optional().nullable(), customer_phone: z.string().regex(PHONE_RE), customer_address: z.string().max(1000).optional().nullable(), delivery_zone: z.string().max(100).optional().nullable(), delivery_fee: z.number().min(0).max(10000), subtotal: z.number().min(0).max(10_000_000), total: z.number().min(0).max(10_000_000), note: z.string().max(2000).optional().nullable(), items: z.array(ItemSchema).min(1).max(100) });
 
 export const lookupCustomerByPhone = createServerFn({ method: "POST" }).inputValidator((input) => z.object({ phone: z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number") }).parse(input)).handler(async ({ data }) => {
@@ -33,10 +33,13 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   const customerPhone = data.customer_phone;
   const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
 
-  const { data: blocked } = await (supabase as any).rpc("is_blocked_visitor", { p_ip: clientIp, p_phone: customerPhone });
-  if (blocked === true) throw new Error(`${BLOCKED_ORDER_CODE}: ${BLOCKED_ORDER_MESSAGE}`);
+  // Checkout runs through the server, so use the server/admin client for both
+  // RPCs. This avoids the browser client's RLS/session state from turning a
+  // valid checkout submission into a failed server action/navigation.
+  const { data: blocked, error: blockCheckError } = await supabaseAdmin.rpc("is_blocked_visitor", { p_ip: clientIp, p_phone: customerPhone });
+  if (!blockCheckError && blocked === true) throw new Error(`${BLOCKED_ORDER_CODE}: ${BLOCKED_ORDER_MESSAGE}`);
 
-  const { data: orderId, error: orderError } = await (supabase as any).rpc("place_public_order", {
+  const { data: orderId, error: orderError } = await supabaseAdmin.rpc("place_public_order", {
     p_customer_name: data.customer_name.trim(),
     p_customer_phone: customerPhone,
     p_customer_address: data.customer_address.trim(),
