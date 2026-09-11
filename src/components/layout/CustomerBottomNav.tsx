@@ -42,7 +42,7 @@ export function CustomerBottomNav({ hidden = false }: { hidden?: boolean }) {
 
   if (!initialized) return null;
 
-  const itemClass = "group relative flex h-[44px] min-w-0 flex-1 flex-col items-center justify-center rounded-[14px] text-slate-500 transition-all duration-300 hover:bg-emerald-50/90 hover:text-emerald-700 active:scale-95 sm:h-[48px]";
+  const itemClass = "group relative flex h-[48px] min-w-0 flex-1 flex-col items-center justify-center rounded-[15px] text-slate-600 transition-all duration-300 hover:bg-emerald-50 hover:text-emerald-700 active:scale-95 sm:h-[52px]";
 
   return (
     <>
@@ -53,15 +53,25 @@ export function CustomerBottomNav({ hidden = false }: { hidden?: boolean }) {
           position:absolute;
           inset:0;
           z-index:0;
-          border-radius:20px;
-          background:rgba(255,255,255,.97);
-          box-shadow:0 14px 42px -22px rgba(15,70,40,.58);
-          -webkit-mask:radial-gradient(circle 43px at 50% 0, transparent 0 42px, #000 43px);
-          mask:radial-gradient(circle 43px at 50% 0, transparent 0 42px, #000 43px);
+          border-radius:22px;
+          background:rgba(255,255,255,.985);
+          border:1px solid rgba(15,23,42,.07);
+          box-shadow:0 18px 48px -18px rgba(15,23,42,.24), 0 6px 18px -10px rgba(22,101,52,.22), inset 0 1px 0 rgba(255,255,255,.95);
+        }
+        .customer-bottom-nav::after {
+          content:"";
+          position:absolute;
+          left:14%;
+          right:14%;
+          top:0;
+          height:1px;
+          border-radius:999px;
+          background:linear-gradient(90deg,transparent,rgba(16,185,129,.38),rgba(132,204,22,.34),transparent);
+          z-index:2;
         }
         .customer-bottom-nav > div { z-index:1; }
         .customer-bottom-nav.is-minimized { transform: translateY(2px); }
-        .customer-bottom-nav.is-minimized::before { box-shadow:0 10px 30px -18px rgba(15,70,40,.48); }
+        .customer-bottom-nav.is-minimized::before { box-shadow:0 12px 34px -16px rgba(15,23,42,.22), 0 5px 16px -10px rgba(22,101,52,.18); }
         .customer-bottom-nav.is-hidden { transform: translateY(150%); opacity: 0; pointer-events:none; }
         .customer-nav-icon { transition: transform .45s cubic-bezier(.22,1,.36,1), opacity .35s ease, height .45s ease, margin .45s ease; }
         .customer-bottom-nav.is-minimized .customer-nav-icon { transform: scale(.12); opacity:0; height:2px; margin-bottom:-2px; }
@@ -78,19 +88,19 @@ export function CustomerBottomNav({ hidden = false }: { hidden?: boolean }) {
         @keyframes contactIn { from{opacity:0;transform:translateY(14px) scale(.96)} to{opacity:1;transform:translateY(0) scale(1)} }
         @keyframes backdropIn { from{opacity:0} to{opacity:1} }
         @keyframes contactGlow { 0%,100%{transform:scale(.95);opacity:.4} 50%{transform:scale(1.08);opacity:.7} }
-        @keyframes navPulse { 0%,100%{box-shadow:0 7px 18px rgba(22,101,52,.24),0 0 0 0 rgba(74,222,128,.2)} 50%{box-shadow:0 10px 22px rgba(22,101,52,.32),0 0 0 5px rgba(74,222,128,0)} }
+        @keyframes navPulse { 0%,100%{box-shadow:0 8px 20px rgba(22,101,52,.26),0 0 0 0 rgba(74,222,128,.16)} 50%{box-shadow:0 11px 25px rgba(22,101,52,.34),0 0 0 5px rgba(74,222,128,0)} }
         @keyframes navShine { 0%,60%,100%{transform:translateX(-150%);opacity:0} 70%{opacity:.4} 84%{transform:translateX(180%);opacity:0} }
         @keyframes navDot { 0%,100%{transform:scale(.8);opacity:.65} 50%{transform:scale(1.25);opacity:1} }
         @media (prefers-reduced-motion: reduce) { .customer-bottom-nav,.customer-nav-icon,.customer-nav-label,.customer-nav-home,.customer-nav-live,.customer-nav-shine,.customer-nav-dot,.contact-modal-card,.contact-modal-backdrop,.contact-glow{animation:none!important;transition:none!important} }
       `}</style>
 
-      <nav aria-label="কাস্টমার নেভিগেশন" aria-hidden={hidden} className={`customer-bottom-nav fixed inset-x-2 bottom-[max(7px,env(safe-area-inset-bottom))] z-[30] mx-auto max-w-[500px] rounded-[20px] p-1 sm:inset-x-3 sm:bottom-3 sm:p-1.5 ${minimized ? "is-minimized" : ""} ${hidden ? "is-hidden" : ""}`}>
-        <div className="relative flex items-center gap-0 sm:gap-0.5">
-          <Link to="/shop" className={itemClass}><span className="customer-nav-icon flex h-6 w-6 items-center justify-center rounded-[9px] bg-emerald-50 text-emerald-700 shadow-[inset_0_1px_0_white] group-hover:bg-emerald-100"><PackageSearch className="h-4 w-4" strokeWidth={2.25} /></span><span className="customer-nav-label mt-0.5 text-[8.5px] font-black leading-none sm:text-[9px]">সকল পণ্য</span></Link>
-          <Link to="/offers" className={itemClass}><span className="relative customer-nav-icon flex h-6 w-6 items-center justify-center rounded-[9px] bg-amber-50 text-amber-600 shadow-[inset_0_1px_0_white] group-hover:bg-amber-100"><Tag className="h-4 w-4" strokeWidth={2.25} /><span className="customer-nav-dot absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-amber-400" /></span><span className="customer-nav-label mt-0.5 text-[8.5px] font-black leading-none sm:text-[9px]">অফার</span></Link>
-          <Link to="/" activeOptions={{ exact: true }} className="group relative z-10 flex h-[62px] w-[64px] shrink-0 flex-col items-center justify-center text-emerald-800 transition-all duration-300 active:scale-95 sm:h-[66px] sm:w-[70px]"><span className="customer-nav-home customer-nav-live relative -mt-[31px] flex h-[46px] w-[46px] items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#064e3b] via-[#15803d] to-[#84cc16] text-white shadow-[0_8px_22px_-7px_rgba(22,101,52,.72)]"><span className="customer-nav-shine absolute inset-y-0 -left-1/2 w-1/2 skew-x-[-22deg] bg-white/40 blur-md" /><span className="absolute inset-1 rounded-full border border-white/15" /><Home className="relative h-[21px] w-[21px] drop-shadow-md sm:h-[22px] sm:w-[22px]" strokeWidth={2.5} /></span><span className="customer-nav-label absolute bottom-0 text-[8.5px] font-black text-emerald-900 sm:text-[9px]">হোম</span></Link>
-          <button type="button" onClick={() => setContactOpen(true)} className={itemClass}><span className="customer-nav-icon flex h-6 w-6 items-center justify-center rounded-[9px] bg-emerald-50 text-emerald-700 shadow-[inset_0_1px_0_white] group-hover:bg-emerald-100"><Headset className="h-4 w-4" strokeWidth={2.25} /></span><span className="customer-nav-label mt-0.5 text-[8.5px] font-black leading-none sm:text-[9px]">যোগাযোগ</span></button>
-          <Link to="/profile" className={itemClass}><span className="customer-nav-icon flex h-6 w-6 items-center justify-center rounded-[9px] bg-emerald-50 text-emerald-700 shadow-[inset_0_1px_0_white] group-hover:bg-emerald-100"><UserRound className="h-4 w-4" strokeWidth={2.25} /></span><span className="customer-nav-label mt-0.5 text-[8.5px] font-black leading-none sm:text-[9px]">অ্যাকাউন্ট</span></Link>
+      <nav aria-label="কাস্টমার নেভিগেশন" aria-hidden={hidden} className={`customer-bottom-nav fixed inset-x-2 bottom-[max(7px,env(safe-area-inset-bottom))] z-[30] mx-auto max-w-[500px] rounded-[22px] p-1.5 sm:inset-x-3 sm:bottom-3 sm:p-2 ${minimized ? "is-minimized" : ""} ${hidden ? "is-hidden" : ""}`}>
+        <div className="relative flex items-center gap-0.5 sm:gap-1">
+          <Link to="/shop" className={itemClass}><span className="customer-nav-icon flex h-7 w-7 items-center justify-center rounded-[10px] bg-emerald-50 text-emerald-700 shadow-[inset_0_1px_0_white,0_2px_5px_rgba(16,185,129,.10)] group-hover:bg-emerald-100"><PackageSearch className="h-[17px] w-[17px]" strokeWidth={2.35} /></span><span className="customer-nav-label mt-1 text-[8.5px] font-black leading-none sm:text-[9px]">সকল পণ্য</span></Link>
+          <Link to="/offers" className={itemClass}><span className="relative customer-nav-icon flex h-7 w-7 items-center justify-center rounded-[10px] bg-amber-50 text-amber-600 shadow-[inset_0_1px_0_white,0_2px_5px_rgba(245,158,11,.10)] group-hover:bg-amber-100"><Tag className="h-[17px] w-[17px]" strokeWidth={2.35} /><span className="customer-nav-dot absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-amber-400" /></span><span className="customer-nav-label mt-1 text-[8.5px] font-black leading-none sm:text-[9px]">অফার</span></Link>
+          <Link to="/" activeOptions={{ exact: true }} className="group relative z-10 flex h-[54px] w-[64px] shrink-0 flex-col items-center justify-center text-emerald-800 transition-all duration-300 active:scale-95 sm:h-[58px] sm:w-[70px]"><span className="customer-nav-home customer-nav-live relative -mt-1 flex h-[46px] w-[46px] items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#064e3b] via-[#15803d] to-[#84cc16] text-white shadow-[0_10px_26px_-7px_rgba(22,101,52,.62)]"><span className="customer-nav-shine absolute inset-y-0 -left-1/2 w-1/2 skew-x-[-22deg] bg-white/40 blur-md" /><span className="absolute inset-1 rounded-full border border-white/15" /><Home className="relative h-[21px] w-[21px] drop-shadow-md sm:h-[22px] sm:w-[22px]" strokeWidth={2.5} /></span><span className="customer-nav-label mt-0.5 text-[8.5px] font-black text-emerald-900 sm:text-[9px]">হোম</span></Link>
+          <button type="button" onClick={() => setContactOpen(true)} className={itemClass}><span className="customer-nav-icon flex h-7 w-7 items-center justify-center rounded-[10px] bg-emerald-50 text-emerald-700 shadow-[inset_0_1px_0_white,0_2px_5px_rgba(16,185,129,.10)] group-hover:bg-emerald-100"><Headset className="h-[17px] w-[17px]" strokeWidth={2.35} /></span><span className="customer-nav-label mt-1 text-[8.5px] font-black leading-none sm:text-[9px]">যোগাযোগ</span></button>
+          <Link to="/profile" className={itemClass}><span className="customer-nav-icon flex h-7 w-7 items-center justify-center rounded-[10px] bg-emerald-50 text-emerald-700 shadow-[inset_0_1px_0_white,0_2px_5px_rgba(16,185,129,.10)] group-hover:bg-emerald-100"><UserRound className="h-[17px] w-[17px]" strokeWidth={2.35} /></span><span className="customer-nav-label mt-1 text-[8.5px] font-black leading-none sm:text-[9px]">অ্যাকাউন্ট</span></Link>
         </div>
       </nav>
 
