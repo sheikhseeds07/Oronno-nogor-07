@@ -30,12 +30,13 @@ export function CustomerBottomNav({ hidden = false }: { hidden?: boolean }) {
 
   useEffect(() => {
     if (!contactOpen) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setContactOpen(false);
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setContactOpen(false); };
     document.addEventListener("keydown", onKey);
+    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
+      document.body.style.overflow = previousOverflow;
     };
   }, [contactOpen]);
 
@@ -81,9 +82,10 @@ export function CustomerBottomNav({ hidden = false }: { hidden?: boolean }) {
             <span className="relative customer-nav-icon flex h-7 w-7 items-center justify-center rounded-[10px] bg-amber-50 text-amber-600 shadow-[inset_0_1px_0_white] group-hover:bg-amber-100"><Tag className="h-[17px] w-[17px]" strokeWidth={2.25} /><span className="customer-nav-dot absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-amber-400" /></span>
             <span className="customer-nav-label mt-1 text-[9px] font-black leading-none sm:text-[10px]">অফার</span>
           </Link>
-          <Link to="/" activeOptions={{ exact: true }} className="group relative flex h-[56px] w-[70px] shrink-0 flex-col items-center justify-center rounded-[18px] text-emerald-800 transition-all duration-300 active:scale-95 sm:h-[60px] sm:w-[78px]">
-            <span className="customer-nav-home customer-nav-live relative -mt-4 flex h-[52px] w-[52px] items-center justify-center overflow-hidden rounded-[18px] border-[2.5px] border-white bg-gradient-to-br from-[#14532d] via-[#15803d] to-[#84cc16] text-white ring-1 ring-emerald-200/90 sm:h-[56px] sm:w-[56px]">
+          <Link to="/" activeOptions={{ exact: true }} className="group relative flex h-[58px] w-[72px] shrink-0 flex-col items-center justify-center rounded-[20px] border border-emerald-100 bg-gradient-to-b from-emerald-50 via-white to-lime-50/70 text-emerald-800 shadow-[inset_0_1px_0_white,0_6px_18px_-12px_rgba(22,101,52,.45)] transition-all duration-300 active:scale-95 sm:h-[62px] sm:w-[80px]">
+            <span className="customer-nav-home customer-nav-live relative -mt-4 flex h-[52px] w-[52px] items-center justify-center overflow-hidden rounded-[18px] border-[2.5px] border-white bg-gradient-to-br from-[#064e3b] via-[#15803d] to-[#84cc16] text-white ring-1 ring-emerald-300/90">
               <span className="customer-nav-shine absolute inset-y-0 -left-1/2 w-1/2 skew-x-[-22deg] bg-white/40 blur-md" />
+              <span className="absolute inset-1 rounded-[14px] border border-white/15" />
               <Home className="relative h-[23px] w-[23px] drop-shadow-md sm:h-[25px] sm:w-[25px]" strokeWidth={2.5} />
             </span>
             <span className="customer-nav-label absolute bottom-0 text-[9px] font-black text-emerald-900 sm:text-[10px]">হোম</span>
@@ -100,14 +102,14 @@ export function CustomerBottomNav({ hidden = false }: { hidden?: boolean }) {
       </nav>
 
       {contactOpen && (
-        <div className="contact-modal-backdrop fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-md" onClick={() => setContactOpen(false)}>
-          <div role="dialog" aria-modal="true" aria-label="যোগাযোগ করুন" onClick={(e) => e.stopPropagation()} className="contact-modal-card relative w-full max-w-[390px] overflow-hidden rounded-[28px] border border-white/80 bg-white shadow-[0_35px_100px_rgba(0,0,0,.34)]">
+        <div className="contact-modal-backdrop fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-md" onClick={() => setContactOpen(false)}>
+          <div role="dialog" aria-modal="true" aria-label="যোগাযোগ করুন" onClick={(e) => e.stopPropagation()} className="contact-modal-card relative z-[10000] w-full max-w-[390px] overflow-hidden rounded-[28px] border border-white/80 bg-white shadow-[0_35px_100px_rgba(0,0,0,.34)]">
             <div className="relative overflow-hidden bg-gradient-to-br from-[#064e3b] via-[#047857] to-[#65a30d] px-5 pb-5 pt-5 text-white">
               <div className="contact-glow absolute -right-12 -top-14 h-40 w-40 rounded-full bg-lime-200/20 blur-3xl" />
               <div className="absolute bottom-0 left-1/3 h-20 w-36 rounded-full bg-white/10 blur-3xl" />
-              <button type="button" aria-label="বন্ধ করুন" onClick={() => setContactOpen(false)} className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/20 transition hover:rotate-90 hover:bg-white/20"><X className="h-4 w-4" /></button>
-              <div className="relative flex items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[15px] bg-white/15 ring-1 ring-white/25 shadow-lg"><Headset className="h-5.5 w-5.5" /></div>
+              <button type="button" aria-label="বন্ধ করুন" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setContactOpen(false); }} className="absolute right-3 top-3 z-20 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-white/15 text-white ring-1 ring-white/25 shadow-lg transition-all hover:rotate-90 hover:bg-white/25 active:scale-90"><X className="h-4 w-4" strokeWidth={2.5} /></button>
+              <div className="relative flex items-center gap-3 pr-8">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[15px] bg-white/15 ring-1 ring-white/25 shadow-lg"><Headset className="h-5 w-5" /></div>
                 <div><div className="mb-0.5 flex items-center gap-1.5 text-[8px] font-black uppercase tracking-[.18em] text-lime-200"><Sparkles className="h-3 w-3" /> Customer Care</div><h3 className="text-[18px] font-black tracking-tight">কীভাবে সাহায্য করতে পারি?</h3><p className="mt-0.5 text-[10px] text-white/75">আপনার সুবিধামতো যেকোনো মাধ্যমে যোগাযোগ করুন</p></div>
               </div>
             </div>
