@@ -1,15 +1,21 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { Minus, Plus, Trash2, X, ShoppingBag } from "lucide-react";
+import { Minus, Plus, Trash2, X, ShoppingBag, Truck, Sparkles } from "lucide-react";
 import { useCart } from "@/lib/cart-store";
 import { taka, bnDigits } from "@/lib/format";
 import { toImg } from "@/lib/img";
+import { useQuery } from "@tanstack/react-query";
+import { publicSiteSettingsQuery } from "@/lib/site-settings-query";
+import { getDeliveryInfo } from "@/lib/delivery-rules";
 
 export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const items = useCart((s) => s.items);
   const setQty = useCart((s) => s.setQty);
   const remove = useCart((s) => s.remove);
   const subtotal = useCart((s) => s.subtotal());
+  const { data: settingsRow } = useQuery(publicSiteSettingsQuery);
+  const deliveryRules = (settingsRow?.settings?.delivery_rules ?? undefined) as Array<{ id: string; min_order: number; fee: number }> | undefined;
+  const { delivery, total, freeRule, amountToFree } = getDeliveryInfo(subtotal, deliveryRules);
 
   useEffect(() => {
     if (!open) return;
@@ -53,21 +59,11 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                     <div className="text-brand-dark font-bold text-sm mt-0.5">{taka(i.price)}</div>
                     <div className="mt-1.5 flex items-center gap-2">
                       <div className="flex items-center border rounded">
-                        <button
-                          onClick={() => (i.quantity <= 1 ? remove(i.id) : setQty(i.id, i.quantity - 1))}
-                          className="px-2 py-1"
-                          aria-label="কমান"
-                        >
-                          <Minus className="w-3 h-3" />
-                        </button>
+                        <button onClick={() => (i.quantity <= 1 ? remove(i.id) : setQty(i.id, i.quantity - 1))} className="px-2 py-1" aria-label="কমান"><Minus className="w-3 h-3" /></button>
                         <span className="px-2.5 font-bold text-xs">{bnDigits(i.quantity)}</span>
-                        <button onClick={() => setQty(i.id, i.quantity + 1)} className="px-2 py-1" aria-label="বাড়ান">
-                          <Plus className="w-3 h-3" />
-                        </button>
+                        <button onClick={() => setQty(i.id, i.quantity + 1)} className="px-2 py-1" aria-label="বাড়ান"><Plus className="w-3 h-3" /></button>
                       </div>
-                      <button onClick={() => remove(i.id)} className="text-destructive ml-auto" aria-label="মুছুন">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <button onClick={() => remove(i.id)} className="text-destructive ml-auto" aria-label="মুছুন"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </div>
                 </div>
@@ -75,14 +71,19 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
             </div>
 
             <div className="border-t p-4 space-y-2 bg-muted/30">
+              {delivery === 0 ? (
+                <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm font-extrabold text-emerald-800">
+                  <Sparkles className="h-4 w-4 shrink-0" /> ডেলিভারি চার্জ ফ্রি 🎉
+                </div>
+              ) : freeRule ? (
+                <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs font-bold text-amber-900">
+                  <Truck className="h-4 w-4 shrink-0" /> আরও {taka(amountToFree)} কিনলেই ডেলিভারি চার্জ ফ্রি 🎉
+                </div>
+              ) : null}
               <div className="flex justify-between text-sm"><span>সাবটোটাল</span><span className="font-bold">{taka(subtotal)}</span></div>
-              <div className="flex justify-between text-sm"><span>ডেলিভারি</span><span className="text-muted-foreground">{taka(50)}</span></div>
-              <div className="flex justify-between font-bold text-lg pt-2 border-t"><span>মোট</span><span className="text-brand-dark">{taka(subtotal + 50)}</span></div>
-              <Link
-                to="/checkout"
-                onClick={onClose}
-                className="mt-2 block text-center bg-gradient-to-r from-brand to-brand-dark text-white py-3 rounded-lg font-bold hover:opacity-90"
-              >
+              <div className="flex justify-between text-sm"><span>ডেলিভারি</span><span className={delivery === 0 ? "font-bold text-emerald-700" : "text-muted-foreground"}>{delivery === 0 ? "ফ্রি" : taka(delivery)}</span></div>
+              <div className="flex justify-between font-bold text-lg pt-2 border-t"><span>মোট</span><span className="text-brand-dark">{taka(total)}</span></div>
+              <Link to="/checkout" onClick={onClose} className="mt-2 block text-center bg-gradient-to-r from-brand to-brand-dark text-white py-3 rounded-lg font-bold hover:opacity-90">
                 চেকআউট করুন
               </Link>
             </div>
