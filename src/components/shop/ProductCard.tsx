@@ -1,5 +1,5 @@
 import { ShoppingCart, Minus, Plus, Check, Sparkles } from "lucide-react";
-import { memo, useState } from "react";
+import { memo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { taka, bnDigits } from "@/lib/format";
 import { useCart } from "@/lib/cart-store";
@@ -19,6 +19,75 @@ export type Product = {
   short_description?: string;
 };
 
+function flyProductToCart(image: string, source: HTMLElement) {
+  if (typeof window === "undefined") return;
+  const target = document.querySelector('button[aria-label="অর্ডার কার্ট"]') as HTMLElement | null;
+  if (!target) return;
+
+  const from = source.getBoundingClientRect();
+  const to = target.getBoundingClientRect();
+  const size = Math.min(92, Math.max(58, Math.min(from.width, from.height) * 0.34));
+  const startX = from.left + from.width / 2 - size / 2;
+  const startY = from.top + from.height / 2 - size / 2;
+  const endSize = 22;
+  const endX = to.left + to.width / 2 - endSize / 2;
+  const endY = to.top + to.height / 2 - endSize / 2;
+
+  const layer = document.createElement("div");
+  layer.setAttribute("aria-hidden", "true");
+  Object.assign(layer.style, { position: "fixed", inset: "0", zIndex: "9999", pointerEvents: "none", overflow: "hidden" });
+
+  const orb = document.createElement("div");
+  Object.assign(orb.style, {
+    position: "fixed", left: `${startX - 8}px`, top: `${startY - 8}px`, width: `${size + 16}px`, height: `${size + 16}px`, borderRadius: "999px",
+    background: "radial-gradient(circle, rgba(34,197,94,.30), rgba(34,197,94,0) 70%)", opacity: "0", transform: "scale(.65)",
+    transition: "opacity .16s ease, transform .7s cubic-bezier(.16,1,.3,1)"
+  });
+
+  const img = document.createElement("img");
+  img.src = image;
+  img.alt = "";
+  Object.assign(img.style, {
+    position: "fixed", left: `${startX}px`, top: `${startY}px`, width: `${size}px`, height: `${size}px`, objectFit: "cover", borderRadius: "16px",
+    boxShadow: "0 12px 28px rgba(0,0,0,.22), 0 0 0 2px rgba(255,255,255,.92)", opacity: "0",
+    transform: "translate3d(0,0,0) scale(.78) rotate(-4deg)",
+    transition: "left .68s cubic-bezier(.2,.85,.25,1), top .68s cubic-bezier(.2,.85,.25,1), width .68s cubic-bezier(.2,.85,.25,1), height .68s cubic-bezier(.2,.85,.25,1), opacity .16s ease, transform .68s cubic-bezier(.2,.85,.25,1)"
+  });
+
+  const spark = document.createElement("span");
+  spark.textContent = "✦";
+  Object.assign(spark.style, {
+    position: "fixed", left: `${startX + size / 2 - 7}px`, top: `${startY + size / 2 - 10}px`, color: "#fbbf24", fontSize: "18px", fontWeight: "900",
+    opacity: "0", transform: "scale(.5) rotate(-20deg)", transition: "opacity .15s ease, left .62s ease, top .62s ease, transform .62s ease"
+  });
+
+  layer.append(orb, img, spark);
+  document.body.appendChild(layer);
+
+  requestAnimationFrame(() => {
+    img.style.opacity = "1";
+    img.style.left = `${endX}px`;
+    img.style.top = `${endY}px`;
+    img.style.width = `${endSize}px`;
+    img.style.height = `${endSize}px`;
+    img.style.transform = "translate3d(0,0,0) scale(.92) rotate(10deg)";
+    orb.style.opacity = "1";
+    orb.style.transform = "scale(1.25)";
+    spark.style.opacity = "1";
+    spark.style.left = `${endX + 5}px`;
+    spark.style.top = `${endY - 12}px`;
+    spark.style.transform = "scale(1) rotate(20deg)";
+  });
+
+  window.setTimeout(() => {
+    img.style.opacity = "0";
+    img.style.transform = "translate3d(0,0,0) scale(.55) rotate(20deg)";
+    orb.style.opacity = "0";
+    spark.style.opacity = "0";
+  }, 540);
+  window.setTimeout(() => layer.remove(), 820);
+}
+
 export const ProductCard = memo(function ProductCard({ p }: { p: Product }) {
   const add = useCart((s) => s.add);
   const setQty = useCart((s) => s.setQty);
@@ -26,11 +95,14 @@ export const ProductCard = memo(function ProductCard({ p }: { p: Product }) {
   const inCart = useCart((s) => s.items.find((i) => i.id === p.id));
   const [open, setOpen] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
+  const imageRef = useRef<HTMLButtonElement | null>(null);
   const price = p.sale_price ?? p.price;
   const discount = p.sale_price ? Math.round(((p.price - p.sale_price) / p.price) * 100) : 0;
   const img = p.images?.[0] || "/placeholder.svg";
 
   const addItem = () => {
+    if (p.stock <= 0) return;
+    if (imageRef.current) flyProductToCart(img, imageRef.current);
     add({ id: p.id, name: p.name, slug: p.slug, price, image: img, stock: p.stock });
     trackAddToCart({ id: p.id, name: p.name, price, quantity: 1 });
     setJustAdded(true);
@@ -40,7 +112,7 @@ export const ProductCard = memo(function ProductCard({ p }: { p: Product }) {
   return (
     <>
       <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border/70 bg-white shadow-[0_5px_18px_-14px_rgba(20,83,45,.5)] transition-all duration-300 hover:-translate-y-0.5 hover:border-brand/25 hover:shadow-[0_12px_28px_-16px_rgba(20,83,45,.42)]">
-        <button onClick={() => setOpen(true)} className="relative block aspect-square w-full overflow-hidden bg-muted text-left" aria-label={`${p.name} বিস্তারিত দেখুন`}>
+        <button ref={imageRef} onClick={() => setOpen(true)} className="relative block aspect-square w-full overflow-hidden bg-muted text-left" aria-label={`${p.name} বিস্তারিত দেখুন`}>
           <img src={toImg(img, { w: 500, q: 78 })} srcSet={imgSrcSet(img, [200, 400, 600])} sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 220px" alt={p.name} width={500} height={500} loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-500 ease-out group-hover:scale-[1.045]" />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-black/10 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
           {discount > 0 && <span className="absolute left-1.5 top-1.5 inline-flex items-center gap-0.5 rounded-lg bg-destructive px-2 py-1 text-[10px] font-extrabold text-white shadow-sm sm:left-2 sm:top-2 sm:text-xs"><Sparkles className="h-3 w-3" /> -{discount}%</span>}
