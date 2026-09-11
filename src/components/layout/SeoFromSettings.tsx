@@ -1,9 +1,7 @@
 import { useEffect } from "react";
 import { publicSiteSettingsQuery } from "@/lib/site-settings-query";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/personal-supabase/client";
 import { toImg } from "@/lib/img";
-import { readPublicSettingsCache, writePublicSettingsCache } from "@/lib/public-settings-cache";
 
 export type SeoSettings = {
   seo_title?: string;
@@ -13,6 +11,7 @@ export type SeoSettings = {
   seo_site_url?: string;
   seo_google_verification?: string;
   seo_robots?: string;
+  logo_url?: string;
 };
 
 type SettingsRow = { settings: SeoSettings | null };
@@ -39,10 +38,9 @@ function setLink(rel: string, href?: string) {
   el.setAttribute("href", href);
 }
 
-/** Applies admin SEO settings without repeatedly downloading them from Supabase. */
+/** Applies admin SEO settings and the configured site logo as the favicon. */
 export function SeoFromSettings() {
   const { data: row } = useQuery(publicSiteSettingsQuery) as { data: SettingsRow | null | undefined };
-
   const s = row?.settings ?? {};
   const path = typeof window === "undefined" ? "/" : window.location.pathname;
   const isHome = path === "/";
@@ -54,6 +52,12 @@ export function SeoFromSettings() {
     const ogImage = s.seo_og_image
       ? new URL(toImg(s.seo_og_image), window.location.origin).toString()
       : undefined;
+
+    // The admin-configured logo is also the site's favicon. Fall back to the existing icon.
+    const favicon = s.logo_url ? toImg(s.logo_url) : "/icon-512-v2.png";
+    setLink("icon", new URL(favicon, window.location.origin).toString());
+    setLink("shortcut icon", new URL(favicon, window.location.origin).toString());
+    setLink("apple-touch-icon", new URL(favicon, window.location.origin).toString());
 
     setMeta("name", "robots", s.seo_robots);
     setMeta("name", "google-site-verification", s.seo_google_verification);
@@ -72,7 +76,7 @@ export function SeoFromSettings() {
     setMeta("property", "og:image", ogImage);
     setMeta("name", "twitter:image", ogImage);
     setMeta("property", "og:url", url);
-  }, [s.seo_title, s.seo_description, s.seo_keywords, s.seo_og_image, s.seo_site_url, s.seo_google_verification, s.seo_robots, path, isHome]);
+  }, [s.logo_url, s.seo_title, s.seo_description, s.seo_keywords, s.seo_og_image, s.seo_site_url, s.seo_google_verification, s.seo_robots, path, isHome]);
 
   return null;
 }
