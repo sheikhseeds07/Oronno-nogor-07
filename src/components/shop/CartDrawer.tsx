@@ -73,15 +73,15 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
             </div>
 
             <div className="border-t p-3 bg-muted/30">
-              <div className={`rounded-xl border px-3 py-2.5 shadow-sm ${delivery === 0 ? "border-emerald-200 bg-emerald-50/70" : "border-brand/15 bg-gradient-to-r from-brand-light/50 via-white to-amber-50/50"}`}>
+              <div className={`rounded-xl border px-3 py-2 ${delivery === 0 ? "border-emerald-200 bg-emerald-50/70" : "border-brand/15 bg-gradient-to-r from-brand-light/50 via-white to-amber-50/50"}`}>
                 <div className="flex items-center gap-2">
-                  <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-lg ${delivery === 0 ? "bg-emerald-100 text-emerald-700" : "bg-white text-brand-dark shadow-sm"}`}>
-                    {delivery === 0 ? <Sparkles className="h-3.5 w-3.5" /> : <Truck className="h-3.5 w-3.5" />}
+                  <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-lg ${delivery === 0 ? "bg-emerald-100 text-emerald-700" : "bg-white text-brand-dark shadow-sm"}`}>
+                    {delivery === 0 ? <Sparkles className="h-3 w-3" /> : <Truck className="h-3 w-3" />}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2 text-[10px] font-black">
+                    <div className="flex items-center justify-between gap-2 text-[10px] font-black leading-none">
                       <span className={delivery === 0 ? "text-emerald-700" : "text-slate-800"}>
-                        {delivery === 0 ? "ডেলিভারি ফ্রি 🎉" : `ফ্রি ডেলিভারি পেতে আরও ${taka(amountToFree)}`}
+                        {delivery === 0 ? "ডেলিভারি চার্জ ফ্রি 🎉" : `আর মাত্র ${taka(amountToFree)} টাকার পণ্য নিলে ডেলিভারি চার্জ ফ্রি`}
                       </span>
                       <span className="shrink-0 text-brand-dark">{taka(subtotal)} / {taka(progressTarget)}</span>
                     </div>
