@@ -1850,15 +1850,7 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
   const { data: history } = useQuery({
     queryKey: ["new-order-history", phoneDigits],
     enabled: phoneReady,
-    queryFn: async () => {
-      const phones = phoneVariants(phone);
-      const { data } = await supabase
-        .from("orders")
-        .select("id,invoice_no,status,total,customer_name,customer_address,thana,district,created_at,order_items(product_name,quantity)")
-        .in("customer_phone", phones)
-        .order("created_at", { ascending: false });
-      return data ?? [];
-    },
+    queryFn: async () => fetchCustomerHistory(phone),
   });
 
   // Auto-fill from latest order once per unique phone
@@ -2053,6 +2045,35 @@ function phoneVariants(phone: string) {
   const digits = normalizePhone(phone);
   const variants = [phone.trim(), digits, digits ? `88${digits}` : ""].filter(Boolean);
   return Array.from(new Set(variants));
+}
+
+const HISTORY_SELECT = "id,invoice_no,status,total,created_at,customer_name,customer_address,thana,district,order_items(product_name,quantity)";
+
+// Robust customer history lookup: matches stored numbers regardless of +88/88 prefix,
+// dashes, or spaces by also doing a suffix match on the last 9 digits.
+async function fetchCustomerHistory(phone: string) {
+  const digits = normalizePhone(phone);
+  if (digits.length < 10) return [] as any[];
+  const last9 = digits.slice(-9);
+  const filters = [
+    ...phoneVariants(phone).map((v) => `customer_phone.eq.${v}`),
+    `customer_phone.ilike.%${last9}`,
+    `customer_phone.ilike.%${last9}%`,
+  ].join(",");
+  const { data, error } = await supabase
+    .from("orders")
+    .select(HISTORY_SELECT)
+    .or(filters)
+    .order("created_at", { ascending: false });
+  if (error) {
+    const { data: fallback } = await supabase
+      .from("orders")
+      .select(HISTORY_SELECT)
+      .in("customer_phone", phoneVariants(phone))
+      .order("created_at", { ascending: false });
+    return fallback ?? [];
+  }
+  return data ?? [];
 }
 
 function CourierCard({ name, total, success, cancelled, highlight, clickable }: { name: string; total: number; success: number; cancelled: number; highlight?: boolean; clickable?: boolean }) {
@@ -2358,10 +2379,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
   const { data: history } = useQuery({
     queryKey: ["customer-history", lookupPhoneDigits],
     enabled: lookupPhoneDigits.length >= 10,
-    queryFn: async () => {
-      const { data } = await supabase.from("orders").select("id,invoice_no,status,total,created_at,customer_name,customer_address,thana,district,order_items(product_name,quantity)").in("customer_phone", phoneVariants(lookupPhone)).order("created_at", { ascending: false });
-      return data ?? [];
-    },
+    queryFn: async () => fetchCustomerHistory(lookupPhone),
   });
 
   // Hydrate when detail loads
