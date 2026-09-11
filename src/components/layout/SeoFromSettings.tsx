@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { publicSiteSettingsQuery } from "@/lib/site-settings-query";
 import { useQuery } from "@tanstack/react-query";
 import { toImg } from "@/lib/img";
+import { WaitPopupEnhancer } from "./WaitPopupEnhancer";
 
 export type SeoSettings = {
   seo_title?: string;
@@ -21,7 +22,7 @@ function setMeta(attr: "name" | "property", key: string, content?: string) {
   let el = document.head.querySelector<HTMLMetaElement>(`meta[${attr}="${key}"]`);
   if (!el) {
     el = document.createElement("meta");
-    el.setAttribute(attr, key);
+    el.setAttribute("name", key);
     document.head.appendChild(el);
   }
   el.setAttribute("content", content);
@@ -53,7 +54,6 @@ export function SeoFromSettings() {
       ? new URL(toImg(s.seo_og_image), window.location.origin).toString()
       : undefined;
 
-    // The admin-configured logo is also the site's favicon. Fall back to the existing icon.
     const favicon = s.logo_url ? toImg(s.logo_url) : "/icon-512-v2.png";
     setLink("icon", new URL(favicon, window.location.origin).toString());
     setLink("shortcut icon", new URL(favicon, window.location.origin).toString());
@@ -78,5 +78,5 @@ export function SeoFromSettings() {
     setMeta("property", "og:url", url);
   }, [s.logo_url, s.seo_title, s.seo_description, s.seo_keywords, s.seo_og_image, s.seo_site_url, s.seo_google_verification, s.seo_robots, path, isHome]);
 
-  return null;
+  return <WaitPopupEnhancer />;
 }
