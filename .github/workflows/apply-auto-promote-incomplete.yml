@@ -1,0 +1,56 @@
+name: Apply auto-promote incomplete orders migration
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-auto-promote-incomplete.yml'
+      - 'supabase/migrations/20260912160000_auto_promote_incomplete_after_10_minutes.sql'
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply migration
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SHEIKH }}
+          PROJECT_REF: bvuhvzccziuniujeogng
+        run: |
+          python3 - <<'PYCODE'
+          import json, os, urllib.request
+          from pathlib import Path
+          sql = Path('supabase/migrations/20260912160000_auto_promote_incomplete_after_10_minutes.sql').read_text()
+          req = urllib.request.Request(
+              f"https://api.supabase.com/v1/projects/{os.environ['PROJECT_REF']}/database/query",
+              data=json.dumps({'query': sql}).encode(),
+              headers={'Authorization': f"Bearer {os.environ['SUPABASE_ACCESS_TOKEN']}", 'Content-Type': 'application/json', 'User-Agent': 'GitHub-Actions-AutoPromoteIncomplete/1.0'},
+              method='POST',
+          )
+          with urllib.request.urlopen(req, timeout=120) as response:
+              print('Migration response:', response.status)
+          PYCODE
+      - name: Verify cron job and function
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SHEIKH }}
+          PROJECT_REF: bvuhvzccziuniujeogng
+        run: |
+          python3 - <<'PYCODE'
+          import json, os, urllib.request
+          q = "select (select count(*) from cron.job where jobname='promote_stale_incomplete_orders') as jobs, public.promote_stale_incomplete_orders() as promoted"
+          req = urllib.request.Request(
+              f"https://api.supabase.com/v1/projects/{os.environ['PROJECT_REF']}/database/query",
+              data=json.dumps({'query': q}).encode(),
+              headers={'Authorization': f"Bearer {os.environ['SUPABASE_ACCESS_TOKEN']}", 'Content-Type': 'application/json', 'User-Agent': 'GitHub-Actions-AutoPromoteIncomplete/1.0'},
+              method='POST',
+          )
+          with urllib.request.urlopen(req, timeout=120) as response:
+              body = response.read().decode()
+              print('Verification:', body)
+              if 'promoted' not in body:
+                  raise SystemExit('Verification failed')
+          PYCODE
