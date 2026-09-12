@@ -12,7 +12,7 @@ const STALE_CACHE_TTL_MS = 30 * 60 * 1000;
 const AUTHZ_CACHE_TTL_MS = 5 * 60 * 1000;
 const CONFIG_CACHE_TTL_MS = 5 * 60 * 1000;
 const GLOBAL_PROVIDER_GAP_MS = 120;
-const HOORIN_TIMEOUT_MS = 5_000;
+const HOORIN_TIMEOUT_MS = 7_000;
 const MAX_CACHE_ENTRIES = 3000;
 
 const historyCache = new Map<string, { expiresAt: number; result: HistoryResult }>();
@@ -70,40 +70,71 @@ async function getHoorinConfig(admin: ReturnType<typeof createClient>) {
   return value;
 }
 
+const COURIER_KEY_RE = /^(steadfast|steadfastcourier|redx|redex|redxbd|pathao|pathaocourier|carrybee|paperfly|ecourier|sundarban|sundarbancourier)$/;
+const SKIP_KEY_RE = /^(data|summary|summaries|courierdata|root|total|totals|overall|meta|result|response|payload|info|status|message|report|reports)$/;
+const COUNT_KEYS = [
+  "Total Parcels","Total Delivery","total_parcel","totalParcel","total","total_parcel_count","Total_parcels","total_parcels","totalParcelCount",
+  "Delivered Parcels","Successful Delivery","success_parcel","successParcel","success","delivered","delivered_parcel","total_delivered","delivered_count",
+  "Canceled Parcels","Canceled Delivery","Cancelled Parcels","cancelled_parcel","cancelledParcel","cancel","cancelled","total_cancelled","cancelled_count",
+];
+
+function prettyCourier(normalizedKey: string, fallback: string) {
+  const map: Record<string, string> = {
+    steadfast: "Steadfast", steadfastcourier: "Steadfast",
+    redx: "RedX", redex: "RedX", redxbd: "RedX",
+    pathao: "Pathao", pathaocourier: "Pathao",
+    carrybee: "Carrybee", paperfly: "Paperfly", ecourier: "eCourier",
+    sundarban: "Sundarban", sundarbancourier: "Sundarban",
+  };
+  return map[normalizedKey] ?? fallback;
+}
+
 function parseStats(payload: unknown): CourierStat[] {
   if (!payload || typeof payload !== "object") return [];
-  const root = payload as JsonRecord;
-  const data = root.data && typeof root.data === "object" && !Array.isArray(root.data) ? root.data as JsonRecord : root;
-  const containers: JsonRecord[] = [];
-  const add = (value: unknown) => { if (value && typeof value === "object" && !Array.isArray(value)) containers.push(value as JsonRecord); };
-  add(data.Summaries); add(data.summaries); add(data.courierData); add(data.data);
-  add(data.Steadfast); add(data.SteadFast); add(data.steadfast); add(data.SteadfastSummary); add(data.steadfast_summary);
-  if (!containers.length) add(root);
+  const found = new Map<string, CourierStat>();
 
-  const out: CourierStat[] = [];
-  const seen = new Set<string>();
-  const courierNames = /^(steadfast|redx|pathao|carrybee|paperfly|ecourier|sundarban)$/i;
-  const readRow = (key: string, raw: unknown) => {
-    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
-    const row = raw as JsonRecord;
+  const visit = (key: string, value: unknown, depth: number) => {
+    if (!value || typeof value !== "object" || depth > 6) return;
+    if (Array.isArray(value)) {
+      for (const entry of value) {
+        if (entry && typeof entry === "object" && !Array.isArray(entry)) {
+          const row = entry as JsonRecord;
+          const rowName = typeof row.name === "string" ? row.name : typeof row.courier === "string" ? row.courier : key;
+          visit(String(rowName), row, depth + 1);
+        }
+      }
+      return;
+    }
+
+    const row = value as JsonRecord;
     const inner = row.summary && typeof row.summary === "object" && !Array.isArray(row.summary) ? row.summary as JsonRecord : row;
     const total = num(inner["Total Parcels"] ?? inner["Total Delivery"] ?? inner.total_parcel ?? inner.totalParcel ?? inner.total ?? inner["total_parcel_count"] ?? inner.Total_parcels ?? inner.total_parcels ?? inner.totalParcelCount);
     const success = num(inner["Delivered Parcels"] ?? inner["Successful Delivery"] ?? inner.success_parcel ?? inner.successParcel ?? inner.success ?? inner.delivered ?? inner["delivered_parcel"] ?? inner.total_delivered ?? inner.delivered_count);
     const cancelled = num(inner["Canceled Parcels"] ?? inner["Canceled Delivery"] ?? inner["Cancelled Parcels"] ?? inner.cancelled_parcel ?? inner.cancelledParcel ?? inner.cancel ?? inner.cancelled ?? inner["cancelled_parcel"] ?? inner.total_cancelled ?? inner.cancelled_count);
-    const hasKnown = [total, success, cancelled].some((v) => v !== 0) || ["Total Parcels","Total Delivery","total_parcel","totalParcel","total","Delivered Parcels","Successful Delivery","success_parcel","successParcel","success","delivered","Canceled Parcels","Canceled Delivery","Cancelled Parcels","cancelled_parcel","cancelledParcel","cancel","cancelled","Total_parcels","total_parcels","total_delivered","total_cancelled"].some((k) => Object.prototype.hasOwnProperty.call(inner, k));
-    const normalizedKey = key.replace(/[\s_-]/g, "").toLowerCase();
-    if (!hasKnown && !courierNames.test(key)) return;
-    const name = typeof inner.name === "string" && inner.name.trim() ? inner.name.trim() : pretty(key);
-    const id = `${name.toLowerCase()}::${total}::${success}::${cancelled}`;
-    if (seen.has(id)) return;
-    seen.add(id);
-    out.push({ name: normalizedKey === "steadfast" ? "Steadfast" : name, total, success, cancelled });
+    const hasCounts = COUNT_KEYS.some((k) => Object.prototype.hasOwnProperty.call(inner, k));
+
+    const rawName = typeof inner.name === "string" && inner.name.trim() ? inner.name.trim() : key;
+    const normalizedKey = String(rawName).replace(/[\s_-]/g, "").toLowerCase();
+    const isCourier = COURIER_KEY_RE.test(normalizedKey);
+
+    if ((isCourier || hasCounts) && !SKIP_KEY_RE.test(normalizedKey)) {
+      const name = prettyCourier(normalizedKey, pretty(String(rawName)));
+      const id = name.toLowerCase();
+      const prev = found.get(id);
+      if (!prev || total > prev.total || (total === prev.total && success > prev.success)) {
+        found.set(id, { name, total, success, cancelled });
+      }
+    }
+
+    for (const [k, v] of Object.entries(row)) {
+      if (v && typeof v === "object") visit(k, v, depth + 1);
+    }
   };
 
-  for (const container of containers) {
-    for (const [key, raw] of Object.entries(container)) readRow(key, raw);
-  }
-  return out.sort((a, b) => b.total - a.total);
+  visit("root", payload, 0);
+  return Array.from(found.values())
+    .filter((s) => COURIER_KEY_RE.test(s.name.replace(/[\s_-]/g, "").toLowerCase()) || s.total > 0 || s.success > 0 || s.cancelled > 0)
+    .sort((a, b) => b.total - a.total);
 }
 
 async function readPersistent(admin: ReturnType<typeof createClient>, phone: string): Promise<PersistentHit | null> {
@@ -124,7 +155,7 @@ async function reserveProviderSlot(admin: ReturnType<typeof createClient>) {
   const { data, error } = await admin.rpc("reserve_courier_provider_slot", { p_gap_ms: GLOBAL_PROVIDER_GAP_MS });
   if (error) return 0;
   const wait = Number(data ?? 0);
-  return Number.isFinite(wait) ? Math.max(0, Math.min(wait, 20_000)) : 0;
+  return Number.isFinite(wait) ? Math.max(0, Math.min(wait, 2_500)) : 0;
 }
 
 async function fetchHoorin(admin: ReturnType<typeof createClient>, phone: string): Promise<HistoryResult> {
@@ -132,7 +163,7 @@ async function fetchHoorin(admin: ReturnType<typeof createClient>, phone: string
   if (cfg.error) return { configured: true, stats: [], error: cfg.error };
   if (!cfg.configured) return { configured: false, stats: [], error: null };
   let lastError = "Hoorin request failed";
-  for (let attempt = 0; attempt < 2; attempt += 1) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), HOORIN_TIMEOUT_MS);
     try {
@@ -145,11 +176,11 @@ async function fetchHoorin(admin: ReturnType<typeof createClient>, phone: string
         return { configured: true, stats, error: null, source: "hoorin" };
       }
       lastError = `Hoorin HTTP ${res.status}`;
-      if (attempt === 0 && (res.status === 429 || res.status >= 500)) { await sleep(350); continue; }
+      if (attempt < 2 && (res.status === 429 || res.status >= 500)) { await sleep(300 * (attempt + 1)); continue; }
       return { configured: true, stats: [], error: lastError };
     } catch (e) {
       lastError = e instanceof Error ? e.message : "Hoorin network error";
-      if (attempt === 0) { await sleep(250); continue; }
+      if (attempt < 2) { await sleep(250 * (attempt + 1)); continue; }
     } finally { clearTimeout(timeout); }
   }
   return { configured: true, stats: [], error: lastError };
