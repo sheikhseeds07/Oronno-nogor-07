@@ -1,4 +1,4 @@
-name: Fix admin order product selector v2
+name: Fix admin order product selector v3
 
 on:
   push:
@@ -26,12 +26,11 @@ jobs:
           p.write_text(text.replace(old, new, 1))
           PY
 
-      - name: Commit source fix and remove temporary workflow
+      - name: Commit to patch branch
         run: |
-          rm -f .github/workflows/fix-admin-order-all-products.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/routes/admin/orders.tsx .github/workflows/fix-admin-order-all-products.yml
-          git diff --cached --quiet && exit 0 || true
+          git checkout -b fix/admin-order-all-products
+          git add src/routes/admin/orders.tsx
           git commit -m 'fix: show all products in admin order selector'
-          git push
+          git push --set-upstream origin fix/admin-order-all-products
