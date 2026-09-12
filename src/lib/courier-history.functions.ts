@@ -129,14 +129,22 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
         return beforeInvoke.result;
       }
 
-      const { data: result, error } = await context.supabase.functions.invoke("courier-history-bridge", {
-        body: { phone },
-      });
+      let result: unknown = null;
+      let error: { message?: string } | null = null;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const res = await context.supabase.functions.invoke("courier-history-bridge", {
+          body: { phone },
+        });
+        result = res.data;
+        error = res.error as { message?: string } | null;
+        if (!error) break;
+        if (attempt === 0) await new Promise((r) => setTimeout(r, 400));
+      }
 
       if (error) {
         const stale = beforeInvoke ?? persistent;
         if (stale?.result.configured && !stale.result.error) return { ...stale.result, stale: true };
-        return { configured: true, stats: [], error: error.message || "Courier history request failed" };
+        return { configured: true, stats: [], error: error?.message || "Courier history request failed" };
       }
 
       const value = (result ?? {}) as Partial<CourierHistoryResult>;
