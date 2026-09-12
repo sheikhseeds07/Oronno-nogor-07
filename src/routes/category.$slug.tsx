@@ -17,6 +17,8 @@ function CategoryPage() {
 
   const { data: categories = [] } = useQuery({
     queryKey: ["cat-list"],
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
     queryFn: async () => {
       const { data, error } = await (supabase.from("categories") as any)
         .select("id,name,slug,image_url,parent_id,display_order")
@@ -31,6 +33,8 @@ function CategoryPage() {
 
   const { data: cat } = useQuery({
     queryKey: ["cat", slug],
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
     queryFn: async () => {
       const { data, error } = await (supabase.from("categories") as any)
         .select("id,name,slug,image_url,parent_id,display_order")
@@ -44,6 +48,8 @@ function CategoryPage() {
   const { data: children = [] } = useQuery({
     queryKey: ["cat-children", cat?.id],
     enabled: Boolean(cat?.id),
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
     queryFn: async () => {
       const { data, error } = await (supabase.from("categories") as any)
         .select("id,name,slug,image_url,parent_id,display_order")
@@ -58,6 +64,8 @@ function CategoryPage() {
   const { data: products = [] } = useQuery({
     queryKey: ["cat-products", cat?.id, children.map((c) => c.id).join(",")],
     enabled: Boolean(cat?.id),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
     queryFn: async () => {
       const ids = [cat!.id, ...children.map((c) => c.id)];
       const { data, error } = await supabase
@@ -79,7 +87,7 @@ function CategoryPage() {
     let raf = 0;
     let last = performance.now();
     let pausedUntil = 0;
-    const speed = 0.18; // deliberately slow pixels/ms
+    const speed = 0.18;
 
     const pause = () => { pausedUntil = performance.now() + 2800; };
     el.addEventListener("pointerdown", pause, { passive: true });
@@ -91,9 +99,7 @@ function CategoryPage() {
       last = now;
       if (now >= pausedUntil) {
         el.scrollLeft += delta * speed;
-        if (el.scrollLeft >= el.scrollWidth - el.clientWidth - 1) {
-          el.scrollLeft = 0;
-        }
+        if (el.scrollLeft >= el.scrollWidth - el.clientWidth - 1) el.scrollLeft = 0;
       }
       raf = requestAnimationFrame(tick);
     };
@@ -126,7 +132,7 @@ function CategoryPage() {
         <div className="container mx-auto max-w-7xl px-3 pb-8 pt-2 sm:px-5 sm:pt-4">
           <nav className="-mx-3 overflow-x-auto px-3 pb-1 scrollbar-none sm:-mx-5 sm:px-5" aria-label="প্রধান ক্যাটাগরি">
             <div className="flex min-w-max justify-center gap-1.5">
-              <Link to="/shop" className="cat-slide flex h-11 items-center justify-center rounded-xl border border-border/80 bg-white px-3 text-[13px] font-extrabold shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand/40">সব</Link>
+              <Link to="/shop" className="cat-slide flex h-11 items-center justify-center rounded-xl border border-border/80 bg-white px-3 text-[13px] font-extrabold shadow-sm transition-all hover:-translate-y-0.5">সব</Link>
               {categories.map((c, i) => {
                 const active = c.slug === slug;
                 return (
@@ -157,24 +163,10 @@ function CategoryPage() {
                     <div className="relative min-w-0 flex-1 overflow-hidden">
                       <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-3 bg-gradient-to-r from-white/95 to-transparent" />
                       <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-7 bg-gradient-to-l from-white via-white/80 to-transparent" />
-                      {children.length > 2 && (
-                        <div className="pointer-events-none absolute right-1 top-1/2 z-20 flex -translate-y-1/2 items-center gap-0.5 rounded-full bg-brand/90 px-1.5 py-1 text-[8px] font-black text-white shadow-sm">
-                          <ChevronRight className="h-2.5 w-2.5" />
-                        </div>
-                      )}
-                      <div ref={subcatRef} className="subcat-scroll overflow-x-auto">
-                        <div className="flex min-w-max justify-start gap-1.5 pr-7">
-                          {children.map((child, i) => (
-                            <Link key={child.id} to="/category/$slug" params={{ slug: child.slug }} style={{ animationDelay: `${i * 35}ms` }} className="cat-slide group flex h-9 shrink-0 items-center gap-1 rounded-full border border-border/80 bg-[#fffdfd] px-2.5 text-[11px] font-bold shadow-sm transition-all duration-300 hover:border-brand hover:bg-brand hover:text-white active:scale-95">
-                              <span className="h-5 w-5 overflow-hidden rounded-full bg-brand-light/40 ring-1 ring-black/5">
-                                {child.image_url ? <img src={toImg(child.image_url)} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" /> : <span className="flex h-full w-full items-center justify-center text-[9px]">🌿</span>}
-                              </span>
-                              <span className="max-w-[75px] truncate">{child.name}</span>
-                              <ChevronRight className="h-3 w-3 opacity-40" />
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
+                      {children.length > 2 && <div className="pointer-events-none absolute right-1 top-1/2 z-20 flex -translate-y-1/2 items-center gap-0.5 rounded-full bg-brand/90 px-1.5 py-1 text-[8px] font-black text-white shadow-sm"><ChevronRight className="h-2.5 w-2.5" /></div>}
+                      <div ref={subcatRef} className="subcat-scroll overflow-x-auto"><div className="flex min-w-max justify-start gap-1.5 pr-7">
+                        {children.map((child, i) => <Link key={child.id} to="/category/$slug" params={{ slug: child.slug }} style={{ animationDelay: `${i * 35}ms` }} className="cat-slide group flex h-9 shrink-0 items-center gap-1 rounded-full border border-border/80 bg-[#fffdfd] px-2.5 text-[11px] font-bold shadow-sm transition-all duration-300 hover:border-brand hover:bg-brand hover:text-white active:scale-95"><span className="h-5 w-5 overflow-hidden rounded-full bg-brand-light/40 ring-1 ring-black/5">{child.image_url ? <img src={toImg(child.image_url)} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" /> : <span className="flex h-full w-full items-center justify-center text-[9px]">🌿</span>}</span><span className="max-w-[75px] truncate">{child.name}</span><ChevronRight className="h-3 w-3 opacity-40" /></Link>)}
+                      </div></div>
                     </div>
                   )}
                 </div>
@@ -184,18 +176,10 @@ function CategoryPage() {
 
           {products.length > 0 ? (
             <section className="mt-4 sm:mt-6">
-              <div className="mb-3 flex items-end justify-between sm:mb-4">
-                <div>
-                  <div className="flex items-center gap-1.5 text-[10px] font-bold tracking-widest text-brand/70"><Leaf className="h-3.5 w-3.5" /> COLLECTION</div>
-                  <h2 className="mt-0.5 text-xl font-black tracking-tight text-brand-dark sm:text-2xl">পণ্যসমূহ</h2>
-                </div>
-                <span className="rounded-full bg-brand/8 px-3 py-1 text-[10px] font-bold text-brand">{products.length}টি পণ্য</span>
-              </div>
+              <div className="mb-3 flex items-end justify-between sm:mb-4"><div><div className="flex items-center gap-1.5 text-[10px] font-bold tracking-widest text-brand/70"><Leaf className="h-3.5 w-3.5" /> COLLECTION</div><h2 className="mt-0.5 text-xl font-black tracking-tight text-brand-dark sm:text-2xl">পণ্যসমূহ</h2></div><span className="rounded-full bg-brand/8 px-3 py-1 text-[10px] font-bold text-brand">{products.length}টি পণ্য</span></div>
               <div className="grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">{products.map((p) => <ProductCard key={p.id} p={p} />)}</div>
             </section>
-          ) : (
-            <div className="mx-auto mt-6 max-w-md rounded-3xl border border-dashed border-border bg-white py-12 text-center text-muted-foreground"><Leaf className="mx-auto mb-2 h-7 w-7 opacity-50" /><p className="font-semibold">কোনো পণ্য নেই</p></div>
-          )}
+          ) : <div className="mx-auto mt-6 max-w-md rounded-3xl border border-dashed border-border bg-white py-12 text-center text-muted-foreground"><Leaf className="mx-auto mb-2 h-7 w-7 opacity-50" /><p className="font-semibold">কোনো পণ্য নেই</p></div>}
         </div>
       </main>
     </SiteLayout>
