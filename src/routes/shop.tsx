@@ -80,39 +80,51 @@ function Shop() {
   return (
     <SiteLayout>
       <style>{`
-        @keyframes shopCategoryFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-2px)} }
-        @keyframes shopIconPulse { 0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(22,163,74,.16)} 50%{transform:scale(1.06);box-shadow:0 0 0 5px rgba(22,163,74,0)} }
+        @keyframes shopHeaderGlow { 0%,100%{opacity:.55;transform:scaleX(.72)} 50%{opacity:1;transform:scaleX(1)} }
+        @keyframes shopHeaderShine { 0%{transform:translateX(-130%)} 55%,100%{transform:translateX(130%)} }
+        @keyframes shopTabFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-1px)} }
+        @keyframes shopTabPulse { 0%,100%{box-shadow:0 0 0 0 rgba(22,163,74,0)} 50%{box-shadow:0 0 0 4px rgba(22,163,74,.08)} }
         @keyframes shopReveal { from{opacity:0;transform:translateY(10px) scale(.985)} to{opacity:1;transform:none} }
-        .shop-category-card { animation:shopCategoryFloat 3.8s ease-in-out infinite; }
-        .shop-category-card:nth-child(2n){animation-delay:-1.1s}.shop-category-card:nth-child(3n){animation-delay:-2.1s}
-        .shop-category-icon { animation:shopIconPulse 2.8s ease-in-out infinite; }
+        .shop-header-glow { animation:shopHeaderGlow 3.2s ease-in-out infinite; }
+        .shop-header-shine { animation:shopHeaderShine 4.8s cubic-bezier(.4,0,.2,1) infinite; }
+        .shop-tab-float { animation:shopTabFloat 3.8s ease-in-out infinite; }
+        .shop-tab-pulse { animation:shopTabPulse 2.8s ease-in-out infinite; }
         .shop-product-reveal { animation:shopReveal .48s cubic-bezier(.22,1,.36,1) both; }
-        @media (prefers-reduced-motion:reduce){.shop-category-card,.shop-category-icon,.shop-product-reveal{animation:none!important}}
+        @media (prefers-reduced-motion:reduce){.shop-header-glow,.shop-header-shine,.shop-tab-float,.shop-tab-pulse,.shop-product-reveal{animation:none!important}}
       `}</style>
 
-      <main className="container mx-auto px-2.5 py-3 sm:px-4 sm:py-5 pb-5">
+      <main className="container mx-auto px-2.5 py-2.5 sm:px-4 sm:py-4 pb-5">
         <section className="mb-3.5 sm:mb-5">
-          <div className="flex items-end justify-between gap-3 mb-2.5 px-0.5">
-            <div>
-              <p className="text-[10px] sm:text-xs font-bold uppercase tracking-[.16em] text-brand/70 mb-0.5">Sheikh Seeds Collection</p>
-              <h1 className="text-[22px] sm:text-2xl font-extrabold leading-tight text-brand-dark">{heading}</h1>
-            </div>
-            <span className="shrink-0 rounded-full bg-brand-light/55 px-2.5 py-1 text-[11px] sm:text-xs font-bold text-brand-dark">{products.length} টি পণ্য</span>
-          </div>
+          <div className="relative overflow-hidden rounded-[20px] border border-brand/10 bg-white/95 px-3 py-3 shadow-[0_10px_32px_-20px_rgba(20,83,45,.5)] backdrop-blur-md sm:rounded-[24px] sm:px-4 sm:py-3.5">
+            <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-brand/30 shop-header-glow" />
+            <div className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/55 to-transparent shop-header-shine" />
 
-          <div className="rounded-2xl border border-brand/10 bg-white/95 p-1.5 shadow-[0_8px_28px_-18px_rgba(20,83,45,.45)] backdrop-blur-sm">
-            <div className="flex gap-1.5 overflow-x-auto overscroll-x-contain pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <Link to="/shop" className={`shop-category-card group flex min-w-[76px] shrink-0 flex-col items-center justify-center gap-1 rounded-xl px-2.5 py-2 text-center transition-all duration-300 active:scale-95 ${!cat ? "bg-gradient-to-br from-brand to-brand-dark text-white shadow-md shadow-brand/20" : "text-foreground hover:bg-brand-light/40"}`}>
-                <span className={`shop-category-icon flex h-8 w-8 items-center justify-center rounded-full ${!cat ? "bg-white/15 text-white" : "bg-brand-light/70 text-brand-dark"}`}><Grid3X3 className="h-4 w-4" /></span>
-                <span className="text-[11px] font-extrabold leading-none">সব পণ্য</span>
+            <div className="relative flex items-center justify-between gap-2.5">
+              <div className="min-w-0">
+                <div className="mb-0.5 flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand shadow-[0_0_0_3px_rgba(22,163,74,.10)]" />
+                  <p className="truncate text-[9px] font-extrabold uppercase tracking-[.18em] text-brand/65 sm:text-[10px]">Sheikh Seeds Collection</p>
+                </div>
+                <h1 className="truncate text-[20px] font-extrabold leading-tight tracking-[-.02em] text-brand-dark sm:text-[23px]">{heading}</h1>
+              </div>
+              <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-brand/10 bg-brand-light/45 px-2.5 py-1.5 text-[10px] font-extrabold text-brand-dark shadow-sm sm:px-3 sm:text-[11px]">
+                <span className="relative flex h-1.5 w-1.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-40" /><span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand" /></span>
+                {products.length} টি পণ্য
+              </div>
+            </div>
+
+            <div className="relative mt-2.5 flex gap-1.5 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <Link to="/shop" className={`shop-tab-float shop-tab-pulse group flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-[10.5px] font-extrabold transition-all duration-300 active:scale-95 sm:h-10 sm:px-3.5 sm:text-[11px] ${!cat ? "bg-gradient-to-r from-brand to-brand-dark text-white shadow-[0_6px_16px_-8px_rgba(22,101,52,.7)]" : "border border-brand/10 bg-brand-light/35 text-brand-dark hover:bg-brand-light/60"}`}>
+                <span className={`flex h-6 w-6 items-center justify-center rounded-full ${!cat ? "bg-white/15" : "bg-white/80"}`}><Grid3X3 className="h-3.5 w-3.5" /></span>
+                সব পণ্য
               </Link>
               {categories.map((c, i) => {
                 const Icon = getCategoryIcon(c.name, i);
                 const active = cat === c.slug;
                 return (
-                  <Link key={c.id} to="/shop" search={{ cat: c.slug } as never} className={`shop-category-card group flex min-w-[76px] shrink-0 flex-col items-center justify-center gap-1 rounded-xl px-2.5 py-2 text-center transition-all duration-300 active:scale-95 ${active ? "bg-gradient-to-br from-brand to-brand-dark text-white shadow-md shadow-brand/20" : "text-foreground hover:bg-brand-light/40"}`}>
-                    <span className={`shop-category-icon flex h-8 w-8 items-center justify-center rounded-full ${active ? "bg-white/15 text-white" : "bg-brand-light/70 text-brand-dark"}`}><Icon className="h-4 w-4" /></span>
-                    <span className="max-w-[72px] truncate text-[11px] font-extrabold leading-none">{c.name}</span>
+                  <Link key={c.id} to="/shop" search={{ cat: c.slug } as never} className={`shop-tab-float group flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-[10.5px] font-extrabold transition-all duration-300 active:scale-95 sm:h-10 sm:px-3.5 sm:text-[11px] ${active ? "bg-gradient-to-r from-brand to-brand-dark text-white shadow-[0_6px_16px_-8px_rgba(22,101,52,.7)]" : "border border-brand/10 bg-brand-light/35 text-brand-dark hover:bg-brand-light/60"}`} style={{ animationDelay: `${i * -0.45}s` }}>
+                    <span className={`flex h-6 w-6 items-center justify-center rounded-full ${active ? "bg-white/15" : "bg-white/80"}`}><Icon className="h-3.5 w-3.5" /></span>
+                    <span>{c.name}</span>
                   </Link>
                 );
               })}
