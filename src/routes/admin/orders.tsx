@@ -647,7 +647,7 @@ function OrdersTable({
       const list = (filter === "all" ? statuses : [filter]).filter((status) => status !== "incomplete");
       let query = supabase
         .from("orders")
-        .select("id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment,courier_display_name,printed_at,created_at,updated_at,created_by,assigned_to,order_items(id,product_name,quantity,price,product_id)", { count: "exact" })
+        .select("id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment,courier_display_name,printed_at,created_at,updated_at,created_by,assigned_to,originated_from_incomplete,order_items(id,product_name,quantity,price,product_id)", { count: "exact" })
         .in("status", list as Exclude<OrderStatus, "incomplete">[]);
       query = mode === "list"
         ? query.order("invoice_no", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false })
@@ -1454,6 +1454,7 @@ type OrderRow = {
   order_items?: OrderItemRow[];
   assigned_to?: string | null;
   created_by?: string | null;
+  originated_from_incomplete?: boolean | null;
 };
 
 type OrdersPage = { rows: OrderRow[]; total: number };
@@ -1840,6 +1841,9 @@ function OrdersTableRows({
                 <td className="p-3 min-w-[140px]">
                   <OrderItemsThumbs items={items} />
                   <div className="text-xs font-bold pt-1.5 mt-1.5 border-t">টোটাল: {taka(o.total)}</div>
+                  <div className={`text-[11px] font-bold mt-1 ${o.originated_from_incomplete ? "text-red-600" : "text-green-600"}`}>
+                    {o.originated_from_incomplete ? "incomplete source order" : "web order"}
+                  </div>
                 </td>
                 {/* Courier Success Rate */}
                 <td className="p-3 min-w-[190px] whitespace-nowrap">
@@ -2788,9 +2792,6 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
             <div className="sm:col-span-2">
               <label className="text-xs font-semibold mb-1 block text-pink-600">Grand Total</label>
               <input readOnly value={grand.toFixed(2)} className="w-full border rounded-lg px-3 py-2 text-sm bg-muted font-bold" />
-              <div className={`mt-1 text-xs font-bold ${detail.originated_from_incomplete ? "text-red-600" : "text-green-600"}`}>
-                {detail.originated_from_incomplete ? "incomplete source order" : "web order"}
-              </div>
             </div>
           </div>
 
