@@ -1,0 +1,37 @@
+name: Fix admin order product selector
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-admin-order-all-products.yml'
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update admin order product query
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/routes/admin/orders.tsx')
+          text = p.read_text()
+          old = 'let q = supabase.from("products").select("id,name,price,sale_price,sku").eq("is_active", true).limit(20);'
+          new = 'let q = supabase.from("products").select("id,name,price,sale_price,sku").order("created_at", { ascending: false });'
+          if old not in text:
+              raise SystemExit('Target admin order product query not found; no changes made.')
+          p.write_text(text.replace(old, new, 1))
+          PY
+
+      - name: Commit source fix and remove temporary workflow
+        run: |
+          rm -f .github/workflows/fix-admin-order-all-products.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/routes/admin/orders.tsx .github/workflows/fix-admin-order-all-products.yml
+          git diff --cached --quiet && exit 0 || true
+          git commit -m 'fix: show all products in admin order selector'
+          git push
