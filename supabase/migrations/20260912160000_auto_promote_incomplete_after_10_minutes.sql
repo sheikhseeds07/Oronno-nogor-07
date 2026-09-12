@@ -82,14 +82,15 @@ begin
     )
     returning id into new_id;
 
-    -- Existing BEFORE INSERT normalization may rewrite source/status; the
-    -- promoted order must keep the incomplete source while sitting in the
-    -- web/processing queue.
+    -- Safety net only: if any existing BEFORE INSERT normalization rewrote the
+    -- pipeline, put it back. The promoted order must keep the incomplete source
+    -- while sitting in the web/processing queue.
     update public.orders
        set source = 'incomplete',
            status = 'web_pending',
            originated_from_incomplete = true
-     where id = new_id;
+     where id = new_id
+       and (source::text <> 'incomplete' or status::text <> 'web_pending');
 
     insert into public.order_items (order_id, product_id, product_name, quantity, price, subtotal)
     select new_id,
