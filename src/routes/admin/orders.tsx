@@ -1890,7 +1890,7 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
   const { data: products } = useQuery({
     queryKey: ["new-order-products", debouncedSearch],
     queryFn: async () => {
-      let q = supabase.from("products").select("id,name,price,sale_price,sku").eq("is_active", true).limit(20);
+      let q = supabase.from("products").select("id,name,price,sale_price,sku").limit(20);
       if (debouncedSearch) q = q.ilike("name", `%${debouncedSearch}%`);
       return (await q).data ?? [];
     },
