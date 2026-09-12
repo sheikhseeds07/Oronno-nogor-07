@@ -2788,6 +2788,9 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
             <div className="sm:col-span-2">
               <label className="text-xs font-semibold mb-1 block text-pink-600">Grand Total</label>
               <input readOnly value={grand.toFixed(2)} className="w-full border rounded-lg px-3 py-2 text-sm bg-muted font-bold" />
+              <div className={`mt-1 text-xs font-bold ${detail.originated_from_incomplete ? "text-red-600" : "text-green-600"}`}>
+                {detail.originated_from_incomplete ? "incomplete source order" : "web order"}
+              </div>
             </div>
           </div>
 
