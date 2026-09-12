@@ -93,6 +93,7 @@ export const ProductCard = memo(function ProductCard({ p }: { p: Product }) {
   const remove = useCart((s) => s.remove);
   const inCart = useCart((s) => s.items.find((i) => i.id === p.id));
   const [open, setOpen] = useState(false);
+  const [justAdded, setJustAdded] = useState(false);
   const imageRef = useRef<HTMLButtonElement | null>(null);
   const price = p.sale_price ?? p.price;
   const discount = p.sale_price ? Math.round(((p.price - p.sale_price) / p.price) * 100) : 0;
@@ -103,6 +104,8 @@ export const ProductCard = memo(function ProductCard({ p }: { p: Product }) {
     if (imageRef.current) flyProductToCart(img, imageRef.current);
     add({ id: p.id, name: p.name, slug: p.slug, price, image: img, stock: p.stock });
     trackAddToCart({ id: p.id, name: p.name, price, quantity: 1 });
+    setJustAdded(true);
+    window.setTimeout(() => setJustAdded(false), 1400);
   };
 
   return (
@@ -128,26 +131,25 @@ export const ProductCard = memo(function ProductCard({ p }: { p: Product }) {
 
           <div className="mt-2.5">
             {inCart ? (
-              <div className="flex h-10 items-center overflow-hidden rounded-xl border-2 border-brand bg-gradient-to-r from-brand/5 via-brand-light/30 to-brand/5 shadow-[0_6px_18px_-10px_rgba(20,83,45,.65)]">
-                <button onClick={() => (inCart.quantity <= 1 ? remove(p.id) : setQty(p.id, inCart.quantity - 1))} className="flex h-full w-9 shrink-0 items-center justify-center text-brand transition-all hover:bg-brand-light/70 active:scale-90" aria-label="কমান"><Minus className="h-3.5 w-3.5" /></button>
-                <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand text-white shadow-sm"><Check className="h-3 w-3" /></span>
-                  <span className="truncate text-[10px] font-black text-brand-dark sm:text-[11px]">কার্টে জমা হয়েছে</span>
-                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white px-1 text-[9px] font-black text-brand-dark shadow-sm ring-1 ring-brand/15">{bnDigits(inCart.quantity)}</span>
-                </div>
-                <button onClick={() => setQty(p.id, Math.min(inCart.quantity + 1, p.stock || 999))} className="flex h-full w-9 shrink-0 items-center justify-center text-brand transition-all hover:bg-brand-light/70 active:scale-90" aria-label="বাড়ান"><Plus className="h-3.5 w-3.5" /></button>
+              <div className="flex h-9 items-center justify-between overflow-hidden rounded-xl border-2 border-brand bg-brand/5 shadow-[0_3px_10px_-7px_rgba(20,83,45,.55)]">
+                <button onClick={() => (inCart.quantity <= 1 ? remove(p.id) : setQty(p.id, inCart.quantity - 1))} className="flex h-full w-9 items-center justify-center text-brand transition-colors hover:bg-brand-light/70 active:scale-90" aria-label="কমান"><Minus className="h-3.5 w-3.5" /></button>
+                <span className="text-xs font-extrabold text-brand-dark">{bnDigits(inCart.quantity)}</span>
+                <button onClick={() => setQty(p.id, Math.min(inCart.quantity + 1, p.stock || 999))} className="flex h-full w-9 items-center justify-center text-brand transition-colors hover:bg-brand-light/70 active:scale-90" aria-label="বাড়ান"><Plus className="h-3.5 w-3.5" /></button>
               </div>
             ) : (
               <button
                 disabled={p.stock <= 0}
                 onClick={addItem}
-                className="group/cart relative flex h-10 w-full items-center justify-center gap-2 overflow-hidden rounded-xl border border-brand/60 bg-gradient-to-r from-brand via-brand to-brand-dark text-[11px] font-extrabold tracking-[-0.01em] text-white shadow-[0_6px_16px_-10px_rgba(20,83,45,.9)] transition-all duration-300 hover:-translate-y-0.5 hover:border-brand hover:shadow-[0_10px_22px_-10px_rgba(20,83,45,.9)] active:scale-[.975] disabled:cursor-not-allowed disabled:opacity-45 sm:h-10 sm:text-xs"
+                className={`group/cart relative flex h-10 w-full items-center justify-center gap-2 overflow-hidden rounded-xl border text-[11px] font-extrabold tracking-[-0.01em] transition-all duration-300 active:scale-[.975] disabled:cursor-not-allowed disabled:opacity-45 sm:h-10 sm:text-xs ${justAdded
+                  ? "border-brand bg-brand text-white shadow-[0_7px_18px_-9px_rgba(20,83,45,.8)]"
+                  : "border-brand/60 bg-gradient-to-r from-brand via-brand to-brand-dark text-white shadow-[0_6px_16px_-10px_rgba(20,83,45,.9)] hover:-translate-y-0.5 hover:border-brand hover:shadow-[0_10px_22px_-10px_rgba(20,83,45,.9)]"
+                }`}
               >
                 <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/15 to-transparent transition-transform duration-700 group-hover/cart:translate-x-full" />
-                <span className="relative flex h-6 w-6 items-center justify-center rounded-full border border-white/20 bg-white/10 transition-all duration-300 group-hover/cart:scale-110 group-hover/cart:bg-white/15">
-                  <ShoppingCart className="h-3.5 w-3.5 transition-transform duration-300 group-hover/cart:-rotate-6" />
+                <span className={`relative flex h-6 w-6 items-center justify-center rounded-full border border-white/20 bg-white/10 transition-all duration-300 ${justAdded ? "scale-110 bg-white/15" : "group-hover/cart:scale-110 group-hover/cart:bg-white/15"}`}>
+                  {justAdded ? <Check className="h-3.5 w-3.5" /> : <ShoppingCart className="h-3.5 w-3.5 transition-transform duration-300 group-hover/cart:-rotate-6" />}
                 </span>
-                <span className="relative">কার্টে যোগ করুন</span>
+                <span className="relative">{justAdded ? "কার্টে যোগ হয়েছে" : "কার্টে যোগ করুন"}</span>
               </button>
             )}
           </div>
