@@ -719,10 +719,11 @@ function OrdersTable({
           product_name: it.name,
           quantity: Number(it.quantity ?? 1),
           price: Number(it.price ?? 0),
-          product_id: null,
+          product_id: UUID_RE.test(String(it.id ?? "")) ? String(it.id) : null,
+          image: typeof it.image === "string" ? it.image : "",
         })),
       }));
-      return mapped;
+      return await attachProductImages(mapped);
     },
   });
 
@@ -1437,6 +1438,8 @@ function DuplicateModal({ loading, rows, onDelete, onClose }: { loading: boolean
   );
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 type OrderItemRow = {
   id: string; product_name: string; quantity: number;
   price: number; product_id: string | null; image?: string;
@@ -1511,18 +1514,78 @@ function OrderItemsThumbs({ items }: { items: OrderItemRow[] }) {
   );
 }
 
+const normalizeProductName = (name: string) =>
+  (name ?? "").toString().toLowerCase().replace(/\s+/g, " ").trim();
+
+/** Resolve a thumbnail for every order item:
+ *  1) by product_id, 2) by product name from the products table,
+ *  3) by product name from landing page packages/addons (custom landing offers). */
 async function attachProductImages(orders: OrderRow[]): Promise<OrderRow[]> {
-  const ids = Array.from(new Set(
-    orders.flatMap((o) => (o.order_items ?? []).map((it) => it.product_id).filter((x): x is string => !!x))
-  ));
-  const map: Record<string, string> = {};
+  const allItems = orders.flatMap((o) => o.order_items ?? []);
+  const ids = Array.from(new Set(allItems.map((it) => it.product_id).filter((x): x is string => !!x)));
+  const idMap: Record<string, string> = {};
   if (ids.length) {
     const { data: prods } = await supabase.from("products").select("id,images").in("id", ids);
-    for (const p of prods ?? []) map[p.id] = ((p.images as string[] | null) ?? [])[0] ?? "";
+    for (const p of prods ?? []) idMap[p.id] = ((p.images as string[] | null) ?? [])[0] ?? "";
   }
+
+  // Items still without a picture (no product_id, or product has no image)
+  const unresolvedNames = Array.from(new Set(
+    allItems
+      .filter((it) => !(it.product_id && idMap[it.product_id]) && !it.image)
+      .map((it) => normalizeProductName(it.product_name))
+      .filter(Boolean)
+  ));
+
+  const nameMap: Record<string, string> = {};
+  if (unresolvedNames.length) {
+    const rawNames = Array.from(new Set(
+      allItems
+        .filter((it) => !(it.product_id && idMap[it.product_id]) && !it.image)
+        .map((it) => it.product_name)
+        .filter(Boolean)
+    ));
+    const { data: byName } = await supabase.from("products").select("name,images").in("name", rawNames);
+    for (const p of byName ?? []) {
+      const img = ((p.images as string[] | null) ?? [])[0] ?? "";
+      const key = normalizeProductName(p.name as string);
+      if (img && key && !nameMap[key]) nameMap[key] = img;
+    }
+
+    const stillMissing = unresolvedNames.filter((n) => !nameMap[n]);
+    if (stillMissing.length) {
+      // Landing pages keep their own package/addon images inside the page row.
+      const { data: pages } = await supabase
+        .from("landing_pages")
+        .select("hero_image,addons,products(name,images)")
+        .limit(200);
+      for (const pg of (pages ?? []) as any[]) {
+        const mainProduct = pg?.products;
+        if (mainProduct?.name) {
+          const key = normalizeProductName(mainProduct.name);
+          const img = (Array.isArray(mainProduct.images) ? mainProduct.images[0] : "") || pg?.hero_image || "";
+          if (key && img && !nameMap[key]) nameMap[key] = img;
+        }
+        const addons = Array.isArray(pg?.addons) ? pg.addons : [];
+        for (const a of addons) {
+          const key = normalizeProductName(a?.name ?? "");
+          const img = a?.image || pg?.hero_image || "";
+          if (key && img && !nameMap[key]) nameMap[key] = img;
+        }
+      }
+    }
+  }
+
   return orders.map((o) => ({
     ...o,
-    order_items: (o.order_items ?? []).map((it) => ({ ...it, image: it.product_id ? map[it.product_id] : "" })),
+    order_items: (o.order_items ?? []).map((it) => ({
+      ...it,
+      image:
+        (it.product_id ? idMap[it.product_id] : "") ||
+        it.image ||
+        nameMap[normalizeProductName(it.product_name)] ||
+        "",
+    })),
   }));
 }
 
