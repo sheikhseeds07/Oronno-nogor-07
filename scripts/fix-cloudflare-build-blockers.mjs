@@ -26,44 +26,26 @@ if (dashboard.includes(brokenLandingLabel)) {
   console.warn("PremiumDashboard landing-page expression not found; nothing to patch, continuing build.");
 }
 
-// Offers are first-class products, but must stay out of the normal shop/home collections.
 const shopPath = path.resolve(here, "../src/routes/shop.tsx");
 try {
   let shop = await readFile(shopPath, "utf8");
   const oldShopFilter = 'supabase.from("products").select("id,name,slug,price,sale_price,images,stock,short_description,description").eq("is_active", true)';
   const newShopFilter = 'supabase.from("products").select("id,name,slug,price,sale_price,images,stock,short_description,description").eq("is_active", true).eq("is_offer", false).eq("is_archived", false)';
-  if (shop.includes(oldShopFilter) && !shop.includes(newShopFilter)) {
-    shop = shop.replace(oldShopFilter, newShopFilter);
-    await writeFile(shopPath, shop, "utf8");
-    console.log("Excluded offer combos from /shop.");
-  }
-} catch (error) {
-  console.warn("Offer /shop build patch skipped:", error instanceof Error ? error.message : error);
-}
+  if (shop.includes(oldShopFilter) && !shop.includes(newShopFilter)) { shop = shop.replace(oldShopFilter, newShopFilter); await writeFile(shopPath, shop, "utf8"); console.log("Excluded offer combos from /shop."); }
+} catch (error) { console.warn("Offer /shop build patch skipped:", error instanceof Error ? error.message : error); }
 
-// Add Offers to the existing admin sidebar without replacing the production layout.
 const adminLayoutPath = path.resolve(here, "../src/components/admin/AdminLayout.tsx");
 try {
   let adminLayout = await readFile(adminLayoutPath, "utf8");
   const productsNav = '{ to: "/admin/products", label: "Products", icon: Package, perm: "products", tone: "from-amber-400 to-orange-500" },';
   const offersNav = '{ to: "/admin/offers", label: "Offers", icon: Sparkles, perm: "products", tone: "from-emerald-400 to-teal-500" },';
-  if (adminLayout.includes(productsNav) && !adminLayout.includes(offersNav)) {
-    adminLayout = adminLayout.replace(productsNav, productsNav + "\n  " + offersNav);
-    await writeFile(adminLayoutPath, adminLayout, "utf8");
-    console.log("Added Offers to admin navigation.");
-  }
-} catch (error) {
-  console.warn("Offer admin navigation patch skipped:", error instanceof Error ? error.message : error);
-}
+  if (adminLayout.includes(productsNav) && !adminLayout.includes(offersNav)) { adminLayout = adminLayout.replace(productsNav, productsNav + "\n  " + offersNav); await writeFile(adminLayoutPath, adminLayout, "utf8"); console.log("Added Offers to admin navigation."); }
+} catch (error) { console.warn("Offer admin navigation patch skipped:", error instanceof Error ? error.message : error); }
 
-// Add Offers to the customer desktop nav and drawer. Sparkles is already available elsewhere in the app.
 const headerPath = path.resolve(here, "../src/components/layout/Header.tsx");
 try {
   let header = await readFile(headerPath, "utf8");
-  header = header.replace(
-    'ShoppingCart, Search, X, ChevronRight, Home, Grid3x3, Phone, ArrowRight, Palette, Leaf, Sprout, Flower2, TreePine, Wheat, Sun, Users, UserRound',
-    'ShoppingCart, Search, X, ChevronRight, Home, Grid3x3, Phone, ArrowRight, Palette, Leaf, Sprout, Flower2, TreePine, Wheat, Sun, Users, UserRound, Sparkles'
-  );
+  header = header.replace('ShoppingCart, Search, X, ChevronRight, Home, Grid3x3, Phone, ArrowRight, Palette, Leaf, Sprout, Flower2, TreePine, Wheat, Sun, Users, UserRound','ShoppingCart, Search, X, ChevronRight, Home, Grid3x3, Phone, ArrowRight, Palette, Leaf, Sprout, Flower2, TreePine, Wheat, Sun, Users, UserRound, Sparkles');
   const desktopShop = '<Link to="/shop" className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-brand-dark hover:text-white hover:bg-gradient-to-r hover:from-brand hover:to-brand-dark rounded-full transition shrink-0"><Grid3x3 className="w-3.5 h-3.5" /> সকল পণ্য</Link>';
   const desktopOffers = '<Link to="/offers" className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-extrabold text-brand-dark hover:text-white hover:bg-gradient-to-r hover:from-brand hover:to-brand-dark rounded-full transition shrink-0"><Sparkles className="w-3.5 h-3.5" /> অফার</Link>';
   if (header.includes(desktopShop) && !header.includes('to="/offers"')) header = header.replace(desktopShop, desktopShop + desktopOffers);
@@ -72,6 +54,21 @@ try {
   if (header.includes(drawerShop) && !header.includes('>অফার</span>')) header = header.replace(drawerShop, drawerShop + drawerOffers);
   await writeFile(headerPath, header, "utf8");
   console.log("Added Offers to customer navigation.");
-} catch (error) {
-  console.warn("Offer customer navigation patch skipped:", error instanceof Error ? error.message : error);
-}
+} catch (error) { console.warn("Offer customer navigation patch skipped:", error instanceof Error ? error.message : error); }
+
+// Offer builder: selected products keep their own images as secondary combo gallery images; the uploaded image remains the main image.
+const offersAdminPath = path.resolve(here, "../src/routes/admin/offers.tsx");
+try {
+  let offersAdmin = await readFile(offersAdminPath, "utf8");
+  const oldValidation = 'if(sale<=0)return toast.error("Offer price দিন");setSaving(true);';
+  const newValidation = 'if(sale<=0)return toast.error("Offer price দিন");if(!image)return toast.error("Main Combo Image আপলোড করুন");setSaving(true);';
+  if (offersAdmin.includes(oldValidation) && !offersAdmin.includes('Main Combo Image আপলোড করুন')) offersAdmin = offersAdmin.replace(oldValidation, newValidation);
+  const oldImages = 'images:image?[image]:[]';
+  const newImages = 'images:image?[image,...selected.flatMap(p=>p.images??[]).filter(src=>src!==image)]:[]';
+  if (offersAdmin.includes(oldImages)) offersAdmin = offersAdmin.replaceAll(oldImages, newImages);
+  const oldImageLabel = '<div className="mb-2 text-xs font-bold">Combo image</div>';
+  const newImageLabel = '<div className="mb-2 text-xs font-bold">Main Combo Image <span className="font-normal text-muted-foreground">(Required)</span></div>';
+  if (offersAdmin.includes(oldImageLabel)) offersAdmin = offersAdmin.replace(oldImageLabel, newImageLabel);
+  await writeFile(offersAdminPath, offersAdmin, "utf8");
+  console.log("Offer builder now saves selected product images as combo gallery images and requires a main image.");
+} catch (error) { console.warn("Offer builder image patch skipped:", error instanceof Error ? error.message : error); }
