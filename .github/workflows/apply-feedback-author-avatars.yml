@@ -1,0 +1,62 @@
+name: Apply feedback author avatars migration
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-feedback-author-avatars.yml'
+      - 'supabase/migrations/20260912070000_feedback_author_avatars.sql'
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply and verify
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SHEIKH }}
+          PROJECT_REF: bvuhvzccziuniujeogng
+        run: |
+          python3 - <<'PYCODE'
+          import json, os, urllib.request, urllib.error
+          from pathlib import Path
+
+          def run(query, timeout=180):
+              req = urllib.request.Request(
+                  f"https://api.supabase.com/v1/projects/{os.environ['PROJECT_REF']}/database/query",
+                  data=json.dumps({'query': query}).encode(),
+                  headers={
+                      'Authorization': f"Bearer {os.environ['SUPABASE_ACCESS_TOKEN']}",
+                      'Content-Type': 'application/json',
+                      'User-Agent': 'GitHub-Actions-Feedback/1.0',
+                  },
+                  method='POST',
+              )
+              try:
+                  with urllib.request.urlopen(req, timeout=timeout) as response:
+                      return response.status, response.read().decode()
+              except urllib.error.HTTPError as exc:
+                  raise SystemExit('Query failed: ' + exc.read().decode())
+
+          path = 'supabase/migrations/20260912070000_feedback_author_avatars.sql'
+          print('applying:', path)
+          print('status:', run(Path(path).read_text())[0])
+
+          _, cols = run("select table_name || '.' || column_name as c from information_schema.columns where table_schema='public' and column_name in ('author_avatar','admin_reply','replied_at','answer','answered_at') and table_name in ('product_reviews','product_questions','social_post_comments')", 60)
+          print('columns:', cols)
+          for required in [
+              'product_reviews.author_avatar',
+              'product_questions.author_avatar',
+              'social_post_comments.author_avatar',
+              'product_reviews.admin_reply',
+              'social_post_comments.admin_reply',
+              'product_questions.answer',
+          ]:
+              if required.split('.')[1] not in cols or required.split('.')[0] not in cols:
+                  raise SystemExit('Missing column: ' + required)
+          print('migration verified')
+          PYCODE
