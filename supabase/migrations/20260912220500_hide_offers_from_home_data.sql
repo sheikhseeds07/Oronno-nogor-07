@@ -1,3 +1,4 @@
+-- Offers are first-class products but are intentionally excluded from the normal home feed.
 create or replace function public.get_home_data_v1() returns jsonb language sql stable set search_path to '' as $function$
 with root_categories as materialized (
   select c.id,c.slug,c.name,c.image_url,c.display_order,c.created_at
