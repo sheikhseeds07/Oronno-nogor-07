@@ -69,6 +69,26 @@ try {
   const oldImageLabel = '<div className="mb-2 text-xs font-bold">Combo image</div>';
   const newImageLabel = '<div className="mb-2 text-xs font-bold">Main Combo Image <span className="font-normal text-muted-foreground">(Required)</span></div>';
   if (offersAdmin.includes(oldImageLabel)) offersAdmin = offersAdmin.replace(oldImageLabel, newImageLabel);
+
+  // Fix mobile/desktop offer drag sorting. The previous implementation changed touch-action only after the long-press,
+  // and also cancelled the drag on pointerleave. On mobile that can cause the browser to take over scrolling before
+  // the first reorder event. Keep the pointer stream captured and disable native touch gestures for draggable cards.
+  const oldPointerDown = 'const onPointerDown=(e:React.PointerEvent,id:string)=>{if(showArchived)return;startY.current=e.clientY;clearHold();holdTimer.current=setTimeout(()=>{dragId.current=id;setActiveId(id);if(typeof navigator!=="undefined"&&navigator.vibrate)navigator.vibrate(12);},220)};';
+  const newPointerDown = 'const onPointerDown=(e:React.PointerEvent,id:string)=>{if(showArchived)return;if((e.target as HTMLElement).closest("button,a,input,textarea,select"))return;startY.current=e.clientY;clearHold();try{e.currentTarget.setPointerCapture(e.pointerId)}catch{};holdTimer.current=setTimeout(()=>{dragId.current=id;setActiveId(id);if(typeof navigator!=="undefined"&&navigator.vibrate)navigator.vibrate(12);},220)};';
+  if (offersAdmin.includes(oldPointerDown)) offersAdmin = offersAdmin.replace(oldPointerDown, newPointerDown);
+
+  const oldPointerUp = 'const onPointerUp=()=>{clearHold();if(!dragId.current)return;dragId.current=null;setActiveId(null);void persist(listRef.current)};';
+  const newPointerUp = 'const onPointerUp=(e?:React.PointerEvent)=>{clearHold();if(!dragId.current)return;try{if(e) e.currentTarget.releasePointerCapture(e.pointerId)}catch{};dragId.current=null;setActiveId(null);void persist(listRef.current)};';
+  if (offersAdmin.includes(oldPointerUp)) offersAdmin = offersAdmin.replace(oldPointerUp, newPointerUp);
+
+  const oldListOpen = '<div className="space-y-3" style={activeId?{touchAction:"none"}:undefined} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} onPointerLeave={onPointerUp}>';
+  const newListOpen = '<div className="space-y-3" style={{touchAction:showArchived?"auto":"none",userSelect:activeId?"none":undefined}} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>';
+  if (offersAdmin.includes(oldListOpen)) offersAdmin = offersAdmin.replace(oldListOpen, newListOpen);
+
+  const oldCardStyle = 'style={{touchAction:activeId?"none":undefined}}';
+  const newCardStyle = 'style={{touchAction:showArchived?"auto":"none",userSelect:"none",WebkitUserSelect:"none"}}';
+  if (offersAdmin.includes(oldCardStyle)) offersAdmin = offersAdmin.replace(oldCardStyle, newCardStyle);
+
   await writeFile(offersAdminPath, offersAdmin, "utf8");
-  console.log("Offer builder now saves selected product images as combo gallery images and requires a main image.");
-} catch (error) { console.warn("Offer builder image patch skipped:", error instanceof Error ? error.message : error); }
+  console.log("Offer builder now saves selected product images as combo gallery images, requires a main image, and uses reliable pointer capture for drag sorting.");
+} catch (error) { console.warn("Offer builder image/drag patch skipped:", error instanceof Error ? error.message : error); }
