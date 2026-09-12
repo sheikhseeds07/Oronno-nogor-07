@@ -1,4 +1,4 @@
-name: Fix admin order product selector
+name: Fix admin order product selector v2
 
 on:
   push:
@@ -19,8 +19,8 @@ jobs:
           from pathlib import Path
           p = Path('src/routes/admin/orders.tsx')
           text = p.read_text()
-          old = 'let q = supabase.from("products").select("id,name,price,sale_price,sku").eq("is_active", true).limit(20);'
-          new = 'let q = supabase.from("products").select("id,name,price,sale_price,sku").order("created_at", { ascending: false });'
+          old = 'let q = supabase.from("products").select("id,name,price,sale_price,sku,images,stock").eq("is_active", true).limit(20);'
+          new = 'let q = supabase.from("products").select("id,name,price,sale_price,sku,images,stock").order("created_at", { ascending: false });'
           if old not in text:
               raise SystemExit('Target admin order product query not found; no changes made.')
           p.write_text(text.replace(old, new, 1))
