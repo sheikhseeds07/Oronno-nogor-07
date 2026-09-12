@@ -1693,6 +1693,8 @@ function CourierSuccessCell({ phone }: { phone: string }) {
     enabled: enabled && nearViewport,
     queryFn: () => fn({ data: { phone: digits } }),
     staleTime: 10 * 60_000,
+    retry: 2,
+    retryDelay: (attempt) => 600 * (attempt + 1),
   });
 
   let content: ReactNode = <span className="text-xs text-muted-foreground">—</span>;
@@ -1941,6 +1943,9 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
     enabled: phoneReady,
     queryFn: () => courierHistoryFn({ data: { phone: phoneDigits } }),
     staleTime: 5 * 60_000,
+    retry: 2,
+    retryDelay: (attempt) => 600 * (attempt + 1),
+    placeholderData: (prev) => prev,
   });
   const courierStats = extHistory?.configured ? extHistory.stats : [];
   const overallTotal = courierStats.reduce((a, s) => a + s.total, 0);
@@ -2467,6 +2472,8 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
     enabled: lookupPhoneDigits.length >= 10,
     queryFn: () => courierHistoryFn({ data: { phone: lookupPhoneDigits } }),
     staleTime: 5 * 60_000,
+    retry: 2,
+    retryDelay: (attempt) => 600 * (attempt + 1),
   });
 
   // Per-courier stats come ONLY from Hoorin API. No fallback / no synthetic distribution.
