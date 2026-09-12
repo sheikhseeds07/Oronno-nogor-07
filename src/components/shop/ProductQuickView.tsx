@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
-import { X, ShoppingCart, Star, MessageCircle, FileText, PackageCheck } from "lucide-react";
+import { X, ShoppingCart, Star, MessageCircle, FileText, PackageCheck, ChevronRight } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { taka, bnDigits } from "@/lib/format";
 import { useCart } from "@/lib/cart-store";
 import { toastAddedToCart } from "@/lib/cart-toast";
@@ -73,6 +74,8 @@ export function ProductQuickView({ product, onClose }: { product: Product & { de
           </div>
 
           <button onClick={handleAdd} disabled={product.stock<=0} className="group mx-auto mt-1.5 flex w-full max-w-[590px] items-center justify-center gap-1.5 overflow-hidden bg-brand py-2.5 text-xs font-black text-white shadow-[0_10px_24px_rgba(34,139,79,.22)] transition-all duration-300 hover:bg-brand-dark hover:shadow-[0_14px_30px_rgba(34,139,79,.28)] active:scale-[.99] disabled:opacity-50"><span className="absolute -translate-x-[140%] opacity-0 transition-all duration-700 group-hover:translate-x-[140%] group-hover:opacity-100 h-20 w-12 rotate-12 bg-white/20"/><ShoppingCart className="h-4 w-4 transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110"/>কার্টে যোগ করুন</button>
+
+          <Link to="/product/$slug" params={{slug:product.slug}} onClick={onClose} className="mx-auto mt-1.5 flex w-fit items-center gap-1 text-[10px] font-extrabold text-brand-dark underline underline-offset-4 transition-colors hover:text-brand hover:no-underline">সম্পূর্ণ পণ্য পেজ দেখুন <ChevronRight className="h-3 w-3"/></Link>
         </div>}
 
         {activeSection!=="desc" && isUuid(product.id) && <div className="h-full overflow-y-auto scrollbar-none px-2 pb-2 pt-1 sm:px-3"><ProductTabs productId={String(product.id)} description={product.description} activeTab={activeSection} onTabChange={setActiveSection} hideNav/></div>}
