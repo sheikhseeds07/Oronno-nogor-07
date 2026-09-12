@@ -92,3 +92,51 @@ try {
   await writeFile(offersAdminPath, offersAdmin, "utf8");
   console.log("Offer builder now saves selected product images as combo gallery images, requires a main image, and uses reliable pointer capture for drag sorting.");
 } catch (error) { console.warn("Offer builder image/drag patch skipped:", error instanceof Error ? error.message : error); }
+
+// Floating customer bottom navigation: keep the compact-on-scroll behavior, but reveal icons immediately when scrolling stops.
+// The idle timer is intentionally short so the bar feels responsive without flickering during normal touch scrolling.
+const customerBottomNavPath = path.resolve(here, "../src/components/layout/CustomerBottomNav.tsx");
+try {
+  let customerNav = await readFile(customerBottomNavPath, "utf8");
+  const oldScrollEffect = `  useEffect(() => {\n    let lastY = window.scrollY;\n    let ticking = false;\n    const onScroll = () => {\n      if (ticking) return;\n      ticking = true;\n      requestAnimationFrame(() => {\n        const y = window.scrollY;\n        if (y < 40) setMinimized(false);\n        else if (y > lastY + 5) setMinimized(true);\n        else if (y < lastY - 7) setMinimized(false);\n        lastY = y;\n        ticking = false;\n      });\n    };\n    window.addEventListener("scroll", onScroll, { passive: true });\n    return () => window.removeEventListener("scroll", onScroll);\n  }, []);`;
+  const newScrollEffect = `  useEffect(() => {\n    let lastY = window.scrollY;\n    let ticking = false;\n    let idleTimer: ReturnType<typeof setTimeout> | null = null;\n\n    const revealWhenIdle = () => {\n      if (idleTimer) clearTimeout(idleTimer);\n      idleTimer = setTimeout(() => setMinimized(false), 180);\n    };\n\n    const onScroll = () => {\n      revealWhenIdle();\n      if (ticking) return;\n      ticking = true;\n      requestAnimationFrame(() => {\n        const y = window.scrollY;\n        if (y < 40) setMinimized(false);\n        else if (y > lastY + 5) setMinimized(true);\n        else if (y < lastY - 7) setMinimized(false);\n        lastY = y;\n        ticking = false;\n      });\n    };\n    window.addEventListener("scroll", onScroll, { passive: true });\n    return () => {\n      window.removeEventListener("scroll", onScroll);\n      if (idleTimer) clearTimeout(idleTimer);\n    };\n  }, []);`;
+
+  if (customerNav.includes(oldScrollEffect)) customerNav = customerNav.replace(oldScrollEffect, newScrollEffect);
+
+  // Refine the visual treatment without changing the existing navigation structure or contact modal.
+  customerNav = customerNav.replace(
+    `.customer-bottom-nav { transition: transform .5s cubic-bezier(.22,1,.36,1), opacity .35s ease; }`,
+    `.customer-bottom-nav { transition: transform .5s cubic-bezier(.22,1,.36,1), opacity .35s ease, filter .35s ease; }`
+  );
+  customerNav = customerNav.replace(
+    `background:rgba(255,255,255,.985);`,
+    `background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(248,250,249,.96));\n          backdrop-filter:blur(18px);\n          -webkit-backdrop-filter:blur(18px);`
+  );
+  customerNav = customerNav.replace(
+    `box-shadow:0 18px 48px -18px rgba(15,23,42,.24), 0 6px 18px -10px rgba(22,101,52,.22), inset 0 1px 0 rgba(255,255,255,.95);`,
+    `box-shadow:0 22px 52px -20px rgba(15,23,42,.30), 0 8px 22px -12px rgba(22,101,52,.24), inset 0 1px 0 rgba(255,255,255,.98);`
+  );
+  customerNav = customerNav.replace(
+    `.customer-bottom-nav.is-minimized { transform: translateY(2px); }`,
+    `.customer-bottom-nav.is-minimized { transform: translateY(2px) scale(.992); filter:saturate(.96); }`
+  );
+  customerNav = customerNav.replace(
+    `.customer-bottom-nav.is-minimized::before { box-shadow:0 12px 34px -16px rgba(15,23,42,.22), 0 5px 16px -10px rgba(22,101,52,.18); }`,
+    `.customer-bottom-nav.is-minimized::before { box-shadow:0 14px 38px -18px rgba(15,23,42,.24), 0 6px 18px -11px rgba(22,101,52,.20); }`
+  );
+  customerNav = customerNav.replace(
+    `.customer-nav-icon { transition: transform .45s cubic-bezier(.22,1,.36,1), opacity .35s ease, height .45s ease, margin .45s ease; }`,
+    `.customer-nav-icon { transition: transform .42s cubic-bezier(.22,1,.36,1), opacity .28s ease, height .42s cubic-bezier(.22,1,.36,1), margin .42s cubic-bezier(.22,1,.36,1), box-shadow .3s ease; }`
+  );
+  customerNav = customerNav.replace(
+    `.customer-bottom-nav.is-minimized .customer-nav-icon { transform: scale(.12); opacity:0; height:2px; margin-bottom:-2px; }`,
+    `.customer-bottom-nav.is-minimized .customer-nav-icon { transform:scale(.12) translateY(3px); opacity:0; height:2px; margin-bottom:-2px; }`
+  );
+  customerNav = customerNav.replace(
+    `.customer-nav-label { transition: transform .45s cubic-bezier(.22,1,.36,1), color .25s ease; }`,
+    `.customer-nav-label { transition: transform .42s cubic-bezier(.22,1,.36,1), color .25s ease, opacity .28s ease; }`
+  );
+
+  await writeFile(customerBottomNavPath, customerNav, "utf8");
+  console.log("Polished customer bottom navigation and added scroll-idle icon reveal.");
+} catch (error) { console.warn("Customer bottom navigation patch skipped:", error instanceof Error ? error.message : error); }
