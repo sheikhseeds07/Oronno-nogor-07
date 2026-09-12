@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ShoppingCart, Search, X, ChevronRight, Home, Grid3x3, Phone, ArrowRight, Palette, Leaf, Sprout, Flower2, TreePine, Wheat, Sun, Users, UserRound } from "lucide-react";
+import { ShoppingCart, Search, X, ChevronRight, Home, Grid3x3, Phone, ArrowRight, Palette, Leaf, Sprout, Flower2, TreePine, Wheat, Sun, Users, UserRound, BadgePercent } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { hydrateCartStore, useCart } from "@/lib/cart-store";
 import { bnDigits } from "@/lib/format";
@@ -146,6 +146,11 @@ export function Header() {
               <Link to="/shop" onClick={closeDrawer} style={{ "--d": nextDelay() } as React.CSSProperties} className="drawer-item group flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-gradient-to-r hover:from-brand-light/60 hover:to-transparent transition">
                 <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br from-lime-500 to-brand text-white shadow-sm shadow-brand/30 group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-300"><Grid3x3 className="w-3.5 h-3.5" /></span>
                 <span className="font-bold text-[13px]">সকল পণ্য</span>
+                <ChevronRight className="w-4 h-4 ml-auto text-brand/50 group-hover:translate-x-1 group-hover:text-brand transition-all" />
+              </Link>
+              <Link to="/offers" onClick={closeDrawer} style={{ "--d": nextDelay() } as React.CSSProperties} className="drawer-item group flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-gradient-to-r hover:from-brand-light/60 hover:to-transparent transition">
+                <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-sm shadow-amber-500/30 group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-300"><BadgePercent className="w-3.5 h-3.5" /></span>
+                <span className="font-bold text-[13px]">অফার</span>
                 <ChevronRight className="w-4 h-4 ml-auto text-brand/50 group-hover:translate-x-1 group-hover:text-brand transition-all" />
               </Link>
               <Link to="/social" onClick={closeDrawer} style={{ "--d": nextDelay() } as React.CSSProperties} className="drawer-item group flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-gradient-to-r hover:from-brand-light/60 hover:to-transparent transition">
