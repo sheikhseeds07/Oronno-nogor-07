@@ -2112,9 +2112,6 @@ type DetailOrder = {
 };
 
 
-const COURIERS = ["Steadfast", "Pathao", "RedX", "eCourier", "Paperfly"] as const;
-type Courier = typeof COURIERS[number];
-
 function normalizePhone(phone: string) {
   const digits = phone.replace(/\D/g, "");
   if (digits.startsWith("88") && digits.length === 13) return digits.slice(2);
@@ -2413,7 +2410,6 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
   const [phoneVal, setPhoneVal] = useState("");
   const [address, setAddress] = useState("");
   const [shippingNote, setShippingNote] = useState("");
-  const [delivery, setDelivery] = useState<Courier>("Steadfast");
   const [discount, setDiscount] = useState(0);
   const [advance, setAdvance] = useState(0);
   const [deliveryCharge, setDeliveryCharge] = useState(0);
@@ -2422,6 +2418,31 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
   const [saving, setSaving] = useState(false);
   const [assignedTo, setAssignedTo] = useState<string | null>(null);
   const [transferring, setTransferring] = useState(false);
+  const [nextStatus, setNextStatus] = useState<OrderStatus | "">("");
+  const [statusSaving, setStatusSaving] = useState(false);
+  const ensureInvoicesFn = useServerFn(ensureOrderInvoices);
+
+  const applyStatusChange = async () => {
+    if (!detail || !nextStatus || nextStatus === detail.status) return;
+    if (nextStatus === "incomplete") { toast.error("ইনকমপ্লিট স্ট্যাটাসে ম্যানুয়ালি যাওয়া যাবে না"); return; }
+    setStatusSaving(true);
+    try {
+      if (nextStatus !== "web_pending") {
+        try { await ensureInvoicesFn({ data: { ids: [detail.id] } }); } catch { /* invoice পরে সেট হবে */ }
+      }
+      const { error } = await supabase.from("orders").update({ status: nextStatus }).eq("id", detail.id);
+      if (error) throw error;
+      toast.success(`স্ট্যাটাস "${statusEn[nextStatus]}" করা হয়েছে`);
+      setNextStatus("");
+      qc.invalidateQueries({ queryKey: ["order-detail", detail.id] });
+      qc.invalidateQueries({ queryKey: ["admin-orders"] });
+      qc.invalidateQueries({ queryKey: ["order-status-counts"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "স্ট্যাটাস আপডেট ব্যর্থ");
+    } finally {
+      setStatusSaving(false);
+    }
+  };
 
 
   // Customer history by phone — updates immediately when the mobile number field changes.
@@ -2697,11 +2718,35 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
               <label className="text-xs font-semibold mb-1 block">Name</label>
               <input value={name} onChange={(e) => setName(e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm bg-blue-50/40" />
             </div>
-            <div>
-              <label className="text-xs font-semibold mb-1 block">Delivery Method</label>
-              <select value={delivery} onChange={(e) => setDelivery(e.target.value as Courier)} className="w-full border rounded-lg px-3 py-2 text-sm bg-blue-50/40">
-                {COURIERS.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
+            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="text-xs font-bold text-slate-700">Order Status</span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${statusColor[detail.status] ?? "bg-slate-100 text-slate-700"}`}>{statusEn[detail.status] ?? detail.status}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <select
+                  value={nextStatus}
+                  onChange={(e) => setNextStatus(e.target.value as OrderStatus | "")}
+                  className="flex-1 min-w-0 border border-slate-200 rounded-lg px-2.5 py-2 text-xs font-semibold bg-white focus:outline-none focus:ring-2 focus:ring-brand/30"
+                >
+                  <option value="">স্ট্যাটাস পরিবর্তন...</option>
+                  <optgroup label="Web Order">
+                    {WEB_STATUSES.filter((st) => st !== "incomplete").map((st) => <option key={st} value={st}>{statusEn[st]}</option>)}
+                  </optgroup>
+                  <optgroup label="Order List">
+                    {LIST_STATUSES.map((st) => <option key={st} value={st}>{statusEn[st]}</option>)}
+                  </optgroup>
+                </select>
+                <button
+                  type="button"
+                  onClick={applyStatusChange}
+                  disabled={!nextStatus || nextStatus === detail.status || statusSaving}
+                  className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-extrabold shadow-sm transition ${nextStatus && nextStatus !== detail.status ? "bg-gradient-to-br from-amber-500 to-orange-600 text-white hover:shadow-md" : "bg-slate-200 text-slate-400 cursor-not-allowed"}`}
+                >
+                  {statusSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                  কনফার্ম
+                </button>
+              </div>
               <BlockCustomerButton name={name} phone={phoneVal} orderId={detail.id} />
             </div>
             <div className="sm:col-span-3">
