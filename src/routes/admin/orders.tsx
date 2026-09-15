@@ -14,6 +14,7 @@ import { Search, Plus, Globe, ListOrdered, Trash2, CheckCircle2, Phone, MessageC
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useServerFn } from "@tanstack/react-start";
 import { fetchCourierHistory } from "@/lib/courier-history.functions";
+import { getCustomerHistory } from "@/lib/customer-history.functions";
 import { sendOrdersToSteadfast, syncSteadfastStatuses } from "@/lib/courier-test.functions";
 import { createManualOrder, updateAdminOrder, markOrdersPrinted, deleteOrders } from "@/lib/admin-order.functions";
 import { ensureOrderInvoices, reserveInvoiceNos } from "@/lib/order-invoice.functions";
@@ -2449,11 +2450,36 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
   // Customer history by phone — updates immediately when the mobile number field changes.
   const lookupPhoneDigits = normalizePhone(phoneVal || detail?.customer_phone || "");
   const lookupPhone = phoneVal || detail?.customer_phone || "";
+  const historyFn = useServerFn(getCustomerHistory);
   const { data: history } = useQuery({
     queryKey: ["customer-history", lookupPhoneDigits],
     enabled: lookupPhoneDigits.length >= 10,
+    staleTime: 30_000,
+    retry: 2,
+    retryDelay: (attempt) => 500 * (attempt + 1),
+    placeholderData: (prev) => prev,
     queryFn: async () => {
-      const { data } = await supabase.from("orders").select("id,invoice_no,status,total,created_at,customer_name,customer_address,thana,district,order_items(product_name,quantity)").in("customer_phone", phoneVariants(lookupPhone)).order("created_at", { ascending: false });
+      // Primary: site-wide history through the SECURITY DEFINER server function.
+      // It ignores per-employee row level security and matches loose phone
+      // formats, so incomplete/draft orders always find the other orders.
+      try {
+        const rows = await historyFn({ data: { phone: lookupPhone || lookupPhoneDigits } });
+        if (Array.isArray(rows) && rows.length) return rows as any[];
+      } catch {
+        /* fall back to the direct read below */
+      }
+      const last9 = lookupPhoneDigits.slice(-9);
+      const filters = [
+        ...phoneVariants(lookupPhone || lookupPhoneDigits).map((v) => `customer_phone.eq.${v}`),
+        `customer_phone.ilike.%${last9}`,
+        `customer_phone.ilike.%${last9}%`,
+      ].join(",");
+      const { data } = await supabase
+        .from("orders")
+        .select("id,invoice_no,status,total,created_at,customer_name,customer_address,thana,district,order_items(product_name,quantity)")
+        .or(filters)
+        .order("created_at", { ascending: false })
+        .limit(200);
       return data ?? [];
     },
   });
