@@ -97,22 +97,36 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
       </div>
     </div>
 
-
     <main>
       <section className="relative overflow-hidden bg-all-product-hero text-all-product-hero-foreground">
         <div className="all-product-grain absolute inset-0" aria-hidden="true" />
-        <div className="relative mx-auto grid max-w-6xl items-center gap-4 px-4 pb-6 pt-4 md:grid-cols-[1fr_.9fr] md:gap-7 md:pb-10 md:pt-7">
-          <div className="order-2 md:order-1">
-            <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-all-product-gold/40 bg-all-product-gold/10 px-2.5 py-1 text-[11px] font-black text-all-product-gold"><Sparkles className="h-3 w-3" /> {C.offer_badge_text || "সীমিত সময়ের বিশেষ অফার"}</div>
-
-            <h1 className="max-w-2xl text-3xl font-black leading-[1.18] sm:text-4xl md:text-5xl">{page.hero_title || page.title}</h1>
-            {page.hero_subtitle && <p className="mt-4 max-w-xl text-sm leading-7 text-all-product-hero-muted sm:text-base">{page.hero_subtitle}</p>}
-            <div className="mt-5 flex flex-wrap items-end gap-3"><span className="text-4xl font-black text-all-product-gold">{taka(basePrice)}</span>{regularPrice && regularPrice > basePrice && <><del className="pb-1 text-lg text-all-product-hero-muted">{taka(regularPrice)}</del><span className="mb-1 rounded-md bg-all-product-alert px-2 py-1 text-xs font-black text-all-product-alert-foreground">{discount}% ছাড়</span></>}</div>
-            {savings > 0 && <p className="mt-1 text-sm font-bold text-all-product-hero-muted">আপনার সাশ্রয় {taka(savings)}</p>}
-            <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-xs font-bold text-all-product-hero-muted"><span className="flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-all-product-success" /> পরীক্ষিত বীজ</span><span className="flex items-center gap-1.5"><Truck className="h-4 w-4 text-all-product-success" /> সারা দেশে ডেলিভারি</span><span className="flex items-center gap-1.5"><Wallet className="h-4 w-4 text-all-product-success" /> ক্যাশ অন ডেলিভারি</span></div>
-            <Button size="lg" onClick={goOrder} className="all-product-primary-cta mt-7 h-14 w-full max-w-sm text-base font-black"><ShoppingBag className="h-5 w-5" />{page.cta_text || "এখনই অর্ডার করুন"}<span aria-hidden="true">→</span></Button>
+        <div className="relative mx-auto max-w-3xl px-4 pb-8 pt-5 sm:pb-10 sm:pt-7">
+          <div className="text-center">
+            <h1 className="all-product-hero-title mx-auto max-w-3xl text-3xl font-black leading-[1.22] sm:text-4xl md:text-5xl">{page.hero_title || page.title}</h1>
+            {page.hero_subtitle && <p className="all-product-hero-subtitle mx-auto mt-2.5 max-w-2xl text-sm leading-6 text-all-product-hero-muted sm:mt-3 sm:text-base">{page.hero_subtitle}</p>}
           </div>
-          <div className="order-1 md:order-2"><div className="all-product-image-wrap mx-auto max-w-lg"><img src={toImg(heroImage, { w: 1100, q: 88 })} onError={event => imgFallback(event, heroImage)} alt={page.hero_title || page.title} width={760} height={760} fetchPriority="high" className="aspect-square w-full object-cover" /><span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-md bg-all-product-surface/95 px-3 py-2 text-xs font-black text-all-product-primary shadow-lg"><Leaf className="h-4 w-4" /> ১০০% অরিজিনাল</span></div></div>
+
+          <div className="mt-5 sm:mt-6">
+            <div className="all-product-image-wrap mx-auto max-w-xl">
+              <img src={toImg(heroImage, { w: 1100, q: 88 })} onError={event => imgFallback(event, heroImage)} alt={page.hero_title || page.title} width={760} height={760} fetchPriority="high" className="aspect-square w-full object-cover" />
+              <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-md bg-all-product-surface/95 px-3 py-2 text-xs font-black text-all-product-primary shadow-lg"><Leaf className="h-4 w-4" /> ১০০% অরিজিনাল</span>
+            </div>
+          </div>
+
+          <div className="mx-auto mt-5 max-w-xl rounded-2xl border border-all-product-gold/25 bg-all-product-surface/95 p-4 text-all-product-ink shadow-2xl backdrop-blur-sm sm:mt-6 sm:p-5">
+            <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2">
+              <span className="text-4xl font-black tracking-tight text-all-product-primary sm:text-5xl">{taka(basePrice)}</span>
+              {regularPrice && regularPrice > basePrice && <del className="text-base font-bold text-all-product-muted sm:text-lg">{taka(regularPrice)}</del>}
+              {discount > 0 && <span className="rounded-full bg-all-product-alert px-2.5 py-1 text-xs font-black text-all-product-alert-foreground">{discount}% ছাড়</span>}
+            </div>
+            {savings > 0 && <div className="mt-2 text-center text-sm font-black text-all-product-primary">আপনার সাশ্রয় {taka(savings)}</div>}
+            <div className="mt-4 grid grid-cols-3 divide-x divide-all-product-line border-t border-all-product-line pt-3 text-center">
+              <span className="px-2 text-[11px] font-bold leading-5 text-all-product-muted"><ShieldCheck className="mx-auto mb-1 h-4 w-4 text-all-product-success" />পরীক্ষিত বীজ</span>
+              <span className="px-2 text-[11px] font-bold leading-5 text-all-product-muted"><Truck className="mx-auto mb-1 h-4 w-4 text-all-product-success" />সারা দেশে ডেলিভারি</span>
+              <span className="px-2 text-[11px] font-bold leading-5 text-all-product-muted"><Wallet className="mx-auto mb-1 h-4 w-4 text-all-product-success" />ক্যাশ অন ডেলিভারি</span>
+            </div>
+            <Button size="lg" onClick={goOrder} className="all-product-primary-cta mt-4 h-13 w-full text-base font-black sm:h-14"><ShoppingBag className="h-5 w-5" />{page.cta_text || "এখনই অর্ডার করুন"}<span aria-hidden="true">→</span></Button>
+          </div>
         </div>
         <ChevronDown className="absolute bottom-2 left-1/2 h-5 w-5 -translate-x-1/2 animate-bounce text-all-product-gold" />
       </section>
