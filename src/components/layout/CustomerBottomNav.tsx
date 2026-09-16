@@ -19,7 +19,8 @@ type ProductCard = { id: string; name: string; price: number; sale_price: number
 type ChatAttachment = { type: "file"; url: string; mediaType: string; filename?: string };
 type ChatMessage = { role: "user" | "assistant"; text: string; attachments?: ChatAttachment[]; products?: ProductCard[]; orderId?: string | null; invoiceNo?: string | null };
 
-const INTRO = "আসসালামু আলাইকুম! আমি Sheikh Seeds-এর লাইভ সহকারী। বীজ, গাছের সমস্যা বা অর্ডার—লিখে, ছবি তুলে কিংবা ভয়েসে বলুন।";
+const INTRO = "আসসালামু আলাইকুম। পণ্য, অর্ডার বা গাছের সমস্যা—যা জানতে চান সরাসরি বলুন।";
+const QUICK_PROMPTS = ["পণ্যের দাম জানতে চাই", "গাছের সমস্যার সমাধান", "অর্ডার করতে চাই"];
 const filePayload = (file: ChatAttachment) => {
   const match = /^data:([^;,]+);base64,(.+)$/.exec(file.url);
   return match ? { mediaType: match[1], data: match[2], name: file.filename } : null;
@@ -102,7 +103,7 @@ export function CustomerBottomNav({ hidden = false }: { hidden?: boolean }) {
       toast.error("ছবি বা ভয়েসটি পড়া যায়নি");
       return undefined;
     }
-    const history = chatMessages.slice(-14).map((item) => ({ direction: item.role === "user" ? "in" as const : "out" as const, text: item.text }));
+    const history = chatMessages.slice(-10).map((item) => ({ direction: item.role === "user" ? "in" as const : "out" as const, text: item.text }));
     setVoiceAttachment(null);
     setChatMessages((previous) => [...previous, { role: "user", text, attachments: visibleAttachments }]);
     setChatSending(true);
@@ -142,34 +143,35 @@ export function CustomerBottomNav({ hidden = false }: { hidden?: boolean }) {
     </div>}
 
     {chatOpen && <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-foreground/55 p-3 backdrop-blur-sm sm:p-5" onClick={() => setChatOpen(false)}>
-      <section role="dialog" aria-modal="true" aria-label="Sheikh Seeds লাইভ চ্যাট" onClick={(e) => e.stopPropagation()} className="flex h-[min(680px,82dvh)] min-h-[480px] w-full max-w-[440px] flex-col overflow-hidden rounded-xl border bg-background shadow-2xl">
-        <header className="relative flex shrink-0 items-center gap-3 border-b bg-primary px-4 py-3 text-primary-foreground">
-          <div className="relative"><img src={logoUrl} alt="Sheikh Seeds logo" className="h-11 w-11 rounded-lg bg-background object-contain p-1"/><span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-primary bg-chart-2"/></div>
-          <div className="min-w-0 flex-1"><div className="flex items-center gap-1"><h2 className="truncate text-base font-extrabold">Sheikh Seeds</h2><BadgeCheck className="h-4 w-4 text-chart-4" aria-label="Verified"/></div><p className="text-[11px] opacity-80">অনলাইন • সাধারণত কয়েক সেকেন্ডে উত্তর দেয়</p></div>
+      <section role="dialog" aria-modal="true" aria-label="Sheikh Seeds লাইভ চ্যাট" onClick={(e) => e.stopPropagation()} className="flex h-[min(680px,82dvh)] min-h-[480px] w-full max-w-[440px] flex-col overflow-hidden rounded-xl border bg-background shadow-2xl ring-1 ring-primary/10">
+        <header className="relative flex shrink-0 items-center gap-3 border-b bg-primary px-4 py-3.5 text-primary-foreground">
+          <div className="relative"><img src={logoUrl} alt="Sheikh Seeds logo" className="h-11 w-11 rounded-lg bg-background object-contain p-1 shadow-sm"/><span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-primary bg-chart-2"/></div>
+          <div className="min-w-0 flex-1"><div className="flex items-center gap-1.5"><h2 className="truncate text-base font-extrabold">Sheikh Seeds</h2><BadgeCheck className="h-4 w-4 text-chart-4" aria-label="Verified"/></div><p className="mt-0.5 flex items-center gap-1.5 text-[11px] font-medium opacity-90"><span className="h-1.5 w-1.5 rounded-full bg-chart-2"/>অনলাইন • দ্রুত উত্তর</p></div>
           <Button type="button" variant="ghost" size="icon" aria-label="বন্ধ করুন" onClick={() => setChatOpen(false)} className="text-primary-foreground hover:bg-primary-foreground/15"><X/></Button>
         </header>
 
-        <Conversation className="min-h-0 bg-muted/40"><ConversationContent className="gap-4 p-4">
+        <Conversation className="min-h-0 bg-muted/30"><ConversationContent className="gap-4 p-4">
           {chatMessages.map((message, index) => <Message from={message.role} key={`${message.role}-${index}`}>
             {message.role === "assistant" && <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground"><img src={logoUrl} alt="" className="h-5 w-5 rounded object-contain"/>Sheikh Seeds <BadgeCheck className="h-3.5 w-3.5 text-primary"/></div>}
-            <MessageContent className={message.role === "user" ? "rounded-lg bg-primary px-3 py-2.5 text-primary-foreground" : "max-w-[92%]"}>
+            <MessageContent className={message.role === "user" ? "rounded-lg bg-primary px-3.5 py-2.5 text-primary-foreground shadow-sm" : "max-w-[92%] rounded-lg border bg-background px-3.5 py-3 shadow-sm"}>
               {message.attachments?.length ? <Attachments variant="grid">{message.attachments.map((file, fileIndex) => <Attachment key={`${file.filename}-${fileIndex}`} data={{ ...file, id: `${index}-${fileIndex}` }}><AttachmentPreview/></Attachment>)}</Attachments> : null}
               {message.text && (message.role === "assistant" ? <MessageResponse>{message.text}</MessageResponse> : <p className="whitespace-pre-wrap text-sm">{message.text}</p>)}
             </MessageContent>
             {message.products?.length ? <div className="flex max-w-full gap-2 overflow-x-auto pb-1">{message.products.map((product) => { const price = product.sale_price ?? product.price; return <Link key={product.id} to="/product/$slug" params={{ slug: product.slug }} className="w-36 shrink-0 overflow-hidden rounded-lg border bg-card shadow-sm transition hover:border-primary"><div className="aspect-square bg-muted">{product.images?.[0] ? <img src={product.images[0]} alt={product.name} loading="lazy" className="h-full w-full object-cover"/> : <div className="flex h-full items-center justify-center"><ImageIcon className="text-muted-foreground"/></div>}</div><div className="p-2"><p className="line-clamp-2 text-xs font-bold">{product.name}</p><p className="mt-1 text-sm font-black text-primary">৳{price}</p><span className="text-[10px] text-muted-foreground">{product.stock > 0 ? "স্টকে আছে" : "স্টক শেষ"}</span></div></Link>; })}</div> : null}
             {message.orderId && <Link to="/order/$id" params={{ id: message.orderId }} className="inline-flex w-fit items-center gap-1 rounded-md border border-primary/30 bg-accent px-3 py-2 text-xs font-bold text-primary">অর্ডার {message.invoiceNo ? `#${message.invoiceNo}` : ""} দেখুন <ArrowUpRight className="h-3.5 w-3.5"/></Link>}
           </Message>)}
-          {chatSending && <Message from="assistant"><MessageContent><Shimmer>Sheikh Seeds উত্তর তৈরি করছে...</Shimmer></MessageContent></Message>}
+          {chatMessages.length === 1 && <div className="flex flex-wrap gap-2">{QUICK_PROMPTS.map((prompt) => <Button key={prompt} type="button" variant="outline" size="sm" className="h-8 rounded-full bg-background px-3 text-[11px] font-semibold shadow-sm" onClick={() => void handleSubmit({ text: prompt, files: [] })}>{prompt}</Button>)}</div>}
+          {chatSending && <Message from="assistant"><MessageContent className="rounded-lg border bg-background px-3.5 py-3 shadow-sm"><Shimmer>উত্তর দিচ্ছে...</Shimmer></MessageContent></Message>}
         </ConversationContent><ConversationScrollButton className="bottom-2"/></Conversation>
 
-        <div className="shrink-0 border-t bg-background p-3">
+        <div className="shrink-0 border-t bg-background p-3 shadow-[0_-8px_24px_-20px_var(--foreground)]">
           {voiceAttachment && !recording && <div className="mb-2 flex items-center justify-between rounded-lg border bg-accent px-3 py-2 text-xs"><span className="flex items-center gap-2"><Mic className="h-4 w-4 text-primary"/>ভয়েস মেসেজ প্রস্তুত</span><Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setVoiceAttachment(null); setRecording(false); }}><X/></Button></div>}
           <PromptInput accept="image/jpeg,image/png,image/webp" maxFiles={2} maxFileSize={5_000_000} onError={(error) => toast.error(error.code === "max_file_size" ? "ছবিটি ৫ MB-এর মধ্যে দিন" : "সর্বোচ্চ ২টি JPG, PNG বা WebP ছবি দিন")} onSubmit={handleSubmit}>
             <AttachmentStrip/>
-            <PromptInputTextarea autoFocus disabled={chatSending} placeholder="মেসেজ লিখুন বা ছবি/ভয়েস দিন..." className="min-h-14 text-sm"/>
+            <PromptInputTextarea autoFocus disabled={chatSending} placeholder="আপনার প্রশ্ন লিখুন..." className="min-h-14 text-sm"/>
             <PromptInputFooter><PromptInputTools><PromptInputButton tooltip="ছবি দিন" onClick={() => document.querySelector<HTMLInputElement>('input[aria-label="Upload files"]')?.click()}><ImageIcon/></PromptInputButton><PromptInputButton tooltip={recording ? "রেকর্ডিং বন্ধ করুন" : "ভয়েস রেকর্ড করুন"} onClick={() => void toggleRecording()} className={recording ? "text-destructive" : ""}>{recording ? <Square/> : <Mic/>}</PromptInputButton>{recording && <span className="text-xs font-bold text-destructive">রেকর্ডিং...</span>}</PromptInputTools><PromptInputSubmit status={chatSending ? "submitted" : "ready"} disabled={chatSending} className="bg-primary text-primary-foreground"><Send/></PromptInputSubmit></PromptInputFooter>
           </PromptInput>
-          <p className="mt-1.5 text-center text-[9px] text-muted-foreground">AI উত্তর ভুল হতে পারে—কৃষি প্রয়োগের আগে লেবেল ও বিশেষজ্ঞের পরামর্শ অনুসরণ করুন</p>
+          <p className="mt-1.5 text-center text-[9px] text-muted-foreground">গুরুত্বপূর্ণ কৃষি প্রয়োগের আগে পণ্যের লেবেল যাচাই করুন</p>
         </div>
       </section>
     </div>}

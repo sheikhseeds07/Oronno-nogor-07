@@ -103,9 +103,8 @@ async function createOrder(args: { customer_name: string; customer_phone: string
 }
 
 export async function generateGeminiWebReply(input: { incoming: string; history: { direction: string; text: string | null }[]; attachments?: MediaInput[] }) {
-  const { model } = await getConfig();
-  const shop = await shopContext();
-  const history = input.history.slice(-12).filter((m) => m.text);
+  const [{ model }, shop] = await Promise.all([getConfig(), shopContext()]);
+  const history = input.history.slice(-8).filter((m) => m.text);
   let messages: Msg[] = history.map((m) => ({ role: m.direction === "in" ? "user" : "model", parts: [{ text: m.text ?? "" }] }));
   const userParts: any[] = [];
   if (input.incoming) userParts.push({ text: input.incoming });
@@ -115,18 +114,18 @@ export async function generateGeminiWebReply(input: { incoming: string; history:
   const hasOrderIntent = /(অর্ডার|নিব|নিতে চাই|কিনব|কিনতে চাই|order|buy)/i.test(combined);
   const explicitConfirmation = /(জি|হ্যাঁ|হ্যা|yes|confirm|কনফার্ম|অর্ডার দিন|অর্ডার করুন|নিশ্চিত)/i.test(input.incoming);
   const allowCreateOrder = hasOrderIntent && explicitConfirmation;
-  const system = `আপনি ${shop.name}-এর verified ওয়েবসাইট লাইভ কাস্টমার কেয়ার, কৃষি পরামর্শক ও সেলস সহকারী। পরিচয়: ${shop.tagline}। ফোন: ${shop.phone}। ঠিকানা: ${shop.address || "ঠিকানা জানতে চাইলে ফোনে যোগাযোগ করতে বলুন"}। মানুষের মতো উষ্ণ, স্বাভাবিক বাংলায় ২-৪টি ছোট অনুচ্ছেদে উত্তর দিন; প্রয়োজন ছাড়া লম্বা তালিকা নয়। ছবি বা ভয়েস এলে মনোযোগ দিয়ে বুঝে নির্দিষ্ট উত্তর দিন; গাছের রোগ শুধু ছবি দেখে নিশ্চিত diagnosis হিসেবে বলবেন না, সম্ভাবনা ও নিরাপদ করণীয় বলবেন। প্রাসঙ্গিক হলে কাস্টমারকে উপযুক্ত পণ্য কেনার পরামর্শ দিন, কিন্তু চাপ বা মিথ্যা দাবি করবেন না। ব্যবসার নাম/ফোন/ঠিকানা চাইলে উপরের সত্য তথ্য দিন। প্রোডাক্টের দাম/স্টক কখনো অনুমান করবেন না; search_products দিয়ে যাচাই করুন এবং পাওয়া পণ্যের সঠিক নাম বলুন। ডেলিভারি চার্জ বর্তমান rules অনুযায়ী: ${JSON.stringify(shop.rules)}। COD আছে। অর্ডার নিতে নাম, ১১ ডিজিটের মোবাইল, পূর্ণ ঠিকানা, প্রোডাক্ট ও quantity সংগ্রহ করুন। সব তথ্য নিয়ে subtotal + delivery সহ মোট টাকা জানিয়ে কাস্টমারের স্পষ্ট সম্মতি পাওয়ার পরই create_order ব্যবহার করবেন। কাস্টমার এখনো সম্মতি না দিলে শুধু তথ্য নিন, অর্ডার তৈরি করবেন না। ${allowCreateOrder ? "এই বার্তায় অর্ডার তৈরির সম্মতি পাওয়া গেছে বলে ধরে নিতে পারেন, তবে প্রয়োজনীয় তথ্য সম্পূর্ণ থাকতে হবে।" : "এই বার্তায় create_order ব্যবহার করা যাবে না।"}`;
+  const system = `আপনি ${shop.name}-এর verified ওয়েবসাইট কাস্টমার কেয়ার, কৃষি পরামর্শক ও সেলস সহকারী। পরিচয়: ${shop.tagline}। ফোন: ${shop.phone}। ঠিকানা: ${shop.address || "ঠিকানা জানতে চাইলে ফোনে যোগাযোগ করতে বলুন"}। উত্তর দেওয়ার নিয়ম: (১) কাস্টমারের মূল প্রশ্নের উত্তর প্রথম বাক্যেই দিন; (২) সাধারণ প্রশ্নে ১-৩টি ছোট বাক্য, দরকার হলে সর্বোচ্চ ৩টি ছোট bullet; (৩) অপ্রয়োজনীয় ভূমিকা, একই তথ্য পুনরাবৃত্তি, অতিরিক্ত শুভেচ্ছা বা বিক্রয়মূলক কথা দেবেন না; (৪) তথ্য কম থাকলে একবারে শুধু সবচেয়ে প্রয়োজনীয় একটি প্রশ্ন করুন; (৫) ভাষা হবে সহজ, উষ্ণ ও পেশাদার বাংলা। ছবি বা ভয়েস এলে মনোযোগ দিয়ে নির্দিষ্ট উত্তর দিন; গাছের রোগ শুধু ছবি দেখে নিশ্চিত diagnosis বলবেন না—সম্ভাবনা ও নিরাপদ করণীয় সংক্ষেপে বলবেন। কেবল প্রাসঙ্গিক হলে উপযুক্ত পণ্য প্রস্তাব করুন, চাপ বা মিথ্যা দাবি নয়। ব্যবসার নাম/ফোন/ঠিকানা চাইলে শুধু চাওয়া তথ্য দিন। প্রোডাক্টের দাম/স্টক কখনো অনুমান করবেন না; search_products দিয়ে যাচাই করুন। ডেলিভারি চার্জের বর্তমান rules: ${JSON.stringify(shop.rules)}। COD আছে। অর্ডারের জন্য নাম, ১১ ডিজিটের মোবাইল, পূর্ণ ঠিকানা, প্রোডাক্ট ও quantity সংগ্রহ করুন। সব তথ্য নিয়ে subtotal + delivery সহ মোট জানিয়ে স্পষ্ট সম্মতির পরই create_order ব্যবহার করবেন। ${allowCreateOrder ? "এই বার্তায় সম্মতি পাওয়া গেছে ধরে নিতে পারেন, তবে তথ্য সম্পূর্ণ হতে হবে।" : "এই বার্তায় create_order ব্যবহার করা যাবে না।"}`;
   const declarations: any[] = [{ name: "search_products", description: "শপের active products খুঁজে দাম, stock ও তথ্য যাচাই করুন", parameters: { type: "OBJECT", properties: { query: { type: "STRING" } }, required: ["query"] } }];
   if (allowCreateOrder) declarations.push({ name: "create_order", description: "প্রয়োজনীয় customer তথ্য ও product নিশ্চিত হওয়ার পর অর্ডার তৈরি করুন", parameters: { type: "OBJECT", properties: { customer_name: { type: "STRING" }, customer_phone: { type: "STRING" }, customer_address: { type: "STRING" }, inside_dhaka: { type: "BOOLEAN" }, items: { type: "ARRAY", items: { type: "OBJECT", properties: { product_name: { type: "STRING" }, quantity: { type: "NUMBER" } }, required: ["product_name", "quantity"] } } }, required: ["customer_name", "customer_phone", "customer_address", "inside_dhaka", "items"] } });
   const shownProducts = new Map<string, ProductResult>();
   let createdOrder: { order_id?: string; invoice_no?: string | null; total?: number } | null = null;
-  for (let round = 0; round < 6; round++) {
+  for (let round = 0; round < 4; round++) {
     const json = await callGemini({
       model,
       systemInstruction: { parts: [{ text: system }] },
       contents: messages,
       tools: [{ functionDeclarations: declarations }],
-      generationConfig: { temperature: 0.75, maxOutputTokens: 1500 },
+      generationConfig: { temperature: 0.45, maxOutputTokens: 600 },
     });
     const parts: any[] = json?.candidates?.[0]?.content?.parts ?? [];
     const calls = parts.filter((p: any) => p.functionCall);
