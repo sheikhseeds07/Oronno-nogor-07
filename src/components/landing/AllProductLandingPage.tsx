@@ -93,7 +93,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
     <div role="banner" className="sticky top-0 z-40 border-b border-all-product-line bg-all-product-surface/95 backdrop-blur-xl">
       <div className="mx-auto flex h-10 max-w-6xl items-center justify-between gap-3 px-3 sm:px-4">
         <div className="flex min-w-0 items-center gap-1.5"><img src={logo} alt={brand} className="h-6 w-6 rounded-full border border-all-product-line object-cover" /><div className="flex min-w-0 items-center gap-1 text-[13px] font-black leading-none"><span className="truncate">{brand}</span><BadgeCheck className="h-3 w-3 shrink-0 text-all-product-primary" fill="currentColor" /></div></div>
-        <div className="flex shrink-0 items-center gap-1.5 text-[10px] font-black text-all-product-alert"><span className="all-product-live-dot h-1.5 w-1.5 rounded-full bg-all-product-alert" /> অফার চলছে</div>
+        <OfferCountdown />
       </div>
     </div>
 
@@ -128,9 +128,20 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
       </div></section>}
 
       <section className="bg-all-product-surface py-7"><div className="mx-auto max-w-3xl px-4">
-        <div className="overflow-hidden rounded-lg border border-all-product-line bg-all-product-surface shadow-all-product">
-          <div className="flex items-center gap-2 border-b border-all-product-line bg-all-product-soft px-3.5 py-2"><ShieldCheck className="h-4 w-4 shrink-0 text-all-product-primary" /><h2 className="text-[13px] font-black leading-5">আমাদের থেকে কেন নিবেন</h2></div>
-          <table className="w-full border-collapse text-left"><tbody>{why.slice(0,4).map((item, index) => <tr key={index} className="border-b border-all-product-line/70 last:border-0"><th scope="row" className="w-[40%] bg-all-product-soft/40 px-3.5 py-2 align-top text-[12px] font-black"><span className="mr-1.5">{item.icon || ["💵","🚚","🛡️","☎️"][index]}</span>{item.title}</th><td className="px-3.5 py-2 align-top text-[12px] leading-5 text-all-product-muted">{item.text || "—"}</td></tr>)}</tbody></table>
+        <div className="overflow-hidden rounded-xl border border-all-product-line bg-all-product-surface shadow-all-product">
+          <div className="flex items-center gap-2 border-b border-all-product-line bg-all-product-soft px-4 py-2.5"><Sparkles className="h-4 w-4 shrink-0 text-all-product-primary" /><h2 className="text-[13px] font-black leading-5">প্রোডাক্ট বৈশিষ্ট্য</h2></div>
+          <table className="w-full border-collapse text-left"><tbody>{features.slice(0,6).map((feature, index) => <tr key={index} className="border-b border-all-product-line/50 last:border-0"><th scope="row" className="w-[38%] px-4 py-3 align-top text-[13px] font-black"><span className="mr-2">{feature.icon || ["🌱","✓","🚚","🛡️","💧","☀️"][index]}</span>{feature.title}</th><td className="px-4 py-3 align-top text-[13px] leading-6 text-all-product-muted">{feature.text || "—"}</td></tr>)}</tbody></table>
+        </div>
+      </div></section>
+
+      <div className="bg-all-product-surface px-4 pb-2 text-center">
+        <div className="mx-auto max-w-md"><Button size="lg" onClick={goOrder} className="all-product-primary-cta h-12 w-full text-base font-black"><ShoppingBag className="h-5 w-5" />{page.cta_text || "এখনই অর্ডার করুন"}<span aria-hidden="true">→</span></Button><p className="mt-2 text-[11px] font-bold text-all-product-muted">ক্যাশ অন ডেলিভারি • সারা দেশে হোম ডেলিভারি</p></div>
+      </div>
+
+      <section className="bg-all-product-muted-surface py-7"><div className="mx-auto max-w-3xl px-4">
+        <div className="overflow-hidden rounded-xl border border-all-product-line/70 bg-all-product-surface shadow-all-product">
+          <div className="flex items-center gap-2 border-b border-all-product-line/70 bg-gradient-to-r from-all-product-soft to-transparent px-4 py-2.5"><ShieldCheck className="h-4 w-4 shrink-0 text-all-product-primary" /><h2 className="text-[13px] font-black leading-5">আমাদের থেকে কেন নিবেন</h2></div>
+          <table className="w-full border-collapse text-left"><tbody>{why.slice(0,6).map((item, index) => <tr key={index} className="border-b border-all-product-line/40 last:border-0 transition-colors hover:bg-all-product-soft/40"><th scope="row" className="w-[40%] px-4 py-3.5 align-top text-[13px] font-black"><span className="mr-2">{item.icon || ["💵","🚚","🛡️","☎️","🌱","⭐"][index]}</span>{item.title}</th><td className="px-4 py-3.5 align-top text-[13px] leading-6 text-all-product-muted">{item.text || "—"}</td></tr>)}</tbody></table>
         </div>
       </div></section>
 
@@ -145,6 +156,46 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
     <div role="contentinfo" className="bg-all-product-hero px-4 py-6 text-center text-xs text-all-product-hero-muted">© {new Date().getFullYear()} {brand} — বিশ্বস্ত বীজ, সুন্দর ভবিষ্যৎ</div>
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-all-product-line bg-all-product-surface/95 p-2 backdrop-blur-lg"><div className="mx-auto max-w-3xl">{formInView ? <Button type="submit" form="all-product-order-form" disabled={submitting} className="all-product-primary-cta h-12 w-full font-black"><ShieldCheck />{submitting ? "অর্ডার হচ্ছে..." : `অর্ডার টি কনফার্ম করুন — ${taka(total)}`}</Button> : <Button onClick={goOrder} className="all-product-primary-cta h-12 w-full font-black"><ShoppingBag />{page.cta_text || "অর্ডার করুন"} — {taka(basePrice)}</Button>}</div></div>
   </div>;
+}
+
+const AP_COUNTDOWN_STYLE = `
+@keyframes apCdTick{from{opacity:.1;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes apCdPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.35);opacity:.6}}
+.ap-cd-box{animation:apCdTick .32s ease-out}
+.ap-cd-dot{animation:apCdPulse 1.4s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.ap-cd-box,.ap-cd-dot{animation:none!important}}
+`;
+
+function bnDigits(value: number) { return String(value).padStart(2, "0").replace(/\d/g, (d) => "০১২৩৪৫৬৭৮৯"[Number(d)]); }
+
+/** Compact premium countdown to the end of the day, shown in the sticky header. */
+function OfferCountdown() {
+  const [msLeft, setMsLeft] = useState<number | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const tick = () => { const end = new Date(); end.setHours(24, 0, 0, 0); setMsLeft(Math.max(0, end.getTime() - Date.now())); };
+    tick();
+    const timer = window.setInterval(tick, 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+  if (msLeft === null) return null;
+  const total = Math.floor(msLeft / 1000);
+  const units = [Math.floor(total / 3600), Math.floor((total % 3600) / 60), total % 60];
+  return (
+    <>
+      <style>{AP_COUNTDOWN_STYLE}</style>
+      <div className="flex shrink-0 items-center gap-1.5 text-[10px] font-black text-all-product-alert" aria-label="অফার শেষ হওয়ার কাউন্টডাউন">
+        <span className="ap-cd-dot h-1.5 w-1.5 rounded-full bg-all-product-alert" aria-hidden="true" />
+        <span>অফার শেষ</span>
+        <span className="flex items-center gap-1">{units.map((unit, i) => (
+          <span key={i} className="flex items-center gap-1">
+            {i > 0 && <span className="text-all-product-muted">:</span>}
+            <span key={unit} className="ap-cd-box rounded bg-all-product-alert/10 px-1 py-0.5 tabular-nums ring-1 ring-all-product-alert/25">{bnDigits(unit)}</span>
+          </span>
+        ))}</span>
+      </div>
+    </>
+  );
 }
 
 function CheckoutField({ label, icon, children }: { label: string; icon: ReactNode; children: ReactElement<{ className?: string }> }) {
