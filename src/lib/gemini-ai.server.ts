@@ -1,8 +1,7 @@
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
-
-type Msg = { role: "user" | "model"; parts: { text: string }[] };
+type Msg = { role: "user" | "model"; parts: any[] };
 type Item = { product_name: string; quantity: number };
 
 async function getConfig() {
@@ -57,28 +56,29 @@ export async function generateGeminiWebReply(input: { incoming: string; history:
   const { apiKey, model } = await getConfig();
   if (!apiKey) throw new Error("Gemini API key configured হয়নি");
   const shop = await shopContext();
-  let messages: Msg[] = input.history.slice(-12).filter((m) => m.text).map((m) => ({ role: m.direction === "in" ? "user" : "model", parts: [{ text: m.text! }] }));
+  const history = input.history.slice(-12).filter((m) => m.text);
+  let messages: Msg[] = history.map((m) => ({ role: m.direction === "in" ? "user" : "model", parts: [{ text: m.text! }] }));
   messages.push({ role: "user", parts: [{ text: input.incoming }] });
-  const system = `আপনি ${shop.name}-এর ওয়েবসাইটের লাইভ AI কাস্টমার কেয়ার ও সেলস সহকারী। মানুষের মতো স্বাভাবিক, বন্ধুসুলভ বাংলা ভাষায় উত্তর দেবেন। রোবটের মতো লম্বা তালিকা বা অপ্রয়োজনীয় কথা নয়। কাস্টমারের প্রশ্ন বুঝে ছোট, পরিষ্কার ও ব্যক্তিগত উত্তর দিন। প্রোডাক্টের দাম/স্টক অনুমান করবেন না; প্রয়োজন হলে DATABASE_CONTEXT ব্যবহার করুন। ডেলিভারি: ঢাকা ৳${shop.inside}, ঢাকা বাইরে ৳${shop.outside}, free above ৳${shop.free || 0}। COD আছে। অর্ডার নিতে নাম, ১১ ডিজিটের মোবাইল, পূর্ণ ঠিকানা, প্রোডাক্ট ও quantity সংগ্রহ করুন; সব তথ্য নিশ্চিত করে তারপর ORDER_REQUEST_JSON পাঠান। কাস্টমারের স্পষ্ট সম্মতি ছাড়া অর্ডার তৈরি করবেন না।`;
-  const tools = [{ functionDeclarations: [{ name: "search_products", description: "শপের active products খুঁজুন", parameters: { type: "OBJECT", properties: { query: { type: "STRING" } }, required: ["query"] } }, { name: "create_order", description: "শুধু customer-এর স্পষ্ট সম্মতির পর অর্ডার তৈরি করুন", parameters: { type: "OBJECT", properties: { customer_name: { type: "STRING" }, customer_phone: { type: "STRING" }, customer_address: { type: "STRING" }, inside_dhaka: { type: "BOOLEAN" }, items: { type: "ARRAY", items: { type: "OBJECT", properties: { product_name: { type: "STRING" }, quantity: { type: "NUMBER" } }, required: ["product_name", "quantity"] } } }, required: ["customer_name", "customer_phone", "customer_address", "inside_dhaka", "items"] } }] }];
+  const combined = [...history.map((m) => m.text || ""), input.incoming].join(" ").toLowerCase();
+  const hasOrderIntent = /(অর্ডার|নিব|নিতে চাই|কিনব|কিনতে চাই|order|buy)/i.test(combined);
+  const explicitConfirmation = /(জি|হ্যাঁ|হ্যা|yes|confirm|কনফার্ম|অর্ডার দিন|অর্ডার করুন|নিশ্চিত)/i.test(input.incoming);
+  const allowCreateOrder = hasOrderIntent && explicitConfirmation;
+  const system = `আপনি ${shop.name}-এর ওয়েবসাইটের লাইভ AI কাস্টমার কেয়ার ও সেলস সহকারী। মানুষের মতো স্বাভাবিক, বন্ধুসুলভ বাংলা ভাষায় উত্তর দেবেন। রোবটের মতো লম্বা তালিকা নয়; কথোপকথনের মতো ছোট, পরিষ্কার উত্তর দিন। কাস্টমারের ভাষা ও আগের কথার ধারাবাহিকতা বজায় রাখুন। প্রোডাক্টের দাম/স্টক কখনো অনুমান করবেন না; search_products দিয়ে যাচাই করুন। ডেলিভারি: ঢাকার ভেতরে ৳${shop.inside}, ঢাকার বাইরে ৳${shop.outside}, free above ৳${shop.free || 0}। COD আছে। অর্ডার নিতে নাম, ১১ ডিজিটের মোবাইল, পূর্ণ ঠিকানা, প্রোডাক্ট ও quantity সংগ্রহ করুন। সব তথ্য নিয়ে মোট টাকা জানিয়ে কাস্টমারের স্পষ্ট সম্মতি পাওয়ার পরই create_order ব্যবহার করবেন। কাস্টমার এখনো সম্মতি না দিলে শুধু তথ্য নিন, অর্ডার তৈরি করবেন না। ${allowCreateOrder ? "এই বার্তায় অর্ডার তৈরির জন্য কাস্টমারের সম্মতি পাওয়া গেছে বলে ধরে নিতে পারেন, তবে প্রয়োজনীয় তথ্য সম্পূর্ণ থাকতে হবে।" : "এই বার্তায় create_order ব্যবহার করা যাবে না।"}`;
+  const declarations: any[] = [{ name: "search_products", description: "শপের active products খুঁজে দাম, stock ও তথ্য যাচাই করুন", parameters: { type: "OBJECT", properties: { query: { type: "STRING" } }, required: ["query"] } }];
+  if (allowCreateOrder) declarations.push({ name: "create_order", description: "প্রয়োজনীয় customer তথ্য ও product নিশ্চিত হওয়ার পর অর্ডার তৈরি করুন", parameters: { type: "OBJECT", properties: { customer_name: { type: "STRING" }, customer_phone: { type: "STRING" }, customer_address: { type: "STRING" }, inside_dhaka: { type: "BOOLEAN" }, items: { type: "ARRAY", items: { type: "OBJECT", properties: { product_name: { type: "STRING" }, quantity: { type: "NUMBER" } }, required: ["product_name", "quantity"] } } }, required: ["customer_name", "customer_phone", "customer_address", "inside_dhaka", "items"] } });
   for (let round = 0; round < 4; round++) {
-    const body: any = { systemInstruction: { parts: [{ text: system }] }, contents: messages, tools, generationConfig: { temperature: 0.7, maxOutputTokens: 500 } };
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: messages, tools: [{ functionDeclarations: declarations }], generationConfig: { temperature: 0.75, maxOutputTokens: 500 } }) });
     const json: any = await response.json();
     if (!response.ok) throw new Error(json?.error?.message || `Gemini API ${response.status}`);
-    const candidate = json?.candidates?.[0];
-    const parts = candidate?.content?.parts ?? [];
+    const parts = json?.candidates?.[0]?.content?.parts ?? [];
     const calls = parts.filter((p: any) => p.functionCall);
     if (!calls.length) return String(parts.find((p: any) => p.text)?.text || "").trim();
     messages.push({ role: "model", parts });
     for (const p of calls) {
       const name = p.functionCall.name;
       const args = p.functionCall.args ?? {};
-      let result: unknown;
-      if (name === "search_products") result = await searchProducts(String(args.query || ""));
-      else if (name === "create_order") result = await createOrder(args);
-      else result = { error: "Unknown function" };
-      messages.push({ role: "user", parts: [{ text: `TOOL_RESULT ${name}: ${JSON.stringify(result)}` }] });
+      const result = name === "search_products" ? await searchProducts(String(args.query || "")) : name === "create_order" && allowCreateOrder ? await createOrder(args) : { error: "এই মুহূর্তে এই কাজটি অনুমোদিত নয়" };
+      messages.push({ role: "user", parts: [{ functionResponse: { name, response: result } }] });
     }
   }
   throw new Error("AI response loop exceeded");
