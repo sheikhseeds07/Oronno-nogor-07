@@ -1,13 +1,40 @@
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 import { getDeliveryInfo, normalizeDeliveryRules, type DeliveryRule } from "@/lib/delivery-rules";
+import { resolveSupabasePublishableKey, resolveSupabaseUrl } from "@/integrations/supabase/public-env";
 
-const DEFAULT_MODEL = "gemini-2.5-flash";
+const DEFAULT_MODEL = "gemini-flash-latest";
 type Msg = { role: "user" | "model"; parts: any[] };
 type Item = { product_name: string; quantity: number };
 
 async function getConfig() {
-  const { data } = await supabaseAdmin.from("site_ai_settings").select("api_key,model").limit(1).maybeSingle();
-  return { apiKey: data?.api_key || process.env.GEMINI_API_KEY || "", model: data?.model || process.env.GEMINI_MODEL || DEFAULT_MODEL };
+  // The API key is never read here: the edge function holds it. We only need the
+  // preferred model, which is safe to read as the current (possibly anon) user.
+  let model = process.env.GEMINI_MODEL || DEFAULT_MODEL;
+  try {
+    const { data } = await supabaseAdmin.from("site_ai_settings").select("model").limit(1).maybeSingle();
+    if (data?.model) model = String(data.model);
+  } catch {
+    // Customers are anonymous and cannot read this table; the edge function resolves it.
+  }
+  if (/^gemini-(1\.5|2\.0|2\.5)/.test(model)) model = DEFAULT_MODEL;
+  return { model };
+}
+
+function aiEndpoint() {
+  const url = resolveSupabaseUrl().replace(/\/$/, "");
+  return `${url}/functions/v1/website-ai-chat`;
+}
+
+async function callGemini(body: Record<string, unknown>) {
+  const key = resolveSupabasePublishableKey();
+  const response = await fetch(aiEndpoint(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` },
+    body: JSON.stringify(body),
+  });
+  const json: any = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(json?.error || `AI service ${response.status}`);
+  return json;
 }
 
 async function shopContext() {
@@ -62,8 +89,7 @@ async function createOrder(args: { customer_name: string; customer_phone: string
 }
 
 export async function generateGeminiWebReply(input: { incoming: string; history: { direction: string; text: string | null }[] }) {
-  const { apiKey, model } = await getConfig();
-  if (!apiKey) throw new Error("Gemini API key configured হয়নি");
+  const { model } = await getConfig();
   const shop = await shopContext();
   const history = input.history.slice(-12).filter((m) => m.text);
   let messages: Msg[] = history.map((m) => ({ role: m.direction === "in" ? "user" : "model", parts: [{ text: m.text! }] }));
@@ -75,19 +101,27 @@ export async function generateGeminiWebReply(input: { incoming: string; history:
   const system = `আপনি ${shop.name}-এর ওয়েবসাইটের লাইভ AI কাস্টমার কেয়ার ও সেলস সহকারী। মানুষের মতো স্বাভাবিক, বন্ধুসুলভ বাংলা ভাষায় উত্তর দেবেন। রোবটের মতো লম্বা তালিকা নয়; কথোপকথনের মতো ছোট, পরিষ্কার উত্তর দিন। কাস্টমারের ভাষা ও আগের কথার ধারাবাহিকতা বজায় রাখুন। প্রোডাক্টের দাম/স্টক কখনো অনুমান করবেন না; search_products দিয়ে যাচাই করুন। ডেলিভারি চার্জ admin-এর বর্তমান delivery rules অনুযায়ী হবে: ${JSON.stringify(shop.rules)}। COD আছে। অর্ডার নিতে নাম, ১১ ডিজিটের মোবাইল, পূর্ণ ঠিকানা, প্রোডাক্ট ও quantity সংগ্রহ করুন। সব তথ্য নিয়ে subtotal + delivery সহ মোট টাকা জানিয়ে কাস্টমারের স্পষ্ট সম্মতি পাওয়ার পরই create_order ব্যবহার করবেন। কাস্টমার এখনো সম্মতি না দিলে শুধু তথ্য নিন, অর্ডার তৈরি করবেন না। ${allowCreateOrder ? "এই বার্তায় অর্ডার তৈরির জন্য কাস্টমারের সম্মতি পাওয়া গেছে বলে ধরে নিতে পারেন, তবে প্রয়োজনীয় তথ্য সম্পূর্ণ থাকতে হবে।" : "এই বার্তায় create_order ব্যবহার করা যাবে না।"}`;
   const declarations: any[] = [{ name: "search_products", description: "শপের active products খুঁজে দাম, stock ও তথ্য যাচাই করুন", parameters: { type: "OBJECT", properties: { query: { type: "STRING" } }, required: ["query"] } }];
   if (allowCreateOrder) declarations.push({ name: "create_order", description: "প্রয়োজনীয় customer তথ্য ও product নিশ্চিত হওয়ার পর অর্ডার তৈরি করুন", parameters: { type: "OBJECT", properties: { customer_name: { type: "STRING" }, customer_phone: { type: "STRING" }, customer_address: { type: "STRING" }, inside_dhaka: { type: "BOOLEAN" }, items: { type: "ARRAY", items: { type: "OBJECT", properties: { product_name: { type: "STRING" }, quantity: { type: "NUMBER" } }, required: ["product_name", "quantity"] } } }, required: ["customer_name", "customer_phone", "customer_address", "inside_dhaka", "items"] } });
-  for (let round = 0; round < 4; round++) {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents: messages, tools: [{ functionDeclarations: declarations }], generationConfig: { temperature: 0.75, maxOutputTokens: 500 } }) });
-    const json: any = await response.json();
-    if (!response.ok) throw new Error(json?.error?.message || `Gemini API ${response.status}`);
-    const parts = json?.candidates?.[0]?.content?.parts ?? [];
+  for (let round = 0; round < 6; round++) {
+    const json = await callGemini({
+      model,
+      systemInstruction: { parts: [{ text: system }] },
+      contents: messages,
+      tools: [{ functionDeclarations: declarations }],
+      generationConfig: { temperature: 0.75, maxOutputTokens: 1500 },
+    });
+    const parts: any[] = json?.candidates?.[0]?.content?.parts ?? [];
     const calls = parts.filter((p: any) => p.functionCall);
     if (!calls.length) return String(parts.find((p: any) => p.text)?.text || "").trim();
     messages.push({ role: "model", parts });
     for (const p of calls) {
       const name = p.functionCall.name;
       const args = p.functionCall.args ?? {};
-      const result = name === "search_products" ? await searchProducts(String(args.query || "")) : name === "create_order" && allowCreateOrder ? await createOrder(args) : { error: "এই মুহূর্তে এই কাজটি অনুমোদিত নয়" };
-      messages.push({ role: "user", parts: [{ functionResponse: { name, response: result } }] });
+      const raw = name === "search_products" ? await searchProducts(String(args.query || "")) : name === "create_order" && allowCreateOrder ? await createOrder(args) : { error: "এই মুহূর্তে এই কাজটি অনুমোদিত নয়" };
+      // Gemini requires functionResponse.response to be an object, never a bare array.
+      const result = Array.isArray(raw) ? { products: raw } : raw;
+      const fr: any = { name, response: result };
+      if (p.functionCall.id) fr.id = p.functionCall.id;
+      messages.push({ role: "user", parts: [{ functionResponse: fr }] });
     }
   }
   throw new Error("AI response loop exceeded");
