@@ -22,11 +22,12 @@ export const saveGeminiSettings = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ api_key: z.string().trim().max(500), model: z.string().trim().min(1).max(100).default("gemini-2.5-flash") }).parse(input))
   .handler(async ({ data, context }) => {
     if (!(await isAdmin(context.userId))) throw new Error("Unauthorized");
-    const { data: row } = await supabaseAdmin.from("site_ai_settings").select("id").limit(1).maybeSingle();
-    const payload = { provider: "gemini", api_key: data.api_key, model: data.model, updated_at: new Date().toISOString() };
+    const { data: row } = await supabaseAdmin.from("site_ai_settings").select("id,api_key").limit(1).maybeSingle();
+    const apiKey = data.api_key || row?.api_key || "";
+    const payload = { provider: "gemini", api_key: apiKey, model: data.model, updated_at: new Date().toISOString() };
     const result = row?.id
       ? await supabaseAdmin.from("site_ai_settings").update(payload).eq("id", row.id)
       : await supabaseAdmin.from("site_ai_settings").insert(payload);
     if (result.error) throw new Error(result.error.message);
-    return { ok: true, configured: Boolean(data.api_key) };
+    return { ok: true, configured: Boolean(apiKey) };
   });
