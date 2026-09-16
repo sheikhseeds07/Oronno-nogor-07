@@ -26,6 +26,12 @@ async function searchProducts(query: string) {
 }
 
 async function createOrder(args: { customer_name: string; customer_phone: string; customer_address: string; inside_dhaka: boolean; items: Item[] }) {
+  if (!args.customer_name?.trim()) return { ok: false, error: "কাস্টমারের নাম প্রয়োজন" };
+  if (!args.customer_address?.trim()) return { ok: false, error: "পূর্ণ ঠিকানা প্রয়োজন" };
+  const phone = String(args.customer_phone || "").replace(/\D/g, "").slice(-11);
+  if (phone.length !== 11) return { ok: false, error: "সঠিক ১১ ডিজিটের মোবাইল নম্বর প্রয়োজন" };
+  if (!Array.isArray(args.items) || !args.items.length) return { ok: false, error: "অন্তত একটি প্রোডাক্ট প্রয়োজন" };
+
   const shop = await shopContext();
   const rows: Array<{ product_id: string; product_name: string; price: number; quantity: number; subtotal: number }> = [];
   for (const item of args.items.slice(0, 20)) {
@@ -35,14 +41,12 @@ async function createOrder(args: { customer_name: string; customer_phone: string
     const price = Number(match.sale_price ?? match.price);
     const stock = Number(match.stock ?? 0);
     const quantity = Math.max(1, Math.min(100, Math.round(Number(item.quantity) || 1)));
-    if (Number.isFinite(stock) && stock > 0 && quantity > stock) return { ok: false, error: `${match.name}-এর পর্যাপ্ত স্টক নেই` };
+    if (stock <= 0) return { ok: false, error: `${match.name} বর্তমানে স্টকে নেই` };
+    if (quantity > stock) return { ok: false, error: `${match.name}-এর পর্যাপ্ত স্টক নেই` };
     rows.push({ product_id: match.id, product_name: match.name, price, quantity, subtotal: price * quantity });
   }
-  if (!rows.length) return { ok: false, error: "কোনো প্রোডাক্ট নেই" };
   const subtotal = rows.reduce((a, r) => a + r.subtotal, 0);
-  const deliveryInfo = getDeliveryInfo(subtotal, shop.rules);
-  const delivery = deliveryInfo.delivery;
-  const phone = args.customer_phone.replace(/\D/g, "").slice(-11);
+  const delivery = getDeliveryInfo(subtotal, shop.rules).delivery;
   if (phone.length >= 6) {
     const since = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
     const { data: recent } = await supabaseAdmin.from("orders").select("id,invoice_no,total").eq("source", "web").ilike("customer_phone", `%${phone}%`).is("deleted_at", null).gte("created_at", since).order("created_at", { ascending: false }).limit(1).maybeSingle();
@@ -50,7 +54,7 @@ async function createOrder(args: { customer_name: string; customer_phone: string
   }
   const { allocateInvoiceNo } = await import("@/lib/invoice-no.server");
   const invoiceNo = await allocateInvoiceNo();
-  const { data: order, error } = await supabaseAdmin.from("orders").insert({ invoice_no: invoiceNo, customer_name: args.customer_name.slice(0, 255), customer_phone: args.customer_phone.replace(/\s+/g, "").slice(0, 32), customer_address: args.customer_address.slice(0, 1000), notes: "Website Gemini AI অর্ডার", subtotal, delivery_fee: delivery, discount: 0, total: subtotal + delivery, source: "web", status: "pending", payment_method: "cod" }).select("id,invoice_no,total").single();
+  const { data: order, error } = await supabaseAdmin.from("orders").insert({ invoice_no: invoiceNo, customer_name: args.customer_name.trim().slice(0, 255), customer_phone: phone, customer_address: args.customer_address.trim().slice(0, 1000), notes: "Website Gemini AI অর্ডার", subtotal, delivery_fee: delivery, discount: 0, total: subtotal + delivery, source: "web", status: "pending", payment_method: "cod" }).select("id,invoice_no,total").single();
   if (error || !order) return { ok: false, error: error?.message || "অর্ডার তৈরি হয়নি" };
   const { error: itemError } = await supabaseAdmin.from("order_items").insert(rows.map((r) => ({ ...r, order_id: order.id })));
   if (itemError) { await supabaseAdmin.from("orders").delete().eq("id", order.id); return { ok: false, error: itemError.message }; }
