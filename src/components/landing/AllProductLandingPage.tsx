@@ -107,23 +107,28 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
           </div>
 
           <div className="mt-5 sm:mt-6">
-            <div className="all-product-image-wrap mx-auto max-w-xl">
-              <img src={toImg(heroImage, { w: 1100, q: 88 })} onError={event => imgFallback(event, heroImage)} alt={page.hero_title || page.title} width={760} height={760} fetchPriority="high" className="aspect-square w-full object-cover" />
-              <div className="absolute inset-x-3 bottom-3 flex items-end justify-between gap-3 rounded-2xl border border-white/20 bg-black/45 px-4 py-3 text-white shadow-xl backdrop-blur-md">
-                <div className="min-w-0 text-left">
-                  <span className="block text-[10px] font-bold text-white/70">আজকের অফার মূল্য</span>
-                  <div className="mt-0.5 flex items-center gap-2">
-                    <span className="text-3xl font-black tracking-tight text-all-product-gold sm:text-4xl">{taka(basePrice)}</span>
-                    {regularPrice && regularPrice > basePrice && <del className="text-sm font-bold text-white/65 sm:text-base">{taka(regularPrice)}</del>}
+            <div className="all-product-image-wrap mx-auto max-w-xl overflow-hidden rounded-2xl border-2 border-all-product-gold/45 bg-all-product-surface shadow-2xl">
+              <div className="relative">
+                <img src={toImg(heroImage, { w: 1100, q: 88 })} onError={event => imgFallback(event, heroImage)} alt={page.hero_title || page.title} width={760} height={760} fetchPriority="high" className="aspect-square w-full object-cover" />
+                <span className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-all-product-surface/95 px-3 py-2 text-xs font-black text-all-product-primary shadow-lg"><Leaf className="h-4 w-4" /> ১০০% অরিজিনাল</span>
+              </div>
+              <div className="border-t-2 border-all-product-gold/35 bg-gradient-to-r from-all-product-primary/10 via-all-product-gold/15 to-all-product-primary/10 px-4 py-3.5 sm:px-5 sm:py-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <span className="block text-[11px] font-black tracking-wide text-all-product-primary">আজকের অফার মূল্য</span>
+                    <div className="mt-0.5 flex items-end gap-2.5">
+                      <span className="text-4xl font-black leading-none tracking-tight text-all-product-primary sm:text-5xl">{taka(basePrice)}</span>
+                      {regularPrice && regularPrice > basePrice && <del className="pb-0.5 text-sm font-bold text-all-product-muted sm:text-base">{taka(regularPrice)}</del>}
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    {discount > 0 && <span className="inline-flex rounded-full bg-all-product-alert px-3 py-1.5 text-xs font-black text-white shadow-md">{discount}% ছাড়</span>}
+                    {savings > 0 && <span className="mt-1 block text-[11px] font-black text-all-product-success">সাশ্রয় {taka(savings)}</span>}
                   </div>
                 </div>
-                {discount > 0 && <span className="shrink-0 rounded-full bg-all-product-alert px-2.5 py-1.5 text-xs font-black text-white shadow-lg">{discount}% ছাড়</span>}
               </div>
-              <span className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-all-product-surface/95 px-3 py-2 text-xs font-black text-all-product-primary shadow-lg"><Leaf className="h-4 w-4" /> ১০০% অরিজিনাল</span>
             </div>
           </div>
-
-          {savings > 0 && <div className="mx-auto mt-3 flex w-fit items-center gap-2 rounded-full border border-all-product-gold/25 bg-all-product-gold/10 px-3 py-1.5 text-xs font-black text-all-product-gold">আপনার সাশ্রয় {taka(savings)}</div>}
 
           <div className="mx-auto mt-5 grid max-w-xl grid-cols-3 overflow-hidden rounded-xl border border-white/10 bg-white/[0.06] backdrop-blur-sm">
             <div className="px-2.5 py-3 text-center"><ShieldCheck className="mx-auto mb-1.5 h-5 w-5 text-all-product-success" /><span className="block text-[11px] font-bold leading-4 text-all-product-hero-muted">পরীক্ষিত বীজ</span></div>
