@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { supabase } from "@/lib/personal-supabase/client";
 import { uploadToBucket, safeFileName } from "@/lib/storage-upload";
-import { readPublicSettingsCache, writePublicSettingsCache } from "@/lib/public-settings-cache";
+import { writePublicSettingsCache } from "@/lib/public-settings-cache";
 import { toast } from "sonner";
-import { ArrowLeft, ChevronRight, Settings2, ShieldCheck, Truck, MessageCircle, Search, Save, Building2, Upload, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronRight, Settings2, ShieldCheck, Truck, MessageCircle, Search, Save, Upload, Plus, Trash2 } from "lucide-react";
 import { CustomerBlockListPanel } from "@/components/admin/CustomerBlockList";
-import { DEFAULT_DELIVERY_RULES, normalizeDeliveryRules, type DeliveryRule } from "@/lib/delivery-rules";
+import { normalizeDeliveryRules, type DeliveryRule } from "@/lib/delivery-rules";
+import { GeminiContactSettings } from "@/components/admin/GeminiContactSettings";
 
 export const Route = createFileRoute("/admin/settings")({ component: SettingsPage });
 
