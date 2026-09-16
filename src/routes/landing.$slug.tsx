@@ -7,6 +7,7 @@ import { LegacyLandingPage } from "@/components/landing/LegacyLandingPage";
 import { CleanLandingPage } from "@/components/landing/CleanLandingPage";
 import { ProfessionalLandingPage } from "@/components/landing/ProfessionalLandingPage";
 import { ProductStyleLandingPage } from "@/components/landing/ProductStyleLandingPage";
+import { AllProductLandingPage } from "@/components/landing/AllProductLandingPage";
 import { mergeContent } from "@/lib/landing-content";
 import { landingBaseSlug } from "@/lib/landing-slug";
 
@@ -113,7 +114,7 @@ function LandingPage() {
   if (isLegacySlug) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} compact={compact} /><LegacyLandingPage slug={slug} /></>;
   if (isSeedCombo) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader compact={compact} /><CleanLandingPage slug={slug} /></>;
   const template = resolvedTemplate;
-  if (template === "all-product") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader hideFooter compact={compact} /><ProductStyleLandingPage slug={slug} karala /></>;
+  if (template === "all-product") return <><LandingPopupBehavior enabled={false} hideHeader hideFooter /><AllProductLandingPage slug={slug} /></>;
   if (template === "product") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} hideFooter={karalaStyle} compact={compact} /><ProductStyleLandingPage slug={slug} karala={karalaStyle} /></>;
   if (template === "premium") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><ProfessionalLandingPage slug={slug} variant="premium" /></>;
   if (template === "modern") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><ProfessionalLandingPage slug={slug} variant="modern" /></>;
