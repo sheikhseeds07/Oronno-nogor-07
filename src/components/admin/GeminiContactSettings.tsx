@@ -2,17 +2,20 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { CheckCircle2, KeyRound, Save, Sparkles, Bot } from "lucide-react";
 import { toast } from "sonner";
-import { getGeminiSettings, saveGeminiSettings } from "@/lib/gemini-ai.functions";
+import { getGeminiSettings, saveGeminiSettings, testGeminiSettings } from "@/lib/gemini-ai.functions";
 
 export function GeminiContactSettings() {
   const getSettings = useServerFn(getGeminiSettings);
   const saveSettings = useServerFn(saveGeminiSettings);
+  const testSettings = useServerFn(testGeminiSettings);
   const [apiKey, setApiKey] = useState("");
-  const [model, setModel] = useState("gemini-2.5-flash");
+  const [model, setModel] = useState("gemini-flash-latest");
   const [configured, setConfigured] = useState(false);
   const [masked, setMasked] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [sample, setSample] = useState("");
 
   useEffect(() => {
     getSettings({})
@@ -38,6 +41,20 @@ export function GeminiContactSettings() {
       toast.error(e instanceof Error ? e.message : "AI সেটিংস সংরক্ষণ হয়নি");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const runTest = async () => {
+    setTesting(true);
+    setSample("");
+    try {
+      const r = await testSettings({});
+      setSample(r.sample);
+      toast.success("Gemini AI ঠিকভাবে উত্তর দিচ্ছে");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "AI টেস্ট ব্যর্থ হয়েছে");
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -80,14 +97,21 @@ export function GeminiContactSettings() {
           <div>
             <label className="text-sm font-bold text-slate-700">Gemini Model</label>
             <select value={model} onChange={(e) => setModel(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 outline-none focus:border-emerald-400">
-              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-              <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite</option>
+              <option value="gemini-flash-latest">Gemini Flash (Latest)</option>
+              <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
+              <option value="gemini-flash-lite-latest">Gemini Flash-Lite (Latest)</option>
             </select>
           </div>
 
-          <button type="button" disabled={saving} onClick={save} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 font-semibold text-white disabled:opacity-50">
-            <Save className="h-4 w-4" />{saving ? "সংরক্ষণ হচ্ছে..." : "Gemini AI সংরক্ষণ করুন"}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" disabled={saving} onClick={save} className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 font-semibold text-white disabled:opacity-50">
+              <Save className="h-4 w-4" />{saving ? "সংরক্ষণ হচ্ছে..." : "Gemini AI সংরক্ষণ করুন"}
+            </button>
+            <button type="button" disabled={testing} onClick={runTest} className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-2.5 font-semibold text-emerald-700 disabled:opacity-50">
+              <Sparkles className="h-4 w-4" />{testing ? "টেস্ট হচ্ছে..." : "AI টেস্ট করুন"}
+            </button>
+          </div>
+          {sample && <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 text-sm leading-6 text-slate-700"><span className="font-bold text-emerald-700">AI উত্তর: </span>{sample}</div>}
         </>
       )}
     </div>
