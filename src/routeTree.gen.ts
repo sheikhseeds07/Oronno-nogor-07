@@ -21,7 +21,6 @@ import { Route as OffersRouteImport } from './routes/offers'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
-import { Route as SocialRouteImport } from './routes/social'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminAllApiRouteImport } from './routes/admin/all-api'
 import { Route as AdminAttendanceRouteImport } from './routes/admin/attendance'
@@ -120,11 +119,6 @@ const ShopRoute = ShopRouteImport.update({
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SocialRoute = SocialRouteImport.update({
-  id: '/social',
-  path: '/social',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -336,7 +330,6 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/shop': typeof ShopRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/social': typeof SocialRoute
   '/admin/all-api': typeof AdminAllApiRoute
   '/admin/attendance': typeof AdminAttendanceRoute
   '/admin/banners': typeof AdminBannersRoute
@@ -390,7 +383,6 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/shop': typeof ShopRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/social': typeof SocialRoute
   '/admin/all-api': typeof AdminAllApiRoute
   '/admin/attendance': typeof AdminAttendanceRoute
   '/admin/banners': typeof AdminBannersRoute
@@ -445,7 +437,6 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/shop': typeof ShopRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
-  '/social': typeof SocialRoute
   '/admin/all-api': typeof AdminAllApiRoute
   '/admin/attendance': typeof AdminAttendanceRoute
   '/admin/banners': typeof AdminBannersRoute
@@ -501,7 +492,6 @@ export interface FileRouteTypes {
     | '/profile'
     | '/shop'
     | '/sitemap.xml'
-    | '/social'
     | '/admin/all-api'
     | '/admin/attendance'
     | '/admin/banners'
@@ -555,7 +545,6 @@ export interface FileRouteTypes {
     | '/profile'
     | '/shop'
     | '/sitemap.xml'
-    | '/social'
     | '/admin/all-api'
     | '/admin/attendance'
     | '/admin/banners'
@@ -609,7 +598,6 @@ export interface FileRouteTypes {
     | '/profile'
     | '/shop'
     | '/sitemap.xml'
-    | '/social'
     | '/admin/all-api'
     | '/admin/attendance'
     | '/admin/banners'
@@ -664,7 +652,6 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   ShopRoute: typeof ShopRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
-  SocialRoute: typeof SocialRoute
   AdminAllApiRoute: typeof AdminAllApiRoute
   AdminAttendanceRoute: typeof AdminAttendanceRoute
   AdminBannersRoute: typeof AdminBannersRoute
@@ -790,13 +777,6 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/social': {
-      id: '/social'
-      path: '/social'
-      fullPath: '/social'
-      preLoaderRoute: typeof SocialRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -1088,7 +1068,6 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   ShopRoute: ShopRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
-  SocialRoute: SocialRoute,
   AdminAllApiRoute: AdminAllApiRoute,
   AdminAttendanceRoute: AdminAttendanceRoute,
   AdminBannersRoute: AdminBannersRoute,

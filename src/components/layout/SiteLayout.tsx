@@ -22,10 +22,9 @@ export function SiteLayout({ children }: Props) {
   const isProfile = pathname === "/profile";
   const isCart = pathname === "/cart";
   const isCheckout = pathname === "/checkout";
-  const isSocial = pathname === "/social";
   const isOdcLanding = pathname === "/landing/odc";
   const isKaralaLanding = pathname === "/landing/karala";
-  const isCleanShell = isProfile || isSocial || isOdcLanding || isKaralaLanding;
+  const isCleanShell = isProfile || isOdcLanding || isKaralaLanding;
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
   useEffect(() => {
