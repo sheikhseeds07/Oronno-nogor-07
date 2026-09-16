@@ -31,3 +31,13 @@ export const saveGeminiSettings = createServerFn({ method: "POST" })
     if (result.error) throw new Error(result.error.message);
     return { ok: true, configured: Boolean(apiKey) };
   });
+
+export const testGeminiSettings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    if (!(await isAdmin(context.userId))) throw new Error("Unauthorized");
+    const { generateGeminiWebReply } = await import("@/lib/gemini-ai.server");
+    const text = await generateGeminiWebReply({ incoming: "হ্যালো, তোমরা কী কী বীজ বিক্রি করো?", history: [] });
+    if (!text) throw new Error("Gemini থেকে উত্তর আসেনি");
+    return { ok: true, sample: text.slice(0, 300) };
+  });
