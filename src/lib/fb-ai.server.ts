@@ -1,6 +1,6 @@
-// Server-only AI reply engine for Facebook Messenger / comments.
-// Uses the Lovable AI Gateway (chat completions) with tool calling so the
-// assistant can look up products, quote delivery and place real orders.
+// Server-only AI reply engine for Facebook Messenger / comments / website live chat.
+// Uses the Lovable AI Gateway (Gemini) with tool calling so the assistant can
+// look up products, quote delivery and place real orders.
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
@@ -116,6 +116,7 @@ async function runCreateOrder(args: {
   inside_dhaka: boolean;
   items: { product_name: string; quantity: number }[];
   note?: string;
+  source: "messenger" | "website_ai";
 }): Promise<{ ok: boolean; order_id?: string; invoice_no?: string | null; total?: number; error?: string; duplicate?: boolean }> {
   const { delivery } = await loadShopContext();
   const rows: { product_id: string | null; product_name: string; price: number; quantity: number; subtotal: number }[] = [];
@@ -140,15 +141,13 @@ async function runCreateOrder(args: {
   const baseFee = args.inside_dhaka ? delivery.inside : delivery.outside;
   const fee = delivery.free_above > 0 && subtotal >= delivery.free_above ? 0 : baseFee;
 
-  // Duplicate guard: the same customer must not get several identical orders
-  // when the AI (or a retried sync pass) calls create_order more than once.
   const phone = args.customer_phone.replace(/\D+/g, "").slice(-11);
   if (phone.length >= 6) {
     const since = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
     const { data: recent } = await supabaseAdmin
       .from("orders")
       .select("id,invoice_no,total,created_at")
-      .eq("source", "messenger")
+      .eq("source", args.source)
       .ilike("customer_phone", `%${phone}%`)
       .is("deleted_at", null)
       .gte("created_at", since)
@@ -156,16 +155,9 @@ async function runCreateOrder(args: {
       .limit(1)
       .maybeSingle();
     if (recent && Math.abs(Number(recent.total) - (subtotal + fee)) < 0.01) {
-      return {
-        ok: true,
-        order_id: recent.id,
-        invoice_no: recent.invoice_no,
-        total: Number(recent.total),
-        duplicate: true,
-      };
+      return { ok: true, order_id: recent.id, invoice_no: recent.invoice_no, total: Number(recent.total), duplicate: true };
     }
   }
-
 
   const { allocateInvoiceNo } = await import("@/lib/invoice-no.server");
   const invoiceNo = await allocateInvoiceNo();
@@ -177,12 +169,12 @@ async function runCreateOrder(args: {
       customer_name: args.customer_name.slice(0, 255),
       customer_phone: args.customer_phone.replace(/\s+/g, "").slice(0, 32),
       customer_address: args.customer_address.slice(0, 1000),
-      notes: args.note ? `Messenger AI: ${args.note}`.slice(0, 2000) : "Messenger AI অর্ডার",
+      notes: args.note ? `${args.source === "website_ai" ? "Website AI" : "Messenger AI"}: ${args.note}`.slice(0, 2000) : `${args.source === "website_ai" ? "Website AI" : "Messenger AI"} অর্ডার`,
       subtotal,
       delivery_fee: fee,
       discount: 0,
       total: subtotal + fee,
-      source: "messenger",
+      source: args.source,
       status: "pending",
       payment_method: "cod",
     })
@@ -207,7 +199,7 @@ export async function generateAiReply(opts: {
   incoming: string;
   extraPrompt?: string;
   allowOrders: boolean;
-  channel: "messenger" | "comment";
+  channel: "messenger" | "comment" | "web_chat";
   existingOrder?: { invoice_no: string | null; total: number } | null;
 }): Promise<AiReplyResult> {
   const apiKey = process.env["LOVABLE_API_KEY"];
@@ -221,8 +213,11 @@ export async function generateAiReply(opts: {
     `ডেলিভারি চার্জ: ঢাকার ভেতরে ৳${delivery.inside}, ঢাকার বাইরে ৳${delivery.outside}। পেমেন্ট: ক্যাশ অন ডেলিভারি।`,
     "দাম বা প্রোডাক্টের প্রশ্নে অনুমান করবেন না — search_products টুল ব্যবহার করুন।",
     opts.allowOrders
-      ? "কাস্টমার অর্ডার করতে চাইলে নাম, মোবাইল নাম্বার ও পূর্ণ ঠিকানা চেয়ে নিন, তারপর create_order টুল একবারই ব্যবহার করুন এবং ইনভয়েস নাম্বার জানিয়ে দিন। একই অর্ডারের জন্য কখনো দুইবার create_order ডাকবেন না এবং একবারই কনফার্মেশন মেসেজ দিবেন।"
+      ? "কাস্টমার অর্ডার করতে চাইলে নাম, মোবাইল নাম্বার ও পূর্ণ ঠিকানা চেয়ে নিন। প্রোডাক্ট, পরিমাণ, ডেলিভারি চার্জ ও মোট টাকা স্পষ্টভাবে জানিয়ে কাস্টমারের স্পষ্ট সম্মতি পাওয়ার পর create_order টুল একবারই ব্যবহার করুন এবং ইনভয়েস নাম্বার জানিয়ে দিন। একই অর্ডারের জন্য কখনো দুইবার create_order ডাকবেন না এবং একবারই কনফার্মেশন মেসেজ দিবেন।"
       : "অর্ডার নিতে পারবেন না — কাস্টমারকে ওয়েবসাইটে অর্ডার করতে বলুন।",
+    opts.channel === "web_chat"
+      ? "এটি সাইটের লাইভ AI চ্যাট। কাস্টমারকে পণ্য বাছাই, দাম, স্টক, ব্যবহার ও অর্ডারে সাহায্য করুন। অর্ডার হলে সেটি সাইটের orders টেবিলে তৈরি হবে।"
+      : "",
     opts.existingOrder
       ? `এই কাস্টমারের অর্ডার ইতিমধ্যে কনফার্ম হয়েছে (ইনভয়েস ${opts.existingOrder.invoice_no ?? "-"}, মোট ৳${opts.existingOrder.total})। আবার অর্ডার তৈরি করবেন না বা আবার কনফার্মেশন পাঠাবেন না — কাস্টমার স্পষ্টভাবে নতুন/অতিরিক্ত প্রোডাক্ট চাইলে শুধু তখনই নতুন অর্ডার নিবেন।`
       : "",
@@ -231,16 +226,12 @@ export async function generateAiReply(opts: {
       : "",
     opts.extraPrompt ?? "",
   ]
-
     .filter(Boolean)
     .join("\n");
 
   const messages: ChatMessage[] = [
     { role: "system", content: system },
-    ...opts.history.slice(-14).map((m) => ({
-      role: (m.direction === "in" ? "user" : "assistant") as "user" | "assistant",
-      content: m.text ?? "",
-    })),
+    ...opts.history.slice(-14).map((m) => ({ role: (m.direction === "in" ? "user" : "assistant") as "user" | "assistant", content: m.text ?? "" })),
     { role: "user", content: opts.incoming },
   ];
 
@@ -250,11 +241,7 @@ export async function generateAiReply(opts: {
   for (let step = 0; step < 6; step++) {
     const res = await fetch(GATEWAY, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Lovable-API-Key": apiKey,
-        "X-Lovable-AIG-SDK": "fetch",
-      },
+      headers: { "Content-Type": "application/json", "Lovable-API-Key": apiKey, "X-Lovable-AIG-SDK": "fetch" },
       body: JSON.stringify({ model: MODEL, messages, tools }),
     });
 
@@ -264,9 +251,7 @@ export async function generateAiReply(opts: {
       return { text: null, needsHuman: true, orderId };
     }
 
-    const json = (await res.json()) as {
-      choices?: { message?: ChatMessage }[];
-    };
+    const json = (await res.json()) as { choices?: { message?: ChatMessage }[] };
     const msg = json.choices?.[0]?.message;
     if (!msg) return { text: null, needsHuman: true, orderId };
 
@@ -275,11 +260,7 @@ export async function generateAiReply(opts: {
       for (const call of msg.tool_calls) {
         let result: unknown;
         let args: Record<string, unknown> = {};
-        try {
-          args = JSON.parse(call.function.arguments || "{}");
-        } catch {
-          args = {};
-        }
+        try { args = JSON.parse(call.function.arguments || "{}"); } catch { args = {}; }
         try {
           if (call.function.name === "search_products") {
             result = await runSearchProducts(String(args.query ?? ""));
@@ -287,14 +268,12 @@ export async function generateAiReply(opts: {
             if (!opts.allowOrders) {
               result = { ok: false, error: "অর্ডার নেওয়া বন্ধ আছে" };
             } else if (orderId) {
-              // One conversation turn creates at most one order.
               result = { ok: true, order_id: orderId, duplicate: true, note: "এই অর্ডারটি আগেই তৈরি হয়েছে" };
             } else {
-              const created = await runCreateOrder(args as Parameters<typeof runCreateOrder>[0]);
+              const created = await runCreateOrder({ ...(args as Omit<Parameters<typeof runCreateOrder>[0], "source">), source: opts.channel === "web_chat" ? "website_ai" : "messenger" });
               if (created.ok && created.order_id) orderId = created.order_id;
               result = created;
             }
-
           } else if (call.function.name === "escalate_to_human") {
             needsHuman = true;
             result = { ok: true };
