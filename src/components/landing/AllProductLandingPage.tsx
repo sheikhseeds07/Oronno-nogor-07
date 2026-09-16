@@ -17,6 +17,7 @@ import { toImg, imgFallback } from "@/lib/img";
 import { isValidBdPhone, phoneSubmitError } from "@/lib/bd-phone";
 import { Button } from "@/components/ui/button";
 import brandLogoFile from "@/assets/logo.jpg";
+import { GuaranteePopup } from "@/components/landing/GuaranteePopup";
 
 type Product = { id: string; name: string; price: number; sale_price: number | null; images: string[] | null };
 type Addon = { product_id?: string; name: string; price: number; image?: string; old_price?: number; badge?: string; delivery_fee?: number | null };
@@ -86,6 +87,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
 
   return <div className="all-product-landing min-h-screen bg-all-product-surface text-all-product-ink">
     <FacebookPixel eager />
+    <GuaranteePopup slug={slug} />
     {page.top_bar_text && <div className="bg-all-product-alert px-4 py-2 text-center text-sm font-bold text-all-product-alert-foreground">{page.top_bar_text}</div>}
     <div role="banner" className="sticky top-0 z-40 border-b border-all-product-line bg-all-product-surface/95 backdrop-blur-xl">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2.5">
