@@ -25,6 +25,9 @@ function isPublicCacheablePage(request: Request): boolean {
   const path = url.pathname;
   if (
     path.startsWith("/admin") ||
+    // Landing pages are edited from the admin panel and must go live instantly,
+    // so they are never cached at the edge.
+    path.startsWith("/landing/") ||
     path.startsWith("/api/") ||
     path === "/checkout" ||
     path === "/cart" ||

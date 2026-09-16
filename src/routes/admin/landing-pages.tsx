@@ -70,31 +70,20 @@ const empty: LP = {
 type Product = { id: string; name: string; price: number; sale_price: number | null; images: string[] | null; is_active?: boolean | null };
 
 function ProductPicker({ products, value, onChange, placeholder, size = "sm" }: { products?: Product[]; value?: string | null; onChange: (id: string | null) => void; placeholder: string; size?: "sm" | "md" }) {
-  const [q, setQ] = useState("");
-  const term = q.trim().toLowerCase();
-  const all = products ?? [];
-  let list = term ? all.filter((p) => p.name.toLowerCase().includes(term)) : all;
-  if (value && !list.some((p) => p.id === value)) {
-    const sel = all.find((p) => p.id === value);
-    if (sel) list = [sel, ...list];
-  }
+  const list = products ?? [];
   const cls = size === "md" ? "w-full border rounded-lg px-3 py-2" : "w-full border rounded-lg px-3 py-2 text-sm";
   return (
-    <div className="flex-1 min-w-0 space-y-1.5">
-      <div className="relative">
-        <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="প্রোডাক্ট সার্চ করুন..." className="w-full border rounded-lg pl-8 pr-3 py-2 text-sm" />
-      </div>
+    <div className="flex-1 min-w-0">
       <select value={value ?? ""} onChange={(e) => onChange(e.target.value || null)} className={cls}>
         <option value="">{placeholder}</option>
         {list.map((p) => (
           <option key={p.id} value={p.id}>{p.name}{p.is_active === false ? " (নিষ্ক্রিয়)" : ""}</option>
         ))}
       </select>
-      {term && list.length === 0 && <div className="text-[11px] text-muted-foreground">কোনো প্রোডাক্ট মেলেনি।</div>}
     </div>
   );
 }
+
 
 function LandingPagesAdmin() {
   const qc = useQueryClient();
