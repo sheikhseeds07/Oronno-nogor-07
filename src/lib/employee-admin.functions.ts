@@ -1,12 +1,31 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
-import { assertPermission, assertIsSuperAdmin } from "@/lib/_admin-guard.server";
-import { PERMISSION_KEYS, DEFAULT_PERMISSIONS } from "@/lib/permissions";
 
-const PermSchema = z.object(
-  Object.fromEntries(PERMISSION_KEYS.map((k) => [k, z.boolean().default(DEFAULT_PERMISSIONS[k])])) as Record<(typeof PERMISSION_KEYS)[number], z.ZodDefault<z.ZodBoolean>>,
-);
+const PermSchema = z.object({
+  orders: z.boolean().default(false),
+  web_orders: z.boolean().default(false),
+  new_order: z.boolean().default(false),
+  products: z.boolean().default(false),
+  categories: z.boolean().default(false),
+  customers: z.boolean().default(false),
+  marketing: z.boolean().default(false),
+  delivery: z.boolean().default(false),
+  reports: z.boolean().default(false),
+  hrm: z.boolean().default(false),
+  settings: z.boolean().default(false),
+  landing_pages: z.boolean().default(false),
+  all_api: z.boolean().default(false),
+  messages: z.boolean().default(false),
+  dashboard: z.boolean().default(true),
+  dashboard_live_visitors: z.boolean().default(true),
+  dashboard_web_orders: z.boolean().default(true),
+  dashboard_incomplete_orders: z.boolean().default(true),
+  dashboard_stock_alert: z.boolean().default(true),
+  dashboard_confirmed_sell: z.boolean().default(true),
+  dashboard_meta_ads: z.boolean().default(true),
+  dashboard_time_filter: z.boolean().default(true),
+});
 
 export type EmployeePermissions = z.infer<typeof PermSchema>;
 
@@ -20,8 +39,15 @@ const CreateSchema = z.object({
   permissions: PermSchema,
 });
 
-async function assertAdmin(_db: any, userId: string) {
-  await assertPermission(userId, "hrm");
+async function assertAdmin(db: any, userId: string) {
+  const { data, error } = await db
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .in("role", ["admin", "super_admin"])
+    .limit(1);
+  if (error) throw new Error(error.message);
+  if (!data?.length) throw new Error("Unauthorized");
 }
 
 async function invokeAdminBridge(db: any, body: Record<string, unknown>) {
@@ -45,7 +71,7 @@ export const updateEmployeePermissions = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context.supabase, context.userId);
     const { error } = await context.supabase.from("employee_permissions").upsert(
-      { user_id: data.user_id, ...data.permissions, updated_at: new Date().toISOString() } as never,
+      { user_id: data.user_id, ...data.permissions, updated_at: new Date().toISOString() },
       { onConflict: "user_id" } as never,
     );
     if (error) throw new Error(error.message);
@@ -72,7 +98,7 @@ export const updateEmployeeRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ user_id: z.string().uuid(), role: z.enum(["super_admin", "admin", "employee"]) }).parse(input))
   .handler(async ({ data, context }) => {
-    await assertIsSuperAdmin(context.userId);
+    await assertAdmin(context.supabase, context.userId);
     return invokeAdminBridge(context.supabase, { action: "employee_update_role", ...data });
   });
 

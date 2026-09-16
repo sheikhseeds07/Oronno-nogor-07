@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
-import { assertPermission as assertOrderPermission } from "@/lib/_admin-guard.server";
 
 const AdminItemSchema = z.object({ product_id: z.string().uuid().optional().nullable(), product_name: z.string().min(1).max(500), price: z.number().min(0).max(10_000_000), quantity: z.number().int().min(1).max(1000) });
 const OrderFieldsSchema = z.object({ customer_name: z.string().min(1).max(255), customer_phone: z.string().min(3).max(32), customer_address: z.string().max(1000).optional().nullable(), thana: z.string().max(100).optional().nullable(), district: z.string().max(100).optional().nullable(), notes: z.string().max(2000).optional().nullable(), subtotal: z.number().min(0).max(10_000_000), delivery_fee: z.number().min(0).max(100_000), discount: z.number().min(0).max(10_000_000).default(0), total: z.number().min(0).max(10_000_000), items: z.array(AdminItemSchema).min(1).max(100) });
@@ -25,7 +24,11 @@ export const cancelOrders = createServerFn({ method: "POST" }).middleware([requi
 });
 
 async function assertCanManageOrders(userId: string) {
-  await assertOrderPermission(userId, "orders", "web_orders", "new_order");
+  const { data: roles } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", userId);
+  const roleNames = new Set((roles ?? []).map((r) => r.role));
+  if (roleNames.has("super_admin") || roleNames.has("admin")) return;
+  const { data: perms } = await supabaseAdmin.from("employee_permissions").select("orders").eq("user_id", userId).maybeSingle();
+  if (!perms?.orders) throw new Error("Unauthorized");
 }
 
 async function replaceOrderItems(orderId: string, items: z.infer<typeof AdminItemSchema>[]) {

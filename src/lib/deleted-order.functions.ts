@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
-import { assertPermission, hasServerPermission } from "@/lib/_admin-guard.server";
 
 const ORDER_STATUSES = [
   "web_pending",
@@ -31,9 +30,25 @@ const IdSchema = z.object({ id: z.string().uuid() });
 const IdsSchema = z.object({ ids: z.array(z.string().uuid()).min(1).max(500) });
 
 async function getOrderAccess(userId: string) {
-  await assertPermission(userId, "deleted_orders");
-  const canPermanentDelete = await hasServerPermission(userId, "settings");
-  return { canManage: true, canPermanentDelete };
+  const { data: roles, error: rolesError } = await supabaseAdmin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId);
+  if (rolesError) throw new Error(rolesError.message);
+
+  const roleNames = new Set((roles ?? []).map((r) => r.role));
+  const isAdmin = roleNames.has("super_admin") || roleNames.has("admin");
+  if (isAdmin) return { canManage: true, canPermanentDelete: true };
+
+  const { data: perms, error: permsError } = await supabaseAdmin
+    .from("employee_permissions")
+    .select("orders")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (permsError) throw new Error(permsError.message);
+
+  if (!perms?.orders) throw new Error("Unauthorized");
+  return { canManage: true, canPermanentDelete: false };
 }
 
 export const listDeletedOrders = createServerFn({ method: "GET" })

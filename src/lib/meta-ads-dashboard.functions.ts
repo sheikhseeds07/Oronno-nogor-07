@@ -1,8 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
-import { assertPermission } from "@/lib/_admin-guard.server";
-
 
 const RangeSchema = z.object({ from: z.string().datetime(), to: z.string().datetime() });
 
@@ -30,7 +28,6 @@ export const getMetaAdsDashboard = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => RangeSchema.parse(input))
   .handler(async ({ data, context }) => {
-    await assertPermission(context.userId, "meta_ad_account", "dashboard_meta_ads");
     return invokeMeta(context.supabase, {
       action: "meta_dashboard",
       from: data.from,

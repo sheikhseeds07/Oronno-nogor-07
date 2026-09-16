@@ -1,41 +1,28 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/lib/auth";
-import { hasPermission, requiredPermissionForPath, type PermissionKey } from "@/lib/permissions";
+import { useAuth, type Permissions } from "@/lib/auth";
 import { supabase } from "@/lib/personal-supabase/client";
 import { readPublicSettingsCache, writePublicSettingsCache } from "@/lib/public-settings-cache";
-import { LayoutDashboard, Package, ShoppingBag, Users, FolderTree, Image as ImageIcon, Tag, Settings, Globe, UserCog, LogOut, Menu, X, Layers, Clock, FileSpreadsheet, PanelLeftClose, PanelLeftOpen, ChevronRight, Sparkles, Leaf, Truck, Trash2, UsersRound, Gauge, Gift, MessageSquare, Star, LayoutTemplate, Sprout, Megaphone, Plug } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingBag, Users, FolderTree, Image as ImageIcon, Tag, Settings, Globe, UserCog, LogOut, Menu, X, Layers, Clock, FileSpreadsheet, PanelLeftClose, PanelLeftOpen, ChevronRight, Sparkles, Leaf } from "lucide-react";
 import { NewOrderNotifier } from "@/components/admin/NewOrderNotifier";
 import { AdminOrderStability } from "@/components/admin/AdminOrderStability";
 import { PresswayyCard } from "@/components/admin/PresswayyCard";
 
 type SiteSettings = { site_name?: string; logo_url?: string };
-type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }>; exact?: boolean; perm?: PermissionKey | "always"; tone: string };
+type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }>; exact?: boolean; perm?: keyof Permissions | "always"; tone: string };
 const NAV: NavItem[] = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true, perm: "always", tone: "from-emerald-400 to-cyan-500" },
   { to: "/admin/orders", label: "Orders", icon: ShoppingBag, perm: "orders", tone: "from-blue-400 to-cyan-500" },
-  { to: "/admin/order-import", label: "Import Orders", icon: FileSpreadsheet, perm: "order_import", tone: "from-teal-400 to-emerald-500" },
-  { to: "/admin/deleted-orders", label: "Deleted Orders", icon: Trash2, perm: "deleted_orders", tone: "from-rose-400 to-red-600" },
-  { to: "/admin/order-division", label: "Order Division", icon: UsersRound, perm: "order_division", tone: "from-emerald-400 to-teal-600" },
-  { to: "/admin/order-rate-limit", label: "Order Rate Limit", icon: Gauge, perm: "order_rate_limit", tone: "from-orange-400 to-rose-500" },
-  { to: "/admin/courier", label: "Courier", icon: Truck, perm: "courier", tone: "from-sky-400 to-indigo-500" },
+  { to: "/admin/order-import", label: "Import Orders", icon: FileSpreadsheet, perm: "orders", tone: "from-teal-400 to-emerald-500" },
   { to: "/admin/products", label: "Products", icon: Package, perm: "products", tone: "from-amber-400 to-orange-500" },
-  { to: "/admin/offers", label: "Offers", icon: Sparkles, perm: "products", tone: "from-emerald-400 to-teal-500" },
   { to: "/admin/categories", label: "Categories", icon: FolderTree, perm: "categories", tone: "from-fuchsia-400 to-pink-500" },
-  { to: "/admin/offers", label: "Offers / Combo", icon: Gift, perm: "offers", tone: "from-pink-400 to-rose-600" },
   { to: "/admin/customers", label: "Customers", icon: Users, perm: "customers", tone: "from-sky-400 to-blue-500" },
-  { to: "/admin/customer-management", label: "Customer Management", icon: MessageSquare, perm: "customer_management", tone: "from-cyan-400 to-teal-600" },
-  { to: "/admin/customer-feedback", label: "Reviews / Questions", icon: Star, perm: "customer_feedback", tone: "from-yellow-400 to-amber-600" },
   { to: "/admin/banners", label: "Banners", icon: ImageIcon, perm: "marketing", tone: "from-rose-400 to-red-500" },
   { to: "/admin/coupons", label: "Coupons", icon: Tag, perm: "marketing", tone: "from-yellow-400 to-orange-500" },
   { to: "/admin/landing-pages", label: "Landing Pages", icon: Globe, perm: "landing_pages", tone: "from-cyan-400 to-blue-600" },
-  { to: "/admin/landing-template", label: "Landing Template", icon: LayoutTemplate, perm: "landing_template", tone: "from-indigo-400 to-blue-600" },
-  { to: "/admin/landing-seeds", label: "Landing Seeds", icon: Sprout, perm: "landing_seeds", tone: "from-lime-400 to-emerald-600" },
-  { to: "/admin/meta-ad-account", label: "Meta Ad Account", icon: Megaphone, perm: "meta_ad_account", tone: "from-blue-400 to-violet-600" },
-  { to: "/admin/integrations", label: "Integrations", icon: Plug, perm: "integrations", tone: "from-slate-400 to-slate-600" },
   { to: "/admin/employees", label: "Employees", icon: UserCog, perm: "hrm", tone: "from-green-400 to-emerald-600" },
-  { to: "/admin/attendance", label: "Attendance", icon: Clock, perm: "attendance", tone: "from-violet-400 to-purple-600" },
+  { to: "/admin/attendance", label: "Attendance", icon: Clock, perm: "hrm", tone: "from-violet-400 to-purple-600" },
   { to: "/admin/all-api", label: "All APIs", icon: Layers, perm: "all_api", tone: "from-indigo-400 to-violet-600" },
   { to: "/admin/settings", label: "Settings", icon: Settings, perm: "settings", tone: "from-slate-300 to-slate-500" },
 ];
@@ -99,7 +86,7 @@ const orderUiCss = `
 const SIDEBAR_COLLAPSED_KEY = "admin-sidebar-collapsed";
 
 export function AdminLayout({ children, headerExtra }: { children: React.ReactNode; headerExtra?: React.ReactNode }) {
-  const { user, isStaff, isAdmin, isSuperAdmin, permissions, loading, initialized, role } = useAuth();
+  const { user, isStaff, isAdmin, permissions, loading, initialized, role } = useAuth();
   const navigate = useNavigate(); const loc = useLocation();
   const [open, setOpen] = useState(false); const [mounted, setMounted] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -131,12 +118,9 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
   }, [collapsed, mounted]);
   useEffect(() => { if (!initialized) return; if (!user) navigate({ to: "/login" as any }); }, [user, initialized, navigate]);
   if (!mounted || (loading && !role)) return <div className="min-h-screen flex items-center justify-center">Please wait...</div>;
-  const denied = (message: string) => <div className="min-h-screen flex items-center justify-center bg-muted px-4"><div className="max-w-md rounded-xl border bg-card p-6 text-center shadow-sm"><h1 className="text-xl font-bold text-brand-dark">Access Denied</h1><p className="mt-2 text-sm text-muted-foreground">{message}</p><button onClick={() => navigate({ to: "/" })} className="mt-5 rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-primary-foreground">Go Home</button></div></div>;
-  if (!isStaff) return denied("You do not have permission to view this page.");
-  const requiredPerm = requiredPermissionForPath(loc.pathname);
-  if (!isSuperAdmin && !hasPermission(role, permissions, requiredPerm)) return denied("এই পেজে আপনার অনুমতি নেই। প্রয়োজন হলে CEO-কে জানান।");
-  const visibleNav = NAV.filter((n) => (isSuperAdmin ? true : hasPermission(role, permissions, n.perm ?? null)));
-  const myProfileTo = !isSuperAdmin && user?.id ? `/admin/employees_/${user.id}` : null;
+  if (!isStaff) return <div className="min-h-screen flex items-center justify-center bg-muted px-4"><div className="max-w-md rounded-xl border bg-card p-6 text-center shadow-sm"><h1 className="text-xl font-bold text-brand-dark">Access Denied</h1><p className="mt-2 text-sm text-muted-foreground">You do not have permission to view this page.</p><button onClick={() => navigate({ to: "/" })} className="mt-5 rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-primary-foreground">Go Home</button></div></div>;
+  const visibleNav = NAV.filter((n) => { if (isAdmin) return true; if (n.exact && n.to === "/admin") return false; if (n.perm === "always") return true; return n.perm ? permissions[n.perm] : false; });
+  const myProfileTo = !isAdmin && user?.id ? `/admin/employees_/${user.id}` : null;
   const logout = async () => { await supabase.auth.signOut(); navigate({ to: "/" }); };
   return <div data-admin-route={loc.pathname} className="flex min-h-screen bg-muted">
     {loc.pathname === "/admin/orders" && <style>{orderUiCss}</style>}

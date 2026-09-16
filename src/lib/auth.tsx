@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import { staffSupabase, customerSupabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
-import { ALL_FALSE as PERM_ALL_FALSE, ALL_TRUE as PERM_ALL_TRUE, readPermissions, type Permissions } from "@/lib/permissions";
 
 export type StaffRole = "super_admin" | "admin" | "employee" | null;
-export type { Permissions } from "@/lib/permissions";
-export { ALL_TRUE } from "@/lib/permissions";
-const ALL_FALSE = PERM_ALL_FALSE;
+export type Permissions = { orders: boolean; web_orders: boolean; new_order: boolean; products: boolean; categories: boolean; customers: boolean; marketing: boolean; delivery: boolean; reports: boolean; hrm: boolean; settings: boolean; landing_pages: boolean; all_api: boolean; messages: boolean; dashboard: boolean; dashboard_live_visitors: boolean; dashboard_web_orders: boolean; dashboard_incomplete_orders: boolean; dashboard_stock_alert: boolean; dashboard_confirmed_sell: boolean; dashboard_meta_ads: boolean; dashboard_time_filter: boolean };
+export const ALL_TRUE: Permissions = { orders: true, web_orders: true, new_order: true, products: true, categories: true, customers: true, marketing: true, delivery: true, reports: true, hrm: true, settings: true, landing_pages: true, all_api: true, messages: true, dashboard: true, dashboard_live_visitors: true, dashboard_web_orders: true, dashboard_incomplete_orders: true, dashboard_stock_alert: true, dashboard_confirmed_sell: true, dashboard_meta_ads: true, dashboard_time_filter: true };
+const ALL_FALSE: Permissions = Object.fromEntries(Object.keys(ALL_TRUE).map(k => [k, false])) as Permissions;
 
 type AuthSnapshot = { session: Session | null; user: Session["user"] | null; role: StaffRole; permissions: Permissions; loading: boolean; initialized: boolean; blocked?: boolean };
 const staffState: AuthSnapshot = { session: null, user: null, role: null, permissions: ALL_FALSE, loading: true, initialized: false, blocked: false };
@@ -19,6 +18,7 @@ function notify() { listeners.forEach(l => l()); }
 function setStaff(p: Partial<AuthSnapshot>) { Object.assign(staffState, p); notify(); }
 function setCustomer(p: Partial<AuthSnapshot>) { Object.assign(customerState, p); notify(); }
 
+const readPerms = (p: any): Permissions => ({ orders: !!p.orders, web_orders: !!p.web_orders, new_order: !!p.new_order, products: !!p.products, categories: !!p.categories, customers: !!p.customers, marketing: !!p.marketing, delivery: !!p.delivery, reports: !!p.reports, hrm: !!p.hrm, settings: !!p.settings, landing_pages: !!p.landing_pages, all_api: !!p.all_api, messages: !!p.messages, dashboard: p.dashboard !== false, dashboard_live_visitors: p.dashboard_live_visitors !== false, dashboard_web_orders: p.dashboard_web_orders !== false, dashboard_incomplete_orders: p.dashboard_incomplete_orders !== false, dashboard_stock_alert: p.dashboard_stock_alert !== false, dashboard_confirmed_sell: p.dashboard_confirmed_sell !== false, dashboard_meta_ads: p.dashboard_meta_ads !== false, dashboard_time_filter: p.dashboard_time_filter !== false });
 
 function isStaffRoute() {
   if (typeof window === "undefined") return true;
@@ -68,7 +68,7 @@ async function loadStaff(s: Session | null, force = false) {
     const list = (roles ?? []).map(x => x.role as string); const meta = (s.user.app_metadata?.role ?? s.user.app_metadata?.app_role) as string | undefined;
     let role: StaffRole = null; if (list.includes("super_admin") || meta === "super_admin") role = "super_admin"; else if (list.includes("admin") || meta === "admin") role = "admin"; else if (list.includes("employee")) role = "employee";
     let permissions = ALL_FALSE;
-    if (role) { const { data: p } = await withRetry(async () => { const result = await staffSupabase.from("employee_permissions").select("*").eq("user_id", s.user.id).maybeSingle(); if (result.error) throw result.error; return result; }); if (seq !== staffLoadSeq) return; permissions = role === "super_admin" ? PERM_ALL_TRUE : readPermissions(p as Record<string, unknown> | null); }
+    if (role) { const { data: p } = await withRetry(async () => { const result = await staffSupabase.from("employee_permissions").select("*").eq("user_id", s.user.id).maybeSingle(); if (result.error) throw result.error; return result; }); if (seq !== staffLoadSeq) return; permissions = p ? readPerms(p) : ALL_TRUE; }
     try { window.localStorage.setItem("ss_auth_cache_v1", JSON.stringify({ role, permissions, user_id: s.user.id })); } catch {}
     if (seq !== staffLoadSeq) return; setStaff({ session: s, user: s.user, role, permissions, loading: false, initialized: true });
   } catch { if (seq !== staffLoadSeq) return; setStaff({ session: s, user: s.user, loading: false, initialized: true, ...(sameUser ? {} : { role: null, permissions: ALL_FALSE }) }); }
@@ -110,7 +110,6 @@ export function useAuth() {
   useEffect(() => { const listener = () => force(v => v + 1); listeners.add(listener); return () => { listeners.delete(listener); }; }, []);
   const customerMode = !isStaffRoute(); const snap = customerMode ? customerState : staffState;
   useEffect(() => hideIncompleteForEmployee(staffState.role), [staffState.role]);
-  const isSuperAdmin = !customerMode && snap.role === "super_admin";
   const isAdmin = !customerMode && (snap.role === "admin" || snap.role === "super_admin");
-  return { session: snap.session, user: snap.user, role: snap.role, isAdmin, isSuperAdmin, isStaff: !customerMode && (isAdmin || snap.role === "employee"), permissions: snap.permissions, loading: snap.loading && !snap.initialized, initialized: snap.initialized, blocked: !!snap.blocked };
+  return { session: snap.session, user: snap.user, role: snap.role, isAdmin, isStaff: !customerMode && (isAdmin || snap.role === "employee"), permissions: snap.permissions, loading: snap.loading && !snap.initialized, initialized: snap.initialized, blocked: !!snap.blocked };
 }

@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
-import { assertPermission } from "@/lib/_admin-guard.server";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 
@@ -28,7 +27,7 @@ const dashboardInFlight=new Map<string,Promise<any>>();
 
 type MetaProfitConfig={access_token?:string;ad_account_id?:string;account_name?:string;account_id?:string;dollar_rate?:number;courier_cost_per_order?:number;return_rate?:number;cancel_rate?:number};
 
-async function assertStaff(_db:SupabaseClient<Database>,userId:string){await assertPermission(userId,"dashboard");}
+async function assertStaff(db:SupabaseClient<Database>,userId:string){const {data,error}=await db.from("user_roles").select("role").eq("user_id",userId).in("role",["admin","super_admin","employee"]);if(error)throw new Error(error.message);if(!data?.length)throw new Error("Unauthorized")}
 
 async function getMetaProfitData(db:any,from:string,to:string){
  const defaults={dollarRate:122,courierCostPerOrder:50,cancelRate:20,adSpendUsd:0,adSpendBdt:0,connected:false,accountName:""};

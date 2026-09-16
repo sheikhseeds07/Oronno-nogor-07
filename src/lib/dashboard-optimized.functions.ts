@@ -1,8 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
-import { assertPermission } from "@/lib/_admin-guard.server";
-
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 
 const RangeSchema = z.object({ from: z.string().datetime(), to: z.string().datetime() });
@@ -86,7 +84,6 @@ async function getMetaProfitData(from: string, to: string) {
 export const getWebProcessingOrderCount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertPermission(context.userId, "dashboard");
     const role = await supabaseAdmin
       .from("user_roles")
       .select("role")
@@ -108,7 +105,6 @@ export const getOptimizedDashboardReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => RangeSchema.parse(input))
   .handler(async ({ data, context }) => {
-    await assertPermission(context.userId, "dashboard");
     const role = await supabaseAdmin.from("user_roles").select("role").eq("user_id", context.userId).in("role", ["admin", "super_admin", "employee"]).limit(1);
     if (role.error) throw new Error(role.error.message);
     if (!role.data?.length) throw new Error("Unauthorized");
