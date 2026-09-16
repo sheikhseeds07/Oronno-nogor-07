@@ -1,0 +1,25 @@
+name: Deploy website AI chat
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-website-ai-chat.yml'
+      - 'supabase/functions/website-ai-chat/**'
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Deploy website live chat
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SHEIKH }}
+        run: supabase functions deploy website-ai-chat --project-ref bvuhvzccziuniujeogng --no-verify-jwt

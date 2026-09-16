@@ -10,13 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as ContactRouteImport } from './routes/contact'
+import { Route as CustomerLoginRouteImport } from './routes/customer-login'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as MediaRouteImport } from './routes/media'
+import { Route as OffersRouteImport } from './routes/offers'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as SocialRouteImport } from './routes/social'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminAllApiRouteImport } from './routes/admin/all-api'
 import { Route as AdminAttendanceRouteImport } from './routes/admin/attendance'
@@ -24,12 +29,21 @@ import { Route as AdminBannersRouteImport } from './routes/admin/banners'
 import { Route as AdminCategoriesRouteImport } from './routes/admin/categories'
 import { Route as AdminCouponsRouteImport } from './routes/admin/coupons'
 import { Route as AdminCourierRouteImport } from './routes/admin/courier'
+import { Route as AdminCustomerFeedbackRouteImport } from './routes/admin/customer-feedback'
+import { Route as AdminCustomerManagementRouteImport } from './routes/admin/customer-management'
 import { Route as AdminCustomersRouteImport } from './routes/admin/customers'
+import { Route as AdminDeletedOrdersRouteImport } from './routes/admin/deleted-orders'
 import { Route as AdminEmployeesRouteImport } from './routes/admin/employees'
 import { Route as AdminFbCallbackRouteImport } from './routes/admin/fb-callback'
 import { Route as AdminIntegrationsRouteImport } from './routes/admin/integrations'
 import { Route as AdminLandingPagesRouteImport } from './routes/admin/landing-pages'
+import { Route as AdminLandingSeedsRouteImport } from './routes/admin/landing-seeds'
+import { Route as AdminLandingTemplateRouteImport } from './routes/admin/landing-template'
+import { Route as AdminMetaAdAccountRouteImport } from './routes/admin/meta-ad-account'
+import { Route as AdminOffersRouteImport } from './routes/admin/offers'
+import { Route as AdminOrderDivisionRouteImport } from './routes/admin/order-division'
 import { Route as AdminOrderImportRouteImport } from './routes/admin/order-import'
+import { Route as AdminOrderRateLimitRouteImport } from './routes/admin/order-rate-limit'
 import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
 import { Route as AdminProductsRouteImport } from './routes/admin/products'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
@@ -38,13 +52,24 @@ import { Route as LandingSlugRouteImport } from './routes/landing.$slug'
 import { Route as OrderIdRouteImport } from './routes/order.$id'
 import { Route as ProductSlugRouteImport } from './routes/product.$slug'
 import { Route as AdminEmployeesUserIdRouteImport } from './routes/admin/employees_.$userId'
-import { Route as ApiPublicFbAutopilotRouteImport } from './routes/api/public/fb-autopilot'
+import { Route as ApiPublicFbCapiRouteImport } from './routes/api/public/fb-capi'
+import { Route as ApiPublicFbPixelRouteImport } from './routes/api/public/fb-pixel'
 import { Route as ApiPublicFbWebhookRouteImport } from './routes/api/public/fb-webhook'
+import { Route as ApiPublicIncompleteRouteImport } from './routes/api/public/incomplete'
+import { Route as ApiPublicPgRouteImport } from './routes/api/public/pg'
 import { Route as ApiPublicSitemapRouteImport } from './routes/api/public/sitemap'
+import { Route as PresswayyV1InventoryRouteImport } from './routes/presswayy/v1/inventory'
+import { Route as PresswayyV1PingRouteImport } from './routes/presswayy/v1/ping'
+import { Route as PresswayyV1ResyncRouteImport } from './routes/presswayy/v1/resync'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CartRoute = CartRouteImport.update({
@@ -62,9 +87,24 @@ const ContactRoute = ContactRouteImport.update({
   path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CustomerLoginRoute = CustomerLoginRouteImport.update({
+  id: '/customer-login',
+  path: '/customer-login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MediaRoute = MediaRouteImport.update({
+  id: '/media',
+  path: '/media',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OffersRoute = OffersRouteImport.update({
+  id: '/offers',
+  path: '/offers',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProfileRoute = ProfileRouteImport.update({
@@ -80,6 +120,11 @@ const ShopRoute = ShopRouteImport.update({
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SocialRoute = SocialRouteImport.update({
+  id: '/social',
+  path: '/social',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -117,9 +162,24 @@ const AdminCourierRoute = AdminCourierRouteImport.update({
   path: '/admin/courier',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminCustomerFeedbackRoute = AdminCustomerFeedbackRouteImport.update({
+  id: '/admin/customer-feedback',
+  path: '/admin/customer-feedback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminCustomerManagementRoute = AdminCustomerManagementRouteImport.update({
+  id: '/admin/customer-management',
+  path: '/admin/customer-management',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminCustomersRoute = AdminCustomersRouteImport.update({
   id: '/admin/customers',
   path: '/admin/customers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminDeletedOrdersRoute = AdminDeletedOrdersRouteImport.update({
+  id: '/admin/deleted-orders',
+  path: '/admin/deleted-orders',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminEmployeesRoute = AdminEmployeesRouteImport.update({
@@ -142,9 +202,39 @@ const AdminLandingPagesRoute = AdminLandingPagesRouteImport.update({
   path: '/admin/landing-pages',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminLandingSeedsRoute = AdminLandingSeedsRouteImport.update({
+  id: '/admin/landing-seeds',
+  path: '/admin/landing-seeds',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminLandingTemplateRoute = AdminLandingTemplateRouteImport.update({
+  id: '/admin/landing-template',
+  path: '/admin/landing-template',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminMetaAdAccountRoute = AdminMetaAdAccountRouteImport.update({
+  id: '/admin/meta-ad-account',
+  path: '/admin/meta-ad-account',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminOffersRoute = AdminOffersRouteImport.update({
+  id: '/admin/offers',
+  path: '/admin/offers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminOrderDivisionRoute = AdminOrderDivisionRouteImport.update({
+  id: '/admin/order-division',
+  path: '/admin/order-division',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminOrderImportRoute = AdminOrderImportRouteImport.update({
   id: '/admin/order-import',
   path: '/admin/order-import',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminOrderRateLimitRoute = AdminOrderRateLimitRouteImport.update({
+  id: '/admin/order-rate-limit',
+  path: '/admin/order-rate-limit',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminOrdersRoute = AdminOrdersRouteImport.update({
@@ -187,9 +277,14 @@ const AdminEmployeesUserIdRoute = AdminEmployeesUserIdRouteImport.update({
   path: '/admin/employees/$userId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicFbAutopilotRoute = ApiPublicFbAutopilotRouteImport.update({
-  id: '/api/public/fb-autopilot',
-  path: '/api/public/fb-autopilot',
+const ApiPublicFbCapiRoute = ApiPublicFbCapiRouteImport.update({
+  id: '/api/public/fb-capi',
+  path: '/api/public/fb-capi',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicFbPixelRoute = ApiPublicFbPixelRouteImport.update({
+  id: '/api/public/fb-pixel',
+  path: '/api/public/fb-pixel',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicFbWebhookRoute = ApiPublicFbWebhookRouteImport.update({
@@ -197,33 +292,72 @@ const ApiPublicFbWebhookRoute = ApiPublicFbWebhookRouteImport.update({
   path: '/api/public/fb-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicIncompleteRoute = ApiPublicIncompleteRouteImport.update({
+  id: '/api/public/incomplete',
+  path: '/api/public/incomplete',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicPgRoute = ApiPublicPgRouteImport.update({
+  id: '/api/public/pg',
+  path: '/api/public/pg',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicSitemapRoute = ApiPublicSitemapRouteImport.update({
   id: '/api/public/sitemap',
   path: '/api/public/sitemap',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PresswayyV1InventoryRoute = PresswayyV1InventoryRouteImport.update({
+  id: '/presswayy/v1/inventory',
+  path: '/presswayy/v1/inventory',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PresswayyV1PingRoute = PresswayyV1PingRouteImport.update({
+  id: '/presswayy/v1/ping',
+  path: '/presswayy/v1/ping',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PresswayyV1ResyncRoute = PresswayyV1ResyncRouteImport.update({
+  id: '/presswayy/v1/resync',
+  path: '/presswayy/v1/resync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
   '/contact': typeof ContactRoute
+  '/customer-login': typeof CustomerLoginRoute
   '/login': typeof LoginRoute
+  '/media': typeof MediaRoute
+  '/offers': typeof OffersRoute
   '/profile': typeof ProfileRoute
   '/shop': typeof ShopRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/social': typeof SocialRoute
   '/admin/all-api': typeof AdminAllApiRoute
   '/admin/attendance': typeof AdminAttendanceRoute
   '/admin/banners': typeof AdminBannersRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/coupons': typeof AdminCouponsRoute
   '/admin/courier': typeof AdminCourierRoute
+  '/admin/customer-feedback': typeof AdminCustomerFeedbackRoute
+  '/admin/customer-management': typeof AdminCustomerManagementRoute
   '/admin/customers': typeof AdminCustomersRoute
+  '/admin/deleted-orders': typeof AdminDeletedOrdersRoute
   '/admin/employees': typeof AdminEmployeesRoute
   '/admin/fb-callback': typeof AdminFbCallbackRoute
   '/admin/integrations': typeof AdminIntegrationsRoute
   '/admin/landing-pages': typeof AdminLandingPagesRoute
+  '/admin/landing-seeds': typeof AdminLandingSeedsRoute
+  '/admin/landing-template': typeof AdminLandingTemplateRoute
+  '/admin/meta-ad-account': typeof AdminMetaAdAccountRoute
+  '/admin/offers': typeof AdminOffersRoute
+  '/admin/order-division': typeof AdminOrderDivisionRoute
   '/admin/order-import': typeof AdminOrderImportRoute
+  '/admin/order-rate-limit': typeof AdminOrderRateLimitRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -233,31 +367,51 @@ export interface FileRoutesByFullPath {
   '/product/$slug': typeof ProductSlugRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/employees/$userId': typeof AdminEmployeesUserIdRoute
-  '/api/public/fb-autopilot': typeof ApiPublicFbAutopilotRoute
+  '/api/public/fb-capi': typeof ApiPublicFbCapiRoute
+  '/api/public/fb-pixel': typeof ApiPublicFbPixelRoute
   '/api/public/fb-webhook': typeof ApiPublicFbWebhookRoute
+  '/api/public/incomplete': typeof ApiPublicIncompleteRoute
+  '/api/public/pg': typeof ApiPublicPgRoute
   '/api/public/sitemap': typeof ApiPublicSitemapRoute
+  '/presswayy/v1/inventory': typeof PresswayyV1InventoryRoute
+  '/presswayy/v1/ping': typeof PresswayyV1PingRoute
+  '/presswayy/v1/resync': typeof PresswayyV1ResyncRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
   '/contact': typeof ContactRoute
+  '/customer-login': typeof CustomerLoginRoute
   '/login': typeof LoginRoute
+  '/media': typeof MediaRoute
+  '/offers': typeof OffersRoute
   '/profile': typeof ProfileRoute
   '/shop': typeof ShopRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/social': typeof SocialRoute
   '/admin/all-api': typeof AdminAllApiRoute
   '/admin/attendance': typeof AdminAttendanceRoute
   '/admin/banners': typeof AdminBannersRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/coupons': typeof AdminCouponsRoute
   '/admin/courier': typeof AdminCourierRoute
+  '/admin/customer-feedback': typeof AdminCustomerFeedbackRoute
+  '/admin/customer-management': typeof AdminCustomerManagementRoute
   '/admin/customers': typeof AdminCustomersRoute
+  '/admin/deleted-orders': typeof AdminDeletedOrdersRoute
   '/admin/employees': typeof AdminEmployeesRoute
   '/admin/fb-callback': typeof AdminFbCallbackRoute
   '/admin/integrations': typeof AdminIntegrationsRoute
   '/admin/landing-pages': typeof AdminLandingPagesRoute
+  '/admin/landing-seeds': typeof AdminLandingSeedsRoute
+  '/admin/landing-template': typeof AdminLandingTemplateRoute
+  '/admin/meta-ad-account': typeof AdminMetaAdAccountRoute
+  '/admin/offers': typeof AdminOffersRoute
+  '/admin/order-division': typeof AdminOrderDivisionRoute
   '/admin/order-import': typeof AdminOrderImportRoute
+  '/admin/order-rate-limit': typeof AdminOrderRateLimitRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -267,32 +421,52 @@ export interface FileRoutesByTo {
   '/product/$slug': typeof ProductSlugRoute
   '/admin': typeof AdminIndexRoute
   '/admin/employees/$userId': typeof AdminEmployeesUserIdRoute
-  '/api/public/fb-autopilot': typeof ApiPublicFbAutopilotRoute
+  '/api/public/fb-capi': typeof ApiPublicFbCapiRoute
+  '/api/public/fb-pixel': typeof ApiPublicFbPixelRoute
   '/api/public/fb-webhook': typeof ApiPublicFbWebhookRoute
+  '/api/public/incomplete': typeof ApiPublicIncompleteRoute
+  '/api/public/pg': typeof ApiPublicPgRoute
   '/api/public/sitemap': typeof ApiPublicSitemapRoute
+  '/presswayy/v1/inventory': typeof PresswayyV1InventoryRoute
+  '/presswayy/v1/ping': typeof PresswayyV1PingRoute
+  '/presswayy/v1/resync': typeof PresswayyV1ResyncRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
   '/contact': typeof ContactRoute
+  '/customer-login': typeof CustomerLoginRoute
   '/login': typeof LoginRoute
+  '/media': typeof MediaRoute
+  '/offers': typeof OffersRoute
   '/profile': typeof ProfileRoute
   '/shop': typeof ShopRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/social': typeof SocialRoute
   '/admin/all-api': typeof AdminAllApiRoute
   '/admin/attendance': typeof AdminAttendanceRoute
   '/admin/banners': typeof AdminBannersRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/coupons': typeof AdminCouponsRoute
   '/admin/courier': typeof AdminCourierRoute
+  '/admin/customer-feedback': typeof AdminCustomerFeedbackRoute
+  '/admin/customer-management': typeof AdminCustomerManagementRoute
   '/admin/customers': typeof AdminCustomersRoute
+  '/admin/deleted-orders': typeof AdminDeletedOrdersRoute
   '/admin/employees': typeof AdminEmployeesRoute
   '/admin/fb-callback': typeof AdminFbCallbackRoute
   '/admin/integrations': typeof AdminIntegrationsRoute
   '/admin/landing-pages': typeof AdminLandingPagesRoute
+  '/admin/landing-seeds': typeof AdminLandingSeedsRoute
+  '/admin/landing-template': typeof AdminLandingTemplateRoute
+  '/admin/meta-ad-account': typeof AdminMetaAdAccountRoute
+  '/admin/offers': typeof AdminOffersRoute
+  '/admin/order-division': typeof AdminOrderDivisionRoute
   '/admin/order-import': typeof AdminOrderImportRoute
+  '/admin/order-rate-limit': typeof AdminOrderRateLimitRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -302,33 +476,53 @@ export interface FileRoutesById {
   '/product/$slug': typeof ProductSlugRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/employees_/$userId': typeof AdminEmployeesUserIdRoute
-  '/api/public/fb-autopilot': typeof ApiPublicFbAutopilotRoute
+  '/api/public/fb-capi': typeof ApiPublicFbCapiRoute
+  '/api/public/fb-pixel': typeof ApiPublicFbPixelRoute
   '/api/public/fb-webhook': typeof ApiPublicFbWebhookRoute
+  '/api/public/incomplete': typeof ApiPublicIncompleteRoute
+  '/api/public/pg': typeof ApiPublicPgRoute
   '/api/public/sitemap': typeof ApiPublicSitemapRoute
+  '/presswayy/v1/inventory': typeof PresswayyV1InventoryRoute
+  '/presswayy/v1/ping': typeof PresswayyV1PingRoute
+  '/presswayy/v1/resync': typeof PresswayyV1ResyncRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/about'
     | '/cart'
     | '/checkout'
     | '/contact'
+    | '/customer-login'
     | '/login'
+    | '/media'
+    | '/offers'
     | '/profile'
     | '/shop'
     | '/sitemap.xml'
+    | '/social'
     | '/admin/all-api'
     | '/admin/attendance'
     | '/admin/banners'
     | '/admin/categories'
     | '/admin/coupons'
     | '/admin/courier'
+    | '/admin/customer-feedback'
+    | '/admin/customer-management'
     | '/admin/customers'
+    | '/admin/deleted-orders'
     | '/admin/employees'
     | '/admin/fb-callback'
     | '/admin/integrations'
     | '/admin/landing-pages'
+    | '/admin/landing-seeds'
+    | '/admin/landing-template'
+    | '/admin/meta-ad-account'
+    | '/admin/offers'
+    | '/admin/order-division'
     | '/admin/order-import'
+    | '/admin/order-rate-limit'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/settings'
@@ -338,31 +532,51 @@ export interface FileRouteTypes {
     | '/product/$slug'
     | '/admin/'
     | '/admin/employees/$userId'
-    | '/api/public/fb-autopilot'
+    | '/api/public/fb-capi'
+    | '/api/public/fb-pixel'
     | '/api/public/fb-webhook'
+    | '/api/public/incomplete'
+    | '/api/public/pg'
     | '/api/public/sitemap'
+    | '/presswayy/v1/inventory'
+    | '/presswayy/v1/ping'
+    | '/presswayy/v1/resync'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/about'
     | '/cart'
     | '/checkout'
     | '/contact'
+    | '/customer-login'
     | '/login'
+    | '/media'
+    | '/offers'
     | '/profile'
     | '/shop'
     | '/sitemap.xml'
+    | '/social'
     | '/admin/all-api'
     | '/admin/attendance'
     | '/admin/banners'
     | '/admin/categories'
     | '/admin/coupons'
     | '/admin/courier'
+    | '/admin/customer-feedback'
+    | '/admin/customer-management'
     | '/admin/customers'
+    | '/admin/deleted-orders'
     | '/admin/employees'
     | '/admin/fb-callback'
     | '/admin/integrations'
     | '/admin/landing-pages'
+    | '/admin/landing-seeds'
+    | '/admin/landing-template'
+    | '/admin/meta-ad-account'
+    | '/admin/offers'
+    | '/admin/order-division'
     | '/admin/order-import'
+    | '/admin/order-rate-limit'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/settings'
@@ -372,31 +586,51 @@ export interface FileRouteTypes {
     | '/product/$slug'
     | '/admin'
     | '/admin/employees/$userId'
-    | '/api/public/fb-autopilot'
+    | '/api/public/fb-capi'
+    | '/api/public/fb-pixel'
     | '/api/public/fb-webhook'
+    | '/api/public/incomplete'
+    | '/api/public/pg'
     | '/api/public/sitemap'
+    | '/presswayy/v1/inventory'
+    | '/presswayy/v1/ping'
+    | '/presswayy/v1/resync'
   id:
     | '__root__'
     | '/'
+    | '/about'
     | '/cart'
     | '/checkout'
     | '/contact'
+    | '/customer-login'
     | '/login'
+    | '/media'
+    | '/offers'
     | '/profile'
     | '/shop'
     | '/sitemap.xml'
+    | '/social'
     | '/admin/all-api'
     | '/admin/attendance'
     | '/admin/banners'
     | '/admin/categories'
     | '/admin/coupons'
     | '/admin/courier'
+    | '/admin/customer-feedback'
+    | '/admin/customer-management'
     | '/admin/customers'
+    | '/admin/deleted-orders'
     | '/admin/employees'
     | '/admin/fb-callback'
     | '/admin/integrations'
     | '/admin/landing-pages'
+    | '/admin/landing-seeds'
+    | '/admin/landing-template'
+    | '/admin/meta-ad-account'
+    | '/admin/offers'
+    | '/admin/order-division'
     | '/admin/order-import'
+    | '/admin/order-rate-limit'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/settings'
@@ -406,32 +640,52 @@ export interface FileRouteTypes {
     | '/product/$slug'
     | '/admin/'
     | '/admin/employees_/$userId'
-    | '/api/public/fb-autopilot'
+    | '/api/public/fb-capi'
+    | '/api/public/fb-pixel'
     | '/api/public/fb-webhook'
+    | '/api/public/incomplete'
+    | '/api/public/pg'
     | '/api/public/sitemap'
+    | '/presswayy/v1/inventory'
+    | '/presswayy/v1/ping'
+    | '/presswayy/v1/resync'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
   CartRoute: typeof CartRoute
   CheckoutRoute: typeof CheckoutRoute
   ContactRoute: typeof ContactRoute
+  CustomerLoginRoute: typeof CustomerLoginRoute
   LoginRoute: typeof LoginRoute
+  MediaRoute: typeof MediaRoute
+  OffersRoute: typeof OffersRoute
   ProfileRoute: typeof ProfileRoute
   ShopRoute: typeof ShopRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  SocialRoute: typeof SocialRoute
   AdminAllApiRoute: typeof AdminAllApiRoute
   AdminAttendanceRoute: typeof AdminAttendanceRoute
   AdminBannersRoute: typeof AdminBannersRoute
   AdminCategoriesRoute: typeof AdminCategoriesRoute
   AdminCouponsRoute: typeof AdminCouponsRoute
   AdminCourierRoute: typeof AdminCourierRoute
+  AdminCustomerFeedbackRoute: typeof AdminCustomerFeedbackRoute
+  AdminCustomerManagementRoute: typeof AdminCustomerManagementRoute
   AdminCustomersRoute: typeof AdminCustomersRoute
+  AdminDeletedOrdersRoute: typeof AdminDeletedOrdersRoute
   AdminEmployeesRoute: typeof AdminEmployeesRoute
   AdminFbCallbackRoute: typeof AdminFbCallbackRoute
   AdminIntegrationsRoute: typeof AdminIntegrationsRoute
   AdminLandingPagesRoute: typeof AdminLandingPagesRoute
+  AdminLandingSeedsRoute: typeof AdminLandingSeedsRoute
+  AdminLandingTemplateRoute: typeof AdminLandingTemplateRoute
+  AdminMetaAdAccountRoute: typeof AdminMetaAdAccountRoute
+  AdminOffersRoute: typeof AdminOffersRoute
+  AdminOrderDivisionRoute: typeof AdminOrderDivisionRoute
   AdminOrderImportRoute: typeof AdminOrderImportRoute
+  AdminOrderRateLimitRoute: typeof AdminOrderRateLimitRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
   AdminProductsRoute: typeof AdminProductsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
@@ -441,9 +695,15 @@ export interface RootRouteChildren {
   ProductSlugRoute: typeof ProductSlugRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminEmployeesUserIdRoute: typeof AdminEmployeesUserIdRoute
-  ApiPublicFbAutopilotRoute: typeof ApiPublicFbAutopilotRoute
+  ApiPublicFbCapiRoute: typeof ApiPublicFbCapiRoute
+  ApiPublicFbPixelRoute: typeof ApiPublicFbPixelRoute
   ApiPublicFbWebhookRoute: typeof ApiPublicFbWebhookRoute
+  ApiPublicIncompleteRoute: typeof ApiPublicIncompleteRoute
+  ApiPublicPgRoute: typeof ApiPublicPgRoute
   ApiPublicSitemapRoute: typeof ApiPublicSitemapRoute
+  PresswayyV1InventoryRoute: typeof PresswayyV1InventoryRoute
+  PresswayyV1PingRoute: typeof PresswayyV1PingRoute
+  PresswayyV1ResyncRoute: typeof PresswayyV1ResyncRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -453,6 +713,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cart': {
@@ -476,11 +743,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/customer-login': {
+      id: '/customer-login'
+      path: '/customer-login'
+      fullPath: '/customer-login'
+      preLoaderRoute: typeof CustomerLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/media': {
+      id: '/media'
+      path: '/media'
+      fullPath: '/media'
+      preLoaderRoute: typeof MediaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/offers': {
+      id: '/offers'
+      path: '/offers'
+      fullPath: '/offers'
+      preLoaderRoute: typeof OffersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/profile': {
@@ -502,6 +790,13 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/social': {
+      id: '/social'
+      path: '/social'
+      fullPath: '/social'
+      preLoaderRoute: typeof SocialRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -553,11 +848,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCourierRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/customer-feedback': {
+      id: '/admin/customer-feedback'
+      path: '/admin/customer-feedback'
+      fullPath: '/admin/customer-feedback'
+      preLoaderRoute: typeof AdminCustomerFeedbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/customer-management': {
+      id: '/admin/customer-management'
+      path: '/admin/customer-management'
+      fullPath: '/admin/customer-management'
+      preLoaderRoute: typeof AdminCustomerManagementRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/customers': {
       id: '/admin/customers'
       path: '/admin/customers'
       fullPath: '/admin/customers'
       preLoaderRoute: typeof AdminCustomersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/deleted-orders': {
+      id: '/admin/deleted-orders'
+      path: '/admin/deleted-orders'
+      fullPath: '/admin/deleted-orders'
+      preLoaderRoute: typeof AdminDeletedOrdersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/employees': {
@@ -588,11 +904,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLandingPagesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/landing-seeds': {
+      id: '/admin/landing-seeds'
+      path: '/admin/landing-seeds'
+      fullPath: '/admin/landing-seeds'
+      preLoaderRoute: typeof AdminLandingSeedsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/landing-template': {
+      id: '/admin/landing-template'
+      path: '/admin/landing-template'
+      fullPath: '/admin/landing-template'
+      preLoaderRoute: typeof AdminLandingTemplateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/meta-ad-account': {
+      id: '/admin/meta-ad-account'
+      path: '/admin/meta-ad-account'
+      fullPath: '/admin/meta-ad-account'
+      preLoaderRoute: typeof AdminMetaAdAccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/offers': {
+      id: '/admin/offers'
+      path: '/admin/offers'
+      fullPath: '/admin/offers'
+      preLoaderRoute: typeof AdminOffersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/order-division': {
+      id: '/admin/order-division'
+      path: '/admin/order-division'
+      fullPath: '/admin/order-division'
+      preLoaderRoute: typeof AdminOrderDivisionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/order-import': {
       id: '/admin/order-import'
       path: '/admin/order-import'
       fullPath: '/admin/order-import'
       preLoaderRoute: typeof AdminOrderImportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/order-rate-limit': {
+      id: '/admin/order-rate-limit'
+      path: '/admin/order-rate-limit'
+      fullPath: '/admin/order-rate-limit'
+      preLoaderRoute: typeof AdminOrderRateLimitRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/orders': {
@@ -651,11 +1009,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminEmployeesUserIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/fb-autopilot': {
-      id: '/api/public/fb-autopilot'
-      path: '/api/public/fb-autopilot'
-      fullPath: '/api/public/fb-autopilot'
-      preLoaderRoute: typeof ApiPublicFbAutopilotRouteImport
+    '/api/public/fb-capi': {
+      id: '/api/public/fb-capi'
+      path: '/api/public/fb-capi'
+      fullPath: '/api/public/fb-capi'
+      preLoaderRoute: typeof ApiPublicFbCapiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/fb-pixel': {
+      id: '/api/public/fb-pixel'
+      path: '/api/public/fb-pixel'
+      fullPath: '/api/public/fb-pixel'
+      preLoaderRoute: typeof ApiPublicFbPixelRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/fb-webhook': {
@@ -665,6 +1030,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicFbWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/incomplete': {
+      id: '/api/public/incomplete'
+      path: '/api/public/incomplete'
+      fullPath: '/api/public/incomplete'
+      preLoaderRoute: typeof ApiPublicIncompleteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/pg': {
+      id: '/api/public/pg'
+      path: '/api/public/pg'
+      fullPath: '/api/public/pg'
+      preLoaderRoute: typeof ApiPublicPgRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/sitemap': {
       id: '/api/public/sitemap'
       path: '/api/public/sitemap'
@@ -672,30 +1051,65 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicSitemapRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/presswayy/v1/inventory': {
+      id: '/presswayy/v1/inventory'
+      path: '/presswayy/v1/inventory'
+      fullPath: '/presswayy/v1/inventory'
+      preLoaderRoute: typeof PresswayyV1InventoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/presswayy/v1/ping': {
+      id: '/presswayy/v1/ping'
+      path: '/presswayy/v1/ping'
+      fullPath: '/presswayy/v1/ping'
+      preLoaderRoute: typeof PresswayyV1PingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/presswayy/v1/resync': {
+      id: '/presswayy/v1/resync'
+      path: '/presswayy/v1/resync'
+      fullPath: '/presswayy/v1/resync'
+      preLoaderRoute: typeof PresswayyV1ResyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
   CartRoute: CartRoute,
   CheckoutRoute: CheckoutRoute,
   ContactRoute: ContactRoute,
+  CustomerLoginRoute: CustomerLoginRoute,
   LoginRoute: LoginRoute,
+  MediaRoute: MediaRoute,
+  OffersRoute: OffersRoute,
   ProfileRoute: ProfileRoute,
   ShopRoute: ShopRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  SocialRoute: SocialRoute,
   AdminAllApiRoute: AdminAllApiRoute,
   AdminAttendanceRoute: AdminAttendanceRoute,
   AdminBannersRoute: AdminBannersRoute,
   AdminCategoriesRoute: AdminCategoriesRoute,
   AdminCouponsRoute: AdminCouponsRoute,
   AdminCourierRoute: AdminCourierRoute,
+  AdminCustomerFeedbackRoute: AdminCustomerFeedbackRoute,
+  AdminCustomerManagementRoute: AdminCustomerManagementRoute,
   AdminCustomersRoute: AdminCustomersRoute,
+  AdminDeletedOrdersRoute: AdminDeletedOrdersRoute,
   AdminEmployeesRoute: AdminEmployeesRoute,
   AdminFbCallbackRoute: AdminFbCallbackRoute,
   AdminIntegrationsRoute: AdminIntegrationsRoute,
   AdminLandingPagesRoute: AdminLandingPagesRoute,
+  AdminLandingSeedsRoute: AdminLandingSeedsRoute,
+  AdminLandingTemplateRoute: AdminLandingTemplateRoute,
+  AdminMetaAdAccountRoute: AdminMetaAdAccountRoute,
+  AdminOffersRoute: AdminOffersRoute,
+  AdminOrderDivisionRoute: AdminOrderDivisionRoute,
   AdminOrderImportRoute: AdminOrderImportRoute,
+  AdminOrderRateLimitRoute: AdminOrderRateLimitRoute,
   AdminOrdersRoute: AdminOrdersRoute,
   AdminProductsRoute: AdminProductsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
@@ -705,9 +1119,15 @@ const rootRouteChildren: RootRouteChildren = {
   ProductSlugRoute: ProductSlugRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminEmployeesUserIdRoute: AdminEmployeesUserIdRoute,
-  ApiPublicFbAutopilotRoute: ApiPublicFbAutopilotRoute,
+  ApiPublicFbCapiRoute: ApiPublicFbCapiRoute,
+  ApiPublicFbPixelRoute: ApiPublicFbPixelRoute,
   ApiPublicFbWebhookRoute: ApiPublicFbWebhookRoute,
+  ApiPublicIncompleteRoute: ApiPublicIncompleteRoute,
+  ApiPublicPgRoute: ApiPublicPgRoute,
   ApiPublicSitemapRoute: ApiPublicSitemapRoute,
+  PresswayyV1InventoryRoute: PresswayyV1InventoryRoute,
+  PresswayyV1PingRoute: PresswayyV1PingRoute,
+  PresswayyV1ResyncRoute: PresswayyV1ResyncRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

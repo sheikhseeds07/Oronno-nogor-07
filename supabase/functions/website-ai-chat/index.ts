@@ -66,7 +66,8 @@ Deno.serve(async (req) => {
   if (!contents.length) return json({ error: "contents is required" }, 400);
   // Simple abuse guard: live chat never needs a huge transcript.
   if (contents.length > 40) return json({ error: "Conversation too long" }, 413);
-  if (JSON.stringify(payload).length > 200_000) return json({ error: "Payload too large" }, 413);
+  // Up to two validated 5 MB image/audio inputs arrive as base64 (~14 MB total).
+  if (JSON.stringify(payload).length > 18 * 1024 * 1024) return json({ error: "Payload too large" }, 413);
 
   const { apiKey, model } = await loadConfig();
   if (!apiKey) return json({ error: "Gemini API key configured হয়নি" }, 400);

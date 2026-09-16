@@ -1,10 +1,13 @@
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 import { getDeliveryInfo, normalizeDeliveryRules, type DeliveryRule } from "@/lib/delivery-rules";
 import { resolveSupabasePublishableKey, resolveSupabaseUrl } from "@/integrations/supabase/public-env";
+import { getRequestIP } from "@tanstack/react-start/server";
 
 const DEFAULT_MODEL = "gemini-flash-latest";
 type Msg = { role: "user" | "model"; parts: any[] };
 type Item = { product_name: string; quantity: number };
+type MediaInput = { mediaType: string; data: string; name?: string };
+type ProductResult = { id: string; name: string; price: number; sale_price: number | null; stock: number; slug: string; short_description: string | null; images: string[] | null };
 
 async function getConfig() {
   // The API key is never read here: the edge function holds it. We only need the
@@ -41,14 +44,20 @@ async function shopContext() {
   const { data } = await supabaseAdmin.from("site_settings").select("settings").limit(1).maybeSingle();
   const s = (data?.settings as Record<string, unknown> | null) ?? {};
   const rules = normalizeDeliveryRules(s.delivery_rules) as DeliveryRule[];
-  return { name: String(s.site_name || "Sheikh Seeds"), rules };
+  return {
+    name: String(s.site_name || "Sheikh Seeds"),
+    phone: String(s.contact_phone || s.phone || "+8809644553383"),
+    address: String(s.address || ""),
+    tagline: String(s.tagline || "দেশী ও বিদেশী বীজের বিশ্বস্ত প্রতিষ্ঠান"),
+    rules,
+  };
 }
 
 async function searchProducts(query: string) {
   const q = query.trim();
-  const { data } = await supabaseAdmin.from("products").select("id,name,price,sale_price,stock,slug,short_description").eq("is_active", true).ilike("name", `%${q}%`).limit(10);
+  const { data } = await supabaseAdmin.from("products").select("id,name,price,sale_price,stock,slug,short_description,images").eq("is_active", true).ilike("name", `%${q}%`).limit(10);
   if (data?.length) return data;
-  const { data: fallback } = await supabaseAdmin.from("products").select("id,name,price,sale_price,stock,slug,short_description").eq("is_active", true).order("is_featured", { ascending: false }).limit(10);
+  const { data: fallback } = await supabaseAdmin.from("products").select("id,name,price,sale_price,stock,slug,short_description,images").eq("is_active", true).order("is_featured", { ascending: false }).limit(10);
   return fallback ?? [];
 }
 
@@ -74,33 +83,43 @@ async function createOrder(args: { customer_name: string; customer_phone: string
   }
   const subtotal = rows.reduce((a, r) => a + r.subtotal, 0);
   const delivery = getDeliveryInfo(subtotal, shop.rules).delivery;
+  const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
+  const { data: blocked, error: blockError } = await supabaseAdmin.rpc("is_blocked_visitor", { p_ip: clientIp, p_phone: phone });
+  if (!blockError && blocked === true) return { ok: false, error: "এই ফোন নম্বর থেকে অর্ডার গ্রহণ করা যাচ্ছে না" };
   if (phone.length >= 6) {
     const since = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
     const { data: recent } = await supabaseAdmin.from("orders").select("id,invoice_no,total").eq("source", "web").ilike("customer_phone", `%${phone}%`).is("deleted_at", null).gte("created_at", since).order("created_at", { ascending: false }).limit(1).maybeSingle();
     if (recent && Math.abs(Number(recent.total) - subtotal - delivery) < 0.01) return { ok: true, duplicate: true, invoice_no: recent.invoice_no, total: Number(recent.total), order_id: recent.id };
   }
-  const { allocateInvoiceNo } = await import("@/lib/invoice-no.server");
-  const invoiceNo = await allocateInvoiceNo();
-  const { data: order, error } = await supabaseAdmin.from("orders").insert({ invoice_no: invoiceNo, customer_name: args.customer_name.trim().slice(0, 255), customer_phone: phone, customer_address: args.customer_address.trim().slice(0, 1000), notes: "Website Gemini AI অর্ডার", subtotal, delivery_fee: delivery, discount: 0, total: subtotal + delivery, source: "web", status: "pending", payment_method: "cod" }).select("id,invoice_no,total").single();
-  if (error || !order) return { ok: false, error: error?.message || "অর্ডার তৈরি হয়নি" };
-  const { error: itemError } = await supabaseAdmin.from("order_items").insert(rows.map((r) => ({ ...r, order_id: order.id })));
-  if (itemError) { await supabaseAdmin.from("orders").delete().eq("id", order.id); return { ok: false, error: itemError.message }; }
-  return { ok: true, order_id: order.id, invoice_no: order.invoice_no, total: Number(order.total), delivery_fee: delivery };
+  const { data: orderId, error } = await supabaseAdmin.rpc("place_public_order", {
+    p_customer_name: args.customer_name.trim().slice(0, 255), p_customer_phone: phone,
+    p_customer_address: args.customer_address.trim().slice(0, 1000), p_delivery_fee: delivery,
+    p_items: rows.map((r) => ({ id: r.product_id, name: r.product_name, price: r.price, quantity: r.quantity })),
+    p_notes: "Website Gemini AI অর্ডার", p_client_ip: clientIp,
+  });
+  if (error || !orderId) return { ok: false, error: error?.message || "অর্ডার তৈরি হয়নি" };
+  const { data: order } = await supabaseAdmin.from("orders").select("id,invoice_no,total").eq("id", orderId).single();
+  return { ok: true, order_id: String(orderId), invoice_no: order?.invoice_no ?? null, total: Number(order?.total ?? subtotal + delivery), delivery_fee: delivery };
 }
 
-export async function generateGeminiWebReply(input: { incoming: string; history: { direction: string; text: string | null }[] }) {
+export async function generateGeminiWebReply(input: { incoming: string; history: { direction: string; text: string | null }[]; attachments?: MediaInput[] }) {
   const { model } = await getConfig();
   const shop = await shopContext();
   const history = input.history.slice(-12).filter((m) => m.text);
-  let messages: Msg[] = history.map((m) => ({ role: m.direction === "in" ? "user" : "model", parts: [{ text: m.text! }] }));
-  messages.push({ role: "user", parts: [{ text: input.incoming }] });
+  let messages: Msg[] = history.map((m) => ({ role: m.direction === "in" ? "user" : "model", parts: [{ text: m.text ?? "" }] }));
+  const userParts: any[] = [];
+  if (input.incoming) userParts.push({ text: input.incoming });
+  for (const attachment of input.attachments ?? []) userParts.push({ inlineData: { mimeType: attachment.mediaType, data: attachment.data } });
+  messages.push({ role: "user", parts: userParts });
   const combined = [...history.map((m) => m.text || ""), input.incoming].join(" ").toLowerCase();
   const hasOrderIntent = /(অর্ডার|নিব|নিতে চাই|কিনব|কিনতে চাই|order|buy)/i.test(combined);
   const explicitConfirmation = /(জি|হ্যাঁ|হ্যা|yes|confirm|কনফার্ম|অর্ডার দিন|অর্ডার করুন|নিশ্চিত)/i.test(input.incoming);
   const allowCreateOrder = hasOrderIntent && explicitConfirmation;
-  const system = `আপনি ${shop.name}-এর ওয়েবসাইটের লাইভ AI কাস্টমার কেয়ার ও সেলস সহকারী। মানুষের মতো স্বাভাবিক, বন্ধুসুলভ বাংলা ভাষায় উত্তর দেবেন। রোবটের মতো লম্বা তালিকা নয়; কথোপকথনের মতো ছোট, পরিষ্কার উত্তর দিন। কাস্টমারের ভাষা ও আগের কথার ধারাবাহিকতা বজায় রাখুন। প্রোডাক্টের দাম/স্টক কখনো অনুমান করবেন না; search_products দিয়ে যাচাই করুন। ডেলিভারি চার্জ admin-এর বর্তমান delivery rules অনুযায়ী হবে: ${JSON.stringify(shop.rules)}। COD আছে। অর্ডার নিতে নাম, ১১ ডিজিটের মোবাইল, পূর্ণ ঠিকানা, প্রোডাক্ট ও quantity সংগ্রহ করুন। সব তথ্য নিয়ে subtotal + delivery সহ মোট টাকা জানিয়ে কাস্টমারের স্পষ্ট সম্মতি পাওয়ার পরই create_order ব্যবহার করবেন। কাস্টমার এখনো সম্মতি না দিলে শুধু তথ্য নিন, অর্ডার তৈরি করবেন না। ${allowCreateOrder ? "এই বার্তায় অর্ডার তৈরির জন্য কাস্টমারের সম্মতি পাওয়া গেছে বলে ধরে নিতে পারেন, তবে প্রয়োজনীয় তথ্য সম্পূর্ণ থাকতে হবে।" : "এই বার্তায় create_order ব্যবহার করা যাবে না।"}`;
+  const system = `আপনি ${shop.name}-এর verified ওয়েবসাইট লাইভ কাস্টমার কেয়ার, কৃষি পরামর্শক ও সেলস সহকারী। পরিচয়: ${shop.tagline}। ফোন: ${shop.phone}। ঠিকানা: ${shop.address || "ঠিকানা জানতে চাইলে ফোনে যোগাযোগ করতে বলুন"}। মানুষের মতো উষ্ণ, স্বাভাবিক বাংলায় ২-৪টি ছোট অনুচ্ছেদে উত্তর দিন; প্রয়োজন ছাড়া লম্বা তালিকা নয়। ছবি বা ভয়েস এলে মনোযোগ দিয়ে বুঝে নির্দিষ্ট উত্তর দিন; গাছের রোগ শুধু ছবি দেখে নিশ্চিত diagnosis হিসেবে বলবেন না, সম্ভাবনা ও নিরাপদ করণীয় বলবেন। প্রাসঙ্গিক হলে কাস্টমারকে উপযুক্ত পণ্য কেনার পরামর্শ দিন, কিন্তু চাপ বা মিথ্যা দাবি করবেন না। ব্যবসার নাম/ফোন/ঠিকানা চাইলে উপরের সত্য তথ্য দিন। প্রোডাক্টের দাম/স্টক কখনো অনুমান করবেন না; search_products দিয়ে যাচাই করুন এবং পাওয়া পণ্যের সঠিক নাম বলুন। ডেলিভারি চার্জ বর্তমান rules অনুযায়ী: ${JSON.stringify(shop.rules)}। COD আছে। অর্ডার নিতে নাম, ১১ ডিজিটের মোবাইল, পূর্ণ ঠিকানা, প্রোডাক্ট ও quantity সংগ্রহ করুন। সব তথ্য নিয়ে subtotal + delivery সহ মোট টাকা জানিয়ে কাস্টমারের স্পষ্ট সম্মতি পাওয়ার পরই create_order ব্যবহার করবেন। কাস্টমার এখনো সম্মতি না দিলে শুধু তথ্য নিন, অর্ডার তৈরি করবেন না। ${allowCreateOrder ? "এই বার্তায় অর্ডার তৈরির সম্মতি পাওয়া গেছে বলে ধরে নিতে পারেন, তবে প্রয়োজনীয় তথ্য সম্পূর্ণ থাকতে হবে।" : "এই বার্তায় create_order ব্যবহার করা যাবে না।"}`;
   const declarations: any[] = [{ name: "search_products", description: "শপের active products খুঁজে দাম, stock ও তথ্য যাচাই করুন", parameters: { type: "OBJECT", properties: { query: { type: "STRING" } }, required: ["query"] } }];
   if (allowCreateOrder) declarations.push({ name: "create_order", description: "প্রয়োজনীয় customer তথ্য ও product নিশ্চিত হওয়ার পর অর্ডার তৈরি করুন", parameters: { type: "OBJECT", properties: { customer_name: { type: "STRING" }, customer_phone: { type: "STRING" }, customer_address: { type: "STRING" }, inside_dhaka: { type: "BOOLEAN" }, items: { type: "ARRAY", items: { type: "OBJECT", properties: { product_name: { type: "STRING" }, quantity: { type: "NUMBER" } }, required: ["product_name", "quantity"] } } }, required: ["customer_name", "customer_phone", "customer_address", "inside_dhaka", "items"] } });
+  const shownProducts = new Map<string, ProductResult>();
+  let createdOrder: { order_id?: string; invoice_no?: string | null; total?: number } | null = null;
   for (let round = 0; round < 6; round++) {
     const json = await callGemini({
       model,
@@ -111,12 +130,14 @@ export async function generateGeminiWebReply(input: { incoming: string; history:
     });
     const parts: any[] = json?.candidates?.[0]?.content?.parts ?? [];
     const calls = parts.filter((p: any) => p.functionCall);
-    if (!calls.length) return String(parts.find((p: any) => p.text)?.text || "").trim();
+    if (!calls.length) return { text: String(parts.find((p: any) => p.text)?.text || "").trim(), products: [...shownProducts.values()].slice(0, 6), orderId: createdOrder?.order_id ?? null, invoiceNo: createdOrder?.invoice_no ?? null, needsHuman: false };
     messages.push({ role: "model", parts });
     for (const p of calls) {
       const name = p.functionCall.name;
       const args = p.functionCall.args ?? {};
       const raw = name === "search_products" ? await searchProducts(String(args.query || "")) : name === "create_order" && allowCreateOrder ? await createOrder(args) : { error: "এই মুহূর্তে এই কাজটি অনুমোদিত নয়" };
+      if (name === "search_products" && Array.isArray(raw)) for (const product of raw as ProductResult[]) shownProducts.set(product.id, product);
+      if (name === "create_order" && !Array.isArray(raw) && (raw as { ok?: boolean }).ok) createdOrder = raw as typeof createdOrder;
       // Gemini requires functionResponse.response to be an object, never a bare array.
       const result = Array.isArray(raw) ? { products: raw } : raw;
       const fr: any = { name, response: result };

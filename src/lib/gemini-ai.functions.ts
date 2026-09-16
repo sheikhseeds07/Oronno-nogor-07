@@ -14,12 +14,12 @@ export const getGeminiSettings = createServerFn({ method: "POST" })
     if (!(await isAdmin(context.userId))) throw new Error("Unauthorized");
     const { data, error } = await supabaseAdmin.from("site_ai_settings").select("provider,model,api_key,updated_at").limit(1).maybeSingle();
     if (error) throw new Error(error.message);
-    return { provider: data?.provider ?? "gemini", model: data?.model ?? "gemini-2.5-flash", configured: Boolean(data?.api_key), maskedKey: data?.api_key ? `${data.api_key.slice(0, 6)}••••••••${data.api_key.slice(-4)}` : "" };
+    return { provider: data?.provider ?? "gemini", model: data?.model ?? "gemini-flash-latest", configured: Boolean(data?.api_key), maskedKey: data?.api_key ? `${data.api_key.slice(0, 6)}••••••••${data.api_key.slice(-4)}` : "" };
   });
 
 export const saveGeminiSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input) => z.object({ api_key: z.string().trim().max(500), model: z.string().trim().min(1).max(100).default("gemini-2.5-flash") }).parse(input))
+  .inputValidator((input) => z.object({ api_key: z.string().trim().max(500), model: z.string().trim().min(1).max(100).default("gemini-flash-latest") }).parse(input))
   .handler(async ({ data, context }) => {
     if (!(await isAdmin(context.userId))) throw new Error("Unauthorized");
     const { data: row } = await supabaseAdmin.from("site_ai_settings").select("id,api_key").limit(1).maybeSingle();
@@ -37,7 +37,7 @@ export const testGeminiSettings = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     if (!(await isAdmin(context.userId))) throw new Error("Unauthorized");
     const { generateGeminiWebReply } = await import("@/lib/gemini-ai.server");
-    const text = await generateGeminiWebReply({ incoming: "হ্যালো, তোমরা কী কী বীজ বিক্রি করো?", history: [] });
-    if (!text) throw new Error("Gemini থেকে উত্তর আসেনি");
-    return { ok: true, sample: text.slice(0, 300) };
+    const result = await generateGeminiWebReply({ incoming: "হ্যালো, তোমরা কী কী বীজ বিক্রি করো?", history: [] });
+    if (!result.text) throw new Error("Gemini থেকে উত্তর আসেনি");
+    return { ok: true, sample: result.text.slice(0, 300) };
   });

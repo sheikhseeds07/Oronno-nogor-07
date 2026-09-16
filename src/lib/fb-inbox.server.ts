@@ -1,7 +1,6 @@
-// Server-only webhook payload handling: persist messages/comments and reply with AI.
+// Server-only webhook payload handling: persist messages and comments for staff.
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 import { type FbPageConfig, fetchProfileName } from "@/lib/fb-page.server";
-import { replyToCommentById, replyToConversation } from "@/lib/fb-reply.server";
 
 
 type Conversation = {
@@ -96,11 +95,6 @@ async function handleMessagingEvent(cfg: FbPageConfig, event: Record<string, any
     })
     .eq("id", conv.id);
 
-  // Autopilot is global: every new customer message immediately gets an AI
-  // response through the shared pipeline, which claims the message first so a
-  // parallel autopilot pass can never send a second copy of the same reply.
-  if (!cfg.ai_enabled || !text) return;
-  await replyToConversation(cfg, { id: conv.id, psid });
 }
 
 async function handleFeedChange(cfg: FbPageConfig, value: Record<string, any>) {
@@ -122,7 +116,7 @@ async function handleFeedChange(cfg: FbPageConfig, value: Record<string, any>) {
   if (dupe) return; // already stored (and therefore already claimed/answered)
 
   const text: string = typeof value.message === "string" ? value.message : "";
-  const { data: row } = await supabaseAdmin
+  await supabaseAdmin
     .from("fb_comments")
     .insert({
       page_id: cfg.page_id,
@@ -136,9 +130,6 @@ async function handleFeedChange(cfg: FbPageConfig, value: Record<string, any>) {
     })
     .select("id")
     .single();
-
-  if (!row || !text) return;
-  await replyToCommentById(cfg, row.id);
 }
 
 
