@@ -1,0 +1,44 @@
+name: Fix All Product Floating CTA
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Patch All Product landing checkout CTA
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/components/landing/AllProductLandingPage.tsx')
+          s=p.read_text()
+          s=s.replace('import { useEffect, useMemo, useState, type ReactElement, type ReactNode } from "react";', 'import { useEffect, useMemo, useState, type ReactElement, type ReactNode } from "react";')
+          s=s.replace('  const [submitting, setSubmitting] = useState(false);\n  const [form, setForm]', '  const [submitting, setSubmitting] = useState(false);\n  const [checkoutInView, setCheckoutInView] = useState(false);\n  const [form, setForm]')
+          marker='  useEffect(() => { if (selected >= offers.length) setSelected(0); }, [offers.length, selected]);\n'
+          insert=marker+'  useEffect(() => {\n    const el = document.getElementById("all-product-order");\n    if (!el || typeof IntersectionObserver === "undefined") return;\n    const observer = new IntersectionObserver(([entry]) => setCheckoutInView(entry.isIntersecting), { threshold: 0.08 });\n    observer.observe(el);\n    return () => observer.disconnect();\n  }, []);\n\n  const handleFloatingCta = () => {\n    if (!checkoutInView) { goOrder(); return; }\n    const formEl = document.getElementById("all-product-order-form") as HTMLFormElement | null;\n    formEl?.requestSubmit();\n  };\n'
+          if marker in s and 'const handleFloatingCta' not in s: s=s.replace(marker,insert)
+          old='<form onSubmit={submit} className="overflow-hidden rounded-lg border border-all-product-line bg-all-product-surface shadow-all-product">'
+          new='<form id="all-product-order-form" onSubmit={submit} className="overflow-hidden rounded-lg border border-all-product-line bg-all-product-surface shadow-all-product">'
+          s=s.replace(old,new)
+          oldbtn='<Button type="submit" disabled={submitting} className="all-product-primary-cta h-14 w-full text-base font-black"><ShieldCheck className="h-5 w-5" />{submitting ? "অর্ডার হচ্ছে..." : `অর্ডার কনফার্ম করুন — ${taka(total)}`}</Button>'
+          s=s.replace(oldbtn,'')
+          oldfloat='<div className="fixed inset-x-0 bottom-0 z-40 border-t border-all-product-line bg-all-product-surface/95 p-2 backdrop-blur-lg md:hidden"><Button onClick={goOrder} className="all-product-primary-cta h-12 w-full font-black"><ShoppingBag />{page.cta_text || "অর্ডার করুন"} — {taka(basePrice)}</Button></div>'
+          newfloat='<div className="fixed inset-x-0 bottom-0 z-40 border-t border-all-product-line bg-all-product-surface/95 p-2 backdrop-blur-lg"><Button type="button" onClick={handleFloatingCta} disabled={submitting} className="all-product-primary-cta h-12 w-full font-black"><ShoppingBag />{checkoutInView ? (submitting ? "অর্ডার হচ্ছে..." : `অর্ডার টি কনফার্ম করুন ${taka(total)}`) : `${page.cta_text || "অর্ডার করুন"} — ${taka(basePrice)}`}</Button></div>'
+          if oldfloat not in s: raise SystemExit('floating CTA pattern not found')
+          s=s.replace(oldfloat,newfloat)
+          p.write_text(s)
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/components/landing/AllProductLandingPage.tsx
+          git commit -m 'fix: make all-product floating CTA place orders at checkout' || true
+          git push
+          git rm .github/workflows/fix-all-product-floating-cta.yml || true
+          git commit -m 'chore: remove one-time fix workflow' || true
+          git push || true
