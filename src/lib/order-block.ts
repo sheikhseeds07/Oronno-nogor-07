@@ -16,7 +16,7 @@ function installPremiumOrderModalStyle() {
     .premium-order-modal-backdrop { position:fixed; inset:0; z-index:99999; display:grid; place-items:center; padding:18px; background:rgba(2,8,23,.56); backdrop-filter:blur(11px) saturate(115%); animation:premiumOrderBackdropIn .22s ease-out; }
     .premium-order-modal { position:relative; width:min(440px,calc(100vw - 28px)); overflow:hidden; border:1px solid rgba(255,255,255,.8); border-radius:30px; background:linear-gradient(145deg,#ffffff 0%,#fbfffc 52%,#f4fff7 100%); box-shadow:0 38px 100px -28px rgba(2,8,23,.62),0 14px 38px rgba(6,78,59,.18); animation:premiumOrderModalIn .38s cubic-bezier(.18,.82,.2,1); font-family:inherit; }
     .premium-order-modal::before { content:""; position:absolute; inset:0 0 auto; height:5px; background:linear-gradient(90deg,#15803d,#22c55e,#a3e635,#22c55e,#15803d); background-size:240% 100%; animation:premiumOrderShine 4s linear infinite; }
-    body.premium-order-modal-active [data-sonner-toast] { display:none !important; }
+    body.premium-order-modal-active [data-sonner-toaster], body.premium-order-modal-active [data-sonner-toast] { display:none !important; }
     .premium-order-modal-close { position:absolute; top:15px; right:15px; width:35px; height:35px; border:1px solid #e2e8f0; border-radius:50%; background:rgba(255,255,255,.94); color:#64748b; font-size:22px; line-height:1; cursor:pointer; z-index:3; transition:all .2s ease; box-shadow:0 5px 16px rgba(15,23,42,.07); }
     .premium-order-modal-close:hover { transform:rotate(90deg) scale(1.05); background:#f0fdf4; color:#166534; border-color:#bbf7d0; }
     .premium-order-modal-body { padding:35px 28px 27px; text-align:center; }
