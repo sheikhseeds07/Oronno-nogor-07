@@ -2,10 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
+import { hasServerPermission } from "@/lib/_admin-guard.server";
 
 async function isAdminUser(userId: string) {
-  const { data } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", userId).in("role", ["admin", "super_admin"]).limit(1);
-  return !!data?.length;
+  return hasServerPermission(userId, "attendance", "hrm");
 }
 
 async function doCheckIn(targetUserId: string) {

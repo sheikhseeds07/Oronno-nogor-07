@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
-import { assertCanManageOrders, assertIsAdmin } from "@/lib/_admin-guard.server";
+import { assertPermission } from "@/lib/_admin-guard.server";
 import { ensureOrderInvoiceNo } from "@/lib/invoice-no.server";
 
 async function callSteadfast(path: string, cfg: Record<string, string>, body?: unknown) {
@@ -36,7 +36,7 @@ export const sendOrdersToSteadfast = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ orderIds: z.array(z.string().uuid()).min(1).max(50), account: AccountSchema }))
   .handler(async ({ data, context }) => {
-    await assertCanManageOrders(context.userId);
+    await assertPermission(context.userId, "courier", "orders");
     const account = (data.account ?? 1) as 1 | 2;
     const cfg = await loadSteadfastCfg(account);
     if (!cfg.api_key || !cfg.secret_key) return { results: [], error: `Steadfast ${account} এর API key/secret সেভ করা নেই` };
@@ -134,7 +134,7 @@ export const testCourierConnection = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ courier: z.enum(["steadfast"]), config: z.record(z.string(), z.string()) }))
   .handler(async ({ data, context }) => {
-    await assertIsAdmin(context.userId);
+    await assertPermission(context.userId, "courier");
     try {
       const r = await callSteadfast("get_balance", data.config);
       return { success: r.ok, status: r.status, message: r.ok ? "Steadfast এর সাথে কানেকশন সফল" : `ব্যর্থ (HTTP ${r.status}) — ${r.body}`, detail: r.body };
@@ -147,7 +147,7 @@ export const fetchSteadfastBalance = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ account: AccountSchema }).optional())
   .handler(async ({ data, context }) => {
-    await assertCanManageOrders(context.userId);
+    await assertPermission(context.userId, "courier", "orders");
     const cfg = await loadSteadfastCfg((data?.account ?? 1) as 1 | 2);
     if (!cfg.api_key || !cfg.secret_key) return { ok: false, balance: null as number | null, message: "Steadfast সেভ করা নেই" };
     try {
@@ -173,7 +173,7 @@ function mapSteadfastStatus(s: string): "delivered" | "partial" | "cancelled" | 
 export const syncSteadfastStatuses = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertCanManageOrders(context.userId);
+    await assertPermission(context.userId, "courier", "orders");
     const cfgs: Record<string, string>[] = [];
     for (const acc of [1, 2] as const) {
       const c = await loadSteadfastCfg(acc);

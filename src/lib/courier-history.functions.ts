@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
-import { assertCanManageOrders } from "@/lib/_admin-guard.server";
+import { assertPermission } from "@/lib/_admin-guard.server";
 
 export type CourierStat = {
   name: string;
@@ -95,7 +95,7 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
     cacheOnly: z.boolean().optional().default(false),
   }))
   .handler(async ({ data, context }) => {
-    await assertCanManageOrders(context.userId);
+    await assertPermission(context.userId, "courier", "orders");
 
     const phone = data.phone.replace(/\D/g, "");
     const cacheKey = `${CACHE_VERSION}:${phone}`;

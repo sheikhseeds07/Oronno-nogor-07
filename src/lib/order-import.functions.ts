@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
-import { assertCanManageOrders } from "@/lib/_admin-guard.server";
+import { assertPermission } from "@/lib/_admin-guard.server";
 
 const ItemSchema = z.object({
   product_name: z.string().min(1).max(500),
@@ -24,7 +24,7 @@ export const importOrdersFromFile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ orders: z.array(OrderSchema).min(1).max(500) }).parse(input))
   .handler(async ({ data, context }) => {
-    await assertCanManageOrders(context.userId);
+    await assertPermission(context.userId, "order_import");
 
     // Match product names to real products so imported orders carry product links.
     const { data: products } = await supabaseAdmin

@@ -1,11 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
+import { assertPermission } from "@/lib/_admin-guard.server";
 
-async function assertAdmin(db: any, userId: string) {
-  const { data, error } = await db.from("user_roles").select("role").eq("user_id", userId).in("role", ["admin", "super_admin"]).limit(1);
-  if (error) throw new Error(error.message);
-  if (!data?.length) throw new Error("Unauthorized");
+
+async function assertAdmin(_db: any, userId: string) {
+  await assertPermission(userId, "customer_management", "customers");
 }
 
 const CustomerUpdateSchema = z.object({

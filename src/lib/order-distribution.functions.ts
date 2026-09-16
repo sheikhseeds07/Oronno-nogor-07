@@ -2,14 +2,15 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
+import { assertPermission } from "@/lib/_admin-guard.server";
+
 
 const Ids = z.object({ ids: z.array(z.string().uuid()).min(1).max(500), userId: z.string().uuid() });
 const MemberId = z.object({ userId: z.string().uuid() });
 const Members = z.object({ members: z.array(z.object({ user_id: z.string().uuid(), name: z.string().min(1), enabled: z.boolean(), position: z.number().int().min(0) })).max(100) });
 
 async function assertAdmin(userId: string) {
-  const { data } = await supabaseAdmin.from("user_roles").select("role");
-  if (!(data ?? []).some(r => r.role === "admin" || r.role === "super_admin")) throw new Error("Admin only");
+  await assertPermission(userId, "order_division");
 }
 
 const PROCESSING_STATUS = "web_pending" as const;
