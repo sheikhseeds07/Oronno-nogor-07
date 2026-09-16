@@ -1,7 +1,9 @@
+import { useQuery } from "@tanstack/react-query";
 import { BadgeCheck } from "lucide-react";
+import { publicSiteSettingsQuery } from "@/lib/site-settings-query";
 
 export const BRAND_NAME = "Sheikh Seeds";
-export const BRAND_LOGO = "/sheikh-seeds-logo.svg";
+export const BRAND_LOGO = "/logo.jpg";
 
 /** Customer avatar with graceful initial fallback. */
 export function CustomerAvatar({ name, src, size = 32 }: { name?: string | null; src?: string | null; size?: number }) {
@@ -28,15 +30,20 @@ export function CustomerAvatar({ name, src, size = 32 }: { name?: string | null;
 
 /** Official Sheikh Seeds identity row: logo + name + blue verified tick. */
 export function BrandBadge({ size = 24 }: { size?: number }) {
+  const { data: settingsRow } = useQuery(publicSiteSettingsQuery);
+  const settings = settingsRow?.settings ?? {};
+  const brandName = typeof settings.site_name === "string" && settings.site_name.trim() ? settings.site_name : BRAND_NAME;
+  const brandLogo = typeof settings.logo_url === "string" && settings.logo_url.trim() ? settings.logo_url : BRAND_LOGO;
+
   return (
     <span className="inline-flex min-w-0 items-center gap-1.5">
       <img
-        src={BRAND_LOGO}
-        alt={BRAND_NAME}
+        src={brandLogo}
+        alt={brandName}
         style={{ width: size, height: size }}
-        className="shrink-0 rounded-full border border-brand/20 bg-white object-contain p-0.5"
+        className="shrink-0 rounded-full border border-brand/20 bg-white object-cover"
       />
-      <b className="truncate text-[12px] font-extrabold text-brand-dark">{BRAND_NAME}</b>
+      <b className="truncate text-[12px] font-extrabold text-brand-dark">{brandName}</b>
       <BadgeCheck className="h-3.5 w-3.5 shrink-0 fill-sky-500 text-white" />
     </span>
   );
