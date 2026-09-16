@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowUpRight, BadgeCheck, Headset, Home, Image as ImageIcon, Mic, PackageSearch, Phone, Send, Square, Tag, UserRound, MessageCircle, X } from "lucide-react";
+import { ArrowUpRight, BadgeCheck, Headset, Home, Image as ImageIcon, Mic, PackageSearch, Phone, RotateCcw, Send, Square, Tag, UserRound, MessageCircle, X } from "lucide-react";
 import { toast } from "sonner";
 import { Conversation, ConversationContent, ConversationScrollButton } from "@/components/ai-elements/conversation";
 import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
@@ -21,9 +21,42 @@ type ChatMessage = { role: "user" | "assistant"; text: string; attachments?: Cha
 
 const INTRO = "আসসালামু আলাইকুম। পণ্য, অর্ডার বা গাছের সমস্যা—যা জানতে চান সরাসরি বলুন।";
 const QUICK_PROMPTS = ["পণ্যের দাম জানতে চাই", "গাছের সমস্যার সমাধান", "অর্ডার করতে চাই"];
+const CHAT_STORAGE_KEY = "sheikhseeds_live_chat_v1";
+const CHAT_STORAGE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+
+const cleanMediaType = (value: string) => (value.split(";")[0] || "").trim().toLowerCase();
+
 const filePayload = (file: ChatAttachment) => {
-  const match = /^data:([^;,]+);base64,(.+)$/.exec(file.url);
-  return match ? { mediaType: match[1], data: match[2], name: file.filename } : null;
+  const commaIndex = file.url.indexOf(",");
+  if (!file.url.startsWith("data:") || commaIndex < 0) return null;
+  const meta = file.url.slice(5, commaIndex);
+  const data = file.url.slice(commaIndex + 1);
+  if (!meta.includes("base64") || !data) return null;
+  const mediaType = cleanMediaType(meta) || cleanMediaType(file.mediaType);
+  if (!/^(image|audio)\//.test(mediaType)) return null;
+  return { mediaType, data, name: file.filename };
+};
+
+const persistableMessage = (message: ChatMessage): ChatMessage => ({
+  ...message,
+  attachments: message.attachments?.filter((file) => file.mediaType.startsWith("image/") && file.url.length < 200_000),
+});
+
+const loadStoredMessages = (): ChatMessage[] | null => {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(CHAT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { savedAt?: number; messages?: ChatMessage[] };
+    if (!parsed?.messages?.length) return null;
+    if (typeof parsed.savedAt === "number" && Date.now() - parsed.savedAt > CHAT_STORAGE_MAX_AGE) {
+      window.localStorage.removeItem(CHAT_STORAGE_KEY);
+      return null;
+    }
+    return parsed.messages.filter((item) => item && (item.role === "user" || item.role === "assistant"));
+  } catch {
+    return null;
+  }
 };
 
 function AttachmentStrip() {
@@ -38,6 +71,7 @@ export function CustomerBottomNav({ hidden = false }: { hidden?: boolean }) {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatSending, setChatSending] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([{ role: "assistant", text: INTRO }]);
+  const [chatRestored, setChatRestored] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [recording, setRecording] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -66,6 +100,26 @@ export function CustomerBottomNav({ hidden = false }: { hidden?: boolean }) {
   }, []);
 
   useEffect(() => {
+    const stored = loadStoredMessages();
+    if (stored?.length) setChatMessages(stored);
+    setChatRestored(true);
+  }, []);
+
+  useEffect(() => {
+    if (!chatRestored || typeof window === "undefined") return;
+    try {
+      if (chatMessages.length <= 1) window.localStorage.removeItem(CHAT_STORAGE_KEY);
+      else window.localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify({ savedAt: Date.now(), messages: chatMessages.slice(-40).map(persistableMessage) }));
+    } catch { /* storage full or blocked */ }
+  }, [chatMessages, chatRestored]);
+
+  const resetChat = () => {
+    setChatMessages([{ role: "assistant", text: INTRO }]);
+    setVoiceAttachment(null);
+    try { window.localStorage.removeItem(CHAT_STORAGE_KEY); } catch { /* ignore */ }
+  };
+
+  useEffect(() => {
     if (!contactOpen && !chatOpen) return;
     const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") { setContactOpen(false); setChatOpen(false); } };
     document.addEventListener("keydown", onKey);
@@ -75,21 +129,36 @@ export function CustomerBottomNav({ hidden = false }: { hidden?: boolean }) {
   }, [contactOpen, chatOpen]);
 
   const toggleRecording = async () => {
-    if (recording) { recorderRef.current?.stop(); return; }
-    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") return toast.error("এই ব্রাউজারে ভয়েস রেকর্ডিং নেই");
+    if (recording) { try { recorderRef.current?.stop(); } catch { setRecording(false); } return; }
+    if (typeof window === "undefined" || !navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") return toast.error("এই ব্রাউজারে ভয়েস রেকর্ডিং সাপোর্ট করে না");
+    if (!window.isSecureContext) return toast.error("ভয়েস রেকর্ড করতে সাইটটি https-এ খুলুন");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      const preferred = ["audio/webm;codecs=opus", "audio/ogg;codecs=opus", "audio/webm", "audio/mp4", "audio/aac"];
+      const supported = preferred.find((type) => MediaRecorder.isTypeSupported?.(type));
+      const recorder = supported ? new MediaRecorder(stream, { mimeType: supported }) : new MediaRecorder(stream);
       chunksRef.current = [];
       recorder.ondataavailable = (event) => { if (event.data.size) chunksRef.current.push(event.data); };
+      recorder.onerror = () => { setRecording(false); stream.getTracks().forEach((track) => track.stop()); toast.error("রেকর্ডিং করা যায়নি, আবার চেষ্টা করুন"); };
       recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
-        const reader = new FileReader();
-        reader.onloadend = () => { if (typeof reader.result === "string") setVoiceAttachment({ type: "file", url: reader.result, mediaType: blob.type, filename: "voice-message.webm" }); setRecording(false); };
-        reader.readAsDataURL(blob);
+        setRecording(false);
         stream.getTracks().forEach((track) => track.stop());
+        const rawType = recorder.mimeType || supported || "audio/webm";
+        const blob = new Blob(chunksRef.current, { type: rawType });
+        chunksRef.current = [];
+        if (blob.size < 800) { toast.error("রেকর্ডিং খুব ছোট হয়েছে, আরেকবার বলুন"); return; }
+        const extension = rawType.includes("mp4") || rawType.includes("aac") ? "m4a" : rawType.includes("ogg") ? "ogg" : "webm";
+        const reader = new FileReader();
+        reader.onerror = () => toast.error("ভয়েসটি পড়া যায়নি, আবার চেষ্টা করুন");
+        reader.onloadend = () => {
+          if (typeof reader.result !== "string") { toast.error("ভয়েসটি পড়া যায়নি, আবার চেষ্টা করুন"); return; }
+          setVoiceAttachment({ type: "file", url: reader.result, mediaType: cleanMediaType(rawType), filename: `voice-message.${extension}` });
+        };
+        reader.readAsDataURL(blob);
       };
-      recorderRef.current = recorder; recorder.start(); setRecording(true);
+      recorderRef.current = recorder;
+      recorder.start(250);
+      setRecording(true);
     } catch { toast.error("মাইক্রোফোন ব্যবহারের অনুমতি দিন"); }
   };
 
@@ -147,6 +216,7 @@ export function CustomerBottomNav({ hidden = false }: { hidden?: boolean }) {
         <header className="relative flex shrink-0 items-center gap-3 border-b bg-primary px-4 py-3.5 text-primary-foreground">
           <div className="relative"><img src={logoUrl} alt="Sheikh Seeds logo" className="h-11 w-11 rounded-lg bg-background object-contain p-1 shadow-sm"/><span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-primary bg-chart-2"/></div>
           <div className="min-w-0 flex-1"><div className="flex items-center gap-1.5"><h2 className="truncate text-base font-extrabold">Sheikh Seeds</h2><BadgeCheck className="h-4 w-4 text-chart-4" aria-label="Verified"/></div><p className="mt-0.5 flex items-center gap-1.5 text-[11px] font-medium opacity-90"><span className="h-1.5 w-1.5 rounded-full bg-chart-2"/>অনলাইন • দ্রুত উত্তর</p></div>
+          {chatMessages.length > 1 && <Button type="button" variant="ghost" size="sm" onClick={resetChat} className="h-8 gap-1 px-2 text-[11px] font-bold text-primary-foreground hover:bg-primary-foreground/15"><RotateCcw className="h-3.5 w-3.5"/>নতুন চ্যাট</Button>}
           <Button type="button" variant="ghost" size="icon" aria-label="বন্ধ করুন" onClick={() => setChatOpen(false)} className="text-primary-foreground hover:bg-primary-foreground/15"><X/></Button>
         </header>
 
