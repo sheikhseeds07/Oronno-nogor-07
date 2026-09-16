@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Ban, CheckCircle2, Loader2, ShieldAlert, Unlock, X } from "lucide-react";
+import { Ban, CheckCircle2, Loader2, Search, ShieldAlert, Unlock, X } from "lucide-react";
 import { supabase } from "@/lib/personal-supabase/client";
 import { normalizeBdPhone } from "@/lib/bd-phone";
 import { toast } from "sonner";
@@ -52,7 +52,6 @@ export function BlockCustomerButton({ name, phone, orderId }: { name: string; ph
   const [orderPhone, setOrderPhone] = useState<string | null>(null);
   const blockPhone = normalizeBdPhone(phone || "") || orderPhone;
 
-  // Deliberately keep the click handler synchronous: parent form/dialog handlers must not be able to swallow the opening action.
   const openModal = (e?: React.MouseEvent<HTMLButtonElement>) => {
     e?.preventDefault();
     e?.stopPropagation();
@@ -120,6 +119,7 @@ export function CustomerBlockListPanel() {
   const qc = useQueryClient();
   const [target, setTarget] = useState<BlockRow | null>(null);
   const [busy, setBusy] = useState(false);
+  const [search, setSearch] = useState("");
   const { data, isLoading, isError } = useQuery({
     queryKey: ["customer-blocklist"],
     queryFn: async () => {
@@ -128,6 +128,22 @@ export function CustomerBlockListPanel() {
       return (data ?? []) as BlockRow[];
     },
   });
+
+  const filteredData = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return data ?? [];
+    const normalizedTerm = normalizeBdPhone(term);
+    return (data ?? []).filter((row) => {
+      const phone = row.phone || "";
+      const ip = row.ip_address || "";
+      const name = row.customer_name || "";
+      return phone.toLowerCase().includes(term) ||
+        ip.toLowerCase().includes(term) ||
+        name.toLowerCase().includes(term) ||
+        (!!normalizedTerm && normalizeBdPhone(phone).includes(normalizedTerm));
+    });
+  }, [data, search]);
+
   const confirmUnblock = async () => {
     if (!target) return;
     setBusy(true);
@@ -138,13 +154,17 @@ export function CustomerBlockListPanel() {
     toast.success("Customer unblock করা হয়েছে");
     qc.invalidateQueries({ queryKey: ["customer-blocklist"] });
   };
+
   return (
     <div className="rounded-2xl border border-red-100 bg-white p-5 shadow-sm space-y-4">
-      <div className="flex items-start gap-3 rounded-xl border border-red-100 bg-red-50/60 p-4"><div className="rounded-xl bg-red-100 p-2.5 text-red-700"><ShieldAlert className="h-5 w-5" /></div><div><h2 className="font-extrabold text-slate-900">Blocked Customers</h2><p className="mt-0.5 text-xs text-slate-500">Mobile Number + IP অনুযায়ী block করা তালিকা। শুধু Admin এখান থেকে unblock করতে পারবে।</p></div></div>
+      <div className="flex items-start gap-3 rounded-xl border border-red-100 bg-red-50/60 p-4"><div className="rounded-xl bg-red-100 p-2.5 text-red-700"><ShieldAlert className="h-5 w-5" /></div><div className="min-w-0 flex-1"><h2 className="font-extrabold text-slate-900">Blocked Customers</h2><p className="mt-0.5 text-xs text-slate-500">Mobile Number + IP অনুযায়ী block করা তালিকা। শুধু Admin এখান থেকে unblock করতে পারবে।</p></div></div>
+      {!isLoading && !isError && (data?.length ?? 0) > 0 && <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="মোবাইল নাম্বার বা IP দিয়ে খুঁজুন..." className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-9 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-red-300 focus:bg-white focus:ring-2 focus:ring-red-100" aria-label="Blocked customer mobile number or IP search" />{search && <button type="button" onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600" aria-label="Clear search"><X className="h-4 w-4" /></button>}</div>}
+      {search && !isLoading && !isError && <div className="text-xs font-semibold text-slate-500">{filteredData.length}টি ফলাফল পাওয়া গেছে</div>}
       {isLoading && <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>}
       {isError && <div className="rounded-xl bg-red-50 p-4 text-sm text-red-700">Block list load করা যায়নি।</div>}
       {!isLoading && !isError && (data?.length ?? 0) === 0 && <div className="rounded-xl border border-dashed p-8 text-center text-sm text-slate-500">এখনও কোনো customer block করা হয়নি।</div>}
-      <div className="space-y-2">{(data ?? []).map((row) => <div key={row.id} className={`flex flex-col gap-3 rounded-xl border p-3 transition sm:flex-row sm:items-center ${row.is_active ? "border-red-100 bg-red-50/30 hover:bg-red-50/60" : "border-slate-200 bg-slate-50/50 opacity-75"}`}><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className="truncate text-sm font-bold text-slate-900">{row.customer_name}</span>{row.is_active ? <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-extrabold text-red-700">BLOCKED</span> : <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-extrabold text-slate-600">UNBLOCKED</span>}</div><div className="mt-1 text-[11px] text-slate-500">Phone: <span className="font-mono">{row.phone || "N/A"}</span> · IP: <span className="font-mono">{row.ip_address || "Not available"}</span> · Block Date: {new Date(row.blocked_at).toLocaleString("en-BD")}</div><div className="text-[11px] text-slate-500">Blocked By: <span className="font-semibold text-slate-600">{row.blocked_by || "Admin"}</span></div></div>{row.is_active ? <button type="button" onClick={() => setTarget(row)} className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-bold text-emerald-700 transition hover:bg-emerald-50 active:scale-[.98]"><Unlock className="h-3.5 w-3.5" /> Unblock</button> : <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-slate-400"><CheckCircle2 className="h-3.5 w-3.5" /> Unblocked</span>}</div>)}</div>
+      {!isLoading && !isError && (data?.length ?? 0) > 0 && filteredData.length === 0 && <div className="rounded-xl border border-dashed p-8 text-center text-sm text-slate-500">এই নাম্বার বা IP-এর সাথে কোনো block পাওয়া যায়নি।</div>}
+      <div className="space-y-2">{filteredData.map((row) => <div key={row.id} className={`flex flex-col gap-3 rounded-xl border p-3 transition sm:flex-row sm:items-center ${row.is_active ? "border-red-100 bg-red-50/30 hover:bg-red-50/60" : "border-slate-200 bg-slate-50/50 opacity-75"}`}><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className="truncate text-sm font-bold text-slate-900">{row.customer_name}</span>{row.is_active ? <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-extrabold text-red-700">BLOCKED</span> : <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-extrabold text-slate-600">UNBLOCKED</span>}</div><div className="mt-1 text-[11px] text-slate-500">Phone: <span className="font-mono">{row.phone || "N/A"}</span> · IP: <span className="font-mono">{row.ip_address || "Not available"}</span> · Block Date: {new Date(row.blocked_at).toLocaleString("en-BD")}</div><div className="text-[11px] text-slate-500">Blocked By: <span className="font-semibold text-slate-600">{row.blocked_by || "Admin"}</span></div></div>{row.is_active ? <button type="button" onClick={() => setTarget(row)} className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-bold text-emerald-700 transition hover:bg-emerald-50 active:scale-[.98]"><Unlock className="h-3.5 w-3.5" /> Unblock</button> : <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-slate-400"><CheckCircle2 className="h-3.5 w-3.5" /> Unblocked</span>}</div>)}</div>
       {target && <ConfirmModal title="Customer Unblock করবেন?" tone="safe" confirmLabel="Unblock" busy={busy} onConfirm={confirmUnblock} onClose={() => !busy && setTarget(null)}><div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3 space-y-1.5"><div className="flex justify-between gap-3"><span className="text-xs font-semibold text-slate-500">Customer Name</span><span className="truncate text-xs font-bold text-slate-900">{target.customer_name}</span></div><div className="flex justify-between gap-3"><span className="text-xs font-semibold text-slate-500">IP Address</span><span className="font-mono text-xs font-bold text-slate-900">{target.ip_address || "Not available"}</span></div><div className="flex justify-between gap-3"><span className="text-xs font-semibold text-slate-500">Mobile Number</span><span className="font-mono text-xs font-bold text-slate-900">{target.phone || "Not available"}</span></div></div><p className="text-xs text-slate-500">Unblock করলে এই customer আবার অর্ডার করতে পারবে।</p></ConfirmModal>}
     </div>
   );
