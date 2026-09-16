@@ -85,15 +85,11 @@ export function CustomerBottomNav({ hidden = false }: { hidden?: boolean }) {
   const sendWebsiteAiChat = useServerFn(websiteAiChat);
 
   useEffect(() => {
-    let lastY = window.scrollY;
-    let ticking = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const onScroll = () => {
       if (timer) clearTimeout(timer);
+      setMinimized(window.scrollY > 40);
       timer = setTimeout(() => setMinimized(false), 180);
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => { const y = window.scrollY; setMinimized(y > 40 && y > lastY + 5); if (y < lastY - 7) setMinimized(false); lastY = y; ticking = false; });
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => { window.removeEventListener("scroll", onScroll); if (timer) clearTimeout(timer); };
@@ -186,17 +182,18 @@ export function CustomerBottomNav({ hidden = false }: { hidden?: boolean }) {
   };
 
   if (!initialized) return null;
-  const itemClass = "group relative flex h-12 min-w-0 flex-1 flex-col items-center justify-center rounded-lg text-muted-foreground transition hover:bg-accent hover:text-primary active:scale-95 sm:h-13";
+  const itemClass = `group relative flex min-w-0 flex-1 flex-col items-center justify-center rounded-lg text-muted-foreground transition-all duration-300 hover:bg-accent hover:text-primary active:scale-95 ${minimized ? "h-8" : "h-12 sm:h-13"}`;
+  const iconClass = `transition-all duration-300 ${minimized ? "h-0 w-0 -translate-y-2 scale-75 opacity-0" : "h-5 w-5 translate-y-0 scale-100 opacity-100"}`;
   const phoneHref = contactPhone ? `tel:${contactPhone.replace(/[^+\d]/g, "")}` : "";
 
   return <>
-    <nav aria-label="কাস্টমার নেভিগেশন" aria-hidden={hidden} className={`fixed inset-x-2 bottom-[max(7px,env(safe-area-inset-bottom))] z-30 mx-auto max-w-[500px] rounded-xl border bg-background/95 p-1.5 shadow-xl backdrop-blur-xl transition duration-300 ${minimized ? "translate-y-1 scale-[.99]" : ""} ${hidden ? "translate-y-[150%] opacity-0 pointer-events-none" : ""}`}>
+    <nav aria-label="কাস্টমার নেভিগেশন" aria-hidden={hidden} className={`fixed inset-x-2 bottom-[max(7px,env(safe-area-inset-bottom))] z-30 mx-auto max-w-[500px] rounded-xl border bg-background/95 shadow-xl backdrop-blur-xl transition-all duration-300 ${minimized ? "translate-y-1 p-1" : "p-1.5"} ${hidden ? "translate-y-[150%] opacity-0 pointer-events-none" : ""}`}>
       <div className="flex items-center gap-0.5">
-        <Link to="/shop" className={itemClass}><PackageSearch className="h-5 w-5"/><span className="mt-1 text-[9px] font-extrabold">সকল পণ্য</span></Link>
-        <Link to="/offers" className={itemClass}><Tag className="h-5 w-5"/><span className="mt-1 text-[9px] font-extrabold">অফার</span></Link>
-        <Link to="/" activeOptions={{ exact: true }} className="flex h-13 w-16 shrink-0 flex-col items-center justify-center text-primary active:scale-95"><span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg"><Home className="h-5 w-5"/></span><span className="mt-0.5 text-[9px] font-extrabold">হোম</span></Link>
-        <button type="button" onClick={() => setContactOpen(true)} className={itemClass}><Headset className="h-5 w-5"/><span className="mt-1 text-[9px] font-extrabold">যোগাযোগ</span></button>
-        <Link to="/profile" className={itemClass}><UserRound className="h-5 w-5"/><span className="mt-1 text-[9px] font-extrabold">অ্যাকাউন্ট</span></Link>
+        <Link to="/shop" className={itemClass}><PackageSearch className={iconClass}/><span className="mt-1 text-[9px] font-extrabold">সকল পণ্য</span></Link>
+        <Link to="/offers" className={itemClass}><Tag className={iconClass}/><span className="mt-1 text-[9px] font-extrabold">অফার</span></Link>
+        <Link to="/" activeOptions={{ exact: true }} className={`flex w-16 shrink-0 flex-col items-center justify-center text-primary transition-all duration-300 active:scale-95 ${minimized ? "h-8" : "h-13"}`}><span className={`flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all duration-300 ${minimized ? "h-0 w-0 -translate-y-2 scale-75 opacity-0" : "h-10 w-10 translate-y-0 scale-100 opacity-100"}`}><Home className="h-5 w-5"/></span><span className={`text-[9px] font-extrabold transition-all duration-300 ${minimized ? "mt-0" : "mt-0.5"}`}>হোম</span></Link>
+        <button type="button" onClick={() => setContactOpen(true)} className={itemClass}><Headset className={iconClass}/><span className="mt-1 text-[9px] font-extrabold">যোগাযোগ</span></button>
+        <Link to="/profile" className={itemClass}><UserRound className={iconClass}/><span className="mt-1 text-[9px] font-extrabold">অ্যাকাউন্ট</span></Link>
       </div>
     </nav>
 
