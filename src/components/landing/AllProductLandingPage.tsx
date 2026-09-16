@@ -102,8 +102,8 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
         <div className="all-product-grain absolute inset-0" aria-hidden="true" />
         <div className="relative mx-auto max-w-3xl px-4 pb-9 pt-5 sm:pb-11 sm:pt-7">
           <div className="text-center">
-            <h1 className="all-product-hero-title mx-auto max-w-3xl text-3xl font-black leading-[1.22] sm:text-4xl md:text-5xl">{page.hero_title || page.title}</h1>
-            {page.hero_subtitle && <p className="all-product-hero-subtitle mx-auto mt-2.5 max-w-2xl text-sm leading-6 text-all-product-hero-muted sm:mt-3 sm:text-base">{page.hero_subtitle}</p>}
+            <h1 style={{ fontFamily: "'Noto Serif Bengali', 'Hind Siliguri', serif" }} className="all-product-hero-title mx-auto max-w-3xl text-3xl font-black leading-[1.2] tracking-[-0.01em] sm:text-4xl md:text-5xl">{page.hero_title || page.title}</h1>
+            {page.hero_subtitle && <p className="all-product-hero-subtitle mx-auto mt-2.5 max-w-2xl text-sm font-medium leading-6 text-all-product-hero-muted sm:mt-3 sm:text-base">{page.hero_subtitle}</p>}
           </div>
 
           <div className="mt-5 sm:mt-6">
