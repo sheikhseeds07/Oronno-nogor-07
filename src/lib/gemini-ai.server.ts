@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
+import { getDeliveryInfo, normalizeDeliveryRules, type DeliveryRule } from "@/lib/delivery-rules";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
 type Msg = { role: "user" | "model"; parts: any[] };
@@ -12,7 +13,8 @@ async function getConfig() {
 async function shopContext() {
   const { data } = await supabaseAdmin.from("site_settings").select("settings").limit(1).maybeSingle();
   const s = (data?.settings as Record<string, unknown> | null) ?? {};
-  return { name: String(s.site_name || "Sheikh Seeds"), inside: Number(s.delivery_charge_inside ?? 60), outside: Number(s.delivery_charge_outside ?? 130), free: Number(s.free_delivery_above ?? 0) };
+  const rules = normalizeDeliveryRules(s.delivery_rules) as DeliveryRule[];
+  return { name: String(s.site_name || "Sheikh Seeds"), rules };
 }
 
 async function searchProducts(query: string) {
@@ -31,12 +33,15 @@ async function createOrder(args: { customer_name: string; customer_phone: string
     const match = matches.find((p) => p.name.toLowerCase().includes(item.product_name.toLowerCase())) ?? matches[0];
     if (!match) return { ok: false, error: `${item.product_name} পাওয়া যায়নি` };
     const price = Number(match.sale_price ?? match.price);
+    const stock = Number(match.stock ?? 0);
     const quantity = Math.max(1, Math.min(100, Math.round(Number(item.quantity) || 1)));
+    if (Number.isFinite(stock) && stock > 0 && quantity > stock) return { ok: false, error: `${match.name}-এর পর্যাপ্ত স্টক নেই` };
     rows.push({ product_id: match.id, product_name: match.name, price, quantity, subtotal: price * quantity });
   }
   if (!rows.length) return { ok: false, error: "কোনো প্রোডাক্ট নেই" };
   const subtotal = rows.reduce((a, r) => a + r.subtotal, 0);
-  const delivery = shop.free > 0 && subtotal >= shop.free ? 0 : args.inside_dhaka ? shop.inside : shop.outside;
+  const deliveryInfo = getDeliveryInfo(subtotal, shop.rules);
+  const delivery = deliveryInfo.delivery;
   const phone = args.customer_phone.replace(/\D/g, "").slice(-11);
   if (phone.length >= 6) {
     const since = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
@@ -49,7 +54,7 @@ async function createOrder(args: { customer_name: string; customer_phone: string
   if (error || !order) return { ok: false, error: error?.message || "অর্ডার তৈরি হয়নি" };
   const { error: itemError } = await supabaseAdmin.from("order_items").insert(rows.map((r) => ({ ...r, order_id: order.id })));
   if (itemError) { await supabaseAdmin.from("orders").delete().eq("id", order.id); return { ok: false, error: itemError.message }; }
-  return { ok: true, order_id: order.id, invoice_no: order.invoice_no, total: Number(order.total) };
+  return { ok: true, order_id: order.id, invoice_no: order.invoice_no, total: Number(order.total), delivery_fee: delivery };
 }
 
 export async function generateGeminiWebReply(input: { incoming: string; history: { direction: string; text: string | null }[] }) {
@@ -63,7 +68,7 @@ export async function generateGeminiWebReply(input: { incoming: string; history:
   const hasOrderIntent = /(অর্ডার|নিব|নিতে চাই|কিনব|কিনতে চাই|order|buy)/i.test(combined);
   const explicitConfirmation = /(জি|হ্যাঁ|হ্যা|yes|confirm|কনফার্ম|অর্ডার দিন|অর্ডার করুন|নিশ্চিত)/i.test(input.incoming);
   const allowCreateOrder = hasOrderIntent && explicitConfirmation;
-  const system = `আপনি ${shop.name}-এর ওয়েবসাইটের লাইভ AI কাস্টমার কেয়ার ও সেলস সহকারী। মানুষের মতো স্বাভাবিক, বন্ধুসুলভ বাংলা ভাষায় উত্তর দেবেন। রোবটের মতো লম্বা তালিকা নয়; কথোপকথনের মতো ছোট, পরিষ্কার উত্তর দিন। কাস্টমারের ভাষা ও আগের কথার ধারাবাহিকতা বজায় রাখুন। প্রোডাক্টের দাম/স্টক কখনো অনুমান করবেন না; search_products দিয়ে যাচাই করুন। ডেলিভারি: ঢাকার ভেতরে ৳${shop.inside}, ঢাকার বাইরে ৳${shop.outside}, free above ৳${shop.free || 0}। COD আছে। অর্ডার নিতে নাম, ১১ ডিজিটের মোবাইল, পূর্ণ ঠিকানা, প্রোডাক্ট ও quantity সংগ্রহ করুন। সব তথ্য নিয়ে মোট টাকা জানিয়ে কাস্টমারের স্পষ্ট সম্মতি পাওয়ার পরই create_order ব্যবহার করবেন। কাস্টমার এখনো সম্মতি না দিলে শুধু তথ্য নিন, অর্ডার তৈরি করবেন না। ${allowCreateOrder ? "এই বার্তায় অর্ডার তৈরির জন্য কাস্টমারের সম্মতি পাওয়া গেছে বলে ধরে নিতে পারেন, তবে প্রয়োজনীয় তথ্য সম্পূর্ণ থাকতে হবে।" : "এই বার্তায় create_order ব্যবহার করা যাবে না।"}`;
+  const system = `আপনি ${shop.name}-এর ওয়েবসাইটের লাইভ AI কাস্টমার কেয়ার ও সেলস সহকারী। মানুষের মতো স্বাভাবিক, বন্ধুসুলভ বাংলা ভাষায় উত্তর দেবেন। রোবটের মতো লম্বা তালিকা নয়; কথোপকথনের মতো ছোট, পরিষ্কার উত্তর দিন। কাস্টমারের ভাষা ও আগের কথার ধারাবাহিকতা বজায় রাখুন। প্রোডাক্টের দাম/স্টক কখনো অনুমান করবেন না; search_products দিয়ে যাচাই করুন। ডেলিভারি চার্জ admin-এর বর্তমান delivery rules অনুযায়ী হবে: ${JSON.stringify(shop.rules)}। COD আছে। অর্ডার নিতে নাম, ১১ ডিজিটের মোবাইল, পূর্ণ ঠিকানা, প্রোডাক্ট ও quantity সংগ্রহ করুন। সব তথ্য নিয়ে subtotal + delivery সহ মোট টাকা জানিয়ে কাস্টমারের স্পষ্ট সম্মতি পাওয়ার পরই create_order ব্যবহার করবেন। কাস্টমার এখনো সম্মতি না দিলে শুধু তথ্য নিন, অর্ডার তৈরি করবেন না। ${allowCreateOrder ? "এই বার্তায় অর্ডার তৈরির জন্য কাস্টমারের সম্মতি পাওয়া গেছে বলে ধরে নিতে পারেন, তবে প্রয়োজনীয় তথ্য সম্পূর্ণ থাকতে হবে।" : "এই বার্তায় create_order ব্যবহার করা যাবে না।"}`;
   const declarations: any[] = [{ name: "search_products", description: "শপের active products খুঁজে দাম, stock ও তথ্য যাচাই করুন", parameters: { type: "OBJECT", properties: { query: { type: "STRING" } }, required: ["query"] } }];
   if (allowCreateOrder) declarations.push({ name: "create_order", description: "প্রয়োজনীয় customer তথ্য ও product নিশ্চিত হওয়ার পর অর্ডার তৈরি করুন", parameters: { type: "OBJECT", properties: { customer_name: { type: "STRING" }, customer_phone: { type: "STRING" }, customer_address: { type: "STRING" }, inside_dhaka: { type: "BOOLEAN" }, items: { type: "ARRAY", items: { type: "OBJECT", properties: { product_name: { type: "STRING" }, quantity: { type: "NUMBER" } }, required: ["product_name", "quantity"] } } }, required: ["customer_name", "customer_phone", "customer_address", "inside_dhaka", "items"] } });
   for (let round = 0; round < 4; round++) {
