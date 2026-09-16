@@ -40,8 +40,9 @@ export const GUARANTEE_POPUP_STYLE = `
 .gp-cta:active{transform:scale(.985)}
 .gp-trust{margin-top:12px;display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;color:#a7f3d0}
 .gp-trust .gp-tick{display:grid;place-items:center;width:15px;height:15px;border-radius:999px;background:rgba(34,197,94,.28);border:1px solid rgba(134,239,172,.5);color:#bbf7d0;font-size:10px;font-weight:900}
+.gp-closing .gp-popup{animation:none!important}
 .gp-closing .gp-backdrop{opacity:0;transition:opacity .22s ease}
-.gp-closing .gp-card{opacity:0;transform:scale(.96);transition:opacity .22s ease,transform .22s ease}
+.gp-closing .gp-card{animation:none!important;opacity:0;transform:scale(.96) translateY(4px);transition:opacity .22s ease,transform .22s ease}
 @media (max-width:400px){.gp-card{padding:22px 16px 18px}.gp-title{font-size:21px;margin:12px 0 4px}.gp-card p{font-size:12px}.gp-logo-wrap{width:82px;height:82px}.gp-logo{width:60px;height:60px}}
 @media (max-height:560px){.gp-card{aspect-ratio:auto;height:auto}}
 @media (prefers-reduced-motion:reduce){.gp-popup,.gp-card,.gp-logo,.gp-logo-aura,.gp-cta{animation:none!important}}
