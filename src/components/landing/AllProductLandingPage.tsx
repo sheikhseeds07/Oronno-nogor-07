@@ -52,6 +52,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   const logo = settings.logo_url || brandLogoFile;
   const features = page?.features?.length ? page.features : DEFAULT_FEATURES;
   const why = page?.why_choose_us?.length ? page.why_choose_us : DEFAULT_WHY;
+  const detailRows = (page?.description ?? "").split(/\r?\n+/).map(line => line.replace(/^[•\-*\s]+/, "").trim()).filter(Boolean);
   const savings = regularPrice && regularPrice > basePrice ? regularPrice - basePrice : 0;
   const discount = savings && regularPrice ? Math.round((savings / regularPrice) * 100) : 0;
 
@@ -87,12 +88,12 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
 
   return <div className="all-product-landing min-h-screen bg-all-product-surface text-all-product-ink">
     <FacebookPixel eager />
-    <GuaranteePopup slug={slug} />
-    {page.top_bar_text && <div className="bg-all-product-alert px-3 py-1 text-center text-[11px] font-bold leading-4 text-all-product-alert-foreground sm:text-xs">{page.top_bar_text}</div>}
+    <GuaranteePopup slug={slug} logo={logo} brand={brand} />
+    {page.top_bar_text && <div className="bg-all-product-alert px-3 py-0.5 text-center text-[10px] font-bold leading-4 text-all-product-alert-foreground sm:text-[11px]">{page.top_bar_text}</div>}
     <div role="banner" className="sticky top-0 z-40 border-b border-all-product-line bg-all-product-surface/95 backdrop-blur-xl">
-      <div className="mx-auto flex h-12 max-w-6xl items-center justify-between gap-3 px-3 sm:px-4">
-        <div className="flex min-w-0 items-center gap-2"><img src={logo} alt={brand} className="h-8 w-8 rounded-full border border-all-product-line object-cover" /><div className="flex min-w-0 items-center gap-1 text-sm font-black leading-none"><span className="truncate">{brand}</span><BadgeCheck className="h-3.5 w-3.5 shrink-0 text-all-product-primary" fill="currentColor" /></div></div>
-        <div className="flex shrink-0 items-center gap-1.5 text-[11px] font-black text-all-product-alert"><span className="all-product-live-dot h-1.5 w-1.5 rounded-full bg-all-product-alert" /> অফার চলছে</div>
+      <div className="mx-auto flex h-10 max-w-6xl items-center justify-between gap-3 px-3 sm:px-4">
+        <div className="flex min-w-0 items-center gap-1.5"><img src={logo} alt={brand} className="h-6 w-6 rounded-full border border-all-product-line object-cover" /><div className="flex min-w-0 items-center gap-1 text-[13px] font-black leading-none"><span className="truncate">{brand}</span><BadgeCheck className="h-3 w-3 shrink-0 text-all-product-primary" fill="currentColor" /></div></div>
+        <div className="flex shrink-0 items-center gap-1.5 text-[10px] font-black text-all-product-alert"><span className="all-product-live-dot h-1.5 w-1.5 rounded-full bg-all-product-alert" /> অফার চলছে</div>
       </div>
     </div>
 
@@ -100,7 +101,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
     <main>
       <section className="relative overflow-hidden bg-all-product-hero text-all-product-hero-foreground">
         <div className="all-product-grain absolute inset-0" aria-hidden="true" />
-        <div className="relative mx-auto grid max-w-6xl items-center gap-5 px-4 pb-8 pt-5 md:grid-cols-[1fr_.9fr] md:gap-7 md:pb-12 md:pt-9">
+        <div className="relative mx-auto grid max-w-6xl items-center gap-4 px-4 pb-6 pt-4 md:grid-cols-[1fr_.9fr] md:gap-7 md:pb-10 md:pt-7">
           <div className="order-2 md:order-1">
             <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-all-product-gold/40 bg-all-product-gold/10 px-2.5 py-1 text-[11px] font-black text-all-product-gold"><Sparkles className="h-3 w-3" /> {C.offer_badge_text || "সীমিত সময়ের বিশেষ অফার"}</div>
 
@@ -118,9 +119,20 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
 
       <section className="border-b border-all-product-line bg-all-product-surface py-6"><div className="mx-auto grid max-w-6xl grid-cols-2 gap-3 px-4 md:grid-cols-4">{features.slice(0,4).map((feature, index) => <div key={index} className="flex items-start gap-2.5"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-all-product-soft text-lg">{feature.icon || ["🌱","✓","🚚","🛡️"][index]}</span><div><h2 className="text-sm font-black leading-5">{feature.title}</h2>{feature.text && <p className="mt-0.5 hidden text-xs leading-5 text-all-product-muted sm:block">{feature.text}</p>}</div></div>)}</div></section>
 
-      {(page.description || C.gallery_images.length > 0) && <section className="bg-all-product-muted-surface py-10"><div className="mx-auto max-w-6xl px-4"><div className="mb-6 max-w-2xl"><span className="text-xs font-black uppercase text-all-product-primary">পণ্য সম্পর্কে বিস্তারিত</span><h2 className="mt-1 text-2xl font-black sm:text-3xl">ভালো ফলনের শুরু হোক সঠিক বীজে</h2>{page.description && <p className="mt-3 whitespace-pre-line text-sm leading-7 text-all-product-muted">{page.description}</p>}</div>{C.gallery_images.length > 0 && <div className="grid gap-3 sm:grid-cols-2">{C.gallery_images.map((image, index) => <img key={image + index} src={toImg(image, { w: 900, q: 84 })} alt={`${page.title} বিস্তারিত ${index + 1}`} loading="lazy" className="aspect-[4/3] w-full rounded-md border border-all-product-line object-cover" />)}</div>}</div></section>}
+      {(detailRows.length > 0 || C.gallery_images.length > 0) && <section className="bg-all-product-muted-surface py-7"><div className="mx-auto max-w-3xl px-4">
+        <div className="overflow-hidden rounded-lg border border-all-product-line bg-all-product-surface shadow-all-product">
+          <div className="flex items-center gap-2 border-b border-all-product-line bg-all-product-soft px-3.5 py-2"><Leaf className="h-4 w-4 shrink-0 text-all-product-primary" /><h2 className="text-[13px] font-black leading-5">প্রোডাক্ট বিস্তারিত</h2></div>
+          {detailRows.length > 0 && <table className="w-full border-collapse text-left"><tbody>{detailRows.map((row, index) => { const [head, ...rest] = row.split(":"); const value = rest.join(":").trim(); return <tr key={index} className="border-b border-all-product-line/70 last:border-0">{value ? <><th scope="row" className="w-[38%] bg-all-product-soft/40 px-3.5 py-2 align-top text-[12px] font-black">{head.trim()}</th><td className="px-3.5 py-2 align-top text-[12px] leading-5 text-all-product-muted">{value}</td></> : <td colSpan={2} className="px-3.5 py-2 text-[12px] leading-5 text-all-product-muted"><span className="mr-1.5 font-black text-all-product-primary">•</span>{row}</td>}</tr>; })}</tbody></table>}
+          {C.gallery_images.length > 0 && <div className="grid grid-cols-2 gap-1.5 p-1.5 sm:grid-cols-3">{C.gallery_images.slice(0,3).map((image, index) => <img key={image + index} src={toImg(image, { w: 600, q: 82 })} alt={`${page.title} বিস্তারিত ${index + 1}`} loading="lazy" className="aspect-[4/3] w-full rounded-md border border-all-product-line object-cover" />)}</div>}
+        </div>
+      </div></section>}
 
-      <section className="bg-all-product-surface py-10"><div className="mx-auto max-w-6xl px-4"><div className="mb-6 text-center"><span className="text-xs font-black text-all-product-primary">আমাদের নিশ্চয়তা</span><h2 className="mt-1 text-2xl font-black sm:text-3xl">নিশ্চিন্তে অর্ডার করুন</h2></div><div className="grid gap-px overflow-hidden rounded-md border border-all-product-line bg-all-product-line sm:grid-cols-2 lg:grid-cols-4">{why.slice(0,4).map((item, index) => <div key={index} className="bg-all-product-surface p-5"><span className="mb-3 grid h-10 w-10 place-items-center rounded-md bg-all-product-soft text-xl">{item.icon || ["💵","🚚","🛡️","☎️"][index]}</span><h3 className="font-black">{item.title}</h3>{item.text && <p className="mt-1 text-sm leading-6 text-all-product-muted">{item.text}</p>}</div>)}</div></div></section>
+      <section className="bg-all-product-surface py-7"><div className="mx-auto max-w-3xl px-4">
+        <div className="overflow-hidden rounded-lg border border-all-product-line bg-all-product-surface shadow-all-product">
+          <div className="flex items-center gap-2 border-b border-all-product-line bg-all-product-soft px-3.5 py-2"><ShieldCheck className="h-4 w-4 shrink-0 text-all-product-primary" /><h2 className="text-[13px] font-black leading-5">আমাদের থেকে কেন নিবেন</h2></div>
+          <table className="w-full border-collapse text-left"><tbody>{why.slice(0,4).map((item, index) => <tr key={index} className="border-b border-all-product-line/70 last:border-0"><th scope="row" className="w-[40%] bg-all-product-soft/40 px-3.5 py-2 align-top text-[12px] font-black"><span className="mr-1.5">{item.icon || ["💵","🚚","🛡️","☎️"][index]}</span>{item.title}</th><td className="px-3.5 py-2 align-top text-[12px] leading-5 text-all-product-muted">{item.text || "—"}</td></tr>)}</tbody></table>
+        </div>
+      </div></section>
 
       <section id="all-product-order" className="scroll-mt-20 bg-all-product-checkout py-10 sm:py-14"><div className="mx-auto max-w-3xl px-4"><div className="mb-6 text-center"><span className="inline-flex items-center gap-1.5 rounded-full bg-all-product-primary px-3 py-1.5 text-xs font-black text-all-product-primary-foreground"><PackageCheck className="h-4 w-4" /> মাত্র ৩০ সেকেন্ডে অর্ডার</span><h2 className="mt-3 text-3xl font-black">এখনই অর্ডার করুন</h2><p className="mt-1 text-sm text-all-product-muted">২–৪ দিনের মধ্যে সারা বাংলাদেশে হোম ডেলিভারি</p></div>
         <form id="all-product-order-form" onSubmit={submit} className="overflow-hidden rounded-lg border border-all-product-line bg-all-product-surface shadow-all-product">
