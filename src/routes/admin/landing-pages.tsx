@@ -4,7 +4,7 @@ import { useState } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { supabase } from "@/lib/personal-supabase/client";
 import { toast } from "sonner";
-import { Plus, Trash2, ExternalLink, Edit, X, PackagePlus, Copy } from "lucide-react";
+import { Plus, Trash2, ExternalLink, Edit, X, PackagePlus, Copy, Search } from "lucide-react";
 import { uploadToBucket, safeFileName } from "@/lib/storage-upload";
 import {
   mergeContent,
@@ -67,7 +67,34 @@ const empty: LP = {
   planting_steps: DEFAULT_CONTENT,
 };
 
-type Product = { id: string; name: string; price: number; sale_price: number | null; images: string[] | null };
+type Product = { id: string; name: string; price: number; sale_price: number | null; images: string[] | null; is_active?: boolean | null };
+
+function ProductPicker({ products, value, onChange, placeholder, size = "sm" }: { products?: Product[]; value?: string | null; onChange: (id: string | null) => void; placeholder: string; size?: "sm" | "md" }) {
+  const [q, setQ] = useState("");
+  const term = q.trim().toLowerCase();
+  const all = products ?? [];
+  let list = term ? all.filter((p) => p.name.toLowerCase().includes(term)) : all;
+  if (value && !list.some((p) => p.id === value)) {
+    const sel = all.find((p) => p.id === value);
+    if (sel) list = [sel, ...list];
+  }
+  const cls = size === "md" ? "w-full border rounded-lg px-3 py-2" : "w-full border rounded-lg px-3 py-2 text-sm";
+  return (
+    <div className="flex-1 min-w-0 space-y-1.5">
+      <div className="relative">
+        <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="প্রোডাক্ট সার্চ করুন..." className="w-full border rounded-lg pl-8 pr-3 py-2 text-sm" />
+      </div>
+      <select value={value ?? ""} onChange={(e) => onChange(e.target.value || null)} className={cls}>
+        <option value="">{placeholder}</option>
+        {list.map((p) => (
+          <option key={p.id} value={p.id}>{p.name}{p.is_active === false ? " (নিষ্ক্রিয়)" : ""}</option>
+        ))}
+      </select>
+      {term && list.length === 0 && <div className="text-[11px] text-muted-foreground">কোনো প্রোডাক্ট মেলেনি।</div>}
+    </div>
+  );
+}
 
 function LandingPagesAdmin() {
   const qc = useQueryClient();
@@ -85,8 +112,8 @@ function LandingPagesAdmin() {
     queryFn: async () =>
       ((await supabase
         .from("products")
-        .select("id,name,price,sale_price,images")
-        .eq("is_active", true)).data ?? []) as Product[],
+        .select("id,name,price,sale_price,images,is_active")
+        .order("name")).data ?? []) as Product[],
   });
   const { data: categories } = useQuery({
     queryKey: ["lp-categories"],
@@ -366,10 +393,10 @@ function LandingPagesAdmin() {
                 <>
                   <div className="border-2 border-brand/30 rounded-xl p-3 bg-brand/5">
                     <div className="font-bold text-sm mb-2 text-brand-dark">মূল প্রোডাক্ট</div>
-                    <div className="flex gap-2"><select value={editing.product_id ?? ""} onChange={(e) => set({ product_id: e.target.value || null })} className="flex-1 border rounded-lg px-3 py-2"><option value="">— সিলেক্ট করুন —</option>{products?.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select><button type="button" onClick={() => setCreateProductFor("main")} className="px-3 py-2 border-2 border-brand text-brand rounded-lg text-sm font-semibold flex items-center gap-1 whitespace-nowrap"><PackagePlus className="w-4 h-4" /> নতুন</button></div>
+                    <div className="flex gap-2"><ProductPicker products={products} value={editing.product_id} onChange={(id) => set({ product_id: id })} placeholder="— সিলেক্ট করুন —" size="md" /><button type="button" onClick={() => setCreateProductFor("main")} className="px-3 py-2 border-2 border-brand text-brand rounded-lg text-sm font-semibold flex items-center gap-1 whitespace-nowrap"><PackagePlus className="w-4 h-4" /> নতুন</button></div>
                     <div className="mt-3"><Field label="মূল প্রোডাক্টের ডেলিভারি চার্জ (৳)"><div className="flex items-center gap-2"><input type="number" value={editing.main_delivery_fee ?? 70} onChange={(e) => set({ main_delivery_fee: Number(e.target.value) })} className="flex-1 border rounded-lg px-3 py-2" /><label className="flex items-center gap-1 text-sm"><input type="checkbox" checked={Number(editing.main_delivery_fee) === 0} onChange={(e) => set({ main_delivery_fee: e.target.checked ? 0 : 70 })} />ফ্রি</label></div></Field></div>
                   </div>
-                  <div className="pt-3 border-t"><div className="font-semibold text-sm mb-2">অতিরিক্ত প্যাকেজ / অ্যাডঅন</div><RepeatList<Addon> items={editing.addons || []} onChange={(addons) => set({ addons })} empty={{ name: "", price: 0, delivery_fee: 70 }} render={(a, upd, idx) => (<><div className="flex gap-2 mb-2"><select value={a.product_id ?? ""} onChange={(e) => { const pid = e.target.value || undefined; const p = products?.find((x) => x.id === pid); upd(p ? { ...a, product_id: p.id, name: p.name, price: p.sale_price ?? p.price, image: p.images?.[0] } : { ...a, product_id: undefined }); }} className="flex-1 border rounded-lg px-3 py-2 text-sm"><option value="">— Existing প্রোডাক্ট সিলেক্ট —</option>{products?.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select><button type="button" onClick={() => setCreateProductFor(idx)} className="px-3 py-2 border-2 border-brand text-brand rounded-lg text-xs font-semibold flex items-center gap-1 whitespace-nowrap"><PackagePlus className="w-3.5 h-3.5" /> নতুন</button></div><input placeholder="প্যাকেজ নাম" value={a.name} onChange={(e) => upd({ ...a, name: e.target.value })} className="w-full border rounded-lg px-3 py-2 mb-2 text-sm" /><div className="grid grid-cols-3 gap-2 mb-2"><label className="text-xs">দাম (৳)<input type="number" value={a.price} onChange={(e) => upd({ ...a, price: Number(e.target.value) })} className="w-full border rounded-lg px-2 py-2 mt-0.5" /></label><label className="text-xs">পুরোনো দাম<input type="number" value={a.old_price ?? ""} onChange={(e) => upd({ ...a, old_price: e.target.value ? Number(e.target.value) : undefined })} className="w-full border rounded-lg px-2 py-2 mt-0.5" /></label><label className="text-xs">ব্যাজ<input value={a.badge ?? ""} onChange={(e) => upd({ ...a, badge: e.target.value || undefined })} className="w-full border rounded-lg px-2 py-2 mt-0.5" /></label></div><div className="flex items-center gap-2 mb-2"><label className="text-xs flex-1">ডেলিভারি চার্জ (৳)<input type="number" value={a.delivery_fee ?? 70} onChange={(e) => upd({ ...a, delivery_fee: Number(e.target.value) })} className="w-full border rounded-lg px-2 py-2 mt-0.5" /></label><label className="flex items-center gap-1 text-xs mt-4"><input type="checkbox" checked={Number(a.delivery_fee) === 0} onChange={(e) => upd({ ...a, delivery_fee: e.target.checked ? 0 : 70 })} />ফ্রি</label></div><input type="file" accept="image/*" onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; const url = await uploadImage(f); if (url) upd({ ...a, image: url }); }} className="text-xs mb-1" />{a.image && <img src={a.image} alt="" className="w-20 h-20 object-cover rounded-lg" />}</>)} /></div>
+                  <div className="pt-3 border-t"><div className="font-semibold text-sm mb-2">অতিরিক্ত প্যাকেজ / অ্যাডঅন</div><RepeatList<Addon> items={editing.addons || []} onChange={(addons) => set({ addons })} empty={{ name: "", price: 0, delivery_fee: 70 }} render={(a, upd, idx) => (<><div className="flex gap-2 mb-2"><ProductPicker products={products} value={a.product_id ?? null} onChange={(pid) => { const p = products?.find((x) => x.id === pid); upd(p ? { ...a, product_id: p.id, name: p.name, price: p.sale_price ?? p.price, image: p.images?.[0] } : { ...a, product_id: undefined }); }} placeholder="— Existing প্রোডাক্ট সিলেক্ট —" /><button type="button" onClick={() => setCreateProductFor(idx)} className="px-3 py-2 border-2 border-brand text-brand rounded-lg text-xs font-semibold flex items-center gap-1 whitespace-nowrap"><PackagePlus className="w-3.5 h-3.5" /> নতুন</button></div><input placeholder="প্যাকেজ নাম" value={a.name} onChange={(e) => upd({ ...a, name: e.target.value })} className="w-full border rounded-lg px-3 py-2 mb-2 text-sm" /><div className="grid grid-cols-3 gap-2 mb-2"><label className="text-xs">দাম (৳)<input type="number" value={a.price} onChange={(e) => upd({ ...a, price: Number(e.target.value) })} className="w-full border rounded-lg px-2 py-2 mt-0.5" /></label><label className="text-xs">পুরোনো দাম<input type="number" value={a.old_price ?? ""} onChange={(e) => upd({ ...a, old_price: e.target.value ? Number(e.target.value) : undefined })} className="w-full border rounded-lg px-2 py-2 mt-0.5" /></label><label className="text-xs">ব্যাজ<input value={a.badge ?? ""} onChange={(e) => upd({ ...a, badge: e.target.value || undefined })} className="w-full border rounded-lg px-2 py-2 mt-0.5" /></label></div><div className="flex items-center gap-2 mb-2"><label className="text-xs flex-1">ডেলিভারি চার্জ (৳)<input type="number" value={a.delivery_fee ?? 70} onChange={(e) => upd({ ...a, delivery_fee: Number(e.target.value) })} className="w-full border rounded-lg px-2 py-2 mt-0.5" /></label><label className="flex items-center gap-1 text-xs mt-4"><input type="checkbox" checked={Number(a.delivery_fee) === 0} onChange={(e) => upd({ ...a, delivery_fee: e.target.checked ? 0 : 70 })} />ফ্রি</label></div><input type="file" accept="image/*" onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; const url = await uploadImage(f); if (url) upd({ ...a, image: url }); }} className="text-xs mb-1" />{a.image && <img src={a.image} alt="" className="w-20 h-20 object-cover rounded-lg" />}</>)} /></div>
                 </>
               )}
             </div>
