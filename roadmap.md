@@ -6,3 +6,6 @@
 - [ ] Restore site to commit d04cee58b1418dc5cc16bc0ff1df99a7803c84bb (code + database)
 
 - [x] Push current code directly to GitHub repo shawon079/Oronno-nogor-07 (commit 66f9d97)
+
+- [x] Make the block notice readable and premium
+- [x] Permanently allow owner IP 45.117.62.206 across site, device, order, and AI block checks

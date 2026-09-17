@@ -77,6 +77,25 @@ function showDuplicateOrderModal(message: string) {
   timer = minutes !== null ? setInterval(() => { remaining=Math.max(0,remaining-1); if(countdown) countdown.textContent=formatTime(remaining); if(remaining<=0 && timer){ clearInterval(timer); timer=null; } },1000) : null;
 }
 
+function showBlockedOrderModal() {
+  if (typeof document === "undefined") return;
+  installPremiumOrderModalStyle();
+  document.querySelector(".premium-order-modal-backdrop")?.remove();
+  document.body.classList.add("premium-order-modal-active");
+  const backdrop = document.createElement("div");
+  backdrop.className = "premium-order-modal-backdrop";
+  backdrop.setAttribute("role", "dialog");
+  backdrop.setAttribute("aria-modal", "true");
+  backdrop.innerHTML = `<div class="premium-order-modal"><button class="premium-order-modal-close" type="button" aria-label="বন্ধ করুন">×</button><div class="premium-order-modal-body"><div class="premium-order-modal-icon-wrap"><div class="premium-order-modal-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M12 3l7.5 3.4v5.2c0 4.6-3.1 7.9-7.5 9.4-4.4-1.5-7.5-4.8-7.5-9.4V6.4L12 3z" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.5 11.6h5m0 0v.1" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div><div class="premium-order-modal-eyebrow">শেখ সিডস • অর্ডার স্ট্যাটাস</div><h2 class="premium-order-modal-title">অর্ডারটি নেওয়া যাচ্ছে না</h2><p class="premium-order-modal-text">দুঃখিত, এই <strong>মোবাইল নম্বর</strong> থেকে আপাতত অর্ডার নেওয়া বন্ধ রাখা হয়েছে।<br>কোনো ভুল হয়েছে মনে হলে আমাদের পেজে মেসেজ দিয়ে জানান — আমরা দেখে ঠিক করে দেব।</p><p class="premium-order-modal-note">সহায়তার জন্য: শেখ সিডস অফিশিয়াল পেজে মেসেজ করুন।</p><button class="premium-order-modal-ok" type="button">বুঝেছি</button></div></div>`;
+  document.body.appendChild(backdrop);
+  const close = () => { backdrop.remove(); document.body.classList.remove("premium-order-modal-active"); document.removeEventListener("keydown", onKey); };
+  const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") close(); };
+  backdrop.querySelector(".premium-order-modal-close")?.addEventListener("click", close);
+  backdrop.querySelector(".premium-order-modal-ok")?.addEventListener("click", close);
+  backdrop.addEventListener("click", (event) => { if (event.target === backdrop) close(); });
+  document.addEventListener("keydown", onKey);
+}
+
 export function isBlockedOrderError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err ?? "");
   return msg.includes(BLOCKED_ORDER_CODE);
@@ -84,11 +103,12 @@ export function isBlockedOrderError(err: unknown): boolean {
 
 /** Clean, customer-facing message for any order error (never raw DB text for blocks). */
 export function orderErrorMessage(err: unknown, fallback = "অর্ডার করতে সমস্যা হয়েছে"): string {
-  if (isBlockedOrderError(err)) return BLOCKED_ORDER_MESSAGE;
+  if (isBlockedOrderError(err)) { showBlockedOrderModal(); return ""; }
   const msg = err instanceof Error ? err.message : "";
   if (duplicateOrderMinutes(msg) !== null) { showDuplicateOrderModal(msg); return ""; }
   return msg || fallback;
 }
+
 
 /** Show an order error to the customer. Stays silent when the premium popup already handled it (no empty red toast). */
 export function notifyOrderError(err: unknown, fallback = "অর্ডার করতে সমস্যা হয়েছে") {

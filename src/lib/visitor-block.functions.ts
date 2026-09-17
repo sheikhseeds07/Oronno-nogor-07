@@ -3,6 +3,7 @@ import { getRequestHeader, getRequestIP } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { supabase } from "@/lib/personal-supabase/client";
 import { requestHasStaffBypass } from "@/lib/staff-bypass";
+import { isOwnerIpAllowed } from "@/lib/owner-ip-allowlist";
 
 type CacheEntry = { blocked: boolean; at: number };
 // Speed: this check runs on the root loader of every page view, so a cold cache
@@ -30,6 +31,7 @@ export const getVisitorBlockStatus = createServerFn({ method: "GET" }).handler(a
   if (isStaffRequest()) return { blocked: false, ip: null as string | null };
   const ip = getRequestIP({ xForwardedFor: true }) ?? null;
   if (!ip) return { blocked: false, ip: null as string | null };
+  if (isOwnerIpAllowed(ip)) return { blocked: false, ip };
 
   const hit = cache.get(ip);
   if (hit && Date.now() - hit.at < (hit.blocked ? BLOCK_CACHE_MS : ALLOW_CACHE_MS)) return { blocked: hit.blocked, ip };
@@ -58,6 +60,8 @@ export const getSiteBlockStatus = createServerFn({ method: "POST" })
   .inputValidator((input) => GateSchema.parse(input ?? {}))
   .handler(async ({ data }) => {
     if (isStaffRequest()) return { blocked: false };
+    const requestIp = getRequestIP({ xForwardedFor: true }) ?? null;
+    if (isOwnerIpAllowed(requestIp)) return { blocked: false };
     const deviceId = data.deviceId ?? null;
     const customerId = data.customerId ?? null;
     if (!deviceId && !customerId) return { blocked: false };

@@ -2,6 +2,7 @@ import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 import { getDeliveryInfo, normalizeDeliveryRules, type DeliveryRule } from "@/lib/delivery-rules";
 import { resolveSupabasePublishableKey, resolveSupabaseUrl } from "@/integrations/supabase/public-env";
 import { getRequestIP } from "@tanstack/react-start/server";
+import { isOwnerIpAllowed } from "@/lib/owner-ip-allowlist";
 
 const DEFAULT_MODEL = "gemini-flash-latest";
 type Msg = { role: "user" | "model"; parts: any[] };
@@ -84,8 +85,10 @@ async function createOrder(args: { customer_name: string; customer_phone: string
   const subtotal = rows.reduce((a, r) => a + r.subtotal, 0);
   const delivery = getDeliveryInfo(subtotal, shop.rules).delivery;
   const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
-  const { data: blocked, error: blockError } = await supabaseAdmin.rpc("is_blocked_visitor", { p_ip: clientIp ?? undefined, p_phone: phone });
-  if (!blockError && blocked === true) return { ok: false, error: "এই ফোন নম্বর থেকে অর্ডার গ্রহণ করা যাচ্ছে না" };
+  if (!isOwnerIpAllowed(clientIp)) {
+    const { data: blocked, error: blockError } = await supabaseAdmin.rpc("is_blocked_visitor", { p_ip: clientIp ?? undefined, p_phone: phone });
+    if (!blockError && blocked === true) return { ok: false, error: "এই ফোন নম্বর থেকে অর্ডার গ্রহণ করা যাচ্ছে না" };
+  }
   if (phone.length >= 6) {
     const since = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
     const { data: recent } = await supabaseAdmin.from("orders").select("id,invoice_no,total").eq("source", "web").ilike("customer_phone", `%${phone}%`).is("deleted_at", null).gte("created_at", since).order("created_at", { ascending: false }).limit(1).maybeSingle();
@@ -95,7 +98,7 @@ async function createOrder(args: { customer_name: string; customer_phone: string
     p_customer_name: args.customer_name.trim().slice(0, 255), p_customer_phone: phone,
     p_customer_address: args.customer_address.trim().slice(0, 1000), p_delivery_fee: delivery,
     p_items: rows.map((r) => ({ id: r.product_id, name: r.product_name, price: r.price, quantity: r.quantity })),
-    p_notes: "Website Gemini AI অর্ডার", p_client_ip: clientIp ?? undefined,
+    p_notes: "Website Gemini AI অর্ডার", p_client_ip: isOwnerIpAllowed(clientIp) ? undefined : clientIp ?? undefined,
   });
   if (error || !orderId) return { ok: false, error: error?.message || "অর্ডার তৈরি হয়নি" };
   const { data: order } = await supabaseAdmin.from("orders").select("id,invoice_no,total").eq("id", orderId).single();

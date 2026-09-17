@@ -4,6 +4,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 import { sendPurchaseEvent } from "@/lib/facebook-capi.server";
 import { BLOCKED_ORDER_CODE, BLOCKED_ORDER_MESSAGE } from "@/lib/order-block";
+import { isOwnerIpAllowed } from "@/lib/owner-ip-allowlist";
 
 const PHONE_RE = /^01[3-9][0-9]{8}$/;
 const ItemSchema = z.object({ id: z.string().min(1).max(64), name: z.string().min(1).max(500), price: z.number().min(0).max(10_000_000), quantity: z.number().int().min(1).max(1000) });
@@ -32,12 +33,15 @@ export const saveIncompleteCheckout = createServerFn({ method: "POST" }).inputVa
 export const placeOrder = createServerFn({ method: "POST" }).inputValidator((input: Input) => InputSchema.parse(input)).handler(async ({ data }) => {
   const customerPhone = data.customer_phone;
   const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
+  const orderClientIp = isOwnerIpAllowed(clientIp) ? null : clientIp;
 
   // Checkout runs through the server, so use the server/admin client for both
   // RPCs. This avoids the browser client's RLS/session state from turning a
   // valid checkout submission into a failed server action/navigation.
-  const { data: blocked, error: blockCheckError } = await supabaseAdmin.rpc("is_blocked_visitor", { p_ip: clientIp ?? undefined, p_phone: customerPhone });
-  if (!blockCheckError && blocked === true) throw new Error(`${BLOCKED_ORDER_CODE}: ${BLOCKED_ORDER_MESSAGE}`);
+  if (!isOwnerIpAllowed(clientIp)) {
+    const { data: blocked, error: blockCheckError } = await supabaseAdmin.rpc("is_blocked_visitor", { p_ip: clientIp ?? undefined, p_phone: customerPhone });
+    if (!blockCheckError && blocked === true) throw new Error(`${BLOCKED_ORDER_CODE}: ${BLOCKED_ORDER_MESSAGE}`);
+  }
 
   const { data: orderId, error: orderError } = await supabaseAdmin.rpc("place_public_order", {
     p_customer_name: data.customer_name.trim(),
@@ -46,7 +50,7 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
     p_delivery_fee: data.delivery_fee,
     p_items: data.items,
     p_notes: data.notes ?? null,
-    p_client_ip: clientIp,
+    p_client_ip: orderClientIp,
   } as never);
 
   if (orderError) {
