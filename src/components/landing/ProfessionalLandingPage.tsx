@@ -13,7 +13,7 @@ import { trackInitiateCheckout, trackPurchase } from "@/lib/fbq";
 import { getFbContext } from "@/lib/fb-context";
 import { FacebookPixel } from "@/components/layout/FacebookPixel";
 import { Footer } from "@/components/layout/Footer";
-import { mergeContent, DEFAULT_FEATURES, DEFAULT_WHY, DEFAULT_REVIEWS, type Feature, type WhyItem, type Review } from "@/lib/landing-content";
+import { mergeContent, DEFAULT_FEATURES, DEFAULT_WHY, DEFAULT_REVIEWS, Feature, WhyItem, Review } from "@/lib/landing-content";
 import { toImg, imgFallback } from "@/lib/img";
 import brandLogoFile from "@/assets/logo.jpg";
 import { LP_SHARED_STYLE, LpHeaderCountdown, LpPackageSelector, LpFloatingCta, LpOrderNote, LpCheckoutCard } from "@/components/landing/lp-shared";
@@ -125,7 +125,7 @@ export function ProfessionalLandingPage({ slug, variant }: Props) {
 
       <section className="space-y-3"><div className="text-center"><div className="text-xs font-black uppercase tracking-widest" style={{ color: theme }}>{C.reviews_kicker || "কাস্টমার ফিডব্যাক"}</div><h2 className="text-2xl font-black">{C.reviews_title || "ক্রেতারা যা বলছেন"}</h2></div><div className="grid md:grid-cols-3 gap-3">{reviews.map((r, i) => <article key={i} className="bg-white border rounded-2xl p-4"><div className="flex gap-1 text-amber-400">{Array.from({ length: Math.max(1, Math.min(5, Number(r.rating) || 5)) }).map((_, j) => <Star key={j} className="w-4 h-4 fill-current"/>)}</div><p className="text-sm leading-relaxed mt-3 text-slate-600">“{r.text}”</p><div className="font-bold text-sm mt-3">{r.name}</div></article>)}</div></section>
 
-      <section id="lp-order" className="scroll-mt-24 space-y-3"><LpOrderNote /><LpCheckoutCard formId="lp-order-form-pro" onSubmit={submit} values={{ name: form.name, phone: form.phone, address: form.address }} onChange={(k, v) => setForm({ ...form, [k]: v })} packages={packages} selectedPkg={selected} onSelectPkg={setSelected} themeColor={theme} subtotal={subtotal} deliveryFee={shipping} total={total} submitting={submitting} submitText={C.submit_text || page.cta_text || "অর্ডার কনফার্ম করুন"} /></section>
+      <section id="lp-order" className="scroll-mt-24 space-y-3"><LpOrderNote /><LpCheckoutCard formId="lp-order-form-pro" onSubmit={submit} values={{ name: form.name, phone: form.phone, address: form.address }} onChange={(k, v) => setForm({ ...form, [k]: v })} packages={packages} selectedPkg={selected} onSelectPkg={setSelected} themeColor={theme} subtotal={subtotal} deliveryFee={shipping} total={total} submitting={submitting} submitText={C.submit_text || page.cta_text || "অর্ডার কনফার্ম করুন"} hideSubmit /></section>
     </main>
     <div className="pb-24"><Footer /></div>
     <LpFloatingCta formInView={formInView} formId="lp-order-form-pro" submitting={submitting} total={total} subtotal={subtotal} regular={regularPrice} productName={packages[selected]?.name || brand} ctaText={page.cta_text || "এখনই অর্ডার করুন"} themeColor={theme} onScrollToOrder={goOrder} />
