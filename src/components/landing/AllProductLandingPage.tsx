@@ -99,8 +99,8 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
     <GuaranteePopup slug={slug} logo={logo} brand={brand} />
     {page.top_bar_text && <div className="bg-all-product-alert px-3 py-0.5 text-center text-[10px] font-bold leading-4 text-all-product-alert-foreground sm:text-[11px]">{page.top_bar_text}</div>}
     <div role="banner" className="sticky top-0 z-40 border-b border-all-product-line bg-all-product-surface/95 backdrop-blur-xl">
-      <div className="mx-auto flex h-12 max-w-6xl items-center justify-between gap-3 px-3 sm:px-4">
-        <div className="flex min-w-0 items-center gap-2"><img src={logo} alt={brand} className="h-7 w-7 rounded-full border border-all-product-line object-cover" /><div className="min-w-0"><span className="block truncate text-[14px] font-black leading-tight text-all-product-primary">{brandBn}</span><span className="mt-0.5 block truncate text-[9.5px] font-bold leading-3 text-all-product-muted">অরিজিনাল বীজ • বিশ্বস্ত সেবা</span></div></div>
+      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-2 px-3 sm:px-4">
+        <div className="flex min-w-0 items-center gap-2"><img src={logo} alt={brand} className="h-8 w-8 rounded-full border border-all-product-line object-cover" /><div className="min-w-0"><span style={{ fontFamily: "'Noto Serif Bengali', 'Hind Siliguri', serif" }} className="block truncate text-[20px] font-black leading-[1.05] text-all-product-primary sm:text-[22px]">{brandBn}</span><span className="mt-1 block h-0.5 w-16 rounded-full bg-all-product-gold sm:w-20" aria-hidden="true" /></div></div>
         <OfferCountdown />
       </div>
     </div>
@@ -178,7 +178,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
         </div>
       </div></section>
 
-      <section id="all-product-order" className="scroll-mt-20 bg-all-product-checkout py-10 sm:py-14"><div className="mx-auto max-w-3xl px-4"><div className="mb-6 text-center"><span className="inline-flex items-center gap-1.5 rounded-full bg-all-product-primary px-3 py-1.5 text-xs font-black text-all-product-primary-foreground"><PackageCheck className="h-4 w-4" /> মাত্র ৩০ সেকেন্ডে অর্ডার</span><h2 className="mt-3 text-3xl font-black">নিচের ফর্ম গুলো পূরন করুন</h2><p className="mt-1 text-sm text-all-product-muted">২-৩ দিনের মধ্যে হোম ডেলিভারি পেয়ে যাবেন</p></div>
+      <section id="all-product-order" className="scroll-mt-20 bg-all-product-checkout py-10 sm:py-14"><div className="mx-auto max-w-3xl px-4"><div className="mb-6 text-center"><span className="inline-flex items-center gap-1.5 rounded-full bg-all-product-primary px-3 py-1.5 text-xs font-black text-all-product-primary-foreground"><PackageCheck className="h-4 w-4" /> মাত্র ৩০ সেকেন্ডে অর্ডার</span><h2 className="mt-3 whitespace-nowrap text-[22px] font-black leading-tight sm:text-3xl">নিচের ফর্ম গুলো পূরন করুন</h2><p className="mt-1 text-sm text-all-product-muted">২-৩ দিনের মধ্যে হোম ডেলিভারি পেয়ে যাবেন</p></div>
         <form id="all-product-order-form" onSubmit={submit} className="overflow-hidden rounded-lg border border-all-product-line bg-all-product-surface shadow-all-product">
           <div className="border-b border-all-product-line p-4 sm:p-6"><div className="mb-4 flex items-center gap-2"><span className="grid h-7 w-7 place-items-center rounded-full bg-all-product-primary text-sm font-black text-all-product-primary-foreground">১</span><h3 className="font-black">আপনার তথ্য দিন</h3></div><div className="grid gap-4 sm:grid-cols-2"><CheckoutField label="আপনার নাম" icon={<User />}><input required value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} placeholder="আপনার পুরো নাম" /></CheckoutField><CheckoutField label="মোবাইল নম্বর" icon={<Phone />}><input required type="tel" inputMode="numeric" value={form.phone} onChange={event => setForm({ ...form, phone: event.target.value.replace(/[^\d]/g, "").slice(0, 16) })} placeholder="01XXXXXXXXX" /></CheckoutField><div className="sm:col-span-2"><CheckoutField label="সম্পূর্ণ ঠিকানা" icon={<MapPin />}><textarea required rows={2} value={form.address} onChange={event => setForm({ ...form, address: event.target.value })} placeholder="গ্রাম/এলাকা, থানা, জেলা" /></CheckoutField></div></div></div>
           <div className="border-b border-all-product-line p-4 sm:p-6"><div className="mb-4 flex items-center gap-2"><span className="grid h-7 w-7 place-items-center rounded-full bg-all-product-primary text-sm font-black text-all-product-primary-foreground">২</span><h3 className="font-black">অফার সিলেক্ট করুন</h3></div><div className="grid gap-2.5">{offers.map((offer, index) => { const active = selected === index; return <Button key={`${offer.name}-${index}`} type="button" variant="outline" onClick={() => setSelected(index)} className={`all-product-offer h-auto min-h-20 justify-start whitespace-normal p-3 text-left ${active ? "is-selected" : ""}`}><span className="grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 border-all-product-line">{active && <Check className="h-3 w-3" />}</span>{offer.image && <img src={toImg(offer.image, { w: 120, q: 75 })} alt="" loading="lazy" className="h-12 w-12 shrink-0 rounded-md object-cover" />}<span className="min-w-0 flex-1"><span className="block font-black">{offer.name}</span><span className="mt-1 block text-xs font-semibold text-all-product-muted">{offer.delivery_fee === 0 ? "ফ্রি ডেলিভারি" : `ডেলিভারি ${taka(offer.delivery_fee)}`}</span></span><span className="shrink-0 text-right"><span className="block text-lg font-black text-all-product-primary">{taka(offer.price)}</span>{offer.old && offer.old > offer.price && <del className="block text-xs text-all-product-muted">{taka(offer.old)}</del>}{offer.badge && <span className="mt-1 block rounded-sm bg-all-product-gold px-1.5 py-0.5 text-[10px] font-black text-all-product-gold-foreground">{offer.badge}</span>}</span></Button>; })}</div></div>
@@ -217,12 +217,13 @@ function OfferCountdown() {
   return (
     <>
       <style>{AP_COUNTDOWN_STYLE}</style>
-      <div className="shrink-0 text-right" aria-label="অফার শেষ হওয়ার কাউন্টডাউন">
-        <span className="flex items-center justify-end gap-1 text-[9.5px] font-black leading-3 text-all-product-alert"><span className="ap-cd-dot h-1.5 w-1.5 rounded-full bg-all-product-alert" aria-hidden="true" />অফার শেষ হতে বাকি</span>
-        <span className="mt-0.5 flex items-center justify-end gap-1 text-[11px] font-black text-all-product-alert">{units.map((unit, i) => (
+      <div className="flex shrink-0 items-center gap-1 text-[9px] font-black text-all-product-alert sm:gap-1.5 sm:text-[10px]" aria-label="অফার শেষ হওয়ার কাউন্টডাউন">
+        <span className="ap-cd-dot h-1.5 w-1.5 shrink-0 rounded-full bg-all-product-alert" aria-hidden="true" />
+        <span className="whitespace-nowrap">অফার শেষ হতে বাকি</span>
+        <span className="flex shrink-0 items-center gap-0.5 sm:gap-1">{units.map((unit, i) => (
           <span key={i} className="flex items-center gap-1">
             {i > 0 && <span className="text-all-product-muted">:</span>}
-            <span key={unit} className="ap-cd-box rounded bg-all-product-alert/10 px-1.5 py-0.5 tabular-nums ring-1 ring-all-product-alert/25">{bnDigits(unit)}</span>
+            <span key={unit} className="ap-cd-box rounded bg-all-product-alert/10 px-1 py-0.5 tabular-nums ring-1 ring-all-product-alert/25">{bnDigits(unit)}</span>
           </span>
         ))}</span>
       </div>
