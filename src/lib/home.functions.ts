@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/personal-supabase/client";
 
 export type HomeBanner = { id: string; title: string | null; image_url: string; link_url: string | null };
 export type HomeCategory = { id: string; slug: string; name: string; image_url: string | null };

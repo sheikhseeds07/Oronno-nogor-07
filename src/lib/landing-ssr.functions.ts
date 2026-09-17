@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/personal-supabase/client";
 
 // Server-side landing page bundle: one round trip, executed during SSR so the
 // first HTML response already contains the page content.

@@ -5,7 +5,7 @@ import { ArrowLeft, Star, MessageCircleQuestion, Trash2, Send, Loader2, CheckCir
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { listCustomerFeedback, replyCustomerReview, answerCustomerQuestion, deleteCustomerReview, deleteCustomerQuestion } from "@/lib/customer-feedback-admin.functions";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/personal-supabase/client";
 
 export const Route=createFileRoute("/admin/customer-feedback")({component:CustomerFeedback});
  type Tab="reviews"|"questions";type Filter="all"|"unreplied"|"replied";

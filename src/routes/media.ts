@@ -182,14 +182,14 @@ async function pullOrigin(
     const origin = await fetch(source.toString(), {
       method: "GET",
       headers: { Accept: request.headers.get("Accept") || "image/*,*/*;q=0.8" },
-      cf: publicAsset
+      ...({ cf: publicAsset
         ? ({
             cacheEverything: true,
             cacheTtl: ONE_YEAR_SECONDS,
             cacheKey: originCacheKey,
             image: imageOptions,
           } as any)
-        : undefined,
+        : undefined } as RequestInit),
     });
 
     return {

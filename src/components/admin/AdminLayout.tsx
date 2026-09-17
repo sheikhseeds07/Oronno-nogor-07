@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth, type Permissions } from "@/lib/auth";
 import { supabase } from "@/lib/personal-supabase/client";
 import { readPublicSettingsCache, writePublicSettingsCache } from "@/lib/public-settings-cache";
-import { LayoutDashboard, Package, ShoppingBag, Users, FolderTree, Image as ImageIcon, Tag, Settings, Globe, UserCog, LogOut, Menu, X, Layers, Clock, FileSpreadsheet, PanelLeftClose, PanelLeftOpen, ChevronRight, Sparkles, Leaf } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingBag, Users, FolderTree, Image as ImageIcon, Tag, Settings, Globe, UserCog, LogOut, Menu, X, Layers, FileSpreadsheet, PanelLeftClose, PanelLeftOpen, ChevronRight, Sparkles, Leaf } from "lucide-react";
 import { NewOrderNotifier } from "@/components/admin/NewOrderNotifier";
 import { AdminOrderStability } from "@/components/admin/AdminOrderStability";
 import { PresswayyCard } from "@/components/admin/PresswayyCard";
@@ -22,10 +22,44 @@ const NAV: NavItem[] = [
   { to: "/admin/coupons", label: "Coupons", icon: Tag, perm: "marketing", tone: "from-yellow-400 to-orange-500" },
   { to: "/admin/landing-pages", label: "Landing Pages", icon: Globe, perm: "landing_pages", tone: "from-cyan-400 to-blue-600" },
   { to: "/admin/employees", label: "Employees", icon: UserCog, perm: "hrm", tone: "from-green-400 to-emerald-600" },
-  { to: "/admin/attendance", label: "Attendance", icon: Clock, perm: "hrm", tone: "from-violet-400 to-purple-600" },
+  
   { to: "/admin/all-api", label: "All APIs", icon: Layers, perm: "all_api", tone: "from-indigo-400 to-violet-600" },
   { to: "/admin/settings", label: "Settings", icon: Settings, perm: "settings", tone: "from-slate-300 to-slate-500" },
 ];
+
+// Per-page permission map. Every admin page (including ones without a sidebar
+// entry) resolves to the module the CEO grants in Employees → Permissions.
+const ROUTE_PERMS: { prefix: string; perm: keyof Permissions | "always" }[] = [
+  { prefix: "/admin/orders", perm: "orders" },
+  { prefix: "/admin/order-import", perm: "orders" },
+  { prefix: "/admin/order-division", perm: "orders" },
+  { prefix: "/admin/order-rate-limit", perm: "orders" },
+  { prefix: "/admin/deleted-orders", perm: "orders" },
+  { prefix: "/admin/products", perm: "products" },
+  { prefix: "/admin/offers", perm: "products" },
+  { prefix: "/admin/categories", perm: "categories" },
+  { prefix: "/admin/customers", perm: "customers" },
+  { prefix: "/admin/customer-management", perm: "customers" },
+  { prefix: "/admin/customer-feedback", perm: "customers" },
+  { prefix: "/admin/banners", perm: "marketing" },
+  { prefix: "/admin/coupons", perm: "marketing" },
+  { prefix: "/admin/landing-pages", perm: "landing_pages" },
+  { prefix: "/admin/landing-seeds", perm: "landing_pages" },
+  { prefix: "/admin/landing-template", perm: "landing_pages" },
+  { prefix: "/admin/employees", perm: "hrm" },
+  { prefix: "/admin/all-api", perm: "all_api" },
+  { prefix: "/admin/integrations", perm: "all_api" },
+  { prefix: "/admin/meta-ad-account", perm: "all_api" },
+  { prefix: "/admin/courier", perm: "delivery" },
+  { prefix: "/admin/settings", perm: "settings" },
+];
+
+function requiredPermFor(pathname: string): keyof Permissions | "always" {
+  if (pathname === "/admin" || pathname === "/admin/") return "always";
+  const match = ROUTE_PERMS.filter((r) => pathname === r.prefix || pathname.startsWith(r.prefix + "/"))
+    .sort((a, b) => b.prefix.length - a.prefix.length)[0];
+  return match ? match.perm : "always";
+}
 
 const orderUiCss = `
 [data-admin-route="/admin/orders"] > div:last-child { background: radial-gradient(circle at 8% 0%,rgba(20,184,166,.10),transparent 28%),radial-gradient(circle at 92% 18%,rgba(99,102,241,.08),transparent 30%),linear-gradient(180deg,#f8fbfa 0%,#f3f7f7 52%,#f8f8fb 100%); }
@@ -86,7 +120,7 @@ const orderUiCss = `
 const SIDEBAR_COLLAPSED_KEY = "admin-sidebar-collapsed";
 
 export function AdminLayout({ children, headerExtra }: { children: React.ReactNode; headerExtra?: React.ReactNode }) {
-  const { user, isStaff, isAdmin, permissions, loading, initialized, role } = useAuth();
+  const { user, isStaff, isAdmin, isSuperAdmin, permissions, loading, initialized, role } = useAuth();
   const navigate = useNavigate(); const loc = useLocation();
   const [open, setOpen] = useState(false); const [mounted, setMounted] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -119,8 +153,9 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
   useEffect(() => { if (!initialized) return; if (!user) navigate({ to: "/login" as any }); }, [user, initialized, navigate]);
   if (!mounted || (loading && !role)) return <div className="min-h-screen flex items-center justify-center">Please wait...</div>;
   if (!isStaff) return <div className="min-h-screen flex items-center justify-center bg-muted px-4"><div className="max-w-md rounded-xl border bg-card p-6 text-center shadow-sm"><h1 className="text-xl font-bold text-brand-dark">Access Denied</h1><p className="mt-2 text-sm text-muted-foreground">You do not have permission to view this page.</p><button onClick={() => navigate({ to: "/" })} className="mt-5 rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-primary-foreground">Go Home</button></div></div>;
-  const visibleNav = NAV.filter((n) => { if (isAdmin) return true; if (n.exact && n.to === "/admin") return false; if (n.perm === "always") return true; return n.perm ? permissions[n.perm] : false; });
-  const myProfileTo = !isAdmin && user?.id ? `/admin/employees_/${user.id}` : null;
+  const visibleNav = NAV.filter((n) => { if (isSuperAdmin) return true; if (n.perm === "always") return true; return n.perm ? permissions[n.perm] : false; });
+  const requiredPerm = requiredPermFor(loc.pathname);
+  if (!isSuperAdmin && requiredPerm !== "always" && !permissions[requiredPerm]) return <div className="min-h-screen flex items-center justify-center bg-muted px-4"><div className="max-w-md rounded-xl border bg-card p-6 text-center shadow-sm"><h1 className="text-xl font-bold text-brand-dark">এই পেজের অনুমতি নেই</h1><p className="mt-2 text-sm text-muted-foreground">এই অংশটি দেখার অনুমতি আপনাকে দেওয়া হয়নি। প্রয়োজন হলে CEO-কে জানান।</p><button onClick={() => navigate({ to: "/admin" })} className="mt-5 rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-primary-foreground">ড্যাশবোর্ডে যান</button></div></div>;
   const logout = async () => { await supabase.auth.signOut(); navigate({ to: "/" }); };
   return <div data-admin-route={loc.pathname} className="flex min-h-screen bg-muted">
     {loc.pathname === "/admin/orders" && <style>{orderUiCss}</style>}
@@ -134,7 +169,6 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
       </div>
       <nav className="relative p-3 overflow-y-auto h-[calc(100vh-150px)] scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
         {!collapsed && <div className="px-2 pt-1 pb-2 text-[10px] uppercase tracking-[.18em] font-bold text-slate-500 flex items-center gap-1.5"><Leaf className="w-3 h-3 text-emerald-400" /> Menu</div>}
-        {myProfileTo && user?.id && <Link to={"/admin/employees/$userId" as any} params={{ userId: user.id } as any} preload="intent" onClick={() => setOpen(false)} className={`group relative flex items-center gap-3 px-3 py-3 rounded-xl text-sm mb-1 transition-all duration-300 ${loc.pathname.startsWith(myProfileTo) ? "bg-gradient-to-r from-emerald-500 to-cyan-500 text-white shadow-lg shadow-emerald-950/30" : "text-slate-300 hover:text-white hover:bg-white/8 hover:translate-x-1"}`}><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 shadow-lg"><Clock className="w-4 h-4" /></span>{!collapsed && <span className="font-medium">Attendance</span>}</Link>}
         {visibleNav.map((n) => { const active = n.exact ? loc.pathname === n.to : loc.pathname.startsWith(n.to); return <Link key={n.to} to={n.to} preload="intent" onClick={() => setOpen(false)} className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm mb-1 transition-all duration-300 ${active ? "text-white bg-white/10 shadow-lg shadow-black/10" : "text-slate-300 hover:text-white hover:bg-white/7 hover:translate-x-1"}`}>
           <span className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${n.tone} text-white shadow-md transition-transform duration-300 group-hover:scale-110 group-hover:rotate-2 ${active ? "ring-2 ring-white/30" : ""}`}><n.icon className="w-[18px] h-[18px]" /></span>
           {!collapsed && <span className="truncate font-medium flex-1">{n.label}</span>}

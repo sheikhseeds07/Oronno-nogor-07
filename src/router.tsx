@@ -1,7 +1,7 @@
 import { QueryClient, dehydrate, hydrate } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
-import { staffSupabase, customerSupabase } from "@/integrations/supabase/client";
+import { staffSupabase, customerSupabase } from "@/lib/personal-supabase/client";
 
 const isRetryableQueryError = (error: unknown) => {
   const message = error instanceof Error ? error.message.toLowerCase() : String(error ?? "").toLowerCase();
@@ -68,7 +68,7 @@ export const getRouter = () => {
     defaultPreload: "intent",
     defaultPreloadStaleTime: 60_000,
     defaultPreloadGcTime: 5 * 60_000,
-    dehydrate: () => ({ queryClientState: dehydrate(queryClient) }),
+    dehydrate: () => ({ queryClientState: dehydrate(queryClient) }) as any,
     hydrate: (dehydrated) => {
       hydrate(queryClient, dehydrated.queryClientState);
     },

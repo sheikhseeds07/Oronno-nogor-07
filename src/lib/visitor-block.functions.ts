@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestIP } from "@tanstack/react-start/server";
 import { z } from "zod";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/personal-supabase/client";
 
 type CacheEntry = { blocked: boolean; at: number };
 const CACHE_MS = 30_000;
@@ -45,7 +45,7 @@ export const getSiteBlockStatus = createServerFn({ method: "POST" })
     const customerId = data.customerId ?? null;
     if (!deviceId && !customerId) return { blocked: false };
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin } = await import("@/lib/personal-supabase/client.server");
     const db = supabaseAdmin as any;
 
     try {

@@ -22,7 +22,7 @@ function MetaAdAccount() {
   useEffect(() => {
     let active = true;
     (async () => {
-      const { data } = await supabase.from("integrations").select("config").eq("key", SETTINGS_KEY).maybeSingle();
+      const { data } = await supabase.from("integrations").select("config").eq("name", SETTINGS_KEY).maybeSingle();
       if (!active || !data?.config) return;
       const c = data.config as Record<string, unknown>;
       setForm({
@@ -48,8 +48,8 @@ function MetaAdAccount() {
     }
     setSaving(true);
     try {
-      const payload = { key: SETTINGS_KEY, config: form };
-      const { error } = await supabase.from("integrations").upsert(payload, { onConflict: "key" });
+      const payload = { name: SETTINGS_KEY, config: form };
+      const { error } = await supabase.from("integrations").upsert(payload, { onConflict: "name" });
       if (error) throw error;
       toast.success("Meta Ad Account ও Dollar Rate সংরক্ষণ হয়েছে");
     } catch (e) {

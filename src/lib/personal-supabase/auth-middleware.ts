@@ -5,17 +5,10 @@ import "@/lib/crypto-polyfill";
 import { createMiddleware } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@/integrations/supabase/types";
-import {
-  createSupabaseFetch,
-  resolveSupabasePublishableKey,
-  resolveSupabaseUrl,
-} from "@/integrations/supabase/public-env";
+import type { Database } from "@/lib/personal-supabase/db.types";
+import { LIVE_DATABASE_KEY, LIVE_DATABASE_URL } from "@/lib/personal-supabase/client";
 
 export const requireSupabaseAuth = createMiddleware({ type: "function" }).server(async ({ next }) => {
-  const SUPABASE_URL = resolveSupabaseUrl();
-  const SUPABASE_PUBLISHABLE_KEY = resolveSupabasePublishableKey();
-
   const request = getRequest();
   if (!request?.headers) throw new Error("Unauthorized: No request headers available");
 
@@ -26,9 +19,14 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" }).server
   const token = authHeader.slice("Bearer ".length).trim();
   if (!token) throw new Error("Unauthorized: No token provided");
 
-  const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  const supabase = createClient<Database>(LIVE_DATABASE_URL, LIVE_DATABASE_KEY, {
     global: {
-      fetch: createSupabaseFetch(SUPABASE_PUBLISHABLE_KEY),
+      fetch: (input, init) => {
+        const headers = new Headers(input instanceof Request ? input.headers : undefined);
+        if (init?.headers) new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+        headers.set("apikey", LIVE_DATABASE_KEY);
+        return fetch(input, { ...init, headers });
+      },
       headers: { Authorization: `Bearer ${token}` },
     },
     auth: { storage: undefined, persistSession: false, autoRefreshToken: false },

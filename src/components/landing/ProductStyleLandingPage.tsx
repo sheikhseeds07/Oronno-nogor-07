@@ -14,7 +14,7 @@ import { trackInitiateCheckout, trackPurchase } from "@/lib/fbq";
 import { getFbContext } from "@/lib/fb-context";
 import { FacebookPixel } from "@/components/layout/FacebookPixel";
 import { Footer } from "@/components/layout/Footer";
-import { mergeContent, DEFAULT_FEATURES, DEFAULT_WHY, DEFAULT_REVIEWS } from "@/lib/landing-content";
+import { mergeContent, DEFAULT_FEATURES, DEFAULT_WHY, DEFAULT_REVIEWS, type Feature, type WhyItem, type Review } from "@/lib/landing-content";
 import { toImg, imgFallback } from "@/lib/img";
 import brandLogoFile from "@/assets/logo.jpg";
 import { LP_SHARED_STYLE, LpHeaderCountdown, LpFloatingCta, LpOrderNote, LpCheckoutCard } from "@/components/landing/lp-shared";

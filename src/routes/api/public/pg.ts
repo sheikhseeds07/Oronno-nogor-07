@@ -94,7 +94,7 @@ export const Route = createFileRoute("/api/public/pg")({
           method,
           headers,
           body: method === "POST" ? (body ?? "{}") : undefined,
-          cf: { cacheEverything: true, cacheTtl: EDGE_TTL_SECONDS } as never,
+          ...({ cf: { cacheEverything: true, cacheTtl: EDGE_TTL_SECONDS } } as RequestInit),
         });
 
         const payload = await origin.text();

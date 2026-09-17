@@ -1707,8 +1707,7 @@ function CourierSuccessCell({ phone }: { phone: string }) {
     const success = data.stats.reduce((sum, stat) => sum + stat.success, 0);
     const cancelled = data.stats.reduce((sum, stat) => sum + stat.cancelled, 0);
     if (total) {
-      const decided = success + cancelled;
-      const rate = Math.round((success / (decided > 0 ? decided : total)) * 100);
+      const rate = Math.round((success / total) * 100);
       const ring = rate >= 80 ? "border-emerald-500 text-emerald-700" : rate >= 50 ? "border-amber-500 text-amber-700" : "border-rose-500 text-rose-700";
       content = (
         <div className="flex items-center gap-2">
@@ -2127,8 +2126,7 @@ function phoneVariants(phone: string) {
 }
 
 function CourierCard({ name, total, success, cancelled, highlight, clickable }: { name: string; total: number; success: number; cancelled: number; highlight?: boolean; clickable?: boolean }) {
-  const decided = success + cancelled;
-  const rate = decided > 0 ? Math.round((success / decided) * 100) : total > 0 ? Math.round((success / total) * 100) : 0;
+  const rate = total > 0 ? Math.round((success / total) * 100) : 0;
   return (
     <div className={`min-w-[150px] rounded-lg border p-2.5 text-xs space-y-1 ${highlight ? "bg-cyan-50 border-cyan-300" : "bg-white"} ${clickable ? "cursor-pointer hover:shadow-md hover:border-cyan-500 transition" : ""}`}>
       <div className="font-bold text-sm text-foreground flex items-center justify-between gap-1">

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { staffSupabase, customerSupabase } from "@/integrations/supabase/client";
+import { staffSupabase, customerSupabase } from "@/lib/personal-supabase/client";
 import type { Session } from "@supabase/supabase-js";
 
 export type StaffRole = "super_admin" | "admin" | "employee" | null;
@@ -68,7 +68,11 @@ async function loadStaff(s: Session | null, force = false) {
     const list = (roles ?? []).map(x => x.role as string); const meta = (s.user.app_metadata?.role ?? s.user.app_metadata?.app_role) as string | undefined;
     let role: StaffRole = null; if (list.includes("super_admin") || meta === "super_admin") role = "super_admin"; else if (list.includes("admin") || meta === "admin") role = "admin"; else if (list.includes("employee")) role = "employee";
     let permissions = ALL_FALSE;
-    if (role) { const { data: p } = await withRetry(async () => { const result = await staffSupabase.from("employee_permissions").select("*").eq("user_id", s.user.id).maybeSingle(); if (result.error) throw result.error; return result; }); if (seq !== staffLoadSeq) return; permissions = p ? readPerms(p) : ALL_TRUE; }
+    // CEO (super_admin) always has full access. Admin and Employee accounts get
+    // exactly the modules the CEO ticked in Employees → Permissions; a missing
+    // permission row means no module access at all.
+    if (role === "super_admin") { permissions = ALL_TRUE; }
+    else if (role) { const { data: p } = await withRetry(async () => { const result = await staffSupabase.from("employee_permissions").select("*").eq("user_id", s.user.id).maybeSingle(); if (result.error) throw result.error; return result; }); if (seq !== staffLoadSeq) return; permissions = p ? readPerms(p) : ALL_FALSE; }
     try { window.localStorage.setItem("ss_auth_cache_v1", JSON.stringify({ role, permissions, user_id: s.user.id })); } catch {}
     if (seq !== staffLoadSeq) return; setStaff({ session: s, user: s.user, role, permissions, loading: false, initialized: true });
   } catch { if (seq !== staffLoadSeq) return; setStaff({ session: s, user: s.user, loading: false, initialized: true, ...(sameUser ? {} : { role: null, permissions: ALL_FALSE }) }); }
@@ -110,6 +114,7 @@ export function useAuth() {
   useEffect(() => { const listener = () => force(v => v + 1); listeners.add(listener); return () => { listeners.delete(listener); }; }, []);
   const customerMode = !isStaffRoute(); const snap = customerMode ? customerState : staffState;
   useEffect(() => hideIncompleteForEmployee(staffState.role), [staffState.role]);
+  const isSuperAdmin = !customerMode && snap.role === "super_admin";
   const isAdmin = !customerMode && (snap.role === "admin" || snap.role === "super_admin");
-  return { session: snap.session, user: snap.user, role: snap.role, isAdmin, isStaff: !customerMode && (isAdmin || snap.role === "employee"), permissions: snap.permissions, loading: snap.loading && !snap.initialized, initialized: snap.initialized, blocked: !!snap.blocked };
+  return { session: snap.session, user: snap.user, role: snap.role, isAdmin, isSuperAdmin, isStaff: !customerMode && (isAdmin || snap.role === "employee"), permissions: snap.permissions, loading: snap.loading && !snap.initialized, initialized: snap.initialized, blocked: !!snap.blocked };
 }

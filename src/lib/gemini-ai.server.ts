@@ -84,7 +84,7 @@ async function createOrder(args: { customer_name: string; customer_phone: string
   const subtotal = rows.reduce((a, r) => a + r.subtotal, 0);
   const delivery = getDeliveryInfo(subtotal, shop.rules).delivery;
   const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
-  const { data: blocked, error: blockError } = await supabaseAdmin.rpc("is_blocked_visitor", { p_ip: clientIp, p_phone: phone });
+  const { data: blocked, error: blockError } = await supabaseAdmin.rpc("is_blocked_visitor", { p_ip: clientIp ?? undefined, p_phone: phone });
   if (!blockError && blocked === true) return { ok: false, error: "এই ফোন নম্বর থেকে অর্ডার গ্রহণ করা যাচ্ছে না" };
   if (phone.length >= 6) {
     const since = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
@@ -95,7 +95,7 @@ async function createOrder(args: { customer_name: string; customer_phone: string
     p_customer_name: args.customer_name.trim().slice(0, 255), p_customer_phone: phone,
     p_customer_address: args.customer_address.trim().slice(0, 1000), p_delivery_fee: delivery,
     p_items: rows.map((r) => ({ id: r.product_id, name: r.product_name, price: r.price, quantity: r.quantity })),
-    p_notes: "Website Gemini AI অর্ডার", p_client_ip: clientIp,
+    p_notes: "Website Gemini AI অর্ডার", p_client_ip: clientIp ?? undefined,
   });
   if (error || !orderId) return { ok: false, error: error?.message || "অর্ডার তৈরি হয়নি" };
   const { data: order } = await supabaseAdmin.from("orders").select("id,invoice_no,total").eq("id", orderId).single();
@@ -129,14 +129,14 @@ export async function generateGeminiWebReply(input: { incoming: string; history:
     });
     const parts: any[] = json?.candidates?.[0]?.content?.parts ?? [];
     const calls = parts.filter((p: any) => p.functionCall);
-    if (!calls.length) return { text: String(parts.find((p: any) => p.text)?.text || "").trim(), products: [...shownProducts.values()].slice(0, 6), orderId: createdOrder?.order_id ?? null, invoiceNo: createdOrder?.invoice_no ?? null, needsHuman: false };
+    if (!calls.length) return { text: String(parts.find((p: any) => p.text)?.text || "").trim(), products: [...shownProducts.values()].slice(0, 6), orderId: (createdOrder as any)?.order_id ?? null, invoiceNo: (createdOrder as any)?.invoice_no ?? null, needsHuman: false };
     messages.push({ role: "model", parts });
     for (const p of calls) {
       const name = p.functionCall.name;
       const args = p.functionCall.args ?? {};
       const raw = name === "search_products" ? await searchProducts(String(args.query || "")) : name === "create_order" && allowCreateOrder ? await createOrder(args) : { error: "এই মুহূর্তে এই কাজটি অনুমোদিত নয়" };
       if (name === "search_products" && Array.isArray(raw)) for (const product of raw as ProductResult[]) shownProducts.set(product.id, product);
-      if (name === "create_order" && !Array.isArray(raw) && (raw as { ok?: boolean }).ok) createdOrder = raw as typeof createdOrder;
+      if (name === "create_order" && !Array.isArray(raw) && (raw as { ok?: boolean }).ok) createdOrder = raw as unknown as typeof createdOrder;
       // Gemini requires functionResponse.response to be an object, never a bare array.
       const result = Array.isArray(raw) ? { products: raw } : raw;
       const fr: any = { name, response: result };

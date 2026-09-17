@@ -29,7 +29,7 @@ function ProductPage() {
       const { data } = await supabase.from("products").select("*, categories(name,slug)").eq("slug", slug).maybeSingle();
       if (data) return data;
       const { fallbackProducts } = await import("@/lib/fallback-shop");
-      return fallbackProducts.find((item) => item.slug === slug) ?? null;
+      return (fallbackProducts.find((item) => item.slug === slug) ?? null) as unknown as typeof data;
     },
   });
 

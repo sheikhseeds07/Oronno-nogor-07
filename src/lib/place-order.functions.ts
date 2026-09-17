@@ -7,7 +7,7 @@ import { BLOCKED_ORDER_CODE, BLOCKED_ORDER_MESSAGE } from "@/lib/order-block";
 
 const PHONE_RE = /^01[3-9][0-9]{8}$/;
 const ItemSchema = z.object({ id: z.string().min(1).max(64), name: z.string().min(1).max(500), price: z.number().min(0).max(10_000_000), quantity: z.number().int().min(1).max(1000) });
-const InputSchema = z.object({ customer_name: z.string().min(1).max(255), customer_phone: z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number. Use 01XXXXXXXXX."), customer_address: z.string().min(1).max(1000), district: z.string().max(100).optional().nullable(), thana: z.string().max(100).optional().nullable(), notes: z.string().max(2000).optional().nullable(), delivery_fee: z.number().min(0).max(10000).default(50), items: z.array(ItemSchema).min(1).max(100), created_by: z.string().uuid().optional().nullable(), fbp: z.string().max(200).optional().nullable(), fbc: z.string().max(500).optional().nullable(), source_url: z.string().max(2000).optional().nullable() });
+const InputSchema = z.object({ customer_name: z.string().min(1).max(255), customer_phone: z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number. Use 01XXXXXXXXX."), customer_address: z.string().min(1).max(1000), district: z.string().max(100).optional().nullable(), thana: z.string().max(100).optional().nullable(), notes: z.string().max(2000).optional().nullable(), delivery_fee: z.number().min(0).max(10000).default(50), items: z.array(ItemSchema).min(1).max(100), created_by: z.string().uuid().optional().nullable(), fbp: z.string().max(200).optional().nullable(), fbc: z.string().max(500).optional().nullable(), source_url: z.string().max(2000).optional().nullable(), checkout_session_id: z.string().max(200).optional().nullable() });
 type Input = z.infer<typeof InputSchema>;
 const IncompleteInputSchema = z.object({ customer_name: z.string().max(255).optional().nullable(), customer_phone: z.string().regex(PHONE_RE), customer_address: z.string().max(1000).optional().nullable(), delivery_zone: z.string().max(100).optional().nullable(), delivery_fee: z.number().min(0).max(10000), subtotal: z.number().min(0).max(10_000_000), total: z.number().min(0).max(10_000_000), note: z.string().max(2000).optional().nullable(), items: z.array(ItemSchema).min(1).max(100) });
 
@@ -19,7 +19,7 @@ export const lookupCustomerByPhone = createServerFn({ method: "POST" }).inputVal
 export const saveIncompleteCheckout = createServerFn({ method: "POST" }).inputValidator((input) => IncompleteInputSchema.parse(input)).handler(async ({ data }) => {
   const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
   const rpcArgs = { p_phone: data.customer_phone, p_ip: clientIp, p_customer_name: data.customer_name ?? null, p_customer_address: data.customer_address ?? null, p_delivery_zone: data.delivery_zone ?? null, p_delivery_fee: data.delivery_fee, p_subtotal: data.subtotal, p_total: data.total, p_note: data.note ?? null, p_items: data.items };
-  const { data: result, error } = await supabaseAdmin.rpc("upsert_incomplete_checkout", rpcArgs);
+  const { data: result, error } = await supabaseAdmin.rpc("upsert_incomplete_checkout", rpcArgs as never);
   if (!error) return result;
   if (/duplicate key value violates unique constraint.*incomplete_orders_phone_active_uq/i.test(error.message ?? "")) {
     const { data: existing } = await supabaseAdmin.from("incomplete_orders").select("id").eq("phone", data.customer_phone).order("updated_at", { ascending: false }).limit(1).maybeSingle();
@@ -36,7 +36,7 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   // Checkout runs through the server, so use the server/admin client for both
   // RPCs. This avoids the browser client's RLS/session state from turning a
   // valid checkout submission into a failed server action/navigation.
-  const { data: blocked, error: blockCheckError } = await supabaseAdmin.rpc("is_blocked_visitor", { p_ip: clientIp, p_phone: customerPhone });
+  const { data: blocked, error: blockCheckError } = await supabaseAdmin.rpc("is_blocked_visitor", { p_ip: clientIp ?? undefined, p_phone: customerPhone });
   if (!blockCheckError && blocked === true) throw new Error(`${BLOCKED_ORDER_CODE}: ${BLOCKED_ORDER_MESSAGE}`);
 
   const { data: orderId, error: orderError } = await supabaseAdmin.rpc("place_public_order", {
@@ -47,7 +47,7 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
     p_items: data.items,
     p_notes: data.notes ?? null,
     p_client_ip: clientIp,
-  });
+  } as never);
 
   if (orderError) {
     const rpcMessage = orderError.message ?? "";
@@ -59,7 +59,7 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   const total = data.items.reduce((sum, item) => sum + item.price * item.quantity, 0) + data.delivery_fee;
   try {
     const userAgent = getRequestHeader("user-agent") ?? null;
-    await sendPurchaseEvent({ orderId, value: total, currency: "BDT", phone: customerPhone, name: data.customer_name, city: data.district ?? data.thana ?? null, country: "bd", contents: data.items.map((i) => ({ id: i.id, quantity: i.quantity, price: i.price })), clientIp, userAgent, fbp: data.fbp ?? null, fbc: data.fbc ?? null, eventSourceUrl: data.source_url ?? null });
+    await sendPurchaseEvent({ orderId, value: total, currency: "BDT", phone: customerPhone, name: data.customer_name, city: data.district ?? data.thana ?? null, country: "bd", contents: data.items.map((i) => ({ id: i.id, quantity: i.quantity, price: i.price })), clientIp, userAgent, fbp: data.fbp ?? null, fbc: data.fbc ?? null, eventSourceUrl: data.source_url ?? null } as never);
   } catch (e) { console.error("[placeOrder] CAPI dispatch failed:", e); }
 
   return { id: orderId };

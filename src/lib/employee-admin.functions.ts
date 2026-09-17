@@ -39,15 +39,29 @@ const CreateSchema = z.object({
   permissions: PermSchema,
 });
 
-async function assertAdmin(db: any, userId: string) {
-  const { data, error } = await db
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .in("role", ["admin", "super_admin"])
-    .limit(1);
+async function loadRole(db: any, userId: string): Promise<string | null> {
+  const { data, error } = await db.from("user_roles").select("role").eq("user_id", userId);
   if (error) throw new Error(error.message);
-  if (!data?.length) throw new Error("Unauthorized");
+  const names = new Set((data ?? []).map((r: any) => r.role as string));
+  if (names.has("super_admin")) return "super_admin";
+  if (names.has("admin")) return "admin";
+  if (names.has("employee")) return "employee";
+  return null;
+}
+
+/** Only the CEO may hand out roles or module permissions. */
+async function assertSuperAdmin(db: any, userId: string) {
+  if ((await loadRole(db, userId)) !== "super_admin") throw new Error("শুধু CEO এই কাজটি করতে পারবেন");
+}
+
+/** CEO, or staff the CEO granted the HRM module. */
+async function assertHrm(db: any, userId: string) {
+  const role = await loadRole(db, userId);
+  if (!role) throw new Error("Unauthorized");
+  if (role === "super_admin") return;
+  const { data, error } = await db.from("employee_permissions").select("hrm").eq("user_id", userId).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data?.hrm) throw new Error("Unauthorized");
 }
 
 async function invokeAdminBridge(db: any, body: Record<string, unknown>) {
@@ -61,7 +75,7 @@ export const createEmployee = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => CreateSchema.parse(input))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertSuperAdmin(context.supabase, context.userId);
     return invokeAdminBridge(context.supabase, { action: "employee_create", ...data });
   });
 
@@ -69,7 +83,7 @@ export const updateEmployeePermissions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ user_id: z.string().uuid(), permissions: PermSchema }).parse(input))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertSuperAdmin(context.supabase, context.userId);
     const { error } = await context.supabase.from("employee_permissions").upsert(
       { user_id: data.user_id, ...data.permissions, updated_at: new Date().toISOString() },
       { onConflict: "user_id" } as never,
@@ -82,7 +96,7 @@ export const deleteEmployee = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ employee_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertHrm(context.supabase, context.userId);
     return invokeAdminBridge(context.supabase, { action: "employee_delete", employee_id: data.employee_id });
   });
 
@@ -90,7 +104,7 @@ export const resetEmployeePassword = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ user_id: z.string().uuid(), password: z.string().min(6).max(128) }).parse(input))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertHrm(context.supabase, context.userId);
     return invokeAdminBridge(context.supabase, { action: "employee_reset_password", ...data });
   });
 
@@ -98,7 +112,7 @@ export const updateEmployeeRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ user_id: z.string().uuid(), role: z.enum(["super_admin", "admin", "employee"]) }).parse(input))
   .handler(async ({ data, context }) => {
-    await assertAdmin(context.supabase, context.userId);
+    await assertSuperAdmin(context.supabase, context.userId);
     return invokeAdminBridge(context.supabase, { action: "employee_update_role", ...data });
   });
 
@@ -106,7 +120,7 @@ export const listEmployeesFull = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const db = context.supabase;
-    await assertAdmin(db, context.userId);
+    await assertHrm(db, context.userId);
     const { data: emps, error: empError } = await db.from("employees").select("*").order("created_at", { ascending: false });
     if (empError) throw new Error(empError.message);
     const ids = (emps ?? []).map((e: any) => e.user_id).filter(Boolean) as string[];

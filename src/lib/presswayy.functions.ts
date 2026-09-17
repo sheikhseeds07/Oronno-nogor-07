@@ -2,6 +2,8 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
+import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
+import { assertPermission } from "@/lib/_admin-guard.server";
 
 const STORE_URL = "https://oronnonogor.com";
 const WEBHOOK_URL = "https://app.presswayy.com/api/store/webhooks";
@@ -58,33 +60,38 @@ async function presswayyRequest(key: string, topic: string, payload: unknown) {
   return { status: res.status, text, data: parsed };
 }
 
-export const getPresswayyStatus = createServerFn({ method: "GET" }).handler(async () => {
+export const getPresswayyStatus = createServerFn({ method: "GET" }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
+  await assertPermission(context.userId, "delivery", "all_api");
   const row = await loadConfig();
   return { connected: !!row?.config.connection_key, active: !!row?.is_active, store_url: row?.config.store_url ?? STORE_URL, inbound_url: `${STORE_URL}/presswayy/v1`, key_id: row?.config.connection_key?.split(".")[0] ?? "" };
 });
 
-export const savePresswayy = createServerFn({ method: "POST" }).inputValidator((input) => ConfigSchema.parse(input)).handler(async ({ data }) => {
+export const savePresswayy = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator((input) => ConfigSchema.parse(input)).handler(async ({ data, context }) => {
+  await assertPermission(context.userId, "delivery", "all_api");
   const cfg = { ...data, store_url: STORE_URL, inbound_base: "/presswayy/v1" };
   const { error } = await supabaseAdmin.from("integrations").upsert({ name: ROW, is_active: true, config: cfg, updated_at: new Date().toISOString() }, { onConflict: "name" });
   if (error) throw new Error(error.message);
   return { ok: true, key_id: splitKey(cfg.connection_key).id };
 });
 
-export const registerPresswayy = createServerFn({ method: "POST" }).handler(async () => {
+export const registerPresswayy = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
+  await assertPermission(context.userId, "delivery", "all_api");
   const row = await loadConfig();
   if (!row?.config.connection_key) throw new Error("Presswayy connection key is not configured");
   await presswayyRequest(row.config.connection_key, "register", { store_url: STORE_URL, platform: row.config.platform ?? "tanstack", framework: row.config.framework ?? "custom", inbound_base: "/presswayy/v1", currency: "BDT" });
   return { ok: true };
 });
 
-export const testPresswayy = createServerFn({ method: "POST" }).handler(async () => {
+export const testPresswayy = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
+  await assertPermission(context.userId, "delivery", "all_api");
   const row = await loadConfig();
   if (!row?.config.connection_key) throw new Error("Presswayy connection key is not configured");
   const result = await presswayyRequest(row.config.connection_key, "ping", { store_url: STORE_URL });
   return { ok: true, response: result.text.slice(0, 300) };
 });
 
-export const resyncPresswayy = createServerFn({ method: "POST" }).handler(async () => {
+export const resyncPresswayy = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
+  await assertPermission(context.userId, "delivery", "all_api");
   const row = await loadConfig();
   if (!row?.config.connection_key) throw new Error("Presswayy connection key is not configured");
 

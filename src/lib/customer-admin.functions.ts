@@ -63,7 +63,7 @@ export const setCustomerBlocked = createServerFn({ method: "POST" })
 
     // 2) Fall back to the privileged client when RLS silently blocks the update.
     if (!row || Boolean(row.is_blocked) !== data.blocked) {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { supabaseAdmin } = await import("@/lib/personal-supabase/client.server");
       const { data: r2, error: e2 } = await (supabaseAdmin as any)
         .from("customer_profiles")
         .update(patch)

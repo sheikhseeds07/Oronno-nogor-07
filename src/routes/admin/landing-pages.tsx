@@ -233,7 +233,7 @@ function LandingPagesAdmin() {
                 <button onClick={() => openEdit(p)} className="flex-1 p-1.5 hover:bg-muted rounded text-xs">
                   <Edit className="w-3.5 h-3.5 inline" /> এডিট
                 </button>
-                <button onClick={() => duplicateLandingPage(p)} className="flex-1 p-1.5 hover:bg-green-50 text-green-700 rounded text-xs" title="ডুপ্লিকেট">
+                <button onClick={() => duplicateLandingPage(p as never)} className="flex-1 p-1.5 hover:bg-green-50 text-green-700 rounded text-xs" title="ডুপ্লিকেট">
                   <Copy className="w-3.5 h-3.5 inline" /> ডুপ্লিকেট
                 </button>
                 <button onClick={() => remove(p.id)} className="p-1.5 hover:bg-destructive/10 text-destructive rounded">
@@ -257,7 +257,7 @@ function LandingPagesAdmin() {
               {([
                 ["main", "Main"],
                 ["page", "Full page"],
-                ...(C.template === "all" || C.template === "product" || C.template === "all-product" ? [] : [["content", "কনটেন্ট"] as const]),
+                ...((C.template as string) === "all" || C.template === "product" || C.template === "all-product" ? [] : [["content", "কনটেন্ট"] as const]),
                 ["products", C.template === "product" || C.template === "all-product" ? "Product" : "Products"],
               ] as const).map(([k, l]) => (
                 <button key={k} onClick={() => setTab(k as typeof tab)}
@@ -311,13 +311,13 @@ function LandingPagesAdmin() {
                     <Field label="রেগুলার দাম (৳)"><input type="number" value={editing.regular_price ?? ""} onChange={(e) => set({ regular_price: e.target.value ? Number(e.target.value) : null })} className="w-full border rounded-lg px-3 py-2" /></Field>
                     <Field label="অফার দাম (৳)"><input type="number" value={editing.sale_price ?? ""} onChange={(e) => set({ sale_price: e.target.value ? Number(e.target.value) : null })} className="w-full border rounded-lg px-3 py-2" /></Field>
                   </div>
-                  <div className="pt-3 border-t"><div className="font-semibold text-sm mb-2">প্রোডাক্টের বৈশিষ্ট্য (টেবিল)</div><RepeatList<Feature> items={editing.features || []} onChange={(features) => set({ features })} empty={{ title: "", text: "" }} render={(f, upd) => (<input placeholder="একটি পয়েন্ট (যেমন: ৯৫% অঙ্কুরোদগম)" value={f.title} onChange={(e) => upd({ ...f, title: e.target.value, text: "" })} className="w-full border rounded-lg px-3 py-2 pr-8" />)} /></div>
-                  <div className="pt-3 border-t"><div className="font-semibold text-sm mb-2">আমাদের থেকে কেনো কিনবে (টেবিল)</div><RepeatList<WhyItem> items={editing.why_choose_us || []} onChange={(why_choose_us) => set({ why_choose_us })} empty={{ title: "", text: "" }} render={(w, upd) => (<input placeholder="একটি পয়েন্ট (যেমন: অরিজিনাল গ্যারান্টি)" value={w.title} onChange={(e) => upd({ ...w, title: e.target.value, text: "" })} className="w-full border rounded-lg px-3 py-2 pr-8" />)} /></div>
+                  <div className="pt-3 border-t"><div className="font-semibold text-sm mb-2">প্রোডাক্টের বৈশিষ্ট্য (টেবিল)</div><RepeatList<Feature> items={editing.features || []} onChange={(features) => set({ features })} empty={{ title: "", text: "" }} render={(f, upd) => (<><input placeholder="বৈশিষ্ট্য (যেমন: ৯৫% অঙ্কুরোদগম)" value={f.title} onChange={(e) => upd({ ...f, title: e.target.value })} className="w-full border rounded-lg px-3 py-2 mb-2" /><input placeholder="বিস্তারিত (optional)" value={f.text ?? ""} onChange={(e) => upd({ ...f, text: e.target.value })} className="w-full border rounded-lg px-3 py-2 text-sm" /></>)} /></div>
+                  <div className="pt-3 border-t"><div className="font-semibold text-sm mb-2">আমাদের থেকে কেনো কিনবে (টেবিল)</div><RepeatList<WhyItem> items={editing.why_choose_us || []} onChange={(why_choose_us) => set({ why_choose_us })} empty={{ title: "", text: "" }} render={(w, upd) => (<><input placeholder="পয়েন্ট (যেমন: অরিজিনাল গ্যারান্টি)" value={w.title} onChange={(e) => upd({ ...w, title: e.target.value })} className="w-full border rounded-lg px-3 py-2 mb-2" /><input placeholder="বিস্তারিত" value={w.text ?? ""} onChange={(e) => upd({ ...w, text: e.target.value })} className="w-full border rounded-lg px-3 py-2 text-sm" /></>)} /></div>
                   <div className="pt-3 border-t"><div className="font-semibold text-sm mb-2">কাস্টমার রিভিউ</div><RepeatList<Review> items={editing.reviews || []} onChange={(reviews) => set({ reviews })} empty={{ name: "", rating: 5, text: "" }} render={(r, upd) => (<><div className="grid grid-cols-3 gap-2 mb-2"><input placeholder="নাম" value={r.name} onChange={(e) => upd({ ...r, name: e.target.value })} className="col-span-2 border rounded-lg px-3 py-2" /><input type="number" min={1} max={5} value={r.rating} onChange={(e) => upd({ ...r, rating: Number(e.target.value) })} className="border rounded-lg px-3 py-2" /></div><textarea placeholder="রিভিউ" rows={2} value={r.text} onChange={(e) => upd({ ...r, text: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></>)} /></div>
                 </>
               )}
 
-              {tab === "content" && C.template !== "all" && (
+              {tab === "content" && (C.template as string) !== "all" && (
                 <>
                   <div className="text-xs text-muted-foreground">পেজের প্রতিটি টেক্সট ও ইমেজ এখান থেকে বদলানো যাবে। খালি রাখলে সেই অংশ পেজে দেখাবে না।</div>
                   <div className="rounded-lg border p-3 space-y-3">
