@@ -1,4 +1,4 @@
-name: Fix RTS courier display names
+name: Fix employee RTS courier access
 on:
   workflow_dispatch:
   push:
@@ -11,68 +11,57 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch orders and community UI
+      - name: Patch employee RTS courier access
         shell: bash
         run: |
           python3 <<'PY'
           from pathlib import Path
+          import re
 
-          # Existing RTS courier-name patch.
+          # 1) orders.tsx: courier display names must be obtained server-side.
           p = Path('src/routes/admin/orders.tsx')
-          s = p.read_text()
-          if 'courier-display-names-rts' not in s:
-              marker = '  const qc = useQueryClient();\n  const sendBulk = useServerFn(sendOrdersToSteadfast);'
-              insert = '''  const qc = useQueryClient();
-  const sendBulk = useServerFn(sendOrdersToSteadfast);
-  const [courierDisplayNames, setCourierDisplayNames] = useState<Record<1 | 2, string>>({ 1: "Courier 1", 2: "Courier 2" });
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      const { data } = await supabase.from("integrations").select("name,config").in("name", ["all_api_steadfast", "all_api_steadfast_2"]);
-      if (!alive) return;
-      const next: Record<1 | 2, string> = { 1: "Courier 1", 2: "Courier 2" };
-      for (const row of data ?? []) {
-        const cfg = (row.config ?? {}) as { display_name?: string };
-        if (row.name === "all_api_steadfast" && cfg.display_name?.trim()) next[1] = cfg.display_name.trim();
-        if (row.name === "all_api_steadfast_2" && cfg.display_name?.trim()) next[2] = cfg.display_name.trim();
-      }
-      setCourierDisplayNames(next);
-    })();
-    return () => { alive = false; };
-  }, []);
-  const courier1Name = courierDisplayNames[1];
-  const courier2Name = courierDisplayNames[2]; // courier-display-names-rts'''
-              if marker in s:
-                  s = s.replace(marker, insert, 1)
-                  s = s.replace('কুরিয়ার ১ এ পাঠান (Steadfast)', '{courier1Name} এ পাঠান', 1)
-                  s = s.replace('কুরিয়ার ২ এ পাঠান (Steadfast)', '{courier2Name} এ পাঠান', 1)
-                  p.write_text(s)
-
-          # Community UI patch: keep the normal composer input, remove the redundant prompt,
-          # remove the default yellow reaction icon, and make reaction clicking toggle off.
-          p = Path('src/components/community/SocialFeedProV2.tsx')
           s = p.read_text(encoding='utf-8')
-          original = s
-          s = s.replace('placeholder="SHAWON, আজ কী শেয়ার করবেন?" className="min-w-0 flex-1 rounded-xl bg-muted px-3 py-2 text-xs font-medium outline-none"', 'placeholder="কিছু লিখতে চাইলে লিখুন..." className="min-w-0 flex-1 rounded-xl bg-muted px-3 py-2 text-xs font-medium outline-none"')
-          s = s.replace("<span>{mine?reactions.find(r=>r[0]===mine.reaction)?.[1]:'👍'}</span>", "<span>{mine?reactions.find(r=>r[0]===mine.reaction)?.[1]:''}</span>")
-          s = s.replace("onClick={()=>setReaction(reactionPost===p.id?null:p.id)}", "onClick={()=>{if(mine)void react(p,mine.reaction);else setReaction(reactionPost===p.id?null:p.id)}}")
-          marker = 'return <div className="min-h-screen bg-[#f3f5f4] pb-8">'
-          style = 'return <><style>{`[placeholder="SHAWON, আজ কী শেয়ার করবেন?"]{display:none!important}.community-composer{display:flex;align-items:center;gap:8px}.community-composer textarea,.community-composer input{min-width:0}.community-composer .mt-1\\.5{margin-top:0!important}.community-composer .mt-1\\.5{display:flex!important;align-items:center!important;gap:6px!important;flex:1!important}.community-composer .mt-1\\.5>*{flex-shrink:0}.community-composer .mt-1\\.5 input{flex:1!important}.community-composer button{white-space:nowrap}`}</style><div className="min-h-screen bg-[#f3f5f4] pb-8">'
-          if marker in s:
-              s = s.replace(marker, style, 1)
-          s = s.replace('<section className="border-b bg-background px-3 py-2.5 sm:mt-2 sm:rounded-2xl sm:border">', '<section className="community-composer border-b bg-background px-3 py-2.5 sm:mt-2 sm:rounded-2xl sm:border">', 1)
-          if s != original:
-              p.write_text(s, encoding='utf-8')
+          s = s.replace(
+              'import { sendOrdersToSteadfast, syncSteadfastStatuses } from "@/lib/courier-test.functions";',
+              'import { getSteadfastDisplayNames, sendOrdersToSteadfast, syncSteadfastStatuses } from "@/lib/courier-test.functions";',
+              1,
+          )
+          marker = '  const qc = useQueryClient();\n  const sendBulk = useServerFn(sendOrdersToSteadfast);'
+          if marker in s and 'getSteadfastDisplayNames' not in s[s.index(marker):s.index(marker)+3000]:
+              s = s.replace(marker, marker + '''\n  const getCourierNames = useServerFn(getSteadfastDisplayNames);''', 1)
+          # Replace any existing client-side integrations/config lookup used for the RTS labels.
+          pattern = re.compile(r'''  useEffect\(\(\) => \{\n    let alive = true;\n    \(async \(\) => \{\n      const \{ data \} = await supabase\.from\("integrations"\)\.select\("name,config"\)\.in\("name", \["all_api_steadfast", "all_api_steadfast_2"\]\);\n      if \(!alive\) return;\n      const next: Record<1 \| 2, string> = \{ 1: [^\n]+\};\n      for \(const row of data \?\? \[\]\) \{\n        const cfg = \(row\.config \?\? \{\}\) as \{ display_name\?: string \};\n        if \(row\.name === "all_api_steadfast" && cfg\.display_name\?\.trim\(\)\) next\[1\] = cfg\.display_name\.trim\(\);\n        if \(row\.name === "all_api_steadfast_2" && cfg\.display_name\?\.trim\(\)\) next\[2\] = cfg\.display_name\.trim\(\);\n      \}\n      setCourierDisplayNames\(next\);\n    \}\)\(\);\n    return \(\) => \{ alive = false; \};\n  \}, \[\]\);''', re.M)
+          replacement = '''  useEffect(() => {\n    let alive = true;\n    (async () => {\n      try {\n        const res = await getCourierNames({ data: {} });\n        if (!alive) return;\n        setCourierDisplayNames(res.names);\n      } catch {\n        // Keep safe fallback labels when the server-side lookup is temporarily unavailable.\n      }\n    })();\n    return () => { alive = false; };\n  }, [getCourierNames]);'''
+          s, n = pattern.subn(replacement, s, count=1)
+          if n == 0:
+              print('WARNING: existing courier display-name effect was not matched; leaving it unchanged')
+          p.write_text(s, encoding='utf-8')
+
+          # 2) courier-test.functions.ts: expose only safe display names to staff; never expose config/secrets.
+          p = Path('src/lib/courier-test.functions.ts')
+          s = p.read_text(encoding='utf-8')
+          if 'export const getSteadfastDisplayNames' not in s:
+              anchor = '''async function loadSteadfastCfg(account: 1 | 2 = 1): Promise<Record<string, string>> {'''
+              idx = s.find(anchor)
+              if idx < 0:
+                  raise SystemExit('loadSteadfastCfg anchor not found')
+              end = s.find('\n}\n\nexport const sendOrdersToSteadfast', idx)
+              if end < 0:
+                  raise SystemExit('sendOrdersToSteadfast anchor not found')
+              insert = '''\n\nexport const getSteadfastDisplayNames = createServerFn({ method: "GET" })\n  .middleware([requireSupabaseAuth])\n  .handler(async ({ context }) => {\n    await assertCanManageOrders(context.userId);\n    const { data: rows } = await supabaseAdmin\n      .from("integrations")\n      .select("name,config,is_active")\n      .in("name", [STEADFAST_ROW_NAME[1], STEADFAST_ROW_NAME[2], "courier_steadfast"]);\n\n    const names: Record<1 | 2, string> = { 1: "কুরিয়ার ১", 2: "কুরিয়ার ২" };\n    for (const account of [1, 2] as const) {\n      const exact = (rows ?? []).find((row) => row.name === STEADFAST_ROW_NAME[account] && row.is_active);\n      const fallback = account === 1 ? (rows ?? []).find((row) => row.name === "courier_steadfast" && row.is_active) : undefined;\n      const row = exact ?? fallback;\n      const cfg = (row?.config ?? {}) as Record<string, unknown>;\n      const displayName = typeof cfg.display_name === "string" ? cfg.display_name.trim() : "";\n      if (displayName) names[account] = displayName;\n    }\n    return { names };\n  });'''
+              s = s[:end+2] + insert + s[end+2:]
+          # Make config loading tolerant of an inactive exact row when credentials are actually saved there.\n          old = '''  const row = (rows ?? []).find((r) => r.name === name && r.is_active) ?? (rows ?? []).find((r) => r.is_active) ?? (rows ?? [])[0];'''
+          new = '''  const row = (rows ?? []).find((r) => r.name === name && r.is_active)\n    ?? (rows ?? []).find((r) => r.name === name)\n    ?? (rows ?? []).find((r) => r.is_active)\n    ?? (rows ?? [])[0];'''
+          s = s.replace(old, new, 1)
+          p.write_text(s, encoding='utf-8')
           PY
           git diff --check
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/routes/admin/orders.tsx src/components/community/SocialFeedProV2.tsx
-          git rm -f .github/workflows/community-ui-fix.yml || true
-          if ! git diff --cached --quiet; then
-            git commit -m 'fix: compact community composer and reaction display'
-            git push origin HEAD:main
-          fi
+          git add src/routes/admin/orders.tsx src/lib/courier-test.functions.ts
+          git commit -m 'fix: allow employees to send RTS via courier'
+          git push origin HEAD:main
+          # Remove this one-time patch workflow after the source fix is pushed.
           git rm -f .github/workflows/fix-rtsp-courier-names.yml
-          git commit -m 'chore: remove temporary patch workflow'
+          git commit -m 'chore: remove temporary RTS courier patch workflow'
           git push origin HEAD:main
