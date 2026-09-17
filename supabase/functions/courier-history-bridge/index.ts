@@ -98,7 +98,10 @@ function sanitizeStat(stat: CourierStat): CourierStat | null {
   const courierId = name.replace(/[\s_-]/g, "").toLowerCase();
   // Hoorin currently returns this fixed RedX placeholder for numbers with no
   // RedX history. Never present provider placeholder data as customer history.
-  if (["redx", "redex", "redxbd"].includes(courierId) && total === 10 && success === 6 && cancelled === 4) return null;
+  const isRedxPlaceholder =
+    ["redx", "redex", "redxbd"].includes(courierId) && total === 10 && success === 6 && cancelled === 4;
+  // Keep the courier card, but never present the placeholder numbers as history.
+  if (isRedxPlaceholder) return { name, total: 0, success: 0, cancelled: 0 };
   // A courier with no parcels at all cannot have delivered or cancelled parcels.
   if (total <= 0) return null;
   if (success > total) success = total;
