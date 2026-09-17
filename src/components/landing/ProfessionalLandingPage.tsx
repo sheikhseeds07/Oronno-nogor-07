@@ -8,7 +8,7 @@ import { placeOrder } from "@/lib/place-order.functions";
 import { useCheckoutAutofill } from "@/lib/useCheckoutAutofill";
 import { taka } from "@/lib/format";
 import { toast } from "sonner";
-import { orderErrorMessage } from "@/lib/order-block";
+import { notifyOrderError } from "@/lib/order-block";
 import { trackInitiateCheckout, trackPurchase } from "@/lib/fbq";
 import { getFbContext } from "@/lib/fb-context";
 import { FacebookPixel } from "@/components/layout/FacebookPixel";
@@ -77,7 +77,7 @@ export function ProfessionalLandingPage({ slug, variant }: Props) {
       trackPurchase(items, total, order.id);
       toast.success("অর্ডার সফল হয়েছে!");
       navigate({ to: "/order/$id", params: { id: order.id } });
-    } catch (err) { toast.error(orderErrorMessage(err)); setSubmitting(false); }
+    } catch (err) { notifyOrderError(err); setSubmitting(false); }
   };
 
   if (isLoading) return <div className="min-h-screen grid place-items-center"><div className="animate-pulse font-bold">লোড হচ্ছে...</div></div>;

@@ -8,7 +8,7 @@ import { placeOrder } from "@/lib/place-order.functions";
 import { useCheckoutAutofill } from "@/lib/useCheckoutAutofill";
 import { taka } from "@/lib/format";
 import { toast } from "sonner";
-import { orderErrorMessage } from "@/lib/order-block";
+import { notifyOrderError } from "@/lib/order-block";
 import { trackInitiateCheckout, trackPurchase } from "@/lib/fbq";
 import { getFbContext } from "@/lib/fb-context";
 import { FacebookPixel } from "@/components/layout/FacebookPixel";
@@ -88,7 +88,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
       trackPurchase(items, total, order.id);
       toast.success("অর্ডার সফল হয়েছে!");
       navigate({ to: "/order/$id", params: { id: order.id } });
-    } catch (error) { toast.error(orderErrorMessage(error)); setSubmitting(false); }
+    } catch (error) { notifyOrderError(error); setSubmitting(false); }
   };
 
   if (isLoading) return <div className="min-h-screen bg-all-product-surface" aria-hidden="true" />;
@@ -99,8 +99,8 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
     <GuaranteePopup slug={slug} logo={logo} brand={brand} />
     {page.top_bar_text && <div className="bg-all-product-alert px-3 py-0.5 text-center text-[10px] font-bold leading-4 text-all-product-alert-foreground sm:text-[11px]">{page.top_bar_text}</div>}
     <div role="banner" className="sticky top-0 z-40 border-b border-all-product-line bg-all-product-surface/95 backdrop-blur-xl">
-      <div className="mx-auto flex h-10 max-w-6xl items-center justify-between gap-3 px-3 sm:px-4">
-        <div className="flex min-w-0 items-center gap-1.5"><img src={logo} alt={brand} className="h-6 w-6 rounded-full border border-all-product-line object-cover" /><div className="flex min-w-0 items-center text-[13px] font-black leading-none"><span className="truncate">{brandBn}</span></div></div>
+      <div className="mx-auto flex h-12 max-w-6xl items-center justify-between gap-3 px-3 sm:px-4">
+        <div className="flex min-w-0 items-center gap-2"><img src={logo} alt={brand} className="h-7 w-7 rounded-full border border-all-product-line object-cover" /><div className="min-w-0"><span className="block truncate text-[14px] font-black leading-tight text-all-product-primary">{brandBn}</span><span className="mt-0.5 block truncate text-[9.5px] font-bold leading-3 text-all-product-muted">অরিজিনাল বীজ • বিশ্বস্ত সেবা</span></div></div>
         <OfferCountdown />
       </div>
     </div>
@@ -217,13 +217,12 @@ function OfferCountdown() {
   return (
     <>
       <style>{AP_COUNTDOWN_STYLE}</style>
-      <div className="flex shrink-0 items-center gap-1.5 text-[10px] font-black text-all-product-alert" aria-label="অফার শেষ হওয়ার কাউন্টডাউন">
-        <span className="ap-cd-dot h-1.5 w-1.5 rounded-full bg-all-product-alert" aria-hidden="true" />
-        <span>অফার শেষ হতে বাকি</span>
-        <span className="flex items-center gap-1">{units.map((unit, i) => (
+      <div className="shrink-0 text-right" aria-label="অফার শেষ হওয়ার কাউন্টডাউন">
+        <span className="flex items-center justify-end gap-1 text-[9.5px] font-black leading-3 text-all-product-alert"><span className="ap-cd-dot h-1.5 w-1.5 rounded-full bg-all-product-alert" aria-hidden="true" />অফার শেষ হতে বাকি</span>
+        <span className="mt-0.5 flex items-center justify-end gap-1 text-[11px] font-black text-all-product-alert">{units.map((unit, i) => (
           <span key={i} className="flex items-center gap-1">
             {i > 0 && <span className="text-all-product-muted">:</span>}
-            <span key={unit} className="ap-cd-box rounded bg-all-product-alert/10 px-1 py-0.5 tabular-nums ring-1 ring-all-product-alert/25">{bnDigits(unit)}</span>
+            <span key={unit} className="ap-cd-box rounded bg-all-product-alert/10 px-1.5 py-0.5 tabular-nums ring-1 ring-all-product-alert/25">{bnDigits(unit)}</span>
           </span>
         ))}</span>
       </div>

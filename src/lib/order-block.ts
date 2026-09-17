@@ -1,3 +1,5 @@
+import { toast } from "sonner";
+
 // Shared blocked-customer signalling between the order server function and the checkout / landing UIs. Keep this module client-safe (no server imports).
 export const BLOCKED_ORDER_CODE = "CUSTOMER_BLOCKED";
 export const BLOCKED_ORDER_MESSAGE = "আপনাকে Block করা হয়েছে। আপনি আর অর্ডার করতে পারবেন না।";
@@ -86,4 +88,10 @@ export function orderErrorMessage(err: unknown, fallback = "অর্ডার �
   const msg = err instanceof Error ? err.message : "";
   if (duplicateOrderMinutes(msg) !== null) { showDuplicateOrderModal(msg); return ""; }
   return msg || fallback;
+}
+
+/** Show an order error to the customer. Stays silent when the premium popup already handled it (no empty red toast). */
+export function notifyOrderError(err: unknown, fallback = "অর্ডার করতে সমস্যা হয়েছে") {
+  const message = orderErrorMessage(err, fallback);
+  if (message) toast.error(message);
 }

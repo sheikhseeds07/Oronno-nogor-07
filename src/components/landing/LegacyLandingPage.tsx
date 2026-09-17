@@ -7,7 +7,7 @@ import { placeOrder } from "@/lib/place-order.functions";
 import { useCheckoutAutofill } from "@/lib/useCheckoutAutofill";
 import { taka, bnDigits } from "@/lib/format";
 import { toast } from "sonner";
-import { orderErrorMessage } from "@/lib/order-block";
+import { notifyOrderError } from "@/lib/order-block";
 import { Check, ShoppingCart, Flame, ChevronLeft, ChevronRight, Truck, ShieldCheck, Clock, Sprout, Award, Leaf, Star } from "lucide-react";
 import { trackInitiateCheckout, trackPurchase } from "@/lib/fbq";
 import { BrandLoader } from "@/components/layout/BrandLoader";
@@ -188,7 +188,7 @@ export function LegacyLandingPage({ slug }: { slug: string }) {
       toast.success("অর্ডার সফল!");
       navigate({ to: "/order/$id", params: { id: order.id } });
     } catch (err) {
-      toast.error(orderErrorMessage(err));
+      notifyOrderError(err);
       setSubmitting(false);
     }
   };
