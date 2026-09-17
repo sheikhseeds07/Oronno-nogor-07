@@ -25,7 +25,7 @@ type PersistentHit = { result: CourierHistoryResult; fresh: boolean };
 const SUCCESS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const FAILURE_CACHE_TTL_MS = 15 * 1000;
 const STALE_CACHE_TTL_MS = 30 * 60 * 1000;
-const CACHE_VERSION = "courier-history-v12-redx-placeholder-filter";
+const CACHE_VERSION = "courier-history-v13-redx-placeholder-zero";
 const MAX_CACHE_ENTRIES = 3000;
 
 const courierCache = new Map<string, CacheEntry>();
@@ -72,11 +72,14 @@ function normalizeStats(value: unknown): CourierStat[] {
       let cancelled = Math.min(int(row.cancelled), total);
       if (success + cancelled > total) cancelled = Math.max(0, total - success);
       const courierId = name.replace(/[\s_-]/g, "").toLowerCase();
-      if (["redx", "redex", "redxbd"].includes(courierId) && total === 10 && success === 6 && cancelled === 4) return null;
-      return { name, total, success, cancelled };
+      const isRedxPlaceholder =
+        ["redx", "redex", "redxbd"].includes(courierId) && total === 10 && success === 6 && cancelled === 4;
+      // Keep the card visible, but blank out the provider placeholder numbers.
+      if (isRedxPlaceholder) return { name, total: 0, success: 0, cancelled: 0, keep: true };
+      return { name, total, success, cancelled, keep: total > 0 };
     })
-    // A courier with zero parcels cannot show delivered/cancelled counts.
-    .filter((row): row is CourierStat => row !== null && row.total > 0)
+    .filter((row) => row.keep)
+    .map(({ name, total, success, cancelled }) => ({ name, total, success, cancelled }))
     .sort((a, b) => b.total - a.total);
 }
 
