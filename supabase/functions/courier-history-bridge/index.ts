@@ -13,6 +13,7 @@ const AUTHZ_CACHE_TTL_MS = 5 * 60 * 1000;
 const CONFIG_CACHE_TTL_MS = 5 * 60 * 1000;
 const GLOBAL_PROVIDER_GAP_MS = 120;
 const HOORIN_TIMEOUT_MS = 7_000;
+const HOORIN_ENDPOINT = "https://plugin.hoorin.com/courier/api/v1/search";
 const MAX_CACHE_ENTRIES = 3000;
 
 const historyCache = new Map<string, { expiresAt: number; result: HistoryResult }>();
@@ -65,17 +66,22 @@ async function getHoorinConfig(admin: ReturnType<typeof createClient>) {
   const { data, error } = await admin.from("integrations").select("config,is_active").eq("name", "all_api_hoorin").maybeSingle();
   if (error) return { configured: true, endpoint: "", apiKey: "", error: error.message };
   const cfg = (data?.config ?? {}) as JsonRecord;
-  const value = { configured: Boolean(data?.is_active && String(cfg.api_key ?? "").trim()), endpoint: String(cfg.endpoint ?? "https://dash.hoorin.com/api/courier/api").trim(), apiKey: String(cfg.api_key ?? "").trim(), error: null as string | null };
+  const rawEndpoint = String(cfg.endpoint ?? "").trim();
+  // Legacy dash.hoorin.com summary endpoint returns stale/placeholder RedX numbers (10/6/4)
+  // for every phone. Always use Hoorin's current v1 search endpoint.
+  const legacy = !rawEndpoint || /dash\.hoorin\.com/i.test(rawEndpoint) || !/\/v1\/search/i.test(rawEndpoint);
+  const endpoint = legacy ? HOORIN_ENDPOINT : rawEndpoint;
+  const value = { configured: Boolean(data?.is_active && String(cfg.api_key ?? "").trim()), endpoint, apiKey: String(cfg.api_key ?? "").trim(), error: null as string | null };
   configCache = { expiresAt: Date.now() + CONFIG_CACHE_TTL_MS, value };
   return value;
 }
 
 const COURIER_KEY_RE = /^(steadfast|steadfastcourier|redx|redex|redxbd|pathao|pathaocourier|carrybee|paperfly|ecourier|sundarban|sundarbancourier)$/;
-const SKIP_KEY_RE = /^(data|summary|summaries|courierdata|root|total|totals|overall|meta|result|response|payload|info|status|message|report|reports)$/;
+const SKIP_KEY_RE = /^(data|summary|summaries|courierdata|couriers|courier|root|total|totals|overall|meta|result|response|payload|info|status|message|report|reports|details)$/;
 const COUNT_KEYS = [
   "Total Parcels","Total Delivery","total_parcel","totalParcel","total","total_parcel_count","Total_parcels","total_parcels","totalParcelCount",
-  "Delivered Parcels","Successful Delivery","success_parcel","successParcel","success","delivered","delivered_parcel","total_delivered","delivered_count",
-  "Canceled Parcels","Canceled Delivery","Cancelled Parcels","cancelled_parcel","cancelledParcel","cancel","cancelled","total_cancelled","cancelled_count",
+  "Delivered Parcels","Successful Delivery","success_parcel","successParcel","success","delivered","delivered_parcel","delivered_parcels","total_delivered","delivered_count",
+  "Canceled Parcels","Canceled Delivery","Cancelled Parcels","cancelled_parcel","cancelled_parcels","canceled_parcels","cancelledParcel","cancel","cancelled","total_cancelled","cancelled_count",
 ];
 
 function prettyCourier(normalizedKey: string, fallback: string) {
@@ -109,8 +115,8 @@ function parseStats(payload: unknown): CourierStat[] {
     const row = value as JsonRecord;
     const inner = row.summary && typeof row.summary === "object" && !Array.isArray(row.summary) ? row.summary as JsonRecord : row;
     const total = num(inner["Total Parcels"] ?? inner["Total Delivery"] ?? inner.total_parcel ?? inner.totalParcel ?? inner.total ?? inner["total_parcel_count"] ?? inner.Total_parcels ?? inner.total_parcels ?? inner.totalParcelCount);
-    const success = num(inner["Delivered Parcels"] ?? inner["Successful Delivery"] ?? inner.success_parcel ?? inner.successParcel ?? inner.success ?? inner.delivered ?? inner["delivered_parcel"] ?? inner.total_delivered ?? inner.delivered_count);
-    const cancelled = num(inner["Canceled Parcels"] ?? inner["Canceled Delivery"] ?? inner["Cancelled Parcels"] ?? inner.cancelled_parcel ?? inner.cancelledParcel ?? inner.cancel ?? inner.cancelled ?? inner["cancelled_parcel"] ?? inner.total_cancelled ?? inner.cancelled_count);
+    const success = num(inner["Delivered Parcels"] ?? inner["Successful Delivery"] ?? inner.delivered_parcels ?? inner.success_parcel ?? inner.successParcel ?? inner.success ?? inner.delivered ?? inner["delivered_parcel"] ?? inner.total_delivered ?? inner.delivered_count);
+    const cancelled = num(inner["Canceled Parcels"] ?? inner["Canceled Delivery"] ?? inner["Cancelled Parcels"] ?? inner.cancelled_parcels ?? inner.canceled_parcels ?? inner.cancelled_parcel ?? inner.cancelledParcel ?? inner.cancel ?? inner.cancelled ?? inner["cancelled_parcel"] ?? inner.total_cancelled ?? inner.cancelled_count);
     const hasCounts = COUNT_KEYS.some((k) => Object.prototype.hasOwnProperty.call(inner, k));
 
     const rawName = typeof inner.name === "string" && inner.name.trim() ? inner.name.trim() : key;
