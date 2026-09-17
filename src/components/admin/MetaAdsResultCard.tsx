@@ -30,12 +30,12 @@ export function MetaAdsResultCard({ range }: Props) {
 
   useEffect(() => {
     requestId.current++;
-    if (permissions.dashboard && permissions.dashboard_meta_ads && user?.id) void load();
+    if (permissions.dashboard && user?.id) void load();
     else setLoading(false);
     // Auth changes must trigger a fresh request; range changes must never allow an old response to win.
-  }, [range.from, range.to, user?.id, permissions.dashboard, permissions.dashboard_meta_ads]);
+  }, [range.from, range.to, user?.id, permissions.dashboard]);
 
-  if (!permissions.dashboard || !permissions.dashboard_meta_ads) return null;
+  if (!permissions.dashboard) return null;
   if (loading) return <div className="min-w-0 rounded-2xl border border-blue-200 bg-white p-4 shadow-sm"><div className="flex min-h-[176px] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-600" /></div></div>;
   if (!data?.connected) return <div className="min-w-0 rounded-2xl border border-blue-200 bg-white p-4 shadow-sm"><div className="flex min-h-[176px] flex-col justify-between"><div className="flex items-start justify-between"><div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50"><Facebook className="h-5 w-5 text-blue-600" /></div><button onClick={() => void load()} className="rounded-lg border border-slate-200 p-2 text-slate-400 hover:text-slate-700" aria-label="Refresh Meta Ads"><RefreshCw className="h-4 w-4" /></button></div><div><div className="text-[11px] font-bold text-slate-500">Ads Results</div><div className="mt-1 text-sm font-black text-slate-900">Meta Ad Account not connected</div><div className="mt-1 text-[10px] text-slate-400">{data.error || "Connect from All API"}</div></div></div></div>;
 

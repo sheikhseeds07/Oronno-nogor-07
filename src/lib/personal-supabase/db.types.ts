@@ -529,10 +529,12 @@ export type Database = {
       employee_permissions: {
         Row: {
           all_api: boolean
+          banners: boolean
           categories: boolean
           courier: boolean
           customer_feedback: boolean
           customer_management: boolean
+          coupons: boolean
           customers: boolean
           dashboard: boolean
           dashboard_confirmed_sell: boolean
@@ -544,6 +546,7 @@ export type Database = {
           dashboard_web_orders: boolean
           deleted_orders: boolean
           delivery: boolean
+          employees: boolean
           hrm: boolean
           hrm_attendance: boolean
           integrations: boolean
@@ -554,6 +557,7 @@ export type Database = {
           messages: boolean
           meta_ad_account: boolean
           new_order: boolean
+          offers: boolean
           order_division: boolean
           order_import: boolean
           order_rate_limit: boolean
@@ -568,10 +572,12 @@ export type Database = {
         }
         Insert: {
           all_api?: boolean
+          banners?: boolean
           categories?: boolean
           courier?: boolean
           customer_feedback?: boolean
           customer_management?: boolean
+          coupons?: boolean
           customers?: boolean
           dashboard?: boolean
           dashboard_confirmed_sell?: boolean
@@ -583,6 +589,7 @@ export type Database = {
           dashboard_web_orders?: boolean
           deleted_orders?: boolean
           delivery?: boolean
+          employees?: boolean
           hrm?: boolean
           hrm_attendance?: boolean
           integrations?: boolean
@@ -593,6 +600,7 @@ export type Database = {
           messages?: boolean
           meta_ad_account?: boolean
           new_order?: boolean
+          offers?: boolean
           order_division?: boolean
           order_import?: boolean
           order_rate_limit?: boolean
@@ -607,10 +615,12 @@ export type Database = {
         }
         Update: {
           all_api?: boolean
+          banners?: boolean
           categories?: boolean
           courier?: boolean
           customer_feedback?: boolean
           customer_management?: boolean
+          coupons?: boolean
           customers?: boolean
           dashboard?: boolean
           dashboard_confirmed_sell?: boolean
@@ -622,6 +632,7 @@ export type Database = {
           dashboard_web_orders?: boolean
           deleted_orders?: boolean
           delivery?: boolean
+          employees?: boolean
           hrm?: boolean
           hrm_attendance?: boolean
           integrations?: boolean
@@ -632,6 +643,7 @@ export type Database = {
           messages?: boolean
           meta_ad_account?: boolean
           new_order?: boolean
+          offers?: boolean
           order_division?: boolean
           order_import?: boolean
           order_rate_limit?: boolean

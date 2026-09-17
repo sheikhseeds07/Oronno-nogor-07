@@ -2,30 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 
-const PermSchema = z.object({
-  orders: z.boolean().default(false),
-  web_orders: z.boolean().default(false),
-  new_order: z.boolean().default(false),
-  products: z.boolean().default(false),
-  categories: z.boolean().default(false),
-  customers: z.boolean().default(false),
-  marketing: z.boolean().default(false),
-  delivery: z.boolean().default(false),
-  reports: z.boolean().default(false),
-  hrm: z.boolean().default(false),
-  settings: z.boolean().default(false),
-  landing_pages: z.boolean().default(false),
-  all_api: z.boolean().default(false),
-  messages: z.boolean().default(false),
-  dashboard: z.boolean().default(true),
-  dashboard_live_visitors: z.boolean().default(true),
-  dashboard_web_orders: z.boolean().default(true),
-  dashboard_incomplete_orders: z.boolean().default(true),
-  dashboard_stock_alert: z.boolean().default(true),
-  dashboard_confirmed_sell: z.boolean().default(true),
-  dashboard_meta_ads: z.boolean().default(true),
-  dashboard_time_filter: z.boolean().default(true),
-});
+const PERM_KEYS = ["dashboard","orders","order_import","products","offers","categories","customers","banners","coupons","landing_pages","employees","all_api","settings"] as const;
+const PermSchema = z.object(Object.fromEntries(PERM_KEYS.map((k) => [k, z.boolean().default(false)])) as Record<(typeof PERM_KEYS)[number], z.ZodDefault<z.ZodBoolean>>);
 
 export type EmployeePermissions = z.infer<typeof PermSchema>;
 
@@ -54,14 +32,14 @@ async function assertSuperAdmin(db: any, userId: string) {
   if ((await loadRole(db, userId)) !== "super_admin") throw new Error("শুধু CEO এই কাজটি করতে পারবেন");
 }
 
-/** CEO, or staff the CEO granted the HRM module. */
+/** CEO, or staff the CEO granted the Employees module. */
 async function assertHrm(db: any, userId: string) {
   const role = await loadRole(db, userId);
   if (!role) throw new Error("Unauthorized");
   if (role === "super_admin") return;
-  const { data, error } = await db.from("employee_permissions").select("hrm").eq("user_id", userId).maybeSingle();
+  const { data, error } = await db.from("employee_permissions").select("employees").eq("user_id", userId).maybeSingle();
   if (error) throw new Error(error.message);
-  if (!data?.hrm) throw new Error("Unauthorized");
+  if (!data?.employees) throw new Error("Unauthorized");
 }
 
 async function invokeAdminBridge(db: any, body: Record<string, unknown>) {

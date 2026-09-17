@@ -10,55 +10,56 @@ import { AdminOrderStability } from "@/components/admin/AdminOrderStability";
 import { PresswayyCard } from "@/components/admin/PresswayyCard";
 
 type SiteSettings = { site_name?: string; logo_url?: string };
-type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }>; exact?: boolean; perm?: keyof Permissions | "always"; tone: string };
+type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }>; exact?: boolean; perm: keyof Permissions; tone: string };
 const NAV: NavItem[] = [
-  { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true, perm: "always", tone: "from-emerald-400 to-cyan-500" },
+  { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true, perm: "dashboard", tone: "from-emerald-400 to-cyan-500" },
   { to: "/admin/orders", label: "Orders", icon: ShoppingBag, perm: "orders", tone: "from-blue-400 to-cyan-500" },
-  { to: "/admin/order-import", label: "Import Orders", icon: FileSpreadsheet, perm: "orders", tone: "from-teal-400 to-emerald-500" },
+  { to: "/admin/order-import", label: "Import Orders", icon: FileSpreadsheet, perm: "order_import", tone: "from-teal-400 to-emerald-500" },
   { to: "/admin/products", label: "Products", icon: Package, perm: "products", tone: "from-amber-400 to-orange-500" },
+  { to: "/admin/offers", label: "Offers", icon: Sparkles, perm: "offers", tone: "from-orange-400 to-rose-500" },
   { to: "/admin/categories", label: "Categories", icon: FolderTree, perm: "categories", tone: "from-fuchsia-400 to-pink-500" },
   { to: "/admin/customers", label: "Customers", icon: Users, perm: "customers", tone: "from-sky-400 to-blue-500" },
-  { to: "/admin/banners", label: "Banners", icon: ImageIcon, perm: "marketing", tone: "from-rose-400 to-red-500" },
-  { to: "/admin/coupons", label: "Coupons", icon: Tag, perm: "marketing", tone: "from-yellow-400 to-orange-500" },
+  { to: "/admin/banners", label: "Banners", icon: ImageIcon, perm: "banners", tone: "from-rose-400 to-red-500" },
+  { to: "/admin/coupons", label: "Coupons", icon: Tag, perm: "coupons", tone: "from-yellow-400 to-orange-500" },
   { to: "/admin/landing-pages", label: "Landing Pages", icon: Globe, perm: "landing_pages", tone: "from-cyan-400 to-blue-600" },
-  { to: "/admin/employees", label: "Employees", icon: UserCog, perm: "hrm", tone: "from-green-400 to-emerald-600" },
-  
+  { to: "/admin/employees", label: "Employees", icon: UserCog, perm: "employees", tone: "from-green-400 to-emerald-600" },
   { to: "/admin/all-api", label: "All APIs", icon: Layers, perm: "all_api", tone: "from-indigo-400 to-violet-600" },
   { to: "/admin/settings", label: "Settings", icon: Settings, perm: "settings", tone: "from-slate-300 to-slate-500" },
 ];
 
 // Per-page permission map. Every admin page (including ones without a sidebar
-// entry) resolves to the module the CEO grants in Employees → Permissions.
-const ROUTE_PERMS: { prefix: string; perm: keyof Permissions | "always" }[] = [
+// entry) resolves to one of the 13 modules the CEO grants in
+// Employees → Permissions. Unmapped pages are denied — there is no fallback.
+const ROUTE_PERMS: { prefix: string; perm: keyof Permissions }[] = [
   { prefix: "/admin/orders", perm: "orders" },
-  { prefix: "/admin/order-import", perm: "orders" },
   { prefix: "/admin/order-division", perm: "orders" },
   { prefix: "/admin/order-rate-limit", perm: "orders" },
   { prefix: "/admin/deleted-orders", perm: "orders" },
+  { prefix: "/admin/order-import", perm: "order_import" },
   { prefix: "/admin/products", perm: "products" },
-  { prefix: "/admin/offers", perm: "products" },
+  { prefix: "/admin/offers", perm: "offers" },
   { prefix: "/admin/categories", perm: "categories" },
   { prefix: "/admin/customers", perm: "customers" },
   { prefix: "/admin/customer-management", perm: "customers" },
   { prefix: "/admin/customer-feedback", perm: "customers" },
-  { prefix: "/admin/banners", perm: "marketing" },
-  { prefix: "/admin/coupons", perm: "marketing" },
+  { prefix: "/admin/banners", perm: "banners" },
+  { prefix: "/admin/coupons", perm: "coupons" },
   { prefix: "/admin/landing-pages", perm: "landing_pages" },
   { prefix: "/admin/landing-seeds", perm: "landing_pages" },
   { prefix: "/admin/landing-template", perm: "landing_pages" },
-  { prefix: "/admin/employees", perm: "hrm" },
+  { prefix: "/admin/employees", perm: "employees" },
   { prefix: "/admin/all-api", perm: "all_api" },
   { prefix: "/admin/integrations", perm: "all_api" },
   { prefix: "/admin/meta-ad-account", perm: "all_api" },
-  { prefix: "/admin/courier", perm: "delivery" },
+  { prefix: "/admin/courier", perm: "all_api" },
   { prefix: "/admin/settings", perm: "settings" },
 ];
 
-function requiredPermFor(pathname: string): keyof Permissions | "always" {
-  if (pathname === "/admin" || pathname === "/admin/") return "always";
+function requiredPermFor(pathname: string): keyof Permissions | null {
+  if (pathname === "/admin" || pathname === "/admin/") return "dashboard";
   const match = ROUTE_PERMS.filter((r) => pathname === r.prefix || pathname.startsWith(r.prefix + "/"))
     .sort((a, b) => b.prefix.length - a.prefix.length)[0];
-  return match ? match.perm : "always";
+  return match ? match.perm : null;
 }
 
 const orderUiCss = `
@@ -153,9 +154,9 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
   useEffect(() => { if (!initialized) return; if (!user) navigate({ to: "/login" as any }); }, [user, initialized, navigate]);
   if (!mounted || (loading && !role)) return <div className="min-h-screen flex items-center justify-center">Please wait...</div>;
   if (!isStaff) return <div className="min-h-screen flex items-center justify-center bg-muted px-4"><div className="max-w-md rounded-xl border bg-card p-6 text-center shadow-sm"><h1 className="text-xl font-bold text-brand-dark">Access Denied</h1><p className="mt-2 text-sm text-muted-foreground">You do not have permission to view this page.</p><button onClick={() => navigate({ to: "/" })} className="mt-5 rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-primary-foreground">Go Home</button></div></div>;
-  const visibleNav = NAV.filter((n) => { if (isSuperAdmin) return true; if (n.perm === "always") return true; return n.perm ? permissions[n.perm] : false; });
+  const visibleNav = NAV.filter((n) => isSuperAdmin || permissions[n.perm] === true);
   const requiredPerm = requiredPermFor(loc.pathname);
-  if (!isSuperAdmin && requiredPerm !== "always" && !permissions[requiredPerm]) return <div className="min-h-screen flex items-center justify-center bg-muted px-4"><div className="max-w-md rounded-xl border bg-card p-6 text-center shadow-sm"><h1 className="text-xl font-bold text-brand-dark">এই পেজের অনুমতি নেই</h1><p className="mt-2 text-sm text-muted-foreground">এই অংশটি দেখার অনুমতি আপনাকে দেওয়া হয়নি। প্রয়োজন হলে CEO-কে জানান।</p><button onClick={() => navigate({ to: "/admin" })} className="mt-5 rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-primary-foreground">ড্যাশবোর্ডে যান</button></div></div>;
+  if (!isSuperAdmin && (requiredPerm === null || permissions[requiredPerm] !== true)) return <div className="min-h-screen flex items-center justify-center bg-muted px-4"><div className="max-w-md rounded-xl border bg-card p-6 text-center shadow-sm"><h1 className="text-xl font-bold text-brand-dark">এই পেজের অনুমতি নেই</h1><p className="mt-2 text-sm text-muted-foreground">এই অংশটি দেখার অনুমতি আপনাকে দেওয়া হয়নি। প্রয়োজন হলে CEO-কে জানান।</p><button onClick={() => navigate({ to: "/admin" })} className="mt-5 rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-primary-foreground">ড্যাশবোর্ডে যান</button></div></div>;
   const logout = async () => { await supabase.auth.signOut(); navigate({ to: "/" }); };
   return <div data-admin-route={loc.pathname} className="flex min-h-screen bg-muted">
     {loc.pathname === "/admin/orders" && <style>{orderUiCss}</style>}

@@ -89,7 +89,7 @@ export async function assertPermission(userId: string, ...modules: string[]): Pr
 }
 
 export async function assertCanManageOrders(userId: string): Promise<void> {
-  await assertPermission(userId, "orders", "web_orders");
+  await assertPermission(userId, "orders");
 }
 
 export async function assertIsAdmin(userId: string): Promise<void> {
