@@ -25,7 +25,7 @@ type PersistentHit = { result: CourierHistoryResult; fresh: boolean };
 const SUCCESS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const FAILURE_CACHE_TTL_MS = 15 * 1000;
 const STALE_CACHE_TTL_MS = 30 * 60 * 1000;
-const CACHE_VERSION = "courier-history-v10-hoorin-fast";
+const CACHE_VERSION = "courier-history-v11-hoorin-clean";
 const MAX_CACHE_ENTRIES = 3000;
 
 const courierCache = new Map<string, CacheEntry>();
@@ -59,14 +59,23 @@ function writeCache(key: string, result: CourierHistoryResult) {
 
 function normalizeStats(value: unknown): CourierStat[] {
   if (!Array.isArray(value)) return [];
+  const int = (raw: unknown) => {
+    const n = Number(raw);
+    return Number.isFinite(n) ? Math.max(0, Math.round(n)) : 0;
+  };
   return value
     .filter((row): row is Record<string, unknown> => !!row && typeof row === "object")
-    .map((row) => ({
-      name: String(row.name ?? "Courier"),
-      total: Number.isFinite(Number(row.total)) ? Number(row.total) : 0,
-      success: Number.isFinite(Number(row.success)) ? Number(row.success) : 0,
-      cancelled: Number.isFinite(Number(row.cancelled)) ? Number(row.cancelled) : 0,
-    }));
+    .map((row) => {
+      const name = String(row.name ?? "Courier").trim() || "Courier";
+      const total = int(row.total);
+      let success = Math.min(int(row.success), total);
+      let cancelled = Math.min(int(row.cancelled), total);
+      if (success + cancelled > total) cancelled = Math.max(0, total - success);
+      return { name, total, success, cancelled };
+    })
+    // A courier with zero parcels cannot show delivered/cancelled counts.
+    .filter((row) => row.total > 0)
+    .sort((a, b) => b.total - a.total);
 }
 
 async function readPersistentCache(phone: string): Promise<PersistentHit | null> {
