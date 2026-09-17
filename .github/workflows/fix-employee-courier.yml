@@ -2,12 +2,11 @@ name: Fix employee courier sending
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - '.github/workflows/fix-employee-courier.yml'
 permissions:
   contents: write
 jobs:
   fix:
+    if: github.event.head_commit.message != 'fix: allow employees to send courier orders and load RTS courier names'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
