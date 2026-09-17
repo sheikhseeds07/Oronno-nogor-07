@@ -1,0 +1,19 @@
+-- Ensure every permission field used by the CEO/Admin permission UI exists in the database.
+ALTER TABLE public.employee_permissions
+  ADD COLUMN IF NOT EXISTS dashboard BOOLEAN NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS orders BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS import_orders BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS products BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS offers BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS categories BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS customers BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS banners BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS coupons BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS landing_pages BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS employees BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS attendance BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS all_api BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS settings BOOLEAN NOT NULL DEFAULT false;
+
+-- Refresh PostgREST schema cache after the table definition changes.
+NOTIFY pgrst, 'reload schema';
