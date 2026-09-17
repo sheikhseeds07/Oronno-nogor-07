@@ -95,6 +95,10 @@ function sanitizeStat(stat: CourierStat): CourierStat | null {
   let total = Math.max(0, Math.round(num(stat.total)));
   let success = Math.max(0, Math.round(num(stat.success)));
   let cancelled = Math.max(0, Math.round(num(stat.cancelled)));
+  const courierId = name.replace(/[\s_-]/g, "").toLowerCase();
+  // Hoorin currently returns this fixed RedX placeholder for numbers with no
+  // RedX history. Never present provider placeholder data as customer history.
+  if (["redx", "redex", "redxbd"].includes(courierId) && total === 10 && success === 6 && cancelled === 4) return null;
   // A courier with no parcels at all cannot have delivered or cancelled parcels.
   if (total <= 0) return null;
   if (success > total) success = total;
