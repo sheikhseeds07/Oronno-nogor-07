@@ -6,7 +6,7 @@ type JsonRecord = Record<string, unknown>;
 type HistoryResult = { configured: boolean; stats: CourierStat[]; error: string | null; stale?: boolean; source?: string };
 type PersistentHit = { result: HistoryResult; fresh: boolean };
 
-const SUCCESS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const SUCCESS_CACHE_TTL_MS = 2 * 60 * 60 * 1000;
 const FAILURE_CACHE_TTL_MS = 20 * 1000;
 const STALE_CACHE_TTL_MS = 30 * 60 * 1000;
 const AUTHZ_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -89,6 +89,29 @@ function prettyCourier(normalizedKey: string, fallback: string) {
   return map[normalizedKey] ?? fallback;
 }
 
+function sanitizeStat(stat: CourierStat): CourierStat | null {
+  const name = String(stat.name ?? "").trim();
+  if (!name) return null;
+  let total = Math.max(0, Math.round(num(stat.total)));
+  let success = Math.max(0, Math.round(num(stat.success)));
+  let cancelled = Math.max(0, Math.round(num(stat.cancelled)));
+  // A courier with no parcels at all cannot have delivered or cancelled parcels.
+  if (total <= 0) return null;
+  if (success > total) success = total;
+  if (cancelled > total) cancelled = total;
+  if (success + cancelled > total) cancelled = Math.max(0, total - success);
+  return { name, total, success, cancelled };
+}
+
+export function sanitizeStats(stats: CourierStat[]): CourierStat[] {
+  const clean: CourierStat[] = [];
+  for (const stat of stats ?? []) {
+    const ok = stat && typeof stat === "object" ? sanitizeStat(stat) : null;
+    if (ok) clean.push(ok);
+  }
+  return clean.sort((a, b) => b.total - a.total);
+}
+
 function parseStats(payload: unknown): CourierStat[] {
   if (!payload || typeof payload !== "object") return [];
   const found = new Map<string, CourierStat>();
@@ -117,12 +140,21 @@ function parseStats(payload: unknown): CourierStat[] {
     const normalizedKey = String(rawName).replace(/[\s_-]/g, "").toLowerCase();
     const isCourier = COURIER_KEY_RE.test(normalizedKey);
 
-    if ((isCourier || hasCounts) && !SKIP_KEY_RE.test(normalizedKey)) {
+    // Only a node that is explicitly named after a courier AND carries its own
+    // count fields may become a courier row. Generic nodes with stray numbers no
+    // longer leak into (or overwrite) a courier's numbers.
+    if (isCourier && hasCounts && !SKIP_KEY_RE.test(normalizedKey)) {
       const name = prettyCourier(normalizedKey, pretty(String(rawName)));
       const id = name.toLowerCase();
-      const prev = found.get(id);
-      if (!prev || total > prev.total || (total === prev.total && success > prev.success)) {
-        found.set(id, { name, total, success, cancelled });
+      const candidate = sanitizeStat({ name, total, success, cancelled });
+      if (candidate) {
+        const prev = found.get(id);
+        if (!prev || candidate.total > prev.total || (candidate.total === prev.total && candidate.success > prev.success)) {
+          found.set(id, candidate);
+        }
+      } else {
+        // Explicit empty history for this courier: keep it out, do not inherit.
+        if (!found.has(id)) found.delete(id);
       }
     }
 
@@ -132,15 +164,13 @@ function parseStats(payload: unknown): CourierStat[] {
   };
 
   visit("root", payload, 0);
-  return Array.from(found.values())
-    .filter((s) => COURIER_KEY_RE.test(s.name.replace(/[\s_-]/g, "").toLowerCase()) || s.total > 0 || s.success > 0 || s.cancelled > 0)
-    .sort((a, b) => b.total - a.total);
+  return sanitizeStats(Array.from(found.values()));
 }
 
 async function readPersistent(admin: ReturnType<typeof createClient>, phone: string): Promise<PersistentHit | null> {
   const { data, error } = await admin.from("courier_history_cache").select("configured,stats,error,expires_at").eq("phone", phone).maybeSingle();
   if (error || !data) return null;
-  const result: HistoryResult = { configured: Boolean(data.configured), stats: Array.isArray(data.stats) ? data.stats as CourierStat[] : [], error: typeof data.error === "string" ? data.error : null, source: "cache" };
+  const result: HistoryResult = { configured: Boolean(data.configured), stats: sanitizeStats(Array.isArray(data.stats) ? data.stats as CourierStat[] : []), error: typeof data.error === "string" ? data.error : null, source: "cache" };
   const expiresAt = new Date(String(data.expires_at ?? "")).getTime();
   return { result, fresh: Number.isFinite(expiresAt) && expiresAt > Date.now() };
 }
