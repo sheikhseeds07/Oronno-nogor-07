@@ -14,7 +14,7 @@ type NavItem = { to: string; label: string; icon: React.ComponentType<{ classNam
 const NAV: NavItem[] = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true, perm: "always", tone: "from-emerald-400 to-cyan-500" },
   { to: "/admin/orders", label: "Orders", icon: ShoppingBag, perm: "orders", tone: "from-blue-400 to-cyan-500" },
-  { to: "/admin/order-import", label: "Import Orders", icon: FileSpreadsheet, perm: "orders", tone: "from-teal-400 to-emerald-500" },
+  { to: "/admin/order-import", label: "Import Orders", icon: FileSpreadsheet, perm: "import_orders", tone: "from-teal-400 to-emerald-500" },
   { to: "/admin/products", label: "Products", icon: Package, perm: "products", tone: "from-amber-400 to-orange-500" },
   { to: "/admin/categories", label: "Categories", icon: FolderTree, perm: "categories", tone: "from-fuchsia-400 to-pink-500" },
   { to: "/admin/customers", label: "Customers", icon: Users, perm: "customers", tone: "from-sky-400 to-blue-500" },
@@ -119,7 +119,7 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
   useEffect(() => { if (!initialized) return; if (!user) navigate({ to: "/login" as any }); }, [user, initialized, navigate]);
   if (!mounted || (loading && !role)) return <div className="min-h-screen flex items-center justify-center">Please wait...</div>;
   if (!isStaff) return <div className="min-h-screen flex items-center justify-center bg-muted px-4"><div className="max-w-md rounded-xl border bg-card p-6 text-center shadow-sm"><h1 className="text-xl font-bold text-brand-dark">Access Denied</h1><p className="mt-2 text-sm text-muted-foreground">You do not have permission to view this page.</p><button onClick={() => navigate({ to: "/" })} className="mt-5 rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-primary-foreground">Go Home</button></div></div>;
-  const visibleNav = NAV.filter((n) => { if (isAdmin) return true; if (n.exact && n.to === "/admin") return false; if (n.perm === "always") return true; return n.perm ? permissions[n.perm] : false; });
+  const visibleNav = NAV.filter((n) => { if (role === "super_admin") return true; if (n.exact && n.to === "/admin") return false; if (n.perm === "always") return true; return n.perm ? permissions[n.perm] : false; });
   const myProfileTo = !isAdmin && user?.id ? `/admin/employees_/${user.id}` : null;
   const logout = async () => { await supabase.auth.signOut(); navigate({ to: "/" }); };
   return <div data-admin-route={loc.pathname} className="flex min-h-screen bg-muted">
