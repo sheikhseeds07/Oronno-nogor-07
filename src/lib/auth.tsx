@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { staffSupabase, customerSupabase } from "@/lib/personal-supabase/client";
 import type { Session } from "@supabase/supabase-js";
+import { markStaffBypass } from "@/lib/staff-bypass";
 
 export type StaffRole = "super_admin" | "admin" | "employee" | null;
 // Exactly the 13 modules the CEO can tick in Employees → Permissions.
@@ -78,7 +79,10 @@ async function loadStaff(s: Session | null, force = false) {
     if (role === "super_admin") { permissions = ALL_TRUE; }
     else if (role) { const { data: p } = await withRetry(async () => { const result = await staffSupabase.from("employee_permissions").select("*").eq("user_id", s.user.id).maybeSingle(); if (result.error) throw result.error; return result; }); if (seq !== staffLoadSeq) return; permissions = p ? readPerms(p) : ALL_FALSE; }
     try { window.localStorage.setItem("ss_auth_cache_v1", JSON.stringify({ role, permissions, user_id: s.user.id })); } catch {}
-    if (seq !== staffLoadSeq) return; setStaff({ session: s, user: s.user, role, permissions, loading: false, initialized: true });
+    if (seq !== staffLoadSeq) return;
+    // Remember this as an owner/staff device so the visitor block screen can never lock it out.
+    if (role) markStaffBypass();
+    setStaff({ session: s, user: s.user, role, permissions, loading: false, initialized: true });
   } catch { if (seq !== staffLoadSeq) return; setStaff({ session: s, user: s.user, loading: false, initialized: true, ...(sameUser ? {} : { role: null, permissions: ALL_FALSE }) }); }
 }
 

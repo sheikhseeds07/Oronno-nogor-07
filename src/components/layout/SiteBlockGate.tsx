@@ -5,6 +5,7 @@ import { getSiteBlockStatus } from "@/lib/visitor-block.functions";
 import { supabase } from "@/lib/personal-supabase/client";
 import { safeUUID } from "@/lib/uuid";
 import { BlockedNotice } from "@/components/layout/BlockedNotice";
+import { hasStaffBypass } from "@/lib/staff-bypass";
 
 const DEVICE_KEY = "hng-device-id";
 
@@ -38,7 +39,7 @@ export function SiteBlockGate() {
 
   const { data } = useQuery({
     queryKey: ["site-block-gate", deviceId, customerId],
-    enabled: !!deviceId,
+    enabled: !!deviceId && !hasStaffBypass(),
     staleTime: 60_000,
     refetchOnWindowFocus: false,
     queryFn: () => check({ data: { deviceId, customerId } }),

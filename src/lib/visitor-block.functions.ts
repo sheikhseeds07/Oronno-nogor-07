@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestIP } from "@tanstack/react-start/server";
+import { getRequestHeader, getRequestIP } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { supabase } from "@/lib/personal-supabase/client";
+import { requestHasStaffBypass } from "@/lib/staff-bypass";
 
 type CacheEntry = { blocked: boolean; at: number };
 // Speed: this check runs on the root loader of every page view, so a cold cache
@@ -12,11 +13,21 @@ const ALLOW_CACHE_MS = 600_000;
 const BLOCK_CACHE_MS = 30_000;
 const cache = new Map<string, CacheEntry>();
 
+function isStaffRequest(): boolean {
+  try {
+    return requestHasStaffBypass(getRequestHeader("cookie"));
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Site-wide block check for the current visitor IP.
  * Public on purpose: it only answers "is this request's own IP blocked".
  */
 export const getVisitorBlockStatus = createServerFn({ method: "GET" }).handler(async () => {
+  // Owner / staff devices are never blocked.
+  if (isStaffRequest()) return { blocked: false, ip: null as string | null };
   const ip = getRequestIP({ xForwardedFor: true }) ?? null;
   if (!ip) return { blocked: false, ip: null as string | null };
 
@@ -46,6 +57,7 @@ const GateSchema = z.object({
 export const getSiteBlockStatus = createServerFn({ method: "POST" })
   .inputValidator((input) => GateSchema.parse(input ?? {}))
   .handler(async ({ data }) => {
+    if (isStaffRequest()) return { blocked: false };
     const deviceId = data.deviceId ?? null;
     const customerId = data.customerId ?? null;
     if (!deviceId && !customerId) return { blocked: false };
