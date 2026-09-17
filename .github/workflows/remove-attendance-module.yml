@@ -1,0 +1,79 @@
+name: Remove Attendance Module
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  remove-attendance:
+    if: "!contains(github.event.head_commit.message, 'chore: remove attendance module from source')"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Remove attendance from source
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          def edit(path, fn):
+              p = Path(path)
+              if not p.exists(): return
+              s = p.read_text()
+              n = fn(s)
+              p.write_text(n)
+
+          # Auth: remove attendance permission and route gate only.
+          edit('src/lib/auth.tsx', lambda s: re.sub(r'\s*attendance:\s*boolean;', '', s).replace(' attendance: true,', '').replace(' attendance: !!p.attendance,', '').replace('  if (path === "/admin/attendance" || path.startsWith("/admin/attendance/")) return permissions.attendance;\n', ''))
+
+          # Employee permission schema/UI: remove only the attendance permission field.
+          edit('src/lib/employee-admin.functions.ts', lambda s: re.sub(r'\n  attendance: z\.boolean\(\)\.default\(false\),', '', s))
+          edit('src/routes/admin/employees.tsx', lambda s: re.sub(r'\n  \{ key: "attendance", label: "Attendance" \},', '', re.sub(r'\n  attendance: false,', '', s)))
+
+          # Admin sidebar: remove Attendance item and now-unused Clock import.
+          edit('src/components/admin/AdminLayout.tsx', lambda s: re.sub(r'\n  \{ to: "/admin/attendance", label: "Attendance", icon: Clock, perm: "hrm", tone: "from-violet-400 to-purple-600" \},', '', s).replace(', Clock,', ','))
+
+          # Keep employee profile functionality, but remove all attendance/check-in UI and data.
+          profile_fn = '''import { createServerFn } from "@tanstack/react-start";\nimport { z } from "zod";\nimport { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";\nimport { supabaseAdmin } from "@/lib/personal-supabase/client.server";\n\nasync function isSuperAdminUser(userId: string) {\n  const { data } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", userId).eq("role", "super_admin").limit(1);\n  return !!data?.length;\n}\n\nexport const getEmployeeProfile = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator((input) => z.object({ user_id: z.string().uuid().optional() }).parse(input)).handler(async ({ data, context }) => {\n  const targetId = data.user_id ?? context.userId;\n  if (targetId !== context.userId && !(await isSuperAdminUser(context.userId))) throw new Error("Unauthorized");\n  const since = new Date(); since.setDate(since.getDate() - 30);\n  const [{ data: profile }, { data: emp }] = await Promise.all([\n    supabaseAdmin.from("profiles").select("*").eq("id", targetId).maybeSingle(),\n    supabaseAdmin.from("employees").select("*").eq("user_id", targetId).maybeSingle(),\n  ]);\n  let total = 0, delivered = 0, cancelled = 0;\n  try { const { data: orders } = await supabaseAdmin.from("orders").select("id,status,created_at").or(`assigned_to.eq.${targetId},created_by.eq.${targetId}`).gte("created_at", since.toISOString()); const ords = orders ?? []; total = ords.length; delivered = ords.filter((o) => o.status === "delivered").length; cancelled = ords.filter((o) => ["cancelled", "returned"].includes(o.status as string)).length; } catch {}\n  return { profile, employee: emp as any, stats: { totalOrders: total, delivered, cancelled, score: Math.max(0, Math.min(100, delivered * 10 + (total - delivered - cancelled) * 2 - cancelled * 3)) } };\n});\n'''
+          Path('src/lib/employee-profile.functions.ts').write_text(profile_fn)
+
+          p = Path('src/routes/admin/employees_.$userId.tsx')
+          s = p.read_text()
+          s = s.replace('import { getEmployeeProfile, checkInAttendance, checkOutAttendance } from "@/lib/attendance.functions";', 'import { getEmployeeProfile } from "@/lib/employee-profile.functions";')
+          s = s.replace('import { format } from "date-fns";\n', '')
+          s = s.replace('import { ArrowLeft, Clock, LogIn, LogOut, XCircle, Pencil, Upload, UserRound, X } from "lucide-react";', 'import { ArrowLeft, Pencil, Upload, UserRound, X } from "lucide-react";')
+          s = re.sub(r'\n  const checkIn = useServerFn\(checkInAttendance\);\n  const checkOut = useServerFn\(checkOutAttendance\);', '', s)
+          s = re.sub(r'\n  const doCheckIn = async \(\) => \{.*?\n  \};\n\n  const doCheckOut = async \(\) => \{.*?\n  \};\n', '\n', s, flags=re.S)
+          s = s.replace('  const { profile, employee, attendance, activeAttendanceId } = data;\n', '  const { profile, employee } = data;\n')
+          s = re.sub(r'\n  const records = attendance \?\? \[\];', '', s)
+          s = re.sub(r'\n          \{activeAttendanceId \? \(.*?\n          \)\}', '', s, flags=re.S)
+          s = re.sub(r'\n    <div className="bg-white border rounded-2xl overflow-hidden shadow-sm">\n      <div className="p-4 border-b font-semibold flex items-center gap-2"><Clock className="w-4 h-4" /> Attendance & Working Hours</div>.*?\n    </div>\n  </AdminLayout>;', '\n  </AdminLayout>;', s, flags=re.S)
+          p.write_text(s)
+
+          # Generated router: remove the deleted attendance route references.
+          edit('src/routeTree.gen.ts', lambda s: re.sub(r'import \{ Route as AdminAttendanceRouteImport \} from \'\.\/routes\/admin\/attendance\'\n', '', re.sub(r'const AdminAttendanceRoute = AdminAttendanceRouteImport\.update\(\{.*?\n\} as any\)\n', '', s, flags=re.S).replace("  '/admin/attendance': typeof AdminAttendanceRoute\n", '').replace('  AdminAttendanceRoute,\n', '')))
+          PY
+
+      - name: Delete attendance-only files
+        run: |
+          rm -f src/routes/admin/attendance.tsx src/lib/attendance.functions.ts
+
+      - name: Verify no runtime attendance references remain
+        run: |
+          if git grep -n -i 'attendance' -- 'src' ':!src/routeTree.gen.ts'; then
+            echo 'Unexpected attendance reference remains in src.'
+            exit 1
+          fi
+
+      - name: Commit source changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "chore: remove attendance module from source"
+          git push
