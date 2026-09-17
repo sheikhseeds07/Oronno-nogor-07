@@ -1,8 +1,8 @@
 name: Fix employee RTS courier access
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
 permissions:
   contents: write
 jobs:
@@ -18,7 +18,6 @@ jobs:
           from pathlib import Path
           import re
 
-          # 1) orders.tsx: courier display names must be obtained server-side.
           p = Path('src/routes/admin/orders.tsx')
           s = p.read_text(encoding='utf-8')
           s = s.replace(
@@ -27,31 +26,60 @@ jobs:
               1,
           )
           marker = '  const qc = useQueryClient();\n  const sendBulk = useServerFn(sendOrdersToSteadfast);'
-          if marker in s and 'getSteadfastDisplayNames' not in s[s.index(marker):s.index(marker)+3000]:
-              s = s.replace(marker, marker + '''\n  const getCourierNames = useServerFn(getSteadfastDisplayNames);''', 1)
-          # Replace any existing client-side integrations/config lookup used for the RTS labels.
-          pattern = re.compile(r'''  useEffect\(\(\) => \{\n    let alive = true;\n    \(async \(\) => \{\n      const \{ data \} = await supabase\.from\("integrations"\)\.select\("name,config"\)\.in\("name", \["all_api_steadfast", "all_api_steadfast_2"\]\);\n      if \(!alive\) return;\n      const next: Record<1 \| 2, string> = \{ 1: [^\n]+\};\n      for \(const row of data \?\? \[\]\) \{\n        const cfg = \(row\.config \?\? \{\}\) as \{ display_name\?: string \};\n        if \(row\.name === "all_api_steadfast" && cfg\.display_name\?\.trim\(\)\) next\[1\] = cfg\.display_name\.trim\(\);\n        if \(row\.name === "all_api_steadfast_2" && cfg\.display_name\?\.trim\(\)\) next\[2\] = cfg\.display_name\.trim\(\);\n      \}\n      setCourierDisplayNames\(next\);\n    \}\)\(\);\n    return \(\) => \{ alive = false; \};\n  \}, \[\]\);''', re.M)
-          replacement = '''  useEffect(() => {\n    let alive = true;\n    (async () => {\n      try {\n        const res = await getCourierNames({ data: {} });\n        if (!alive) return;\n        setCourierDisplayNames(res.names);\n      } catch {\n        // Keep safe fallback labels when the server-side lookup is temporarily unavailable.\n      }\n    })();\n    return () => { alive = false; };\n  }, [getCourierNames]);'''
+          if marker in s and 'const getCourierNames = useServerFn(getSteadfastDisplayNames);' not in s:
+              s = s.replace(marker, marker + '\n  const getCourierNames = useServerFn(getSteadfastDisplayNames);', 1)
+          pattern = re.compile(r'''  useEffect\(\(\) => \{\n    let alive = true;\n    \(async \(\) => \{\n      const \{ data \} = await supabase\.from\("integrations"\)\.select\("name,config"\)\.in\("name", \["all_api_steadfast", "all_api_steadfast_2"\]\);\n      if \(!alive\) return;\n      const next: Record<1 \| 2, string> = \{ 1: [^\n]+\};\n      for \(const row of data \?\? \[\]\) \{\n        const cfg = \(row\.config \?\? \{\}\) as \{ display_name\?: string \};\n        if \(row\.name === "all_api_steadfast" && cfg\.display_name\?\.trim\(\)\) next\[1\] = cfg\.display_name\.trim\(\);\n        if \(row\.name === "all_api_steadfast_2" && cfg\.display_name\?\.trim\(\)\) next\[2\] = cfg\.display_name\.trim\(\);\n      \}\n      if \(alive\) setCourierDisplayNames\(next\);\n    \}\)\(\);\n    return \(\) => \{ alive = false; \};\n  \}, \[\]\);''', re.M)
+          replacement = '''  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await getCourierNames({ data: {} });
+        if (!alive) return;
+        setCourierDisplayNames(res.names);
+      } catch {
+        // Keep safe fallback labels when server lookup is unavailable.
+      }
+    })();
+    return () => { alive = false; };
+  }, [getCourierNames]);'''
           s, n = pattern.subn(replacement, s, count=1)
-          if n == 0:
-              print('WARNING: existing courier display-name effect was not matched; leaving it unchanged')
+          if n != 1:
+              raise SystemExit('RTS courier display-name effect was not found')
           p.write_text(s, encoding='utf-8')
 
-          # 2) courier-test.functions.ts: expose only safe display names to staff; never expose config/secrets.
           p = Path('src/lib/courier-test.functions.ts')
           s = p.read_text(encoding='utf-8')
           if 'export const getSteadfastDisplayNames' not in s:
-              anchor = '''async function loadSteadfastCfg(account: 1 | 2 = 1): Promise<Record<string, string>> {'''
-              idx = s.find(anchor)
-              if idx < 0:
-                  raise SystemExit('loadSteadfastCfg anchor not found')
-              end = s.find('\n}\n\nexport const sendOrdersToSteadfast', idx)
+              end = s.find('\n}\n\nexport const sendOrdersToSteadfast')
               if end < 0:
                   raise SystemExit('sendOrdersToSteadfast anchor not found')
-              insert = '''\n\nexport const getSteadfastDisplayNames = createServerFn({ method: "GET" })\n  .middleware([requireSupabaseAuth])\n  .handler(async ({ context }) => {\n    await assertCanManageOrders(context.userId);\n    const { data: rows } = await supabaseAdmin\n      .from("integrations")\n      .select("name,config,is_active")\n      .in("name", [STEADFAST_ROW_NAME[1], STEADFAST_ROW_NAME[2], "courier_steadfast"]);\n\n    const names: Record<1 | 2, string> = { 1: "কুরিয়ার ১", 2: "কুরিয়ার ২" };\n    for (const account of [1, 2] as const) {\n      const exact = (rows ?? []).find((row) => row.name === STEADFAST_ROW_NAME[account] && row.is_active);\n      const fallback = account === 1 ? (rows ?? []).find((row) => row.name === "courier_steadfast" && row.is_active) : undefined;\n      const row = exact ?? fallback;\n      const cfg = (row?.config ?? {}) as Record<string, unknown>;\n      const displayName = typeof cfg.display_name === "string" ? cfg.display_name.trim() : "";\n      if (displayName) names[account] = displayName;\n    }\n    return { names };\n  });'''
+              insert = '''
+
+export const getSteadfastDisplayNames = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertCanManageOrders(context.userId);
+    const { data: rows } = await supabaseAdmin
+      .from("integrations")
+      .select("name,config,is_active")
+      .in("name", [STEADFAST_ROW_NAME[1], STEADFAST_ROW_NAME[2], "courier_steadfast"]);
+    const names: Record<1 | 2, string> = { 1: "কুরিয়ার ১", 2: "কুরিয়ার ২" };
+    for (const account of [1, 2] as const) {
+      const exact = (rows ?? []).find((row) => row.name === STEADFAST_ROW_NAME[account] && row.is_active);
+      const fallback = account === 1 ? (rows ?? []).find((row) => row.name === "courier_steadfast" && row.is_active) : undefined;
+      const row = exact ?? fallback;
+      const cfg = (row?.config ?? {}) as Record<string, unknown>;
+      const displayName = typeof cfg.display_name === "string" ? cfg.display_name.trim() : "";
+      if (displayName) names[account] = displayName;
+    }
+    return { names };
+  });'''
               s = s[:end+2] + insert + s[end+2:]
-          # Make config loading tolerant of an inactive exact row when credentials are actually saved there.\n          old = '''  const row = (rows ?? []).find((r) => r.name === name && r.is_active) ?? (rows ?? []).find((r) => r.is_active) ?? (rows ?? [])[0];'''
-          new = '''  const row = (rows ?? []).find((r) => r.name === name && r.is_active)\n    ?? (rows ?? []).find((r) => r.name === name)\n    ?? (rows ?? []).find((r) => r.is_active)\n    ?? (rows ?? [])[0];'''
+          old = '  const row = (rows ?? []).find((r) => r.name === name && r.is_active) ?? (rows ?? []).find((r) => r.is_active) ?? (rows ?? [])[0];'
+          new = '''  const row = (rows ?? []).find((r) => r.name === name && r.is_active)
+    ?? (rows ?? []).find((r) => r.name === name)
+    ?? (rows ?? []).find((r) => r.is_active)
+    ?? (rows ?? [])[0];'''
           s = s.replace(old, new, 1)
           p.write_text(s, encoding='utf-8')
           PY
@@ -61,7 +89,6 @@ jobs:
           git add src/routes/admin/orders.tsx src/lib/courier-test.functions.ts
           git commit -m 'fix: allow employees to send RTS via courier'
           git push origin HEAD:main
-          # Remove this one-time patch workflow after the source fix is pushed.
           git rm -f .github/workflows/fix-rtsp-courier-names.yml
           git commit -m 'chore: remove temporary RTS courier patch workflow'
           git push origin HEAD:main
