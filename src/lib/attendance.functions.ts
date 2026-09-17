@@ -3,11 +3,14 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 
+async function isSuperAdminUser(userId: string) {
+  const { data } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", userId).eq("role", "super_admin").limit(1);
+  return !!data?.length;
+}
 async function isAdminUser(userId: string) {
   const { data } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", userId).in("role", ["admin", "super_admin"]).limit(1);
   return !!data?.length;
 }
-
 async function doCheckIn(targetUserId: string) {
   const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
   const { data: existing } = await supabaseAdmin.from("attendance").select("id,check_out").eq("user_id", targetUserId).gte("check_in", startOfDay.toISOString()).order("check_in", { ascending: false }).limit(1).maybeSingle();
@@ -16,7 +19,6 @@ async function doCheckIn(targetUserId: string) {
   if (error) throw new Error(error.message);
   return { ok: true, id: data.id, already: false };
 }
-
 async function doCheckOut(targetUserId: string) {
   const { data: existing } = await supabaseAdmin.from("attendance").select("id").eq("user_id", targetUserId).is("check_out", null).order("check_in", { ascending: false }).limit(1).maybeSingle();
   if (!existing) return { ok: false, message: "Active check-in পাওয়া যায়নি" };
@@ -27,19 +29,17 @@ async function doCheckOut(targetUserId: string) {
 
 export const checkInAttendance = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator((input) => z.object({ user_id: z.string().uuid().optional() }).optional().parse(input)).handler(async ({ data, context }) => {
   const targetId = data?.user_id ?? context.userId;
-  if (targetId !== context.userId && !(await isAdminUser(context.userId))) throw new Error("Unauthorized");
+  if (targetId !== context.userId && !(await isSuperAdminUser(context.userId))) throw new Error("Unauthorized");
   return doCheckIn(targetId);
 });
-
 export const checkOutAttendance = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator((input) => z.object({ user_id: z.string().uuid().optional() }).optional().parse(input)).handler(async ({ data, context }) => {
   const targetId = data?.user_id ?? context.userId;
-  if (targetId !== context.userId && !(await isAdminUser(context.userId))) throw new Error("Unauthorized");
+  if (targetId !== context.userId && !(await isSuperAdminUser(context.userId))) throw new Error("Unauthorized");
   return doCheckOut(targetId);
 });
-
 export const getEmployeeProfile = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator((input) => z.object({ user_id: z.string().uuid().optional() }).parse(input)).handler(async ({ data, context }) => {
   const targetId = data.user_id ?? context.userId;
-  if (targetId !== context.userId && !(await isAdminUser(context.userId))) throw new Error("Unauthorized");
+  if (targetId !== context.userId && !(await isSuperAdminUser(context.userId))) throw new Error("Unauthorized");
   const since = new Date(); since.setDate(since.getDate() - 30);
   const [{ data: att }, { data: profile }, { data: emp }] = await Promise.all([
     supabaseAdmin.from("attendance").select("*").eq("user_id", targetId).gte("check_in", since.toISOString()).order("check_in", { ascending: false }),
@@ -58,7 +58,10 @@ export const listAttendanceOverview = createServerFn({ method: "POST" }).middlew
   const days = data?.days ?? 30;
   const since = new Date(); since.setDate(since.getDate() - days); since.setHours(0, 0, 0, 0);
   const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
-  const { data: emps } = await supabaseAdmin.from("employees").select("id,name,phone,email,position,user_id,is_active").eq("is_active", true).order("name");
+  const isSuperAdmin = await isSuperAdminUser(context.userId);
+  const { data: emps } = isSuperAdmin
+    ? await supabaseAdmin.from("employees").select("id,name,phone,email,position,user_id,is_active").eq("is_active", true).order("name")
+    : await supabaseAdmin.from("employees").select("id,name,phone,email,position,user_id,is_active").eq("is_active", true).eq("user_id", context.userId).limit(1);
   const userIds = (emps ?? []).map((e) => e.user_id).filter(Boolean) as string[];
   const { data: attRows } = userIds.length ? await supabaseAdmin.from("attendance").select("id,user_id,check_in,check_out").in("user_id", userIds).gte("check_in", since.toISOString()).order("check_in", { ascending: false }) : { data: [] as Array<{ id: string; user_id: string; check_in: string; check_out: string | null }> };
   const list = (emps ?? []).map((e) => {
