@@ -1,0 +1,64 @@
+name: apply-ceo-admin-permissions
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: "!contains(github.event.head_commit.message, 'chore: apply CEO controlled admin permissions')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch permission system
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('src/lib/auth.tsx')
+          s = p.read_text()
+          s = s.replace('export type Permissions = { orders: boolean; web_orders: boolean;', 'export type Permissions = { attendance: boolean; employees: boolean; offers: boolean; banners: boolean; coupons: boolean; orders: boolean; web_orders: boolean;')
+          s = s.replace('export const ALL_TRUE: Permissions = { orders: true, web_orders: true;', 'export const ALL_TRUE: Permissions = { attendance: true, employees: true, offers: true, banners: true, coupons: true, orders: true, web_orders: true;')
+          s = s.replace('const readPerms = (p: any): Permissions => ({ orders: !!p.orders, web_orders: !!p.web_orders,', 'const readPerms = (p: any): Permissions => ({ attendance: !!p.attendance, employees: !!p.employees, offers: !!p.offers, banners: !!p.banners, coupons: !!p.coupons, orders: !!p.orders, web_orders: !!p.web_orders,')
+          p.write_text(s)
+
+          p = Path('src/lib/employee-admin.functions.ts')
+          s = p.read_text()
+          s = s.replace('const PermSchema = z.object({\n  orders:', 'const PermSchema = z.object({\n  attendance: z.boolean().default(false),\n  employees: z.boolean().default(false),\n  offers: z.boolean().default(false),\n  banners: z.boolean().default(false),\n  coupons: z.boolean().default(false),\n  orders:')
+          s = s.replace('async function assertAdmin(db: any, userId: string) {', 'async function assertSuperAdmin(db: any, userId: string) {\n  const { data, error } = await db.from("user_roles").select("role").eq("user_id", userId).eq("role", "super_admin").limit(1);\n  if (error) throw new Error(error.message);\n  if (!data?.length) throw new Error("Unauthorized");\n}\n\nasync function assertAdmin(db: any, userId: string) {')
+          s = s.replace('    await assertAdmin(context.supabase, context.userId);\n    return invokeAdminBridge(context.supabase, { action: "employee_create", ...data });', '    await assertAdmin(context.supabase, context.userId);\n    if (data.role !== "employee") await assertSuperAdmin(context.supabase, context.userId);\n    return invokeAdminBridge(context.supabase, { action: "employee_create", ...data });')
+          s = s.replace('  .handler(async ({ data, context }) => {\n    await assertAdmin(context.supabase, context.userId);\n    const { error } = await context.supabase.from("employee_permissions")', '  .handler(async ({ data, context }) => {\n    await assertSuperAdmin(context.supabase, context.userId);\n    const { error } = await context.supabase.from("employee_permissions")', 1)
+          s = s.replace('  .handler(async ({ data, context }) => {\n    await assertAdmin(context.supabase, context.userId);\n    return invokeAdminBridge(context.supabase, { action: "employee_update_role", ...data });', '  .handler(async ({ data, context }) => {\n    await assertSuperAdmin(context.supabase, context.userId);\n    return invokeAdminBridge(context.supabase, { action: "employee_update_role", ...data });')
+          p.write_text(s)
+
+          p = Path('src/lib/attendance.functions.ts')
+          s = p.read_text()
+          s = s.replace('async function isAdminUser(userId: string) {', 'async function isSuperAdminUser(userId: string) {\n  const { data } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", userId).eq("role", "super_admin").limit(1);\n  return !!data?.length;\n}\n\nasync function isAdminUser(userId: string) {')
+          s = s.replace('if (targetId !== context.userId && !(await isAdminUser(context.userId))) throw new Error("Unauthorized");', 'if (targetId !== context.userId && !(await isSuperAdminUser(context.userId))) throw new Error("Unauthorized");')
+          s = s.replace('  if (!(await isAdminUser(context.userId))) throw new Error("Unauthorized");\n  const days = data?.days ?? 30;', '  if (!(await isAdminUser(context.userId))) throw new Error("Unauthorized");\n  const days = data?.days ?? 30;\n  const isSuperAdmin = await isSuperAdminUser(context.userId);')
+          old = '  const { data: emps } = await supabaseAdmin.from("employees").select("id,name,phone,email,position,user_id,is_active").eq("is_active", true).order("name");'
+          new = '  const { data: emps } = isSuperAdmin\n    ? await supabaseAdmin.from("employees").select("id,name,phone,email,position,user_id,is_active").eq("is_active", true).order("name")\n    : await supabaseAdmin.from("employees").select("id,name,phone,email,position,user_id,is_active").eq("is_active", true).eq("user_id", context.userId).limit(1);'
+          s = s.replace(old, new)
+          p.write_text(s)
+
+          p = Path('src/components/admin/AdminLayout.tsx')
+          s = p.read_text()
+          s = s.replace('{ to: "/admin/products", label: "Products", icon: Package, perm: "products", tone: "from-amber-400 to-orange-500" },', '{ to: "/admin/products", label: "Products", icon: Package, perm: "products", tone: "from-amber-400 to-orange-500" },\n  { to: "/admin/offers", label: "Offers", icon: Sparkles, perm: "offers", tone: "from-emerald-400 to-teal-500" },')
+          s = s.replace('{ to: "/admin/banners", label: "Banners", icon: ImageIcon, perm: "marketing", tone: "from-rose-400 to-red-500" },', '{ to: "/admin/banners", label: "Banners", icon: ImageIcon, perm: "banners", tone: "from-rose-400 to-red-500" },')
+          s = s.replace('{ to: "/admin/coupons", label: "Coupons", icon: Tag, perm: "marketing", tone: "from-yellow-400 to-orange-500" },', '{ to: "/admin/coupons", label: "Coupons", icon: Tag, perm: "coupons", tone: "from-yellow-400 to-orange-500" },')
+          s = s.replace('{ to: "/admin/employees", label: "Employees", icon: UserCog, perm: "hrm", tone: "from-green-400 to-emerald-600" },', '{ to: "/admin/employees", label: "Employees", icon: UserCog, perm: "employees", tone: "from-green-400 to-emerald-600" },')
+          s = s.replace('{ to: "/admin/attendance", label: "Attendance", icon: Clock, perm: "hrm", tone: "from-violet-400 to-purple-600" },', '{ to: "/admin/attendance", label: "Attendance", icon: Clock, perm: "attendance", tone: "from-violet-400 to-purple-600" },')
+          s = s.replace('if (isAdmin) return true;', 'if (role === "super_admin") return true;')
+          p.write_text(s)
+
+          migration = Path('supabase/migrations/20260917160000_ceo_admin_permissions.sql')
+          migration.write_text('''ALTER TABLE public.employee_permissions\n  ADD COLUMN IF NOT EXISTS attendance BOOLEAN NOT NULL DEFAULT false,\n  ADD COLUMN IF NOT EXISTS employees BOOLEAN NOT NULL DEFAULT false,\n  ADD COLUMN IF NOT EXISTS offers BOOLEAN NOT NULL DEFAULT false,\n  ADD COLUMN IF NOT EXISTS banners BOOLEAN NOT NULL DEFAULT false,\n  ADD COLUMN IF NOT EXISTS coupons BOOLEAN NOT NULL DEFAULT false;\n\nCREATE OR REPLACE FUNCTION public.has_permission(_user_id UUID, _module TEXT)\nRETURNS BOOLEAN LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public\nAS $$\nDECLARE allowed BOOLEAN; sql TEXT;\nBEGIN\n  IF public.has_role(_user_id, 'super_admin') THEN RETURN true; END IF;\n  IF _module !~ '^[a-z_]+$' THEN RETURN false; END IF;\n  sql := format('SELECT COALESCE(%I, false) FROM public.employee_permissions WHERE user_id = $1', _module);\n  EXECUTE sql INTO allowed USING _user_id;\n  RETURN COALESCE(allowed, false);\nEND $$;\n\nCREATE OR REPLACE FUNCTION public.is_full_admin(_user_id UUID)\nRETURNS BOOLEAN LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public\nAS $$ SELECT EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = 'super_admin') $$;\n''')
+          PY
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/auth.tsx src/lib/employee-admin.functions.ts src/lib/attendance.functions.ts src/components/admin/AdminLayout.tsx supabase/migrations/20260917160000_ceo_admin_permissions.sql
+          git diff --cached --quiet && exit 0
+          git commit -m 'chore: apply CEO controlled admin permissions'
+          git push
