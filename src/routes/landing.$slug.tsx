@@ -9,6 +9,7 @@ import { ProductStyleLandingPage } from "@/components/landing/ProductStyleLandin
 import { AllProductLandingPage } from "@/components/landing/AllProductLandingPage";
 import { mergeContent } from "@/lib/landing-content";
 import { landingBaseSlug } from "@/lib/landing-slug";
+import { toImg } from "@/lib/img";
 
 const LEGACY_SLUGS = new Set(["seeds-combo-24"]);
 
@@ -30,7 +31,32 @@ export const Route = createFileRoute("/landing/$slug")({
     const page = pageRes.data ?? null;
     for (const key of LANDING_CACHE_KEYS) queryClient.setQueryData([key, params.slug], page);
     if (settingsRes?.data) queryClient.setQueryData(["site-settings-public"], settingsRes.data);
-    return null;
+    const row = page as { title?: string | null; hero_title?: string | null; hero_subtitle?: string | null; hero_image?: string | null; products?: { images?: string[] | null } | null } | null;
+    const hero = row?.hero_image || row?.products?.images?.[0] || null;
+    return {
+      title: row?.hero_title || row?.title || null,
+      description: row?.hero_subtitle || null,
+      heroImage: hero,
+    };
+  },
+  // Ad traffic lands here cold: the hero image is the largest paint element, so
+  // it starts downloading from the streamed HTML head instead of waiting for
+  // React to hydrate and mount the template.
+  head: ({ loaderData }) => {
+    const data = loaderData as { title?: string | null; description?: string | null; heroImage?: string | null } | null | undefined;
+    const hero = data?.heroImage || null;
+    const title = data?.title ? `${data.title} — Sheikh Seeds` : undefined;
+    const description = data?.description || undefined;
+    return {
+      meta: [
+        ...(title ? [{ title }, { property: "og:title", content: title }] : []),
+        ...(description ? [{ name: "description", content: description }, { property: "og:description", content: description }] : []),
+        { property: "og:type", content: "product" },
+        { name: "twitter:card", content: "summary_large_image" },
+        ...(hero?.startsWith("https://") ? [{ property: "og:image", content: hero }, { name: "twitter:image", content: hero }] : []),
+      ],
+      links: hero ? [{ rel: "preload", as: "image", href: toImg(hero), fetchPriority: "high" }] : [],
+    };
   },
   component: LandingPage,
 });

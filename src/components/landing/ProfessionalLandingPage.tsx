@@ -40,7 +40,7 @@ export function ProfessionalLandingPage({ slug, variant }: Props) {
     queryKey: ["landing-professional", slug],
     queryFn: async () => (await supabase.from("landing_pages").select("*, products(*)").eq("slug", slug).eq("is_published", true).maybeSingle()).data,
   });
-  const { data: settingsRow } = useQuery({ queryKey: ["site-settings-public"], queryFn: async () => (await supabase.from("site_settings").select("settings").maybeSingle()).data });
+  const { data: settingsRow } = useQuery({ queryKey: ["site-settings-public"], staleTime: 300_000, queryFn: async () => (await supabase.from("site_settings").select("settings").maybeSingle()).data });
   const settings = (settingsRow?.settings as { site_name?: string; tagline?: string; logo_url?: string }) ?? {};
   const C = mergeContent(page?.planting_steps);
   const product = (page?.products ?? null) as Product | null;

@@ -4,7 +4,12 @@ import { z } from "zod";
 import { supabase } from "@/lib/personal-supabase/client";
 
 type CacheEntry = { blocked: boolean; at: number };
-const CACHE_MS = 30_000;
+// Speed: this check runs on the root loader of every page view, so a cold cache
+// costs the visitor a database round-trip before HTML streams. Allowed visitors
+// (the overwhelming majority) are remembered far longer than blocked ones, so
+// ad traffic reaches the landing page without paying for the lookup.
+const ALLOW_CACHE_MS = 600_000;
+const BLOCK_CACHE_MS = 30_000;
 const cache = new Map<string, CacheEntry>();
 
 /**
@@ -16,7 +21,7 @@ export const getVisitorBlockStatus = createServerFn({ method: "GET" }).handler(a
   if (!ip) return { blocked: false, ip: null as string | null };
 
   const hit = cache.get(ip);
-  if (hit && Date.now() - hit.at < CACHE_MS) return { blocked: hit.blocked, ip };
+  if (hit && Date.now() - hit.at < (hit.blocked ? BLOCK_CACHE_MS : ALLOW_CACHE_MS)) return { blocked: hit.blocked, ip };
 
   const { data, error } = await (supabase as any).rpc("is_blocked_visitor", { p_ip: ip, p_phone: null });
   if (error) {

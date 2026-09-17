@@ -31,8 +31,10 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   const [submitting, setSubmitting] = useState(false);
   const [formInView, setFormInView] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", address: "" });
-  const { data: page, isLoading } = useQuery({ queryKey: ["landing-all-product", slug], queryFn: async () => (await supabase.from("landing_pages").select("*, products(id,name,price,sale_price,images)").eq("slug", slug).eq("is_published", true).maybeSingle()).data as Page | null });
-  const { data: settingsRow } = useQuery({ queryKey: ["site-settings-public"], queryFn: async () => (await supabase.from("site_settings").select("settings").maybeSingle()).data });
+  // The route loader already fetched this row fresh on the server for this very
+  // request, so hydration must not spend the visitor's bandwidth re-fetching it.
+  const { data: page, isLoading } = useQuery({ queryKey: ["landing-all-product", slug], staleTime: 30_000, queryFn: async () => (await supabase.from("landing_pages").select("*, products(id,name,price,sale_price,images)").eq("slug", slug).eq("is_published", true).maybeSingle()).data as Page | null });
+  const { data: settingsRow } = useQuery({ queryKey: ["site-settings-public"], staleTime: 300_000, queryFn: async () => (await supabase.from("site_settings").select("settings").maybeSingle()).data });
   const settings = (settingsRow?.settings as { site_name?: string; tagline?: string; logo_url?: string }) ?? {};
   const product = page?.products ?? null;
   const C = mergeContent(page?.planting_steps);
