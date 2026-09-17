@@ -10,7 +10,17 @@ import { toastAddedToCart } from "@/lib/cart-toast";
 import { taka, bnDigits } from "@/lib/format";
 import { OfferDetailDialog, type OfferDetail } from "@/components/offers/OfferDetailDialog";
 
-export const Route = createFileRoute("/offers")({ component: OffersPage });
+export const Route = createFileRoute("/offers")({
+  // Load offers on the server so the list is painted with the first response.
+  loader: async ({ context }) => {
+    const queryClient = (context as { queryClient?: import("@tanstack/react-query").QueryClient }).queryClient;
+    if (!queryClient || queryClient.getQueryData(["customer-offers"])) return null;
+    const { data } = await (supabase.from("products") as any).select("id,name,slug,price,sale_price,images,short_description,stock").eq("is_offer", true).eq("is_active", true).eq("is_archived", false).order("sort_order", { ascending: true }).order("created_at", { ascending: false });
+    queryClient.setQueryData(["customer-offers"], data ?? []);
+    return null;
+  },
+  component: OffersPage,
+});
 
 type Offer = { id:string; name:string; slug:string; price:number; sale_price:number|null; images:string[]; short_description:string|null; stock?:number };
 

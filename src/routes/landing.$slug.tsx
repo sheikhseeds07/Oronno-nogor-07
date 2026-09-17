@@ -1,7 +1,6 @@
 import { createFileRoute, useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/personal-supabase/client";
 import { LegacyLandingPage } from "@/components/landing/LegacyLandingPage";
 import { CleanLandingPage } from "@/components/landing/CleanLandingPage";
@@ -12,7 +11,29 @@ import { mergeContent } from "@/lib/landing-content";
 import { landingBaseSlug } from "@/lib/landing-slug";
 
 const LEGACY_SLUGS = new Set(["seeds-combo-24"]);
-export const Route = createFileRoute("/landing/$slug")({ component: LandingPage });
+
+// Every landing template reads the same row (`*, products(*)`). Fetch it once on
+// the server during SSR and seed every template cache key, so the visitor gets
+// finished HTML instead of a blank screen plus a browser round-trip. The fetch
+// runs per request, so admin edits stay instantly live.
+const LANDING_CACHE_KEYS = ["landing", "landing-clean", "landing-all-product", "landing-professional", "landing-product-style", "landing-template"] as const;
+
+export const Route = createFileRoute("/landing/$slug")({
+  loader: async ({ params, context }) => {
+    const queryClient = (context as { queryClient?: import("@tanstack/react-query").QueryClient }).queryClient;
+    if (!queryClient) return null;
+    const hasSettings = Boolean(queryClient.getQueryData(["site-settings-public"]));
+    const [pageRes, settingsRes] = await Promise.all([
+      supabase.from("landing_pages").select("*, products(*)").eq("slug", params.slug).eq("is_published", true).maybeSingle(),
+      hasSettings ? Promise.resolve(null) : supabase.from("site_settings").select("settings").maybeSingle(),
+    ]);
+    const page = pageRes.data ?? null;
+    for (const key of LANDING_CACHE_KEYS) queryClient.setQueryData([key, params.slug], page);
+    if (settingsRes?.data) queryClient.setQueryData(["site-settings-public"], settingsRes.data);
+    return null;
+  },
+  component: LandingPage,
+});
 
 const seedComboCheckoutCss = `
 #order { scroll-margin-top: 76px !important; margin-top: -22px !important; padding-top: 0 !important; }
@@ -103,9 +124,9 @@ function LandingPage() {
   const isSeedCombo = behaviorSlug === "seedcombo";
   const COMPACT_SLUGS = new Set(["odc", "bagun"]);
   const compact = COMPACT_SLUGS.has(behaviorSlug);
-  const queryClient = useQueryClient();
-  useEffect(() => { queryClient.invalidateQueries({ queryKey: ["landing-template", slug] }); queryClient.invalidateQueries({ queryKey: ["landing-product-style", slug] }); }, [queryClient, slug]);
-  const { data, isLoading } = useQuery({ enabled: !isLegacySlug && !isSeedCombo, staleTime:10_000, gcTime:60_000, refetchOnMount:"always", queryKey:["landing-template",slug], queryFn:async() => (await supabase.from("landing_pages").select("planting_steps").eq("slug",slug).maybeSingle()).data ?? null });
+  // The route loader already seeded this key with server-fresh data, so no extra
+  // browser round-trip is needed before the template renders.
+  const { data, isLoading } = useQuery({ enabled: !isLegacySlug && !isSeedCombo, staleTime:10_000, gcTime:60_000, queryKey:["landing-template",slug], queryFn:async() => (await supabase.from("landing_pages").select("planting_steps").eq("slug",slug).maybeSingle()).data ?? null });
   const popupBehaviorEnabled = isSeedCombo || behaviorSlug === "seeds-combo-24";
   const resolvedTemplate = mergeContent(data?.planting_steps).template as string;
   const karalaStyle = isKaralaStyle(slug) || resolvedTemplate === "all-product";

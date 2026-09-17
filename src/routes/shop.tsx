@@ -1,5 +1,5 @@
 import { createFileRoute, useSearch, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, queryOptions, useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { Apple, Flower2, Grid3X3, Leaf, Shovel, Sparkles, Sprout, Wheat, Wrench } from "lucide-react";
 import { SiteLayout } from "@/components/layout/SiteLayout";
@@ -19,10 +19,53 @@ export const Route = createFileRoute("/shop")({
     links: [{ rel: "canonical", href: "https://sheikhseeds.com/shop" }],
   }),
   validateSearch: (s: Record<string, unknown>): { q?: string; cat?: string } => ({ q: typeof s.q === "string" ? s.q : undefined, cat: typeof s.cat === "string" ? s.cat : undefined }),
+  loaderDeps: ({ search }: { search: { q?: string; cat?: string } }) => ({ q: search.q, cat: search.cat }),
+  // Resolve the listing on the server so the grid arrives with the HTML.
+  loader: async ({ deps, context }: { deps: { q?: string; cat?: string }; context: unknown }) => {
+    const queryClient = (context as { queryClient?: import("@tanstack/react-query").QueryClient }).queryClient;
+    if (!queryClient) return null;
+    await Promise.all([
+      queryClient.ensureQueryData(shopCategoriesOptions()),
+      queryClient.ensureQueryData(shopProductsOptions(deps.q, deps.cat)),
+    ]);
+    return null;
+  },
   component: Shop,
 });
 
 type ShopCategory = { id: string; name: string; slug: string; parent_id: string | null };
+
+const shopCategoriesOptions = () => queryOptions({
+  queryKey: ["shop-categories"],
+  staleTime: 10 * 60_000,
+  queryFn: async () => {
+    const { data, error } = await (supabase.from("categories") as any).select("id,name,slug,parent_id").is("parent_id", null).eq("is_hidden_from_home", false).order("display_order").order("created_at");
+    if (error) throw error;
+    return (data ?? []) as ShopCategory[];
+  },
+});
+
+const shopProductsOptions = (q?: string, cat?: string) => queryOptions({
+  queryKey: ["shop-products", q, cat],
+  staleTime: 2 * 60_000,
+  queryFn: async () => {
+    let categoryIds: string[] | null = null;
+    if (cat) {
+      const { data: selected, error: selectedError } = await (supabase.from("categories") as any).select("id").eq("slug", cat).maybeSingle();
+      if (selectedError) throw selectedError;
+      if (!selected?.id) return [] as Product[];
+      const { data: children, error: childError } = await (supabase.from("categories") as any).select("id").eq("parent_id", selected.id);
+      if (childError) throw childError;
+      categoryIds = [selected.id, ...((children ?? []) as Array<{ id: string }>).map((c) => c.id)];
+    }
+    let query = supabase.from("products").select("id,name,slug,price,sale_price,images,stock,short_description,description").eq("is_active", true).eq("is_offer", false).eq("is_archived", false);
+    if (categoryIds) query = query.in("category_id", categoryIds);
+    if (q) query = query.ilike("name", `%${q}%`);
+    const { data, error } = await query.order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as unknown as Product[];
+  },
+});
 const categoryIcons = [Sprout, Wrench, Wheat, Flower2, Leaf, Apple, Shovel, Sparkles];
 
 function getCategoryIcon(name: string, index: number) {
@@ -44,35 +87,8 @@ function Shop() {
     if (term && term !== lastSearch.current) { lastSearch.current = term; trackSearch(term); }
   }, [q]);
 
-  const { data: categories = [] } = useQuery({
-    queryKey: ["shop-categories"],
-    queryFn: async () => {
-      const { data, error } = await (supabase.from("categories") as any).select("id,name,slug,parent_id").is("parent_id", null).eq("is_hidden_from_home", false).order("display_order").order("created_at");
-      if (error) throw error;
-      return (data ?? []) as ShopCategory[];
-    },
-  });
-
-  const { data: products = [] } = useQuery({
-    queryKey: ["shop-products", q, cat],
-    queryFn: async () => {
-      let categoryIds: string[] | null = null;
-      if (cat) {
-        const { data: selected, error: selectedError } = await (supabase.from("categories") as any).select("id").eq("slug", cat).maybeSingle();
-        if (selectedError) throw selectedError;
-        if (!selected?.id) return [];
-        const { data: children, error: childError } = await (supabase.from("categories") as any).select("id").eq("parent_id", selected.id);
-        if (childError) throw childError;
-        categoryIds = [selected.id, ...((children ?? []) as Array<{ id: string }>).map((c) => c.id)];
-      }
-      let query = supabase.from("products").select("id,name,slug,price,sale_price,images,stock,short_description,description").eq("is_active", true).eq("is_offer", false).eq("is_archived", false);
-      if (categoryIds) query = query.in("category_id", categoryIds);
-      if (q) query = query.ilike("name", `%${q}%`);
-      const { data, error } = await query.order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as unknown as Product[];
-    },
-  });
+  const { data: categories = [] } = useQuery(shopCategoriesOptions());
+  const { data: products = [] } = useQuery({ ...shopProductsOptions(q, cat), placeholderData: keepPreviousData });
 
   const activeCat = categories.find((c) => c.slug === cat);
   const heading = q ? `"${q}" এর ফলাফল` : activeCat ? activeCat.name : "সকল পণ্য";

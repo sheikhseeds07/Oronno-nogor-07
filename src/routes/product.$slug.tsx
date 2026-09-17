@@ -13,7 +13,18 @@ import { trackAddToCart, trackViewContent } from "@/lib/fbq";
 import { toImg, imgSrcSet } from "@/lib/img";
 import { ProductTabs } from "@/components/community/ProductTabs";
 
-export const Route = createFileRoute("/product/$slug")({ component: ProductPage });
+export const Route = createFileRoute("/product/$slug")({
+  // Fetch on the server so the product HTML ships with the first response
+  // instead of waiting for a browser round-trip after hydration.
+  loader: async ({ params, context }) => {
+    const queryClient = (context as { queryClient?: import("@tanstack/react-query").QueryClient }).queryClient;
+    if (!queryClient || queryClient.getQueryData(["product", params.slug])) return null;
+    const { data } = await supabase.from("products").select("*, categories(name,slug)").eq("slug", params.slug).maybeSingle();
+    if (data) queryClient.setQueryData(["product", params.slug], data);
+    return null;
+  },
+  component: ProductPage,
+});
 
 function ProductPage() {
   const { slug } = useParams({ from: "/product/$slug" });

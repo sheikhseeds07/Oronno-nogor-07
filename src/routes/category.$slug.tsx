@@ -7,7 +7,31 @@ import { supabase } from "@/lib/personal-supabase/client";
 import { toImg } from "@/lib/img";
 import { Leaf, ChevronRight, Sparkles } from "lucide-react";
 
-export const Route = createFileRoute("/category/$slug")({ component: CategoryPage });
+export const Route = createFileRoute("/category/$slug")({
+  // The page needs category → children → products in sequence. Resolving that
+  // chain on the server turns four browser round-trips into finished HTML.
+  loader: async ({ params, context }) => {
+    const queryClient = (context as { queryClient?: import("@tanstack/react-query").QueryClient }).queryClient;
+    if (!queryClient || queryClient.getQueryData(["cat", params.slug])) return null;
+    const columns = "id,name,slug,image_url,parent_id,display_order";
+    const [listRes, catRes] = await Promise.all([
+      (supabase.from("categories") as any).select(columns).is("parent_id", null).eq("is_hidden_from_home", false).order("display_order").order("created_at"),
+      (supabase.from("categories") as any).select(columns).eq("slug", params.slug).maybeSingle(),
+    ]);
+    queryClient.setQueryData(["cat-list"], listRes.data ?? []);
+    const cat = (catRes.data ?? null) as { id: string } | null;
+    queryClient.setQueryData(["cat", params.slug], cat);
+    if (!cat) return null;
+    const childrenRes = await (supabase.from("categories") as any).select(columns).eq("parent_id", cat.id).order("display_order").order("created_at");
+    const children = (childrenRes.data ?? []) as Array<{ id: string }>;
+    queryClient.setQueryData(["cat-children", cat.id], children);
+    const ids = [cat.id, ...children.map((c) => c.id)];
+    const productsRes = await supabase.from("products").select("id,name,slug,price,sale_price,images,stock,short_description,description").eq("is_active", true).in("category_id", ids).order("created_at", { ascending: false });
+    queryClient.setQueryData(["cat-products", cat.id, children.map((c) => c.id).join(",")], productsRes.data ?? []);
+    return null;
+  },
+  component: CategoryPage,
+});
 
 type CategoryRow = { id: string; name: string; slug: string; image_url: string | null; parent_id: string | null; display_order: number };
 

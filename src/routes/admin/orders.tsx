@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState, type ReactNode, type MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type MouseEvent } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { BrandLoader } from "@/components/layout/BrandLoader";
 import { supabase } from "@/lib/personal-supabase/client";
@@ -639,38 +639,54 @@ function OrdersTable({
 
 
 
+  const fetchOrdersPage = useCallback(async (pageNum: number): Promise<{ rows: OrderRow[]; total: number }> => {
+    const list = (filter === "all" ? statuses : [filter]).filter((status) => status !== "incomplete");
+    let query = supabase
+      .from("orders")
+      .select("id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment,courier_display_name,printed_at,created_at,updated_at,created_by,assigned_to,originated_from_incomplete,order_items(id,product_name,quantity,price,product_id)", { count: "exact" })
+      .in("status", list as Exclude<OrderStatus, "incomplete">[]);
+    query = mode === "list"
+      ? query.order("invoice_no", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false })
+      : query.order("created_at", { ascending: false });
+
+    const term = debouncedSearch.trim().replace(/[%,()]/g, " ").trim();
+    if (term) {
+      const orQuery = `customer_phone.ilike.%${term}%,invoice_no.ilike.%${term}%,customer_name.ilike.%${term}%,courier_consignment.ilike.%${term}%`;
+      query = query.or(orQuery);
+    }
+
+    const from = (pageNum - 1) * pageSize;
+    const to = from + pageSize - 1;
+    const { data: ords, count, error } = await query.range(from, to);
+    if (error) throw new Error(error.message);
+    return {
+      rows: await attachProductImages((ords ?? []) as unknown as OrderRow[]),
+      total: count ?? 0,
+    };
+  }, [filter, mode, debouncedSearch, pageSize, statuses]);
+
   const { data: orderResult, isFetching, isError, error: ordersError } = useQuery({
     queryKey: ["admin-orders", mode, filter, page, pageSize, debouncedSearch],
     enabled: !isIncomplete,
     staleTime: 15_000,
     placeholderData: keepPreviousData,
-    queryFn: async () => {
-      const list = (filter === "all" ? statuses : [filter]).filter((status) => status !== "incomplete");
-      let query = supabase
-        .from("orders")
-        .select("id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment,courier_display_name,printed_at,created_at,updated_at,created_by,assigned_to,originated_from_incomplete,order_items(id,product_name,quantity,price,product_id)", { count: "exact" })
-        .in("status", list as Exclude<OrderStatus, "incomplete">[]);
-      query = mode === "list"
-        ? query.order("invoice_no", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false })
-        : query.order("created_at", { ascending: false });
-
-      const term = debouncedSearch.trim().replace(/[%,()]/g, " ").trim();
-      if (term) {
-        const orQuery = `customer_phone.ilike.%${term}%,invoice_no.ilike.%${term}%,customer_name.ilike.%${term}%,courier_consignment.ilike.%${term}%`;
-        query = query.or(orQuery);
-      }
-
-      const from = (page - 1) * pageSize;
-      const to = from + pageSize - 1;
-      const { data: ords, count, error } = await query.range(from, to);
-      if (error) throw new Error(error.message);
-      return {
-        rows: await attachProductImages((ords ?? []) as unknown as OrderRow[]),
-        total: count ?? 0,
-      };
-    },
+    queryFn: () => fetchOrdersPage(page),
   });
   const orders = orderResult?.rows ?? [];
+
+  // Warm the next page in the background so paging feels instant.
+  const total = orderResult?.total ?? 0;
+  useEffect(() => {
+    if (isIncomplete || page * pageSize >= total) return;
+    const timer = setTimeout(() => {
+      void qc.prefetchQuery({
+        queryKey: ["admin-orders", mode, filter, page + 1, pageSize, debouncedSearch],
+        staleTime: 15_000,
+        queryFn: () => fetchOrdersPage(page + 1),
+      });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [qc, isIncomplete, page, pageSize, total, mode, filter, debouncedSearch, fetchOrdersPage]);
 
   const creatorIds = Array.from(new Set((orders ?? []).flatMap((o) => [o.created_by, o.assigned_to]).filter((x): x is string => !!x)));
   const { data: creatorProfiles } = useQuery({
