@@ -3,8 +3,8 @@ import { staffSupabase, customerSupabase } from "@/integrations/supabase/client"
 import type { Session } from "@supabase/supabase-js";
 
 export type StaffRole = "super_admin" | "admin" | "employee" | null;
-export type Permissions = { orders: boolean; web_orders: boolean; new_order: boolean; products: boolean; categories: boolean; customers: boolean; marketing: boolean; delivery: boolean; reports: boolean; hrm: boolean; settings: boolean; landing_pages: boolean; all_api: boolean; messages: boolean; dashboard: boolean; dashboard_live_visitors: boolean; dashboard_web_orders: boolean; dashboard_incomplete_orders: boolean; dashboard_stock_alert: boolean; dashboard_confirmed_sell: boolean; dashboard_meta_ads: boolean; dashboard_time_filter: boolean };
-export const ALL_TRUE: Permissions = { orders: true, web_orders: true, new_order: true, products: true, categories: true, customers: true, marketing: true, delivery: true, reports: true, hrm: true, settings: true, landing_pages: true, all_api: true, messages: true, dashboard: true, dashboard_live_visitors: true, dashboard_web_orders: true, dashboard_incomplete_orders: true, dashboard_stock_alert: true, dashboard_confirmed_sell: true, dashboard_meta_ads: true, dashboard_time_filter: true };
+export type Permissions = { attendance: boolean; employees: boolean; offers: boolean; banners: boolean; coupons: boolean; orders: boolean; web_orders: boolean; new_order: boolean; products: boolean; categories: boolean; customers: boolean; marketing: boolean; delivery: boolean; reports: boolean; hrm: boolean; settings: boolean; landing_pages: boolean; all_api: boolean; messages: boolean; dashboard: boolean; dashboard_live_visitors: boolean; dashboard_web_orders: boolean; dashboard_incomplete_orders: boolean; dashboard_stock_alert: boolean; dashboard_confirmed_sell: boolean; dashboard_meta_ads: boolean; dashboard_time_filter: boolean };
+export const ALL_TRUE: Permissions = { attendance: true, employees: true, offers: true, banners: true, coupons: true, orders: true, web_orders: true, new_order: true, products: true, categories: true, customers: true, marketing: true, delivery: true, reports: true, hrm: true, settings: true, landing_pages: true, all_api: true, messages: true, dashboard: true, dashboard_live_visitors: true, dashboard_web_orders: true, dashboard_incomplete_orders: true, dashboard_stock_alert: true, dashboard_confirmed_sell: true, dashboard_meta_ads: true, dashboard_time_filter: true };
 const ALL_FALSE: Permissions = Object.fromEntries(Object.keys(ALL_TRUE).map(k => [k, false])) as Permissions;
 
 type AuthSnapshot = { session: Session | null; user: Session["user"] | null; role: StaffRole; permissions: Permissions; loading: boolean; initialized: boolean; blocked?: boolean };
@@ -18,12 +18,30 @@ function notify() { listeners.forEach(l => l()); }
 function setStaff(p: Partial<AuthSnapshot>) { Object.assign(staffState, p); notify(); }
 function setCustomer(p: Partial<AuthSnapshot>) { Object.assign(customerState, p); notify(); }
 
-const readPerms = (p: any): Permissions => ({ orders: !!p.orders, web_orders: !!p.web_orders, new_order: !!p.new_order, products: !!p.products, categories: !!p.categories, customers: !!p.customers, marketing: !!p.marketing, delivery: !!p.delivery, reports: !!p.reports, hrm: !!p.hrm, settings: !!p.settings, landing_pages: !!p.landing_pages, all_api: !!p.all_api, messages: !!p.messages, dashboard: p.dashboard !== false, dashboard_live_visitors: p.dashboard_live_visitors !== false, dashboard_web_orders: p.dashboard_web_orders !== false, dashboard_incomplete_orders: p.dashboard_incomplete_orders !== false, dashboard_stock_alert: p.dashboard_stock_alert !== false, dashboard_confirmed_sell: p.dashboard_confirmed_sell !== false, dashboard_meta_ads: p.dashboard_meta_ads !== false, dashboard_time_filter: p.dashboard_time_filter !== false });
+const readPerms = (p: any): Permissions => ({ attendance: !!p.attendance, employees: !!p.employees, offers: !!p.offers, banners: !!p.banners, coupons: !!p.coupons, orders: !!p.orders, web_orders: !!p.web_orders, new_order: !!p.new_order, products: !!p.products, categories: !!p.categories, customers: !!p.customers, marketing: !!p.marketing, delivery: !!p.delivery, reports: !!p.reports, hrm: !!p.hrm, settings: !!p.settings, landing_pages: !!p.landing_pages, all_api: !!p.all_api, messages: !!p.messages, dashboard: p.dashboard !== false, dashboard_live_visitors: p.dashboard_live_visitors !== false, dashboard_web_orders: p.dashboard_web_orders !== false, dashboard_incomplete_orders: p.dashboard_incomplete_orders !== false, dashboard_stock_alert: p.dashboard_stock_alert !== false, dashboard_confirmed_sell: p.dashboard_confirmed_sell !== false, dashboard_meta_ads: p.dashboard_meta_ads !== false, dashboard_time_filter: p.dashboard_time_filter !== false });
 
 function isStaffRoute() {
   if (typeof window === "undefined") return true;
   const path = window.location.pathname;
   return path === "/login" || path === "/admin" || path.startsWith("/admin/");
+}
+
+function currentAdminPermission(path: string, permissions: Permissions): boolean {
+  if (path === "/admin") return permissions.dashboard;
+  if (path === "/admin/orders" || path.startsWith("/admin/orders/")) return permissions.orders;
+  if (path === "/admin/order-import") return permissions.orders;
+  if (path === "/admin/products" || path.startsWith("/admin/products/")) return permissions.products;
+  if (path === "/admin/offers" || path.startsWith("/admin/offers/")) return permissions.offers;
+  if (path === "/admin/categories" || path.startsWith("/admin/categories/")) return permissions.categories;
+  if (path === "/admin/customers" || path.startsWith("/admin/customers/")) return permissions.customers;
+  if (path === "/admin/banners" || path.startsWith("/admin/banners/")) return permissions.banners;
+  if (path === "/admin/coupons" || path.startsWith("/admin/coupons/")) return permissions.coupons;
+  if (path === "/admin/landing-pages" || path.startsWith("/admin/landing-pages/")) return permissions.landing_pages;
+  if (path === "/admin/employees" || path.startsWith("/admin/employees/")) return permissions.employees;
+  if (path === "/admin/attendance" || path.startsWith("/admin/attendance/")) return permissions.attendance;
+  if (path === "/admin/all-api" || path.startsWith("/admin/all-api/")) return permissions.all_api;
+  if (path === "/admin/settings" || path.startsWith("/admin/settings/")) return permissions.settings;
+  return permissions.dashboard;
 }
 
 async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
@@ -84,7 +102,6 @@ async function loadCustomer(s: Session | null) {
     setCustomer({ session: s, user: s.user, role: null, permissions: ALL_FALSE, loading: false, initialized: true, blocked });
     if (blocked) showBlockedOverlay(); else removeBlockedOverlay();
   } catch {
-    // A transient profile-read failure must not lock a valid customer out.
     setCustomer({ session: s, user: s.user, role: null, permissions: ALL_FALSE, loading: false, initialized: true, blocked: false });
     removeBlockedOverlay();
   }
@@ -110,6 +127,7 @@ export function useAuth() {
   useEffect(() => { const listener = () => force(v => v + 1); listeners.add(listener); return () => { listeners.delete(listener); }; }, []);
   const customerMode = !isStaffRoute(); const snap = customerMode ? customerState : staffState;
   useEffect(() => hideIncompleteForEmployee(staffState.role), [staffState.role]);
-  const isAdmin = !customerMode && (snap.role === "admin" || snap.role === "super_admin");
-  return { session: snap.session, user: snap.user, role: snap.role, isAdmin, isStaff: !customerMode && (isAdmin || snap.role === "employee"), permissions: snap.permissions, loading: snap.loading && !snap.initialized, initialized: snap.initialized, blocked: !!snap.blocked };
+  const path = typeof window === "undefined" ? "/admin" : window.location.pathname;
+  const isAdmin = !customerMode && (snap.role === "super_admin" || (snap.role === "admin" && currentAdminPermission(path, snap.permissions)));
+  return { session: snap.session, user: snap.user, role: snap.role, isAdmin, isStaff: !customerMode && (snap.role === "admin" || snap.role === "super_admin" || snap.role === "employee"), permissions: snap.permissions, loading: snap.loading && !snap.initialized, initialized: snap.initialized, blocked: !!snap.blocked };
 }
