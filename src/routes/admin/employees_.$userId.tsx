@@ -1,0 +1,162 @@
+import { createFileRoute, useParams, Link } from "@tanstack/react-router";
+import { BrandLoader } from "@/components/layout/BrandLoader";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { AdminLayout } from "@/components/admin/AdminLayout";
+import { getEmployeeProfile } from "@/lib/employee-profile.functions";
+import { toast } from "sonner";
+import { ArrowLeft, Pencil, Upload, UserRound, X } from "lucide-react";
+import { useState } from "react";
+import { supabase } from "@/lib/personal-supabase/client";
+import { uploadToBucket, safeFileName } from "@/lib/storage-upload";
+
+export const Route = createFileRoute("/admin/employees_/$userId")({ component: Profile });
+
+function Profile() {
+  const { userId } = useParams({ from: "/admin/employees_/$userId" });
+  const qc = useQueryClient();
+  const fetchProfile = useServerFn(getEmployeeProfile);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [form, setForm] = useState({ name: "", phone: "", address: "", join_date: "", salary: "", position: "", avatar_url: "" });
+
+  const { data, isFetching } = useQuery({
+    queryKey: ["emp-profile", userId],
+    queryFn: () => fetchProfile({ data: { user_id: userId } }),
+  });
+
+  const openEditor = () => {
+    setForm({
+      name: data?.profile?.full_name ?? data?.employee?.name ?? "",
+      phone: data?.profile?.phone ?? data?.employee?.phone ?? "",
+      address: data?.profile?.address ?? "",
+      join_date: data?.employee?.join_date ?? "",
+      salary: data?.employee?.salary != null ? String(data.employee.salary) : "",
+      position: data?.employee?.position ?? "",
+      avatar_url: data?.profile?.avatar_url ?? "",
+    });
+    setEditing(true);
+  };
+
+  const uploadAvatar = async (file: File) => {
+    if (!file.type.startsWith("image/")) return toast.error("শুধু image file দিন");
+    if (file.size > 5 * 1024 * 1024) return toast.error("Image সর্বোচ্চ 5MB হতে পারবে");
+    setAvatarUploading(true);
+    try {
+      const url = await uploadToBucket("site-assets", `employee-avatars/${userId}-${safeFileName(file.name)}`, file);
+      setForm((v) => ({ ...v, avatar_url: url }));
+      toast.success("Avatar আপলোড হয়েছে");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Avatar আপলোড হয়নি");
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const saveProfile = async () => {
+    if (!form.name.trim()) return toast.error("নাম দিন");
+    if (!form.phone.trim()) return toast.error("নাম্বার দিন");
+    const salary = form.salary.trim() === "" ? null : Number(form.salary);
+    if (salary !== null && (!Number.isFinite(salary) || salary < 0)) return toast.error("সঠিক salary দিন");
+    setSaving(true);
+    try {
+      const [{ error: profileError }, { error: employeeError }] = await Promise.all([
+        supabase.from("profiles").update({
+          full_name: form.name.trim(),
+          phone: form.phone.trim(),
+          address: form.address.trim() || null,
+          avatar_url: form.avatar_url || null,
+        }).eq("id", userId),
+        supabase.from("employees").update({
+          name: form.name.trim(),
+          phone: form.phone.trim(),
+          position: form.position.trim() || null,
+          join_date: form.join_date || null,
+          salary,
+        } as any).eq("user_id", userId),
+      ]);
+      if (profileError) throw new Error(profileError.message);
+      if (employeeError) throw new Error(employeeError.message);
+      toast.success("Employee profile updated");
+      setEditing(false);
+      await qc.invalidateQueries({ queryKey: ["emp-profile", userId] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Profile update failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (isFetching && !data) return <AdminLayout><div className="p-8"><BrandLoader /></div></AdminLayout>;
+  if (!data) return <AdminLayout><div className="p-8 text-center text-muted-foreground">Profile not found</div></AdminLayout>;
+
+  const { profile, employee } = data;
+  const displayName = profile?.full_name ?? employee?.name ?? "Employee";
+  const avatar = profile?.avatar_url;
+
+  return <AdminLayout>
+    <div className="mb-4 flex items-center gap-3">
+      <Link to="/admin/employees" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="w-4 h-4" /> Employee List
+      </Link>
+    </div>
+
+    <div className="bg-white border rounded-2xl p-5 mb-5 shadow-sm">
+      <div className="flex flex-wrap gap-4 items-center">
+        <div className="relative shrink-0">
+          <div className="relative w-20 h-20 rounded-[1.15rem] overflow-hidden bg-brand text-white flex items-center justify-center text-2xl font-bold">
+            {avatar ? <img src={avatar} alt={displayName} className="w-full h-full object-cover" /> : <span>{displayName.charAt(0)}</span>}
+          </div>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-xl font-bold">{displayName}</div>
+          <div className="text-sm text-muted-foreground">{employee?.position ?? "Employee"}</div>
+          <div className="text-xs text-muted-foreground mt-1">📞 {employee?.phone ?? profile?.phone ?? "—"} • ✉️ {employee?.email ?? "—"}</div>
+          <div className="text-xs text-muted-foreground mt-1">📍 {profile?.address || "Address not added"}</div>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={openEditor} className="border px-4 py-2 rounded-xl font-semibold flex items-center gap-2 hover:bg-muted">
+            <Pencil className="w-4 h-4" /> Edit Profile
+          </button>
+        </div>
+      </div>
+    </div>
+
+    {editing && <div className="fixed inset-0 z-50 bg-black/40 p-4 flex items-center justify-center" onMouseDown={(e) => e.target === e.currentTarget && !saving && setEditing(false)}>
+      <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto">
+        <div className="p-5 border-b flex items-center justify-between">
+          <div><h2 className="text-lg font-bold">Edit Employee Profile</h2><p className="text-xs text-muted-foreground mt-1">Employee information update করুন</p></div>
+          <button onClick={() => setEditing(false)} disabled={saving} className="p-2 rounded-lg hover:bg-muted"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="w-20 h-20 rounded-2xl overflow-hidden bg-brand text-white flex items-center justify-center text-2xl font-bold shrink-0">
+              {form.avatar_url ? <img src={form.avatar_url} alt="Avatar" className="w-full h-full object-cover" /> : <UserRound className="w-9 h-9" />}
+            </div>
+            <div>
+              <label className="inline-flex items-center gap-2 border px-3 py-2 rounded-xl font-semibold cursor-pointer hover:bg-muted">
+                <Upload className="w-4 h-4" /> {avatarUploading ? "Uploading..." : "Change Image / Avatar"}
+                <input type="file" accept="image/*" className="hidden" disabled={avatarUploading || saving} onChange={(e) => e.target.files?.[0] && uploadAvatar(e.target.files[0])} />
+              </label>
+              <div className="text-xs text-muted-foreground mt-1">JPG/PNG/WebP • max 5MB</div>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <label className="space-y-1"><span className="text-sm font-medium">Name</span><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full border rounded-xl px-3 py-2.5" /></label>
+            <label className="space-y-1"><span className="text-sm font-medium">Phone Number</span><input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full border rounded-xl px-3 py-2.5" /></label>
+            <label className="space-y-1 md:col-span-2"><span className="text-sm font-medium">Address</span><textarea value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} rows={2} className="w-full border rounded-xl px-3 py-2.5 resize-none" /></label>
+            <label className="space-y-1"><span className="text-sm font-medium">Position</span><input value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} className="w-full border rounded-xl px-3 py-2.5" placeholder="e.g. Order Confirmation Executive" /></label>
+            <label className="space-y-1"><span className="text-sm font-medium">Join Date</span><input type="date" value={form.join_date} onChange={(e) => setForm({ ...form, join_date: e.target.value })} className="w-full border rounded-xl px-3 py-2.5" /></label>
+            <label className="space-y-1"><span className="text-sm font-medium">Salary (৳)</span><input type="number" min="0" step="1" value={form.salary} onChange={(e) => setForm({ ...form, salary: e.target.value })} className="w-full border rounded-xl px-3 py-2.5" placeholder="e.g. 15000" /></label>
+          </div>
+        </div>
+        <div className="p-5 border-t flex justify-end gap-2">
+          <button onClick={() => setEditing(false)} disabled={saving} className="border px-4 py-2 rounded-xl font-semibold">Cancel</button>
+          <button onClick={saveProfile} disabled={saving || avatarUploading} className="bg-brand text-white px-5 py-2 rounded-xl font-semibold disabled:opacity-50">{saving ? "Saving..." : "Save Changes"}</button>
+        </div>
+      </div>
+    </div>}
+
+  </AdminLayout>;
+}

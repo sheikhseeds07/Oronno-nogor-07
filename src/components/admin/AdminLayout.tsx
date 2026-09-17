@@ -16,6 +16,7 @@ const NAV: NavItem[] = [
   { to: "/admin/orders", label: "Orders", icon: ShoppingBag, perm: "orders", tone: "from-blue-400 to-cyan-500" },
   { to: "/admin/order-import", label: "Import Orders", icon: FileSpreadsheet, perm: "order_import", tone: "from-teal-400 to-emerald-500" },
   { to: "/admin/products", label: "Products", icon: Package, perm: "products", tone: "from-amber-400 to-orange-500" },
+  { to: "/admin/offers", label: "Offers", icon: Sparkles, perm: "products", tone: "from-emerald-400 to-teal-500" },
   { to: "/admin/offers", label: "Offers", icon: Sparkles, perm: "offers", tone: "from-orange-400 to-rose-500" },
   { to: "/admin/categories", label: "Categories", icon: FolderTree, perm: "categories", tone: "from-fuchsia-400 to-pink-500" },
   { to: "/admin/customers", label: "Customers", icon: Users, perm: "customers", tone: "from-sky-400 to-blue-500" },
