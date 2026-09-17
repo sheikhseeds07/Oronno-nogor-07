@@ -8,26 +8,133 @@ import { OrderDistributionSettings } from "@/components/admin/OrderDistributionS
 import { toast } from "sonner";
 import { Plus, Trash2, KeyRound, UserCog, Eye, UsersRound } from "lucide-react";
 import { createEmployee, updateEmployeePermissions, deleteEmployee, resetEmployeePassword, listEmployeesFull, updateEmployeeRole, type EmployeePermissions } from "@/lib/employee-admin.functions";
+
 export const Route = createFileRoute("/admin/employees")({ component: Employees });
+
 const PERM_LABELS: { key: keyof EmployeePermissions; label: string }[] = [
-  { key:"dashboard",label:"Dashboard" },{ key:"dashboard_live_visitors",label:"Dashboard · Live Visitors" },{ key:"dashboard_web_orders",label:"Dashboard · Web Order" },{ key:"dashboard_incomplete_orders",label:"Dashboard · Incomplete Order" },{ key:"dashboard_stock_alert",label:"Dashboard · Stock Alert" },{ key:"dashboard_confirmed_sell",label:"Dashboard · Confirmed Sell" },{ key:"dashboard_meta_ads",label:"Dashboard · Meta Ads" },{ key:"dashboard_time_filter",label:"Dashboard · Time Filter" },
-  {key:"orders",label:"Orders"},{key:"web_orders",label:"Web Orders"},{key:"new_order",label:"New Order"},{key:"products",label:"Products"},{key:"categories",label:"Categories"},{key:"customers",label:"Customers"},{key:"marketing",label:"Marketing (Banners/Coupons)"},{key:"landing_pages",label:"Landing Pages"},{key:"all_api",label:"All APIs"},{key:"messages",label:"Messages / Inbox"},{key:"delivery",label:"Delivery"},{key:"reports",label:"Reports"},{key:"hrm",label:"HRM / Employees"},{key:"settings",label:"Settings"},
+  { key: "dashboard", label: "Dashboard" },
+  { key: "orders", label: "Orders" },
+  { key: "import_orders", label: "Import Orders" },
+  { key: "products", label: "Products" },
+  { key: "offers", label: "Offers" },
+  { key: "categories", label: "Categories" },
+  { key: "customers", label: "Customers" },
+  { key: "banners", label: "Banners" },
+  { key: "coupons", label: "Coupons" },
+  { key: "landing_pages", label: "Landing Pages" },
+  { key: "employees", label: "Employees" },
+  { key: "attendance", label: "Attendance" },
+  { key: "all_api", label: "All APIs" },
+  { key: "settings", label: "Settings" },
 ];
-const emptyPerms: EmployeePermissions = {orders:false,web_orders:false,new_order:false,products:false,categories:false,customers:false,marketing:false,delivery:false,reports:false,hrm:false,settings:false,landing_pages:false,all_api:false,messages:false,dashboard:true,dashboard_live_visitors:true,dashboard_web_orders:true,dashboard_incomplete_orders:true,dashboard_stock_alert:true,dashboard_confirmed_sell:true,dashboard_meta_ads:true,dashboard_time_filter:true};
-function Employees(){
- const qc=useQueryClient();const listFn=useServerFn(listEmployeesFull);const createFn=useServerFn(createEmployee);const updatePermsFn=useServerFn(updateEmployeePermissions);const updateRoleFn=useServerFn(updateEmployeeRole);const deleteFn=useServerFn(deleteEmployee);const resetPwdFn=useServerFn(resetEmployeePassword);
- const[showForm,setShowForm]=useState(false);const[showOrderDivision,setShowOrderDivision]=useState(false);const[editingPerms,setEditingPerms]=useState<{user_id:string;perms:EmployeePermissions;role:string}|null>(null);const[form,setForm]=useState({name:"",phone:"",email:"",password:"",position:"",role:"employee",permissions:{...emptyPerms,orders:true,web_orders:true} as EmployeePermissions});
- const{data,isFetching}=useQuery({queryKey:["admin-employees-full"],queryFn:()=>listFn({})});
- const reset=()=>{setForm({name:"",phone:"",email:"",password:"",position:"",role:"employee",permissions:{...emptyPerms,orders:true,web_orders:true}});setShowForm(false)};
- const create=async()=>{if(!form.name||!form.phone||!form.email||!form.password)return toast.error("Please fill in all fields");if(form.password.length<6)return toast.error("Password must be at least 6 characters");try{await createFn({data:form});toast.success("Employee created successfully");reset();qc.invalidateQueries({queryKey:["admin-employees-full"]})}catch(e){toast.error(e instanceof Error?e.message:"Failed")}};
- const remove=async(id:string)=>{if(!confirm("Delete this employee? The auth user will also be removed."))return;try{await deleteFn({data:{employee_id:id}});qc.invalidateQueries({queryKey:["admin-employees-full"]});toast.success("Employee deleted successfully")}catch(e){toast.error(e instanceof Error?e.message:"Failed")}};
- const savePerms=async()=>{if(!editingPerms)return;try{await updatePermsFn({data:{user_id:editingPerms.user_id,permissions:editingPerms.perms}});await updateRoleFn({data:{user_id:editingPerms.user_id,role:editingPerms.role as any}});toast.success("Permissions and role updated successfully");setEditingPerms(null);qc.invalidateQueries({queryKey:["admin-employees-full"]})}catch(e){toast.error(e instanceof Error?e.message:"Failed")}};
- const resetPwd=async(uid:string)=>{const p=prompt("New password (minimum 6 characters):");if(!p||p.length<6)return;try{await resetPwdFn({data:{user_id:uid,password:p}});toast.success("Password reset successfully")}catch(e){toast.error(e instanceof Error?e.message:"Failed")}};
- const setAll=(target:"form"|"edit",value:boolean)=>{if(target==="form")setForm({...form,permissions:Object.fromEntries(PERM_LABELS.map(p=>[p.key,value])) as EmployeePermissions});else if(editingPerms)setEditingPerms({...editingPerms,perms:Object.fromEntries(PERM_LABELS.map(p=>[p.key,value])) as EmployeePermissions});};
- return <AdminLayout><div className="flex items-center justify-between mb-4"><h1 className="text-2xl font-bold">Employee Management</h1><div className="flex gap-2"><button onClick={()=>setShowOrderDivision(v=>!v)} className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2"><UsersRound className="w-4 h-4"/>{showOrderDivision?"Close Order Division":"Order Division"}</button><button onClick={()=>setShowForm(v=>!v)} className="bg-brand text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2"><Plus className="w-4 h-4"/>{showForm?"Close":"New Employee"}</button></div></div>
- {showOrderDivision&&<div className="mb-5"><OrderDistributionSettings /></div>}
- {showForm&&<div className="bg-white border rounded-xl p-4 mb-4"><h2 className="font-bold mb-3">Create New Employee</h2><div className="grid sm:grid-cols-2 gap-3"><input placeholder="Full Name" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} className="border rounded-lg px-3 py-2"/><input placeholder="Position (e.g. Order Manager)" value={form.position} onChange={e=>setForm({...form,position:e.target.value})} className="border rounded-lg px-3 py-2"/><input placeholder="Phone (Login Number)" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} className="border rounded-lg px-3 py-2"/><input placeholder="Email (Login)" type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} className="border rounded-lg px-3 py-2"/><input placeholder="Password (minimum 6 characters)" type="text" value={form.password} onChange={e=>setForm({...form,password:e.target.value})} className="border rounded-lg px-3 py-2 sm:col-span-2"/></div><div className="mt-4"><div className="text-sm font-semibold mb-2">User Role:</div><select value={form.role} onChange={e=>setForm({...form,role:e.target.value})} className="border rounded-lg px-3 py-2 w-full max-w-xs"><option value="employee">Employee</option><option value="admin">Admin</option><option value="super_admin">CEO (Super Admin)</option></select></div><div className="mt-4"><div className="flex items-center justify-between mb-2"><div className="text-sm font-semibold">Granular Permissions</div><div className="flex gap-2"><button type="button" onClick={()=>setAll("form",true)} className="text-xs border rounded px-2 py-1">Select All</button><button type="button" onClick={()=>setAll("form",false)} className="text-xs border rounded px-2 py-1">Clear All</button></div></div><div className="grid grid-cols-2 sm:grid-cols-3 gap-2">{PERM_LABELS.map(p=><label key={p.key} className="flex items-center gap-2 text-sm border rounded-lg px-2 py-1.5 cursor-pointer"><input type="checkbox" checked={form.permissions[p.key]} onChange={e=>setForm({...form,permissions:{...form.permissions,[p.key]:e.target.checked}})}/>{p.label}</label>)}</div></div><div className="mt-4 flex gap-2 justify-end"><button onClick={reset} className="px-4 py-2 rounded-lg border">Cancel</button><button onClick={create} className="px-5 py-2 rounded-lg bg-brand text-white font-semibold">Create Employee</button></div></div>}
- <div className="bg-white border rounded-xl overflow-hidden"><table className="w-full text-sm"><thead className="bg-muted"><tr><th className="p-3 text-left">Name</th><th className="p-3 text-left">Position</th><th className="p-3 text-left">Phone</th><th className="p-3 text-left">Email</th><th className="p-3 text-left">Role</th><th className="p-3 text-left">Permissions</th><th className="p-3 text-right">Actions</th></tr></thead><tbody>{isFetching&&<tr><td colSpan={7} className="p-2"><BrandLoader/></td></tr>}{data?.map((e:any)=>{const perms=(e.permissions??null) as(EmployeePermissions&{user_id:string})|null;const activeCount=perms?PERM_LABELS.filter(p=>perms[p.key]).length:0;const roleLabel=e.role==="super_admin"?"CEO":e.role==="admin"?"Admin":"Employee";const roleColor=e.role==="super_admin"?"bg-purple-100 text-purple-700":e.role==="admin"?"bg-blue-100 text-blue-700":"bg-gray-100 text-gray-700";return <tr key={e.id} className="border-t"><td className="p-3 font-semibold">{e.name}</td><td className="p-3">{e.position}</td><td className="p-3">{e.phone}</td><td className="p-3">{e.email}</td><td className="p-3"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${roleColor}`}>{roleLabel}</span></td><td className="p-3"><span className="text-xs bg-muted rounded-full px-2 py-0.5">{activeCount} active</span></td><td className="p-3 text-right space-x-1">{e.user_id&&<Link to="/admin/employees/$userId" params={{userId:e.user_id}} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border hover:bg-muted"><Eye className="w-3 h-3"/> Profile</Link>}{e.user_id&&perms&&<button onClick={()=>setEditingPerms({user_id:e.user_id!,perms,role:e.role})} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border hover:bg-muted"><UserCog className="w-3 h-3"/> Permissions</button>}{e.user_id&&<button onClick={()=>resetPwd(e.user_id!)} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border hover:bg-muted"><KeyRound className="w-3 h-3"/> Password</button>}<button onClick={()=>remove(e.id)} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border text-destructive hover:bg-destructive/10"><Trash2 className="w-3 h-3"/></button></td></tr>})}{!isFetching&&!data?.length&&<tr><td colSpan={7} className="p-8 text-center text-muted-foreground">No employees found</td></tr>}</tbody></table></div>
- {editingPerms&&<div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"><div className="bg-white rounded-xl max-w-2xl w-full p-5 max-h-[90vh] overflow-y-auto"><h3 className="font-bold text-lg mb-3">Role & Granular Permissions</h3><div className="mb-4"><div className="text-sm font-semibold mb-2">User Role:</div><select value={editingPerms.role} onChange={e=>setEditingPerms({...editingPerms,role:e.target.value})} className="border rounded-lg px-3 py-2 w-full max-w-xs"><option value="employee">Employee</option><option value="admin">Admin</option><option value="super_admin">CEO (Super Admin)</option></select></div><div className="flex items-center justify-between mb-2"><div className="text-sm font-semibold">Toggle each feature independently</div><div className="flex gap-2"><button type="button" onClick={()=>setAll("edit",true)} className="text-xs border rounded px-2 py-1">Select All</button><button type="button" onClick={()=>setAll("edit",false)} className="text-xs border rounded px-2 py-1">Clear All</button></div></div><div className="grid grid-cols-2 gap-2 mb-4">{PERM_LABELS.map(p=><label key={p.key} className="flex items-center gap-2 text-sm border rounded-lg px-2 py-1.5 cursor-pointer"><input type="checkbox" checked={editingPerms.perms[p.key]} onChange={e=>setEditingPerms({...editingPerms,perms:{...editingPerms.perms,[p.key]:e.target.checked}})}/>{p.label}</label>)}</div><div className="flex gap-2 justify-end"><button onClick={()=>setEditingPerms(null)} className="px-4 py-2 rounded-lg border">Cancel</button><button onClick={savePerms} className="px-5 py-2 rounded-lg bg-brand text-white font-semibold">Save</button></div></div></div>}
- </AdminLayout>;
+
+const emptyPerms: EmployeePermissions = {
+  dashboard: true,
+  orders: false,
+  import_orders: false,
+  products: false,
+  offers: false,
+  categories: false,
+  customers: false,
+  banners: false,
+  coupons: false,
+  landing_pages: false,
+  employees: false,
+  attendance: false,
+  all_api: false,
+  settings: false,
+};
+
+function Employees() {
+  const qc = useQueryClient();
+  const listFn = useServerFn(listEmployeesFull);
+  const createFn = useServerFn(createEmployee);
+  const updatePermsFn = useServerFn(updateEmployeePermissions);
+  const updateRoleFn = useServerFn(updateEmployeeRole);
+  const deleteFn = useServerFn(deleteEmployee);
+  const resetPwdFn = useServerFn(resetEmployeePassword);
+  const [showForm, setShowForm] = useState(false);
+  const [showOrderDivision, setShowOrderDivision] = useState(false);
+  const [editingPerms, setEditingPerms] = useState<{ user_id: string; perms: EmployeePermissions; role: string } | null>(null);
+  const [form, setForm] = useState({ name: "", phone: "", email: "", password: "", position: "", role: "employee", permissions: { ...emptyPerms, orders: true } as EmployeePermissions });
+  const { data, isFetching } = useQuery({ queryKey: ["admin-employees-full"], queryFn: () => listFn({}) });
+
+  const reset = () => {
+    setForm({ name: "", phone: "", email: "", password: "", position: "", role: "employee", permissions: { ...emptyPerms, orders: true } });
+    setShowForm(false);
+  };
+
+  const create = async () => {
+    if (!form.name || !form.phone || !form.email || !form.password) return toast.error("Please fill in all fields");
+    if (form.password.length < 6) return toast.error("Password must be at least 6 characters");
+    try {
+      await createFn({ data: form });
+      toast.success("Employee created successfully");
+      reset();
+      qc.invalidateQueries({ queryKey: ["admin-employees-full"] });
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
+  };
+
+  const remove = async (id: string) => {
+    if (!confirm("Delete this employee? The auth user will also be removed.")) return;
+    try {
+      await deleteFn({ data: { employee_id: id } });
+      qc.invalidateQueries({ queryKey: ["admin-employees-full"] });
+      toast.success("Employee deleted successfully");
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
+  };
+
+  const savePerms = async () => {
+    if (!editingPerms) return;
+    try {
+      await updatePermsFn({ data: { user_id: editingPerms.user_id, permissions: editingPerms.perms } });
+      await updateRoleFn({ data: { user_id: editingPerms.user_id, role: editingPerms.role as any } });
+      toast.success("Permissions and role updated successfully");
+      setEditingPerms(null);
+      qc.invalidateQueries({ queryKey: ["admin-employees-full"] });
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
+  };
+
+  const resetPwd = async (uid: string) => {
+    const p = prompt("New password (minimum 6 characters):");
+    if (!p || p.length < 6) return;
+    try { await resetPwdFn({ data: { user_id: uid, password: p } }); toast.success("Password reset successfully"); }
+    catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
+  };
+
+  const setAll = (target: "form" | "edit", value: boolean) => {
+    const permissions = Object.fromEntries(PERM_LABELS.map(p => [p.key, value])) as EmployeePermissions;
+    if (target === "form") setForm({ ...form, permissions });
+    else if (editingPerms) setEditingPerms({ ...editingPerms, perms: permissions });
+  };
+
+  return <AdminLayout>
+    <div className="flex items-center justify-between mb-4">
+      <h1 className="text-2xl font-bold">Employee Management</h1>
+      <div className="flex gap-2">
+        <button onClick={() => setShowOrderDivision(v => !v)} className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2"><UsersRound className="w-4 h-4" />{showOrderDivision ? "Close Order Division" : "Order Division"}</button>
+        <button onClick={() => setShowForm(v => !v)} className="bg-brand text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2"><Plus className="w-4 h-4" />{showForm ? "Close" : "New Employee"}</button>
+      </div>
+    </div>
+    {showOrderDivision && <div className="mb-5"><OrderDistributionSettings /></div>}
+    {showForm && <div className="bg-white border rounded-xl p-4 mb-4">
+      <h2 className="font-bold mb-3">Create New Employee</h2>
+      <div className="grid sm:grid-cols-2 gap-3">
+        <input placeholder="Full Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="border rounded-lg px-3 py-2" />
+        <input placeholder="Position (e.g. Order Manager)" value={form.position} onChange={e => setForm({ ...form, position: e.target.value })} className="border rounded-lg px-3 py-2" />
+        <input placeholder="Phone (Login Number)" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} className="border rounded-lg px-3 py-2" />
+        <input placeholder="Email (Login)" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className="border rounded-lg px-3 py-2" />
+        <input placeholder="Password (minimum 6 characters)" type="text" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} className="border rounded-lg px-3 py-2 sm:col-span-2" />
+      </div>
+      <div className="mt-4"><div className="text-sm font-semibold mb-2">User Role:</div><select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} className="border rounded-lg px-3 py-2 w-full max-w-xs"><option value="employee">Employee</option><option value="admin">Admin</option><option value="super_admin">CEO (Super Admin)</option></select></div>
+      <div className="mt-4"><div className="flex items-center justify-between mb-2"><div className="text-sm font-semibold">Permissions</div><div className="flex gap-2"><button type="button" onClick={() => setAll("form", true)} className="text-xs border rounded px-2 py-1">Select All</button><button type="button" onClick={() => setAll("form", false)} className="text-xs border rounded px-2 py-1">Clear All</button></div></div><div className="grid grid-cols-2 sm:grid-cols-3 gap-2">{PERM_LABELS.map(p => <label key={p.key} className="flex items-center gap-2 text-sm border rounded-lg px-2 py-1.5 cursor-pointer"><input type="checkbox" checked={!!form.permissions[p.key]} onChange={e => setForm({ ...form, permissions: { ...form.permissions, [p.key]: e.target.checked } })} />{p.label}</label>)}</div></div>
+      <div className="mt-4 flex gap-2 justify-end"><button onClick={reset} className="px-4 py-2 rounded-lg border">Cancel</button><button onClick={create} className="px-5 py-2 rounded-lg bg-brand text-white font-semibold">Create Employee</button></div>
+    </div>}
+    <div className="bg-white border rounded-xl overflow-hidden"><table className="w-full text-sm"><thead className="bg-muted"><tr><th className="p-3 text-left">Name</th><th className="p-3 text-left">Position</th><th className="p-3 text-left">Phone</th><th className="p-3 text-left">Email</th><th className="p-3 text-left">Role</th><th className="p-3 text-left">Permissions</th><th className="p-3 text-right">Actions</th></tr></thead><tbody>
+      {isFetching && <tr><td colSpan={7} className="p-2"><BrandLoader /></td></tr>}
+      {data?.map((e: any) => { const perms = (e.permissions ?? null) as (EmployeePermissions & { user_id: string }) | null; const activeCount = perms ? PERM_LABELS.filter(p => !!perms[p.key]).length : 0; const roleLabel = e.role === "super_admin" ? "CEO" : e.role === "admin" ? "Admin" : "Employee"; const roleColor = e.role === "super_admin" ? "bg-purple-100 text-purple-700" : e.role === "admin" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"; return <tr key={e.id} className="border-t"><td className="p-3 font-semibold">{e.name}</td><td className="p-3">{e.position}</td><td className="p-3">{e.phone}</td><td className="p-3">{e.email}</td><td className="p-3"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${roleColor}`}>{roleLabel}</span></td><td className="p-3"><span className="text-xs bg-muted rounded-full px-2 py-0.5">{activeCount} active</span></td><td className="p-3 text-right space-x-1">{e.user_id && <Link to="/admin/employees/$userId" params={{ userId: e.user_id }} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border hover:bg-muted"><Eye className="w-3 h-3" />Profile</Link>}{e.user_id && perms && <button onClick={() => setEditingPerms({ user_id: e.user_id!, perms, role: e.role })} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border hover:bg-muted"><UserCog className="w-3 h-3" />Permissions</button>}{e.user_id && <button onClick={() => resetPwd(e.user_id!)} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border hover:bg-muted"><KeyRound className="w-3 h-3" />Password</button>}<button onClick={() => remove(e.id)} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded border text-destructive hover:bg-destructive/10"><Trash2 className="w-3 h-3" /></button></td></tr>; })}
+      {!isFetching && !data?.length && <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">No employees found</td></tr>}
+    </tbody></table></div>
+    {editingPerms && <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"><div className="bg-white rounded-xl max-w-2xl w-full p-5 max-h-[90vh] overflow-y-auto"><h3 className="font-bold text-lg mb-3">Role & Granular Permissions</h3><div className="mb-4"><div className="text-sm font-semibold mb-2">User Role:</div><select value={editingPerms.role} onChange={e => setEditingPerms({ ...editingPerms, role: e.target.value })} className="border rounded-lg px-3 py-2 w-full max-w-xs"><option value="employee">Employee</option><option value="admin">Admin</option><option value="super_admin">CEO (Super Admin)</option></select></div><div className="flex items-center justify-between mb-2"><div className="text-sm font-semibold">Admin Permissions</div><div className="flex gap-2"><button type="button" onClick={() => setAll("edit", true)} className="text-xs border rounded px-2 py-1">Select All</button><button type="button" onClick={() => setAll("edit", false)} className="text-xs border rounded px-2 py-1">Clear All</button></div></div><div className="grid grid-cols-2 gap-2 mb-4">{PERM_LABELS.map(p => <label key={p.key} className="flex items-center gap-2 text-sm border rounded-lg px-2 py-1.5 cursor-pointer"><input type="checkbox" checked={!!editingPerms.perms[p.key]} onChange={e => setEditingPerms({ ...editingPerms, perms: { ...editingPerms.perms, [p.key]: e.target.checked } })} />{p.label}</label>)}</div><div className="flex gap-2 justify-end"><button onClick={() => setEditingPerms(null)} className="px-4 py-2 rounded-lg border">Cancel</button><button onClick={savePerms} className="px-5 py-2 rounded-lg bg-brand text-white font-semibold">Save</button></div></div></div>}
+  </AdminLayout>;
 }
