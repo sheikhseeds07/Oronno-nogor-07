@@ -1,68 +1,58 @@
-name: Apply courier display names and employee access
+name: Apply courier display names
 on:
   push:
+    branches: [courier-display-names-fix]
+  pull_request:
     branches: [main]
 permissions:
   contents: write
 jobs:
   apply:
-    if: github.event.head_commit.message != 'fix: allow employees to send courier orders and load RTS courier names'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Apply courier fixes
+      - name: Apply changes
         run: |
           python3 <<'PY'
           from pathlib import Path
-          import re
-
+          api = Path('src/routes/admin/all-api.tsx')
+          s = api.read_text()
+          s = s.replace('type SteadfastCfg = { api_key: string; secret_key: string; base_url: string };','type SteadfastCfg = { api_key: string; secret_key: string; base_url: string; display_name: string };')
+          s = s.replace('const emptySteadfast: SteadfastCfg = { api_key: "", secret_key: "", base_url: "https://portal.packzy.com/api/v1" };','const emptySteadfast: SteadfastCfg = { api_key: "", secret_key: "", base_url: "https://portal.packzy.com/api/v1", display_name: "" };')
+          s = s.replace('const trimmed = { api_key: cfg.api_key.trim(), secret_key: cfg.secret_key.trim(), base_url: cfg.base_url.trim() };','const trimmed = { api_key: cfg.api_key.trim(), secret_key: cfg.secret_key.trim(), base_url: cfg.base_url.trim(), display_name: cfg.display_name.trim() };')
+          marker = '<div className="grid gap-4 sm:grid-cols-2"><Field label="API Key">'
+          replacement = '<div className="grid gap-4 sm:grid-cols-2"><Field label="Courier Name"><input value={cfg.display_name} onChange={e => setCfg({ ...cfg, display_name: e.target.value })} placeholder={`যেমন: Courier ${account}`} className={inputClass} /></Field><Field label="API Key">'
+          if 'Field label="Courier Name"' not in s and marker in s: s = s.replace(marker, replacement, 1)
+          api.write_text(s)
           orders = Path('src/routes/admin/orders.tsx')
-          s = orders.read_text()
-
-          # Employees with order-management access can send orders to courier accounts.
-          if 'const { isAdmin, isStaff } = useAuth();' not in s:
-              anchor = 'function OrdersTable({\n'
-              if anchor not in s:
-                  raise SystemExit('OrdersTable anchor not found')
-              pos = s.index(anchor)
-              body_start = s.index('{', pos)
-              insert_at = s.index('\n', body_start) + 1
-              s = s[:insert_at] + '  const { isAdmin, isStaff } = useAuth();\n' + s[insert_at:]
-          s = re.sub(r'\{isAdmin && (?=(?:.|\n){0,900}?(?:পাঠান|sendBulk|Courier|কুরিয়ার))', '{isStaff && ', s)
-
-          old_import = 'import { sendOrdersToSteadfast, syncSteadfastStatuses } from "@/lib/courier-test.functions";'
-          new_import = 'import { sendOrdersToSteadfast, syncSteadfastStatuses, getSteadfastDisplayNames } from "@/lib/courier-test.functions";'
-          if old_import in s:
-              s = s.replace(old_import, new_import, 1)
-
-          # Employee accounts may be blocked by integrations RLS; load courier labels through the server.
-          old = '''  useEffect(() => {\n    let alive = true;\n    (async () => {\n      const { data } = await supabase.from("integrations").select("name,config").in("name", ["all_api_steadfast", "all_api_steadfast_2"]);'''
-          if old in s:
-              new = '''  const loadCourierDisplayNames = useServerFn(getSteadfastDisplayNames);\n  useEffect(() => {\n    let alive = true;\n    (async () => {\n      const { names } = await loadCourierDisplayNames();'''
-              s = s.replace(old, new, 1)
-              s = s.replace('''      const map: Record<1 | 2, string> = { 1: "কুরিয়ার ১", 2: "কুরিয়ার ২" };\n      for (const r of data ?? []) {\n        const c = (r.config ?? {}) as Record<string, unknown>;\n        const name = typeof c.display_name === "string" ? c.display_name.trim() : "";\n        if (r.name === "all_api_steadfast" && name) map[1] = name;\n        if (r.name === "all_api_steadfast_2" && name) map[2] = name;\n      }''', '''      const map: Record<1 | 2, string> = { 1: names?.[1] || "কুরিয়ার ১", 2: names?.[2] || "কুরিয়ার ২" };''', 1)
-              s = s.replace('''    })();\n    return () => { alive = false; };\n  }, []);''', '''    })();\n    return () => { alive = false; };\n  }, [loadCourierDisplayNames]);''', 1)
-
-          orders.write_text(s)
-
-          courier = Path('src/lib/courier-test.functions.ts')
-          c = courier.read_text()
-          if 'export const getSteadfastDisplayNames' not in c:
-              marker = 'export const sendOrdersToSteadfast = createServerFn({ method: "POST" })'
-              if marker not in c:
-                  raise SystemExit('courier server function anchor not found')
-              fn = '''export const getSteadfastDisplayNames = createServerFn({ method: "GET" })\n  .middleware([requireSupabaseAuth])\n  .handler(async ({ context }) => {\n    await assertCanManageOrders(context.userId);\n    const { data: rows } = await supabaseAdmin\n      .from("integrations")\n      .select("name,config,is_active")\n      .in("name", ["all_api_steadfast", "all_api_steadfast_2", "courier_steadfast"]);\n    const active = (rows ?? []).filter((r) => r.is_active);\n    const one = active.find((r) => r.name === "all_api_steadfast") ?? active.find((r) => r.name === "courier_steadfast") ?? active[0];\n    const two = active.find((r) => r.name === "all_api_steadfast_2");\n    const display = (row: any, fallback: string) => {\n      const cfg = (row?.config ?? {}) as Record<string, unknown>;\n      const value = typeof cfg.display_name === "string" ? cfg.display_name.trim() : "";\n      return value || fallback;\n    };\n    return { names: { 1: display(one, "কুরিয়ার ১"), 2: display(two, "কুরিয়ার ২") } };\n  });\n\n'''
-              c = c.replace(marker, fn + marker, 1)
-              courier.write_text(c)
-
-          print('Employee courier + RTS courier-name fix applied')
+          o = orders.read_text()
+          query = '''  const { data: courierDisplayNames } = useQuery({
+    queryKey: ["courier-display-names"],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data } = await supabase.from("integrations").select("name,config").in("name", ["all_api_steadfast", "all_api_steadfast_2"]);
+      const result = { 1: "Courier 1", 2: "Courier 2" } as Record<1 | 2, string>;
+      for (const row of data ?? []) {
+        const cfg = (row.config ?? {}) as { display_name?: string };
+        if (row.name === "all_api_steadfast" && cfg.display_name?.trim()) result[1] = cfg.display_name.trim();
+        if (row.name === "all_api_steadfast_2" && cfg.display_name?.trim()) result[2] = cfg.display_name.trim();
+      }
+      return result;
+    },
+  });
+  const courier1Name = courierDisplayNames?.[1] ?? "Courier 1";
+  const courier2Name = courierDisplayNames?.[2] ?? "Courier 2";
+'''
+          table_anchor = '  const qc = useQueryClient();\n  const sendBulk = useServerFn(sendOrdersToSteadfast);'
+          if 'courier-display-names' not in o and table_anchor in o:
+              o = o.replace(table_anchor, '  const qc = useQueryClient();\n' + query + '  const sendBulk = useServerFn(sendOrdersToSteadfast);', 1)
+          o = o.replace('কুরিয়ার ১ এ পাঠান (Steadfast)', '{courier1Name} এ পাঠান', 1)
+          o = o.replace('কুরিয়ার ২ এ পাঠান (Steadfast)', '{courier2Name} এ পাঠান', 1)
+          orders.write_text(o)
           PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/routes/admin/orders.tsx src/lib/courier-test.functions.ts
-          if git diff --cached --quiet; then
-            echo 'No source changes needed'; exit 0
-          fi
+          git add src/routes/admin/all-api.tsx src/routes/admin/orders.tsx
           git diff --cached --check
-          git commit -m "fix: allow employees to send courier orders and load RTS courier names"
+          git commit -m "Add configurable courier display names"
           git push origin HEAD:main
