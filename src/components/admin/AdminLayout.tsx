@@ -152,11 +152,19 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
     try { window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? "1" : "0"); } catch { /* ignore storage errors */ }
   }, [collapsed, mounted]);
   useEffect(() => { if (!initialized) return; if (!user) navigate({ to: "/login" as any }); }, [user, initialized, navigate]);
+  // Denied page → silently land on the first module the CEO granted (no error screen).
+  const allowedNav = isSuperAdmin ? NAV : NAV.filter((n) => permissions[n.perm] === true);
+  const pagePerm = requiredPermFor(loc.pathname);
+  const pageAllowed = isSuperAdmin || (pagePerm !== null && permissions[pagePerm] === true);
+  const firstAllowed = allowedNav[0]?.to;
+  useEffect(() => {
+    if (!initialized || !isStaff || pageAllowed || !firstAllowed) return;
+    navigate({ to: firstAllowed as any, replace: true });
+  }, [initialized, isStaff, pageAllowed, firstAllowed, navigate]);
   if (!mounted || (loading && !role)) return <div className="min-h-screen flex items-center justify-center">Please wait...</div>;
   if (!isStaff) return <div className="min-h-screen flex items-center justify-center bg-muted px-4"><div className="max-w-md rounded-xl border bg-card p-6 text-center shadow-sm"><h1 className="text-xl font-bold text-brand-dark">Access Denied</h1><p className="mt-2 text-sm text-muted-foreground">You do not have permission to view this page.</p><button onClick={() => navigate({ to: "/" })} className="mt-5 rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-primary-foreground">Go Home</button></div></div>;
-  const visibleNav = NAV.filter((n) => isSuperAdmin || permissions[n.perm] === true);
-  const requiredPerm = requiredPermFor(loc.pathname);
-  if (!isSuperAdmin && (requiredPerm === null || permissions[requiredPerm] !== true)) return <div className="min-h-screen flex items-center justify-center bg-muted px-4"><div className="max-w-md rounded-xl border bg-card p-6 text-center shadow-sm"><h1 className="text-xl font-bold text-brand-dark">এই পেজের অনুমতি নেই</h1><p className="mt-2 text-sm text-muted-foreground">এই অংশটি দেখার অনুমতি আপনাকে দেওয়া হয়নি। প্রয়োজন হলে CEO-কে জানান।</p><button onClick={() => navigate({ to: "/admin" })} className="mt-5 rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-primary-foreground">ড্যাশবোর্ডে যান</button></div></div>;
+  const visibleNav = allowedNav;
+  if (!pageAllowed) return <div className="min-h-screen flex items-center justify-center bg-muted px-4">{firstAllowed ? <div className="text-sm text-muted-foreground">এক মুহূর্ত…</div> : <div className="max-w-md rounded-xl border bg-card p-6 text-center shadow-sm"><h1 className="text-xl font-bold text-brand-dark">কোনো অনুমতি দেওয়া হয়নি</h1><p className="mt-2 text-sm text-muted-foreground">আপনার জন্য এখনো কোনো অংশের অনুমতি দেওয়া হয়নি। CEO-কে জানান।</p><button onClick={() => navigate({ to: "/" })} className="mt-5 rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-primary-foreground">হোমে যান</button></div>}</div>;
   const logout = async () => { await supabase.auth.signOut(); navigate({ to: "/" }); };
   return <div data-admin-route={loc.pathname} className="flex min-h-screen bg-muted">
     {loc.pathname === "/admin/orders" && <style>{orderUiCss}</style>}
