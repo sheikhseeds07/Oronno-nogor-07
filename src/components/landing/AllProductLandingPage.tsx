@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactElement, type ReactNode } from 
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { BadgeCheck, Check, ChevronDown, Leaf, MapPin, PackageCheck, Phone, ShieldCheck, ShoppingBag, Sparkles, Star, Truck, User, Wallet } from "lucide-react";
+import { Check, ChevronDown, Leaf, MapPin, PackageCheck, Phone, ShieldCheck, ShoppingBag, Sparkles, Truck, User, Wallet } from "lucide-react";
 import { supabase } from "@/lib/personal-supabase/client";
 import { placeOrder } from "@/lib/place-order.functions";
 import { useCheckoutAutofill } from "@/lib/useCheckoutAutofill";
@@ -49,6 +49,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   const shipping = current?.delivery_fee ?? delivery;
   const total = subtotal + shipping;
   const brand = settings.site_name || "Sheikh Seeds";
+  const brandBn = "শেখ সিডস";
   const logo = settings.logo_url || brandLogoFile;
   const features = page?.features?.length ? page.features : DEFAULT_FEATURES;
   const why = page?.why_choose_us?.length ? page.why_choose_us : DEFAULT_WHY;
@@ -67,11 +68,11 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   }, [page]);
 
   const goOrder = () => {
-    const el = document.getElementById("all-product-order");
-    if (!el) return;
+    const target = document.getElementById("all-product-order-form") ?? document.getElementById("all-product-order");
+    if (!target) return;
     const header = document.querySelector('[role="banner"]') as HTMLElement | null;
     const headerHeight = header?.getBoundingClientRect().height ?? 0;
-    const top = Math.max(0, el.getBoundingClientRect().top + window.scrollY - headerHeight - 10);
+    const top = Math.max(0, target.getBoundingClientRect().top + window.scrollY - headerHeight - 12);
     window.scrollTo({ top, behavior: "smooth" });
   };
   const submit = async (event: React.FormEvent) => {
@@ -99,7 +100,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
     {page.top_bar_text && <div className="bg-all-product-alert px-3 py-0.5 text-center text-[10px] font-bold leading-4 text-all-product-alert-foreground sm:text-[11px]">{page.top_bar_text}</div>}
     <div role="banner" className="sticky top-0 z-40 border-b border-all-product-line bg-all-product-surface/95 backdrop-blur-xl">
       <div className="mx-auto flex h-10 max-w-6xl items-center justify-between gap-3 px-3 sm:px-4">
-        <div className="flex min-w-0 items-center gap-1.5"><img src={logo} alt={brand} className="h-6 w-6 rounded-full border border-all-product-line object-cover" /><div className="flex min-w-0 items-center gap-1 text-[13px] font-black leading-none"><span className="truncate">{brand}</span><BadgeCheck className="h-3 w-3 shrink-0 text-all-product-primary" fill="currentColor" /></div></div>
+        <div className="flex min-w-0 items-center gap-1.5"><img src={logo} alt={brand} className="h-6 w-6 rounded-full border border-all-product-line object-cover" /><div className="flex min-w-0 items-center text-[13px] font-black leading-none"><span className="truncate">{brandBn}</span></div></div>
         <OfferCountdown />
       </div>
     </div>
@@ -218,7 +219,7 @@ function OfferCountdown() {
       <style>{AP_COUNTDOWN_STYLE}</style>
       <div className="flex shrink-0 items-center gap-1.5 text-[10px] font-black text-all-product-alert" aria-label="অফার শেষ হওয়ার কাউন্টডাউন">
         <span className="ap-cd-dot h-1.5 w-1.5 rounded-full bg-all-product-alert" aria-hidden="true" />
-        <span>অফার শেষ</span>
+        <span>অফার শেষ হতে বাকি</span>
         <span className="flex items-center gap-1">{units.map((unit, i) => (
           <span key={i} className="flex items-center gap-1">
             {i > 0 && <span className="text-all-product-muted">:</span>}
