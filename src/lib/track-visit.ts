@@ -72,6 +72,9 @@ async function ensureSeedComboItems() {
     card.append(wrap, title, amount); grid.appendChild(card);
   });
 
+  // Build the premium grid completely before swapping it in, so refresh/navigation
+  // never leaves the old table as the visible fallback.
+  section.setAttribute("data-seedcombo-rendered", "true");
   table.replaceWith(section);
   const cards = Array.from(section.querySelectorAll<HTMLElement>(".seedcombo-item-card"));
   if ("IntersectionObserver" in window) {
@@ -86,7 +89,7 @@ function ensureSeedCombo() {
   const spacingId = "seedcombo-checkout-spacing-fix";
   if (!document.getElementById(spacingId)) {
     const style = document.createElement("style"); style.id = spacingId;
-    style.textContent = `#order{margin-top:24px!important;padding-top:10px!important}#order #lp-order-form{margin-top:8px!important}@media(max-width:640px){#order{margin-top:22px!important;padding-top:8px!important}#order #lp-order-form{margin-top:7px!important}}`;
+    style.textContent = `#order{margin-top:10px!important;padding-top:0!important;padding-bottom:8px!important}#order #lp-order-form{margin-top:3px!important;margin-bottom:0!important}@media(max-width:640px){#order{margin-top:8px!important;padding-top:0!important;padding-bottom:5px!important}#order #lp-order-form{margin-top:2px!important;margin-bottom:0!important}}`;
     document.head.appendChild(style);
   }
   void ensureSeedComboItems();
