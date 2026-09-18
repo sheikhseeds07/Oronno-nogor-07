@@ -65,7 +65,7 @@ const seedComboCheckoutCss = `
 #order { scroll-margin-top: 76px !important; margin-top: -22px !important; padding-top: 0 !important; }
 #order > .mb-4.text-center { margin-bottom: 10px !important; }
 #order #lp-order-form { position:relative; overflow:hidden; border:1px solid rgba(21,128,61,.16) !important; border-radius:26px !important; padding:12px !important; background:linear-gradient(145deg,#fff 0%,#f7fff9 48%,#fff 100%) !important; box-shadow:0 20px 55px -30px rgba(6,78,59,.45),0 0 0 1px rgba(255,255,255,.8) inset !important; }
-#order #lp-order-form::before { content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#16a34a,#f59e0b,#22c55e,#0ea5e9,#16a34a);background-size:220% 100%;animation:seedComboGradient 4s linear infinite; }
+#order #lp-order-form::before { content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#1c7a4a,#e3b94f,#1c7a4a);background-size:220% 100%;animation:seedComboGradient 6s linear infinite; }
 #order #lp-order-form::after { content:"";position:absolute;width:180px;height:180px;right:-90px;top:20px;border-radius:999px;background:radial-gradient(circle,rgba(34,197,94,.11),transparent 68%);pointer-events:none; }
 @keyframes seedComboGradient { to { background-position:220% 0; } }
 #order #lp-order-form > .border-2.rounded-2xl.p-3 { position:relative;z-index:1;margin:0 0 8px !important;padding:8px !important;border:1px solid rgba(21,128,61,.14) !important;border-radius:18px !important;background:linear-gradient(135deg,rgba(240,253,244,.96),rgba(255,255,255,.98)) !important;box-shadow:0 7px 20px -18px rgba(6,78,59,.5) !important; }
