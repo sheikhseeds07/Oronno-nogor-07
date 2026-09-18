@@ -12,3 +12,4 @@
 - [x] Stop shared mobile IPs from causing site-wide blocks; keep phone, account, and device blocks
 - [x] Redesign only the Seed Combo landing page with a compact premium botanical presentation and reliable lightweight motion
 - [x] Refine Seed Combo copy, Bengali headline, popup, and scrolling performance
+- [x] Match the Seed Combo checkout to the All Product stepped checkout reference
