@@ -815,3 +815,19 @@ html.texture-mesh::before {
   .seed-combo-page .seedcombo-item-card{opacity:1}
   .seed-combo-page .seedcombo-item-card.is-clicked{transform:none}
 }
+
+
+/* Seed image framing: show the product subject more completely while keeping a full, filled frame */
+.seed-combo-page .seedcombo-item-img-wrap{
+  aspect-ratio:1/.92;
+  background:linear-gradient(135deg,#edf9f1 0%,#f7fbf8 100%);
+}
+.seed-combo-page .seedcombo-item-img{
+  width:100%;height:100%;object-fit:cover;object-position:center center;
+  transform-origin:center center;
+}
+.seed-combo-page .seedcombo-item-card:hover .seedcombo-item-img{transform:scale(1.035)}
+.seed-combo-page .seedcombo-item-card.is-clicked .seedcombo-item-img{transform:scale(.96)}
+@media(max-width:640px){
+  .seed-combo-page .seedcombo-item-img-wrap{aspect-ratio:1/.90}
+}
