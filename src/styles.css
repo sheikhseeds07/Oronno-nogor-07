@@ -539,7 +539,7 @@ html.texture-mesh::before {
 
 /* Seed Combo — clean premium botanical */
 .seed-combo-page{letter-spacing:0;padding-bottom:74px;color:var(--seed-ink);--seed-emerald:oklch(0.55 0.125 160);--seed-deep:oklch(0.285 0.05 160);--seed-ivory:oklch(1 0 0);--seed-crimson:oklch(0.53 0.2 26)}
-.seed-combo-page.lp-agri-bg::before{background-color:var(--seed-canvas);background-image:radial-gradient(ellipse 120% 40% at 50% -6%,color-mix(in oklab,var(--seed-emerald) 10%,transparent),transparent 70%),linear-gradient(180deg,var(--seed-ivory),var(--seed-canvas) 55%,color-mix(in oklab,var(--seed-canvas) 94%,var(--seed-emerald)));background-size:auto;background-repeat:no-repeat;background-attachment:fixed}
+.seed-combo-page.lp-agri-bg::before{background-color:var(--seed-canvas);background-image:radial-gradient(ellipse 120% 40% at 50% -6%,color-mix(in oklab,var(--seed-emerald) 10%,transparent),transparent 70%),linear-gradient(180deg,var(--seed-ivory),var(--seed-canvas) 55%,color-mix(in oklab,var(--seed-canvas) 94%,var(--seed-emerald)));background-size:auto;background-repeat:no-repeat;background-attachment:scroll}
 
 /* header */
 .seed-combo-page .lp-premium-header{background:color-mix(in oklab,var(--seed-ivory) 90%,transparent);backdrop-filter:blur(14px);border-bottom:1px solid color-mix(in oklab,var(--seed-line) 90%,white);box-shadow:none}
@@ -551,9 +551,10 @@ html.texture-mesh::before {
 /* hero */
 .seed-combo-page>.container{padding-inline:14px;gap:12px}
 .seed-combo-page .lp-ref-band{margin-inline:-14px;padding:0 14px 6px}
-.seed-combo-page .top-hook{padding:15px 14px 16px;border-bottom:0;border-radius:0 0 26px 26px;background:var(--seed-ivory);box-shadow:0 14px 30px -30px var(--seed-ink)}
+.seed-combo-page .top-hook{padding:17px 14px 16px;border-bottom:0;border-radius:0 0 26px 26px;background:var(--seed-ivory);box-shadow:0 14px 30px -30px var(--seed-ink)}
 .seed-combo-page .seed-offer-kicker,.seed-combo-page .seed-section-kicker{display:inline-flex;align-items:center;justify-content:center;gap:6px;width:max-content;max-width:100%;margin:0 auto 9px;padding:4px 11px;border:1px solid color-mix(in oklab,var(--seed-emerald) 22%,var(--seed-line));border-radius:999px;background:color-mix(in oklab,var(--seed-emerald) 7%,white);color:var(--seed-emerald);font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
-.seed-combo-page .top-hook h1{font-size:31px;line-height:1.14;margin-bottom:10px;color:var(--seed-deep);text-wrap:balance;letter-spacing:-.015em}
+.seed-combo-page .top-hook h1{font-family:'Noto Serif Bengali','Hind Siliguri',serif;font-size:31px;line-height:1.2;margin-bottom:10px;color:var(--seed-deep);font-weight:800;text-wrap:balance;letter-spacing:0;text-shadow:0 1px 0 var(--seed-ivory)}
+.seed-combo-page .top-hook h1::after{content:"";display:block;width:82px;height:2px;margin:7px auto 0;border-radius:99px;background:linear-gradient(90deg,transparent,var(--seed-gold),transparent)}
 .seed-combo-page .price-badge{font-size:29px;font-weight:800;padding:8px 22px;border:0;border-radius:999px;background:linear-gradient(150deg,var(--seed-deep),var(--seed-emerald));color:#fff;box-shadow:0 16px 30px -20px var(--seed-deep)}
 .seed-combo-page .price-badge .ribbon{top:-13px;right:4px;border-radius:999px;padding:4px 10px;font-size:10px;letter-spacing:.03em;background:var(--seed-crimson);box-shadow:0 8px 16px -12px var(--seed-ink)}
 .seed-combo-page .hook-divider{position:relative;height:1px;width:96px;margin:12px auto 9px;border-radius:99px;background:linear-gradient(90deg,transparent,color-mix(in oklab,var(--seed-gold) 80%,transparent),transparent)}
@@ -592,7 +593,7 @@ html.texture-mesh::before {
 /* injected seed grid */
 .seed-combo-page .seedcombo-items-premium{padding:16px 11px 15px;border:1px solid color-mix(in oklab,var(--seed-line) 90%,white);border-radius:22px;background:var(--seed-ivory);box-shadow:0 20px 42px -36px var(--seed-ink)}
 .seed-combo-page .seedcombo-items-premium:before{background:none}
-.seed-combo-page .seedcombo-items-kicker{border:1px solid color-mix(in oklab,var(--seed-emerald) 22%,var(--seed-line));background:color-mix(in oklab,var(--seed-emerald) 7%,white);color:var(--seed-emerald);letter-spacing:.06em}
+.seed-combo-page .seedcombo-items-kicker{display:none}
 .seed-combo-page .seedcombo-items-title{color:var(--seed-deep)}
 .seed-combo-page .seedcombo-items-sub{color:color-mix(in oklab,var(--seed-ink) 55%,white);font-size:11px}
 .seed-combo-page .seedcombo-item-card{border-color:color-mix(in oklab,var(--seed-line) 92%,white);border-radius:15px;background:var(--seed-ivory);box-shadow:none}
@@ -608,7 +609,7 @@ html.texture-mesh::before {
 /* order head */
 .seed-combo-page .seed-order-head{padding:15px 15px 0;text-align:center}
 .seed-combo-page .seed-order-head .seed-section-kicker{margin-bottom:6px}
-.seed-combo-page .seed-order-head p{margin:0;font-size:12.5px;font-weight:600;line-height:1.55;color:color-mix(in oklab,var(--seed-ink) 60%,white)}
+.seed-combo-page .seed-order-head p{margin:0;font-size:clamp(9.5px,2.8vw,12.5px);font-weight:600;line-height:1.55;color:color-mix(in oklab,var(--seed-ink) 60%,white);white-space:nowrap}
 
 /* checkout */
 .seed-combo-page #order,.seed-combo-page .lp-product-checkout-group{border:1px solid color-mix(in oklab,var(--seed-line) 90%,white);border-radius:22px;box-shadow:0 24px 50px -38px var(--seed-ink)}
@@ -625,11 +626,25 @@ html.texture-mesh::before {
 .seed-combo-page .fixed.bottom-0.bg-white\/95::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:color-mix(in oklab,var(--seed-line) 90%,white)}
 .seed-combo-page .fixed.bottom-0 button.lp-pulse{border-radius:14px;background:linear-gradient(140deg,var(--seed-emerald),var(--seed-deep))!important;box-shadow:0 14px 28px -18px var(--seed-deep)}
 
+/* Seed Combo welcome popup */
+.seed-popup-backdrop{background:color-mix(in oklab,var(--seed-deep) 58%,transparent);backdrop-filter:blur(5px)}
+.seed-popup-panel{overflow:hidden;border:1px solid color-mix(in oklab,var(--seed-gold) 70%,var(--seed-line));border-radius:22px;background:linear-gradient(155deg,var(--seed-ivory),color-mix(in oklab,var(--seed-canvas) 94%,var(--seed-gold)));color:var(--seed-deep);box-shadow:0 28px 70px -24px color-mix(in oklab,var(--seed-deep) 75%,transparent),inset 0 1px 0 var(--seed-ivory)}
+.seed-popup-panel::before{content:"";position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,var(--seed-deep),var(--seed-gold),var(--seed-emerald))}
+.seed-popup-image{padding:5px;background:var(--seed-ivory)}
+.seed-popup-image img{border-radius:17px}
+.seed-popup-logo{border:1px solid color-mix(in oklab,var(--seed-gold) 58%,var(--seed-line));background:var(--seed-ivory);box-shadow:0 10px 28px -20px var(--seed-deep)}
+.seed-popup-title{font-family:'Noto Serif Bengali','Hind Siliguri',serif;color:var(--seed-deep)}
+.seed-popup-copy{color:color-mix(in oklab,var(--seed-ink) 72%,white)}
+.seed-popup-cta{border:0;border-radius:13px;background:linear-gradient(140deg,var(--seed-emerald),var(--seed-deep));color:var(--seed-ivory);box-shadow:0 16px 30px -19px var(--seed-deep)}
+.seed-popup-cta:hover{transform:translateY(-1px);filter:brightness(1.04)}
+.seed-popup-proof{color:color-mix(in oklab,var(--seed-deep) 80%,var(--seed-gold))}
+
 /* motion */
 .seed-combo-page .lp-reveal{opacity:1;transform:none}
 .seed-combo-page .lp-reveal-in{animation:seed-reveal .58s cubic-bezier(.22,1,.36,1) both}
 @keyframes seed-reveal{from{opacity:.01;transform:translateY(14px)}to{opacity:1;transform:none}}
 @media(min-width:641px){.seed-combo-page>.container{padding-inline:16px}.seed-combo-page .top-hook h1{font-size:36px}.seed-combo-page .price-badge{font-size:32px}.seed-combo-page .seed-trust-strip span{font-size:11.5px}}
+@media(max-width:640px){.seed-popup-backdrop{backdrop-filter:none}.seed-combo-page .seed-hero-frame:hover img{transform:none}}
 @media(prefers-reduced-motion:reduce){.seed-combo-page .lp-reveal-in{animation:none}.seed-combo-page .seed-hero-frame img{transition:none}}
 
 
