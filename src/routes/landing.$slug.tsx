@@ -86,8 +86,8 @@ const seedComboCheckoutCss = `
 #order #lp-order-form button[type="submit"] { display:none !important; }
 #order #lp-order-form button[type="button"] { transition:transform .18s ease,box-shadow .18s ease !important; }
 #order #lp-order-form button[type="button"]:active { transform:scale(.985); }
-@media (max-width:640px) { #order { margin-top:-26px !important;padding-bottom:110px !important; } #order > .mb-4.text-center { margin-bottom:7px !important; } #order #lp-order-form { padding:8px !important;border-radius:22px !important; } #order #lp-order-form > .border-2.rounded-2xl.p-3 { margin-bottom:6px !important;padding:6px !important;border-radius:16px !important; } #order #lp-order-form > .border-2.rounded-2xl.p-3 .space-y-2 > button { min-height:50px !important;padding:6px 7px !important;border-radius:12px !important; } #order #lp-order-form input:not([type="checkbox"]),#order #lp-order-form textarea { min-height:50px !important;font-size:16px !important; } #order #lp-order-form textarea { min-height:82px !important; } }
-@media (min-width:641px) { #order { padding-bottom:100px !important; } }
+@media (max-width:640px) { #order { margin-top:-26px !important;padding-bottom:8px !important; } #order > .mb-4.text-center { margin-bottom:7px !important; } #order #lp-order-form { padding:8px !important;border-radius:22px !important; } #order #lp-order-form > .border-2.rounded-2xl.p-3 { margin-bottom:6px !important;padding:6px !important;border-radius:16px !important; } #order #lp-order-form > .border-2.rounded-2xl.p-3 .space-y-2 > button { min-height:50px !important;padding:6px 7px !important;border-radius:12px !important; } #order #lp-order-form input:not([type="checkbox"]),#order #lp-order-form textarea { min-height:50px !important;font-size:16px !important; } #order #lp-order-form textarea { min-height:82px !important; } }
+@media (min-width:641px) { #order { padding-bottom:8px !important; } }
 @media (prefers-reduced-motion: reduce) { #order #lp-order-form::before,#order #lp-order-form > .border-2.rounded-2xl.p-3 .space-y-2 > button:first-child { animation:none !important; } }
 .lp-footer-wrap { display:none !important; }
 `;
@@ -169,4 +169,3 @@ function LandingPage() {
   if (template === "all") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><LegacyLandingPage slug={slug} /></>;
   return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><CleanLandingPage slug={slug} /></>;
 }
-
