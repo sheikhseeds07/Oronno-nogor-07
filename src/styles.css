@@ -607,53 +607,53 @@ html.texture-mesh::before {
 .seed-combo-page img.rounded-2xl{border-radius:20px;border-color:var(--seed-ivory);box-shadow:0 18px 40px -34px var(--seed-ink)}
 
 /* checkout */
-.seed-combo-page .seed-checkout-section{--seed-emerald:var(--all-product-primary);--seed-deep:var(--all-product-ink);--seed-ivory:var(--all-product-surface);--seed-canvas:var(--all-product-muted-surface);--seed-line:var(--all-product-line);--seed-gold:var(--all-product-gold);--seed-crimson:var(--all-product-alert);border:0;border-radius:0;background:var(--all-product-checkout);padding:14px;border-radius:16px;box-shadow:none}
-.seed-combo-page .seed-checkout-card{overflow:hidden;border:1px solid var(--seed-line);border-radius:14px;background:var(--seed-ivory);box-shadow:0 24px 50px -38px var(--seed-ink)}
-.seed-combo-page .seed-checkout-block{padding:20px 18px;border-bottom:1px solid var(--seed-line)}
-.seed-combo-page .seed-checkout-heading{display:flex;align-items:center;gap:11px;margin-bottom:18px;color:var(--seed-deep)}
-.seed-combo-page .seed-checkout-heading>span{display:grid;width:36px;height:36px;flex:0 0 auto;place-items:center;border-radius:999px;background:var(--seed-emerald);color:var(--seed-ivory);font-size:16px;font-weight:900}
-.seed-combo-page .seed-checkout-heading h2{font-family:'Noto Serif Bengali','Hind Siliguri',serif;font-size:22px;font-weight:800;line-height:1.25;letter-spacing:0}
-.seed-combo-page .seed-checkout-fields{display:grid;gap:16px}
+.seed-combo-page .seed-checkout-section{--seed-emerald:var(--all-product-primary);--seed-deep:var(--all-product-ink);--seed-ivory:var(--all-product-surface);--seed-canvas:var(--all-product-muted-surface);--seed-line:var(--all-product-line);--seed-gold:var(--all-product-gold);--seed-crimson:var(--all-product-alert);border:0;background:var(--all-product-checkout);padding:8px;border-radius:12px;box-shadow:none}
+.seed-combo-page .seed-checkout-card{overflow:hidden;border:1px solid var(--seed-line);border-radius:11px;background:var(--seed-ivory);box-shadow:0 18px 36px -32px var(--seed-ink)}
+.seed-combo-page .seed-checkout-block{padding:14px 12px;border-bottom:1px solid var(--seed-line)}
+.seed-combo-page .seed-checkout-heading{display:flex;align-items:center;gap:8px;margin-bottom:11px;color:var(--seed-deep)}
+.seed-combo-page .seed-checkout-heading>span{display:grid;width:30px;height:30px;flex:0 0 auto;place-items:center;border-radius:999px;background:var(--seed-emerald);color:var(--seed-ivory);font-size:14px;font-weight:900}
+.seed-combo-page .seed-checkout-heading h2{font-family:'Noto Serif Bengali','Hind Siliguri',serif;font-size:19px;font-weight:800;line-height:1.2;letter-spacing:0}
+.seed-combo-page .seed-checkout-fields{display:grid;gap:11px}
 .seed-combo-page .seed-checkout-fields label{display:block;color:var(--seed-deep)}
-.seed-combo-page .seed-checkout-fields label>b{display:block;margin-bottom:7px;font-size:15px;font-weight:800}
+.seed-combo-page .seed-checkout-fields label>b{display:block;margin-bottom:5px;font-size:13px;font-weight:800}
 .seed-combo-page .seed-checkout-fields label i{color:var(--seed-crimson);font-style:normal}
 .seed-combo-page .seed-checkout-input{position:relative;display:block}
-.seed-combo-page .seed-checkout-input>svg{position:absolute;z-index:1;left:14px;top:50%;width:19px;height:19px;transform:translateY(-50%);color:color-mix(in oklab,var(--seed-deep) 58%,white);pointer-events:none}
-.seed-combo-page .seed-checkout-address>svg{top:17px;transform:none}
-.seed-combo-page .seed-checkout-input input,.seed-combo-page .seed-checkout-input textarea{width:100%;min-height:54px;border:1px solid color-mix(in oklab,var(--seed-emerald) 22%,var(--seed-line));border-radius:10px;background:color-mix(in oklab,var(--seed-canvas) 74%,white);padding:13px 14px 13px 46px;color:var(--seed-ink);font-size:16px;outline:none;transition:border-color .2s ease,box-shadow .2s ease,background .2s ease}
-.seed-combo-page .seed-checkout-input textarea{min-height:90px;resize:none}
+.seed-combo-page .seed-checkout-input>svg{position:absolute;z-index:1;left:12px;top:50%;width:17px;height:17px;transform:translateY(-50%);color:color-mix(in oklab,var(--seed-deep) 58%,white);pointer-events:none}
+.seed-combo-page .seed-checkout-address>svg{top:14px;transform:none}
+.seed-combo-page .seed-checkout-input input,.seed-combo-page .seed-checkout-input textarea{width:100%;min-height:46px;border:1px solid color-mix(in oklab,var(--seed-emerald) 22%,var(--seed-line));border-radius:8px;background:color-mix(in oklab,var(--seed-canvas) 74%,white);padding:10px 11px 10px 39px;color:var(--seed-ink);font-size:14px;outline:none;transition:border-color .2s ease,box-shadow .2s ease,background .2s ease}
+.seed-combo-page .seed-checkout-input textarea{min-height:68px;resize:none}
 .seed-combo-page .seed-checkout-input input:focus,.seed-combo-page .seed-checkout-input textarea:focus{border-color:var(--seed-emerald);background:var(--seed-ivory);box-shadow:0 0 0 3px color-mix(in oklab,var(--seed-emerald) 13%,transparent)}
 .seed-combo-page .seed-checkout-input.is-error input{border-color:var(--seed-crimson)}
 .seed-combo-page .seed-checkout-fields small{display:block;margin-top:5px;color:var(--seed-crimson);font-size:11px;font-weight:700}
-.seed-combo-page .seed-checkout-offers{display:grid;gap:10px}
-.seed-combo-page .seed-checkout-offer{width:100%;height:auto;min-height:84px;justify-content:flex-start;gap:11px;border-color:var(--seed-line)!important;border-radius:10px!important;background:var(--seed-ivory)!important;padding:11px!important;color:var(--seed-ink)!important;white-space:normal;box-shadow:none!important}
+.seed-combo-page .seed-checkout-offers{display:grid;gap:7px}
+.seed-combo-page .seed-checkout-offer{width:100%;height:auto;min-height:68px;justify-content:flex-start;gap:8px;border-color:var(--seed-line)!important;border-radius:9px!important;background:var(--seed-ivory)!important;padding:8px!important;color:var(--seed-ink)!important;white-space:normal;box-shadow:none!important}
 .seed-combo-page .seed-checkout-offer.is-selected{border:2px solid var(--seed-emerald)!important;background:color-mix(in oklab,var(--seed-emerald) 12%,white)!important;box-shadow:0 0 0 1px color-mix(in oklab,var(--seed-emerald) 30%,transparent)!important}
-.seed-combo-page .seed-checkout-radio{display:grid;width:24px;height:24px;flex:0 0 auto;place-items:center;border:2px solid color-mix(in oklab,var(--seed-emerald) 25%,var(--seed-line));border-radius:999px;color:var(--seed-ivory)}
+.seed-combo-page .seed-checkout-radio{display:grid;width:21px;height:21px;flex:0 0 auto;place-items:center;border:2px solid color-mix(in oklab,var(--seed-emerald) 25%,var(--seed-line));border-radius:999px;color:var(--seed-ivory)}
 .seed-combo-page .seed-checkout-offer.is-selected .seed-checkout-radio{border-color:var(--seed-emerald);background:var(--seed-emerald)}
-.seed-combo-page .seed-checkout-radio svg{width:15px;height:15px;stroke-width:3}
-.seed-combo-page .seed-checkout-offer>img{width:58px;height:58px;flex:0 0 auto;border-radius:8px;object-fit:cover}
+.seed-combo-page .seed-checkout-radio svg{width:13px;height:13px;stroke-width:3}
+.seed-combo-page .seed-checkout-offer>img{width:46px;height:46px;flex:0 0 auto;border-radius:7px;object-fit:cover}
 .seed-combo-page .seed-checkout-offer-copy{min-width:0;flex:1;text-align:left}
-.seed-combo-page .seed-checkout-offer-copy strong{display:block;font-size:15px;font-weight:800;line-height:1.35}
-.seed-combo-page .seed-checkout-offer-copy small{display:block;margin-top:4px;color:color-mix(in oklab,var(--seed-ink) 58%,white);font-size:12px;font-weight:700}
+.seed-combo-page .seed-checkout-offer-copy strong{display:block;font-size:13px;font-weight:800;line-height:1.3}
+.seed-combo-page .seed-checkout-offer-copy small{display:block;margin-top:2px;color:color-mix(in oklab,var(--seed-ink) 58%,white);font-size:10px;font-weight:700}
 .seed-combo-page .seed-checkout-offer-price{flex:0 0 auto;text-align:right}
-.seed-combo-page .seed-checkout-offer-price strong{display:block;color:var(--seed-emerald);font-size:20px;font-weight:900}
-.seed-combo-page .seed-checkout-offer-price del{display:block;color:color-mix(in oklab,var(--seed-ink) 48%,white);font-size:12px}
+.seed-combo-page .seed-checkout-offer-price strong{display:block;color:var(--seed-emerald);font-size:17px;font-weight:900}
+.seed-combo-page .seed-checkout-offer-price del{display:block;color:color-mix(in oklab,var(--seed-ink) 48%,white);font-size:10px}
 .seed-combo-page .seed-checkout-offer-price em{display:block;margin-top:4px;border-radius:5px;background:var(--seed-gold);padding:3px 7px;color:var(--seed-deep);font-size:9px;font-style:normal;font-weight:900}
-.seed-combo-page .seed-checkout-payment{display:flex;align-items:center;gap:10px;border:1px solid color-mix(in oklab,var(--seed-emerald) 28%,var(--seed-line));border-radius:9px;background:color-mix(in oklab,var(--seed-emerald) 8%,white);padding:12px;color:var(--seed-deep)}
+.seed-combo-page .seed-checkout-payment{display:flex;align-items:center;gap:8px;border:1px solid color-mix(in oklab,var(--seed-emerald) 28%,var(--seed-line));border-radius:8px;background:color-mix(in oklab,var(--seed-emerald) 8%,white);padding:9px 10px;color:var(--seed-deep)}
 .seed-combo-page .seed-checkout-payment>svg:first-child{width:21px;height:21px;color:var(--seed-emerald)}
 .seed-combo-page .seed-checkout-payment>svg:last-child{width:19px;height:19px;color:var(--seed-emerald)}
 .seed-combo-page .seed-checkout-payment>span{min-width:0;flex:1}
 .seed-combo-page .seed-checkout-payment strong,.seed-combo-page .seed-checkout-payment small{display:block}
 .seed-combo-page .seed-checkout-payment strong{font-size:14px;font-weight:900}.seed-combo-page .seed-checkout-payment small{margin-top:2px;color:color-mix(in oklab,var(--seed-ink) 58%,white);font-size:11px}
-.seed-combo-page .seed-checkout-summary{overflow:hidden;margin-top:12px;border:1px solid var(--seed-line);border-radius:9px;font-size:13px}
-.seed-combo-page .seed-checkout-summary>div{display:flex;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--seed-line)}
-.seed-combo-page .seed-checkout-summary>div:last-child{border:0;background:color-mix(in oklab,var(--seed-emerald) 8%,white);font-size:15px}
+.seed-combo-page .seed-checkout-summary{overflow:hidden;margin-top:8px;border:1px solid var(--seed-line);border-radius:8px;font-size:12px}
+.seed-combo-page .seed-checkout-summary>div{display:flex;justify-content:space-between;padding:7px 10px;border-bottom:1px solid var(--seed-line)}
+.seed-combo-page .seed-checkout-summary>div:last-child{border:0;background:color-mix(in oklab,var(--seed-emerald) 8%,white);font-size:14px}
 .seed-combo-page .seed-checkout-summary span{color:color-mix(in oklab,var(--seed-ink) 62%,white)}
 .seed-combo-page .seed-checkout-summary>div:last-child b{color:var(--seed-emerald)}
-.seed-combo-page .seed-checkout-submit{position:relative;overflow:hidden;width:calc(100% - 36px);min-height:52px;margin:18px;border-radius:10px;background:linear-gradient(110deg,var(--all-product-primary),color-mix(in oklab,var(--all-product-primary) 82%,var(--all-product-success)))!important;color:var(--all-product-primary-foreground)!important;font-size:16px;font-weight:900;box-shadow:0 16px 32px -18px color-mix(in oklab,var(--all-product-primary) 85%,transparent)}
+.seed-combo-page .seed-checkout-submit{position:relative;overflow:hidden;width:calc(100% - 24px);min-height:46px;margin:12px;border-radius:9px;background:linear-gradient(110deg,var(--all-product-primary),color-mix(in oklab,var(--all-product-primary) 82%,var(--all-product-success)))!important;color:var(--all-product-primary-foreground)!important;font-size:15px;font-weight:900;box-shadow:0 14px 28px -18px color-mix(in oklab,var(--all-product-primary) 85%,transparent)}
 .seed-combo-page .seed-checkout-submit::after{content:"";position:absolute;inset:0 auto 0 -35%;width:25%;background:linear-gradient(90deg,transparent,color-mix(in oklab,var(--all-product-primary-foreground) 45%,transparent),transparent);transform:skewX(-18deg);animation:all-product-shine 3.2s ease-in-out infinite}
 @media(min-width:641px){.seed-combo-page .seed-checkout-fields{grid-template-columns:1fr 1fr}.seed-combo-page .seed-checkout-fields label:last-child{grid-column:1/-1}}
-@media(max-width:480px){.seed-combo-page .seed-checkout-block{padding:18px 16px}.seed-combo-page .seed-checkout-heading h2{font-size:20px}.seed-combo-page .seed-checkout-offer{gap:9px;padding:10px!important}.seed-combo-page .seed-checkout-offer>img{width:52px;height:52px}.seed-combo-page .seed-checkout-offer-copy strong{font-size:14px}.seed-combo-page .seed-checkout-offer-price strong{font-size:18px}.seed-combo-page .seed-checkout-submit{width:calc(100% - 32px);margin:16px}}
+@media(max-width:480px){.seed-combo-page .seed-checkout-section{padding:6px}.seed-combo-page .seed-checkout-block{padding:12px 10px}.seed-combo-page .seed-checkout-heading{margin-bottom:9px}.seed-combo-page .seed-checkout-heading h2{font-size:18px}.seed-combo-page .seed-checkout-submit{width:calc(100% - 20px);margin:10px}}
 
 /* sticky bar */
 .seed-combo-page .fixed.bottom-0{border-top-color:transparent!important}
