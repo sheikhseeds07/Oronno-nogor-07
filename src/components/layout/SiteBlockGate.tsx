@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useRouterState } from "@tanstack/react-router";
 import { getSiteBlockStatus } from "@/lib/visitor-block.functions";
 import { supabase } from "@/lib/personal-supabase/client";
 import { safeUUID } from "@/lib/uuid";
 import { BlockedNotice } from "@/components/layout/BlockedNotice";
-import { hasStaffBypass } from "@/lib/staff-bypass";
 
 const DEVICE_KEY = "hng-device-id";
 
@@ -22,14 +22,19 @@ function readDeviceId(): string | null {
   }
 }
 
-/** Blocks the whole site for a blocked device or blocked customer account. */
+/** Blocks the whole site for a blocked IP, blocked device or blocked customer account. */
 export function SiteBlockGate() {
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const [customerId, setCustomerId] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
   const check = useServerFn(getSiteBlockStatus);
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  // Admin panel and login stay reachable so blocks can always be managed.
+  const isAdminArea = pathname.startsWith("/admin") || pathname.startsWith("/login");
 
   useEffect(() => {
     setDeviceId(readDeviceId());
+    setReady(true);
     supabase.auth.getSession().then(({ data }) => setCustomerId(data.session?.user?.id ?? null));
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) =>
       setCustomerId(session?.user?.id ?? null),
@@ -37,14 +42,15 @@ export function SiteBlockGate() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  // Re-check on every page change so a block applies to the whole site, not just one page.
   const { data } = useQuery({
-    queryKey: ["site-block-gate", deviceId, customerId],
-    enabled: !!deviceId && !hasStaffBypass(),
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
+    queryKey: ["site-block-gate", deviceId, customerId, pathname],
+    enabled: ready && !isAdminArea,
+    staleTime: 10_000,
+    refetchOnWindowFocus: true,
     queryFn: () => check({ data: { deviceId, customerId } }),
   });
 
-  if (!data?.blocked) return null;
+  if (isAdminArea || !data?.blocked) return null;
   return <BlockedNotice />;
 }

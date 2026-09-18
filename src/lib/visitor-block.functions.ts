@@ -1,50 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeader, getRequestIP } from "@tanstack/react-start/server";
+import { getRequestIP } from "@tanstack/react-start/server";
 import { z } from "zod";
-import { supabase } from "@/lib/personal-supabase/client";
-import { requestHasStaffBypass } from "@/lib/staff-bypass";
-import { isOwnerIpAllowed } from "@/lib/owner-ip-allowlist";
-
-type CacheEntry = { blocked: boolean; at: number };
-// Speed: this check runs on the root loader of every page view, so a cold cache
-// costs the visitor a database round-trip before HTML streams. Allowed visitors
-// (the overwhelming majority) are remembered far longer than blocked ones, so
-// ad traffic reaches the landing page without paying for the lookup.
-const ALLOW_CACHE_MS = 600_000;
-const BLOCK_CACHE_MS = 30_000;
-const cache = new Map<string, CacheEntry>();
-
-function isStaffRequest(): boolean {
-  try {
-    return requestHasStaffBypass(getRequestHeader("cookie"));
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Site-wide block check for the current visitor IP.
- * Public on purpose: it only answers "is this request's own IP blocked".
- */
-export const getVisitorBlockStatus = createServerFn({ method: "GET" }).handler(async () => {
-  // Owner / staff devices are never blocked.
-  if (isStaffRequest()) return { blocked: false, ip: null as string | null };
-  const ip = getRequestIP({ xForwardedFor: true }) ?? null;
-  if (!ip) return { blocked: false, ip: null as string | null };
-  if (isOwnerIpAllowed(ip)) return { blocked: false, ip };
-
-  const hit = cache.get(ip);
-  if (hit && Date.now() - hit.at < (hit.blocked ? BLOCK_CACHE_MS : ALLOW_CACHE_MS)) return { blocked: hit.blocked, ip };
-
-  const { data, error } = await (supabase as any).rpc("is_blocked_visitor", { p_ip: ip, p_phone: null });
-  if (error) {
-    console.error("[getVisitorBlockStatus] check failed:", error.message);
-    return { blocked: false, ip };
-  }
-  const blocked = data === true;
-  cache.set(ip, { blocked, at: Date.now() });
-  return { blocked, ip };
-});
 
 const GateSchema = z.object({
   deviceId: z.string().min(6).max(80).nullable().optional(),
@@ -52,24 +8,28 @@ const GateSchema = z.object({
 });
 
 /**
- * Device + account level block gate.
- * Runs with elevated privileges so a blocked visitor cannot bypass it via RLS.
+ * Site entry gate: blocked IP, blocked device or blocked customer account.
+ * Same rule for everyone — no owner/staff exemption.
  * Returns only a boolean — never any customer data.
  */
 export const getSiteBlockStatus = createServerFn({ method: "POST" })
   .inputValidator((input) => GateSchema.parse(input ?? {}))
   .handler(async ({ data }) => {
-    if (isStaffRequest()) return { blocked: false };
-    const requestIp = getRequestIP({ xForwardedFor: true }) ?? null;
-    if (isOwnerIpAllowed(requestIp)) return { blocked: false };
+    const requestIp = (getRequestIP({ xForwardedFor: true }) ?? "").replace("::ffff:", "").trim() || null;
     const deviceId = data.deviceId ?? null;
     const customerId = data.customerId ?? null;
-    if (!deviceId && !customerId) return { blocked: false };
 
     const { supabaseAdmin } = await import("@/lib/personal-supabase/client.server");
     const db = supabaseAdmin as any;
 
     try {
+      // IP block: a blocked IP cannot open the site at all.
+      // Uses the security-definer RPC so the check works without table read access.
+      if (requestIp) {
+        const { data: blocked } = await db.rpc("is_blocked_visitor", { p_ip: requestIp, p_phone: undefined });
+        if (blocked === true) return { blocked: true };
+      }
+
       // Remember this device for the logged-in customer so a block also stops the device.
       if (deviceId && customerId) {
         await db.from("customer_devices").upsert(

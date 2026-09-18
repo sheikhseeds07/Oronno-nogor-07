@@ -52,6 +52,7 @@ export function BlockCustomerButton({ name, phone, orderId }: { name: string; ph
   const [orderPhone, setOrderPhone] = useState<string | null>(null);
   const blockPhone = normalizeBdPhone(phone || "") || orderPhone;
 
+
   const openModal = (e?: React.MouseEvent<HTMLButtonElement>) => {
     e?.preventDefault();
     e?.stopPropagation();
@@ -76,13 +77,15 @@ export function BlockCustomerButton({ name, phone, orderId }: { name: string; ph
 
   const confirm = async () => {
     const finalPhone = blockPhone || normalizeBdPhone(phone || "") || null;
-    if (!finalPhone && !ip) {
-      toast.error("Customer-এর mobile number বা IP পাওয়া যায়নি");
+    const sendPhone = finalPhone;
+    const sendIp = ip;
+    if (!sendPhone && !sendIp) {
+      toast.error("Mobile Number বা IP পাওয়া যায়নি");
       return;
     }
     setBusy(true);
     try {
-      const { data, error } = await supabase.rpc("block_customer", { p_phone: finalPhone, p_ip: ip, p_name: name } as never);
+      const { data, error } = await supabase.rpc("block_customer", { p_phone: sendPhone, p_ip: sendIp, p_name: name } as never);
       if (error) throw error;
       setOpen(false);
       const row = Array.isArray(data) ? (data[0] as BlockRow | undefined) : (data as BlockRow | undefined);
@@ -105,13 +108,28 @@ export function BlockCustomerButton({ name, phone, orderId }: { name: string; ph
         <ConfirmModal title="Customer Block করবেন?" tone="danger" confirmLabel="Block Customer" busy={busy} onConfirm={confirm} onClose={() => !busy && setOpen(false)}>
           <div className="rounded-xl border border-red-100 bg-red-50/50 p-3 space-y-1.5">
             <div className="flex justify-between gap-3"><span className="text-xs font-semibold text-slate-500">Customer Name</span><span className="truncate text-xs font-bold text-slate-900">{name}</span></div>
-            <div className="flex justify-between gap-3"><span className="text-xs font-semibold text-slate-500">Mobile Number</span><span className="font-mono text-xs font-bold text-slate-900">{loadingIp ? "…" : blockPhone || "Not available"}</span></div>
-            <div className="flex justify-between gap-3"><span className="text-xs font-semibold text-slate-500">IP Address</span><span className="font-mono text-xs font-bold text-slate-900">{loadingIp ? "…" : ip || "Not available"}</span></div>
           </div>
-          <p className="text-xs text-slate-500">Mobile Number এবং IP — দুই দিক থেকেই block হবে। এরপর এই customer সাইটে ঢুকতে বা অর্ডার করতে পারবে না।</p>
+          <div className="space-y-2">
+            <InfoRow label="Mobile Number" value={loadingIp ? "…" : blockPhone || "Not available"} hint="এই নাম্বার দিয়ে অর্ডার করা যাবে না" />
+            <InfoRow label="IP Address" value={loadingIp ? "…" : ip || "Not available"} hint="এই IP থেকে সাইটে ঢোকা যাবে না" />
+          </div>
+          <p className="text-xs text-slate-500">Mobile Number ও IP — দুটোই একসাথে block হবে।</p>
         </ConfirmModal>
       )}
     </>
+  );
+}
+
+function InfoRow({ label, value, hint, tone = "danger" }: {
+  label: string; value: string; hint: string; tone?: "danger" | "safe";
+}) {
+  const safe = tone === "safe";
+  return (
+    <div className={`rounded-xl border p-3 ${safe ? "border-emerald-200 bg-emerald-50/60" : "border-red-200 bg-red-50/60"}`}>
+      <span className="block text-xs font-extrabold text-slate-900">{label}</span>
+      <span className="mt-0.5 block font-mono text-xs font-bold text-slate-700">{value}</span>
+      <span className="mt-0.5 block text-[11px] text-slate-500">{hint}</span>
+    </div>
   );
 }
 
@@ -120,6 +138,8 @@ export function CustomerBlockListPanel() {
   const [target, setTarget] = useState<BlockRow | null>(null);
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState("");
+  const openUnblock = (row: BlockRow) => setTarget(row);
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ["customer-blocklist"],
     queryFn: async () => {
@@ -147,25 +167,33 @@ export function CustomerBlockListPanel() {
   const confirmUnblock = async () => {
     if (!target) return;
     setBusy(true);
-    const { error } = await supabase.rpc("unblock_customer", { p_id: target.id });
+    const { error } = await supabase.rpc("unblock_customer", { p_id: target.id, p_unblock_phone: true, p_unblock_ip: true } as never);
     setBusy(false);
     if (error) return toast.error(error.message);
     setTarget(null);
-    toast.success("Customer unblock করা হয়েছে");
+    toast.success("Unblock করা হয়েছে — তালিকা থেকে সরিয়ে দেওয়া হয়েছে");
     qc.invalidateQueries({ queryKey: ["customer-blocklist"] });
   };
 
+
   return (
     <div className="rounded-2xl border border-red-100 bg-white p-5 shadow-sm space-y-4">
-      <div className="flex items-start gap-3 rounded-xl border border-red-100 bg-red-50/60 p-4"><div className="rounded-xl bg-red-100 p-2.5 text-red-700"><ShieldAlert className="h-5 w-5" /></div><div className="min-w-0 flex-1"><h2 className="font-extrabold text-slate-900">Blocked Customers</h2><p className="mt-0.5 text-xs text-slate-500">Mobile Number + IP অনুযায়ী block করা তালিকা। শুধু Admin এখান থেকে unblock করতে পারবে।</p></div></div>
+      <div className="flex items-start gap-3 rounded-xl border border-red-100 bg-red-50/60 p-4"><div className="rounded-xl bg-red-100 p-2.5 text-red-700"><ShieldAlert className="h-5 w-5" /></div><div className="min-w-0 flex-1"><h2 className="font-extrabold text-slate-900">Blocked Customers</h2><p className="mt-0.5 text-xs text-slate-500">Block করা Mobile Number ও IP-এর তালিকা। Unblock করলে তালিকা থেকে সরে যাবে।</p></div></div>
       {!isLoading && !isError && (data?.length ?? 0) > 0 && <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="মোবাইল নাম্বার বা IP দিয়ে খুঁজুন..." className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-9 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-red-300 focus:bg-white focus:ring-2 focus:ring-red-100" aria-label="Blocked customer mobile number or IP search" />{search && <button type="button" onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600" aria-label="Clear search"><X className="h-4 w-4" /></button>}</div>}
       {search && !isLoading && !isError && <div className="text-xs font-semibold text-slate-500">{filteredData.length}টি ফলাফল পাওয়া গেছে</div>}
       {isLoading && <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>}
       {isError && <div className="rounded-xl bg-red-50 p-4 text-sm text-red-700">Block list load করা যায়নি।</div>}
       {!isLoading && !isError && (data?.length ?? 0) === 0 && <div className="rounded-xl border border-dashed p-8 text-center text-sm text-slate-500">এখনও কোনো customer block করা হয়নি।</div>}
       {!isLoading && !isError && (data?.length ?? 0) > 0 && filteredData.length === 0 && <div className="rounded-xl border border-dashed p-8 text-center text-sm text-slate-500">এই নাম্বার বা IP-এর সাথে কোনো block পাওয়া যায়নি।</div>}
-      <div className="space-y-2">{filteredData.map((row) => <div key={row.id} className={`flex flex-col gap-3 rounded-xl border p-3 transition sm:flex-row sm:items-center ${row.is_active ? "border-red-100 bg-red-50/30 hover:bg-red-50/60" : "border-slate-200 bg-slate-50/50 opacity-75"}`}><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className="truncate text-sm font-bold text-slate-900">{row.customer_name}</span>{row.is_active ? <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-extrabold text-red-700">BLOCKED</span> : <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-extrabold text-slate-600">UNBLOCKED</span>}</div><div className="mt-1 text-[11px] text-slate-500">Phone: <span className="font-mono">{row.phone || "N/A"}</span> · IP: <span className="font-mono">{row.ip_address || "Not available"}</span> · Block Date: {new Date(row.blocked_at).toLocaleString("en-BD")}</div><div className="text-[11px] text-slate-500">Blocked By: <span className="font-semibold text-slate-600">{row.blocked_by || "Admin"}</span></div></div>{row.is_active ? <button type="button" onClick={() => setTarget(row)} className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-bold text-emerald-700 transition hover:bg-emerald-50 active:scale-[.98]"><Unlock className="h-3.5 w-3.5" /> Unblock</button> : <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-slate-400"><CheckCircle2 className="h-3.5 w-3.5" /> Unblocked</span>}</div>)}</div>
-      {target && <ConfirmModal title="Customer Unblock করবেন?" tone="safe" confirmLabel="Unblock" busy={busy} onConfirm={confirmUnblock} onClose={() => !busy && setTarget(null)}><div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3 space-y-1.5"><div className="flex justify-between gap-3"><span className="text-xs font-semibold text-slate-500">Customer Name</span><span className="truncate text-xs font-bold text-slate-900">{target.customer_name}</span></div><div className="flex justify-between gap-3"><span className="text-xs font-semibold text-slate-500">IP Address</span><span className="font-mono text-xs font-bold text-slate-900">{target.ip_address || "Not available"}</span></div><div className="flex justify-between gap-3"><span className="text-xs font-semibold text-slate-500">Mobile Number</span><span className="font-mono text-xs font-bold text-slate-900">{target.phone || "Not available"}</span></div></div><p className="text-xs text-slate-500">Unblock করলে এই customer আবার অর্ডার করতে পারবে।</p></ConfirmModal>}
+      <div className="space-y-2">{filteredData.map((row) => <div key={row.id} className={`flex flex-col gap-3 rounded-xl border p-3 transition sm:flex-row sm:items-center ${row.is_active ? "border-red-100 bg-red-50/30 hover:bg-red-50/60" : "border-slate-200 bg-slate-50/50 opacity-75"}`}><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className="truncate text-sm font-bold text-slate-900">{row.customer_name}</span>{row.is_active ? <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-extrabold text-red-700">BLOCKED</span> : <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-extrabold text-slate-600">UNBLOCKED</span>}</div><div className="mt-1 text-[11px] text-slate-500">Phone: <span className="font-mono">{row.phone || "N/A"}</span> · IP: <span className="font-mono">{row.ip_address || "Not available"}</span> · Block Date: {new Date(row.blocked_at).toLocaleString("en-BD")}</div><div className="text-[11px] text-slate-500">Blocked By: <span className="font-semibold text-slate-600">{row.blocked_by || "Admin"}</span></div></div>{row.is_active ? <button type="button" onClick={() => openUnblock(row)} className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-bold text-emerald-700 transition hover:bg-emerald-50 active:scale-[.98]"><Unlock className="h-3.5 w-3.5" /> Unblock</button> : <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-slate-400"><CheckCircle2 className="h-3.5 w-3.5" /> Unblocked</span>}</div>)}</div>
+      {target && <ConfirmModal title="Customer Unblock করবেন?" tone="safe" confirmLabel="Unblock" busy={busy} onConfirm={confirmUnblock} onClose={() => !busy && setTarget(null)}>
+        <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3"><div className="flex justify-between gap-3"><span className="text-xs font-semibold text-slate-500">Customer Name</span><span className="truncate text-xs font-bold text-slate-900">{target.customer_name}</span></div></div>
+        <div className="space-y-2">
+          <InfoRow tone="safe" label="Mobile Number" value={target.phone || "Not available"} hint="এই নাম্বার দিয়ে আবার অর্ডার করা যাবে" />
+          <InfoRow tone="safe" label="IP Address" value={target.ip_address || "Not available"} hint="এই IP থেকে আবার সাইটে ঢোকা যাবে" />
+        </div>
+        <p className="text-xs text-slate-500">Mobile Number ও IP — দুটোই একসাথে unblock হবে এবং entry তালিকা থেকে মুছে যাবে।</p>
+      </ConfirmModal>}
     </div>
   );
 }
