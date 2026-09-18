@@ -538,7 +538,7 @@ html.texture-mesh::before {
 @media(prefers-reduced-motion:reduce){.all-product-image-wrap,.all-product-primary-cta::after,.all-product-live-dot{animation:none}}
 
 /* Seed Combo — clean premium botanical */
-.seed-combo-page{letter-spacing:0;padding-bottom:58px;color:var(--seed-ink);--seed-emerald:oklch(0.55 0.125 160);--seed-deep:oklch(0.285 0.05 160);--seed-ivory:oklch(1 0 0);--seed-crimson:oklch(0.53 0.2 26)}
+ .seed-combo-page{letter-spacing:0;padding-bottom:10px;color:var(--seed-ink);--seed-emerald:oklch(0.55 0.125 160);--seed-deep:oklch(0.285 0.05 160);--seed-ivory:oklch(1 0 0);--seed-crimson:oklch(0.53 0.2 26)}
 .seed-combo-page.lp-agri-bg::before{background-color:var(--seed-canvas);background-image:radial-gradient(ellipse 120% 40% at 50% -6%,color-mix(in oklab,var(--seed-emerald) 10%,transparent),transparent 70%),linear-gradient(180deg,var(--seed-ivory),var(--seed-canvas) 55%,color-mix(in oklab,var(--seed-canvas) 94%,var(--seed-emerald)));background-size:auto;background-repeat:no-repeat;background-attachment:scroll}
 
 /* header */
@@ -681,5 +681,4 @@ html.texture-mesh::before {
 @media(min-width:641px){.seed-combo-page>.container{padding-inline:16px}.seed-combo-page .top-hook h1{font-size:36px}.seed-combo-page .price-badge{font-size:32px}.seed-combo-page .seed-trust-strip span{font-size:11.5px}}
 @media(max-width:640px){.seed-popup-backdrop{backdrop-filter:none}.seed-combo-page .seed-hero-frame:hover img{transform:none}}
 @media(prefers-reduced-motion:reduce){.seed-combo-page .lp-reveal-in{animation:none}.seed-combo-page .seed-hero-frame img{transition:none}}
-
 
