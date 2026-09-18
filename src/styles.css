@@ -538,7 +538,7 @@ html.texture-mesh::before {
 @media(prefers-reduced-motion:reduce){.all-product-image-wrap,.all-product-primary-cta::after,.all-product-live-dot{animation:none}}
 
 /* Seed Combo — clean premium botanical */
-.seed-combo-page{letter-spacing:0;padding-bottom:74px;color:var(--seed-ink);--seed-emerald:oklch(0.55 0.125 160);--seed-deep:oklch(0.285 0.05 160);--seed-ivory:oklch(1 0 0);--seed-crimson:oklch(0.53 0.2 26)}
+.seed-combo-page{letter-spacing:0;padding-bottom:58px;color:var(--seed-ink);--seed-emerald:oklch(0.55 0.125 160);--seed-deep:oklch(0.285 0.05 160);--seed-ivory:oklch(1 0 0);--seed-crimson:oklch(0.53 0.2 26)}
 .seed-combo-page.lp-agri-bg::before{background-color:var(--seed-canvas);background-image:radial-gradient(ellipse 120% 40% at 50% -6%,color-mix(in oklab,var(--seed-emerald) 10%,transparent),transparent 70%),linear-gradient(180deg,var(--seed-ivory),var(--seed-canvas) 55%,color-mix(in oklab,var(--seed-canvas) 94%,var(--seed-emerald)));background-size:auto;background-repeat:no-repeat;background-attachment:scroll}
 
 /* header */
@@ -651,7 +651,7 @@ html.texture-mesh::before {
 .seed-combo-page .seed-checkout-summary span{color:color-mix(in oklab,var(--seed-ink) 62%,white)}
 .seed-combo-page .seed-checkout-summary>div:last-child b{color:var(--seed-emerald)}
 .seed-combo-page .seed-checkout-submit{position:relative;overflow:hidden;width:calc(100% - 24px);min-height:46px;margin:12px;border-radius:9px;background:linear-gradient(110deg,var(--all-product-primary),color-mix(in oklab,var(--all-product-primary) 82%,var(--all-product-success)))!important;color:var(--all-product-primary-foreground)!important;font-size:15px;font-weight:900;box-shadow:0 14px 28px -18px color-mix(in oklab,var(--all-product-primary) 85%,transparent)}
-.seed-combo-page .seed-checkout-submit::after{content:"";position:absolute;inset:0 auto 0 -35%;width:25%;background:linear-gradient(90deg,transparent,color-mix(in oklab,var(--all-product-primary-foreground) 45%,transparent),transparent);transform:skewX(-18deg);animation:all-product-shine 3.2s ease-in-out infinite}
+.seed-combo-page .lp-footer-wrap>footer{padding-bottom:24px}\n.seed-combo-page .seed-checkout-submit::after{content:"";position:absolute;inset:0 auto 0 -35%;width:25%;background:linear-gradient(90deg,transparent,color-mix(in oklab,var(--all-product-primary-foreground) 45%,transparent),transparent);transform:skewX(-18deg);animation:all-product-shine 3.2s ease-in-out infinite}
 @media(min-width:641px){.seed-combo-page .seed-checkout-fields{grid-template-columns:1fr 1fr}.seed-combo-page .seed-checkout-fields label:last-child{grid-column:1/-1}}
 @media(max-width:480px){.seed-combo-page .seed-checkout-section{padding:6px}.seed-combo-page .seed-checkout-block{padding:12px 10px}.seed-combo-page .seed-checkout-heading{margin-bottom:9px}.seed-combo-page .seed-checkout-heading h2{font-size:18px}.seed-combo-page .seed-checkout-submit{width:calc(100% - 20px);margin:10px}}
 
