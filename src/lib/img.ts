@@ -53,8 +53,23 @@ export function imgFallback(
   original: string | null | undefined,
 ) {
   const el = e.currentTarget;
-  if (!original || el.dataset["fallback"] === "1") return;
-  el.dataset["fallback"] = "1";
+  if (!original) return;
+
+  // A transient CDN/origin miss should not leave a broken image on the first view.
+  // Retry the same canonical asset with a bounded cache-busting query; this keeps
+  // normal loads fast and avoids generating multiple Supabase transform variants.
+  const attempt = Number(el.dataset["imgRetry"] || "0");
+  if (attempt >= 2) return;
+  el.dataset["imgRetry"] = String(attempt + 1);
   el.removeAttribute("srcset");
-  el.src = throughMediaCache(original);
+
+  const cached = throughMediaCache(original);
+  const retryUrl = cached.includes("?")
+    ? `${cached}&img_retry=${attempt + 1}`
+    : `${cached}?img_retry=${attempt + 1}`;
+
+  window.setTimeout(() => {
+    if (el.dataset["imgLoaded"] === "1") return;
+    el.src = retryUrl;
+  }, attempt === 0 ? 80 : 350);
 }
