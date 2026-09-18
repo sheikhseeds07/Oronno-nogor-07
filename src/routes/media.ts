@@ -179,7 +179,7 @@ async function pullOrigin(
     };
     if (variant.format === "webp") imageOptions.format = "webp";
 
-    const origin = await fetch(source.toString(), {
+    const requestInit: RequestInit = {
       method: "GET",
       headers: { Accept: request.headers.get("Accept") || "image/*,*/*;q=0.8" },
       ...({ cf: publicAsset
@@ -190,7 +190,20 @@ async function pullOrigin(
             image: imageOptions,
           } as any)
         : undefined } as RequestInit),
-    });
+    };
+
+    let origin = await fetch(source.toString(), requestInit);
+
+    // Cloudflare image transformation can occasionally fail under bursty
+    // traffic even when the underlying Supabase object is healthy. Do one
+    // plain-origin retry for transient edge/origin errors so one bad transform
+    // response cannot make a different seed image disappear on each refresh.
+    if (publicAsset && [408, 429, 500, 502, 503, 504].includes(origin.status)) {
+      origin = await fetch(source.toString(), {
+        method: "GET",
+        headers: { Accept: request.headers.get("Accept") || "image/*,*/*;q=0.8" },
+      });
+    }
 
     return {
       ok: origin.ok,
