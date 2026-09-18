@@ -75,13 +75,13 @@ const REF_STYLE = `
 .lp-hdr-timer i{font-style:normal;color:#1a8944;font-weight:800;font-size:13px}
 .lp-hdr-timer em{font-style:normal;display:block;font-size:9px;color:#64748b;font-weight:700;text-align:center;margin-top:2px}
 .lp-card{background:#fff;border:1px solid #e6efe8;border-radius:18px;box-shadow:0 20px 44px -32px rgba(6,78,59,.45)}
-.top-hook{width:100%;max-width:520px;margin:0 auto;padding:16px 14px;text-align:center;background:transparent;position:relative;color:#064e3b;overflow:hidden;border-bottom:5px solid #ffd700;box-shadow:none;border-radius:0 0 18px 18px}
-.top-hook h1{font-size:34px;font-weight:900;margin:0 0 8px 0;letter-spacing:.5px;line-height:1.25;text-shadow:none}
+.top-hook{width:100%;max-width:520px;margin:0 auto;padding:10px 14px;text-align:center;background:transparent;position:relative;color:#064e3b;overflow:hidden;border-bottom:5px solid #ffd700;box-shadow:none;border-radius:0 0 18px 18px}
+.top-hook h1{font-size:34px;font-weight:900;margin:0 0 4px 0;letter-spacing:.5px;line-height:1.25;text-shadow:none}
 .top-hook h1 .hl-line{display:block}
-.price-badge{display:inline-block;font-size:34px;font-weight:900;padding:8px 18px;border-radius:30px;background:linear-gradient(90deg,#ffd700,#ffb703);color:#111;box-shadow:0 6px 20px rgba(255,180,0,0.6);position:relative;animation:refPulse 1.6s infinite;line-height:1.2}
+.price-badge{display:inline-block;font-size:34px;font-weight:900;padding:5px 18px;border-radius:30px;background:linear-gradient(90deg,#ffd700,#ffb703);color:#111;box-shadow:0 6px 20px rgba(255,180,0,0.6);position:relative;animation:refPulse 1.6s infinite;line-height:1.2}
 @keyframes refPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
 .top-hook .ribbon{position:absolute;top:-6px;right:-6px;background:#ff4b00;color:#fff;font-size:12px;font-weight:700;padding:4px 8px;border-radius:4px;text-transform:uppercase;box-shadow:0 2px 6px rgba(0,0,0,0.3)}
-.hook-divider{width:70px;height:3px;background:linear-gradient(90deg,#ffd700,#ffb703);margin:12px auto 10px;border-radius:2px}
+.hook-divider{width:70px;height:3px;background:linear-gradient(90deg,#ffd700,#ffb703);margin:7px auto 6px;border-radius:2px}
 .hook-delivery{font-size:16px;opacity:.95;display:flex;justify-content:center;align-items:center;gap:6px;color:#064e3b}
 .hook-delivery span{font-size:18px}
 .lp-ref-cta{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:10px;width:100%;max-width:440px;margin:0 auto;background:linear-gradient(135deg,#ff2d20 0%,#ff0000 55%,#d40000 100%);color:#fff;border:3px solid #fff;border-radius:12px;font-size:22px;font-weight:700;padding:13px 20px;line-height:1.4;box-shadow:0 16px 34px -16px rgba(255,0,0,.85),0 2px 0 rgba(255,255,255,.25) inset;transition:transform .18s cubic-bezier(.22,1,.36,1),box-shadow .18s ease;animation:lpCtaBeat 2.6s ease-in-out infinite}
