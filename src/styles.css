@@ -831,3 +831,16 @@ html.texture-mesh::before {
 @media(max-width:640px){
   .seed-combo-page .seedcombo-item-img-wrap{aspect-ratio:1/.90}
 }
+
+
+/* Seed Combo: remove the subtle headline/price section background layer */
+.seed-combo-page .lp-ref-band,
+.seed-combo-page .top-hook{
+  background:transparent !important;
+  box-shadow:none !important;
+}
+.seed-combo-page .top-hook{
+  border-top:0 !important;
+  border-left:0 !important;
+  border-right:0 !important;
+}
