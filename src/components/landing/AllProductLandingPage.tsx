@@ -38,8 +38,6 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   const settings = (settingsRow?.settings as { site_name?: string; tagline?: string; logo_url?: string }) ?? {};
   const product = page?.products ?? null;
   const C = mergeContent(page?.planting_steps);
-  const comboIds = useMemo(() => Array.from(new Set((C.combo_offers || []).map((item) => item.product_id).filter((id): id is string => Boolean(id)))), [C.combo_offers]);
-  const { data: comboProducts } = useQuery({ queryKey: ["landing-all-product-combo-products", slug, comboIds.join(",")], enabled: comboIds.length > 0, staleTime: 30_000, queryFn: async () => ((await supabase.from("products").select("id,name,price,sale_price,images").in("id", comboIds)).data ?? []) as Product[] });
   const heroImage = page?.hero_image || product?.images?.[0] || "/placeholder.svg";
   const basePrice = Number(page?.sale_price ?? product?.sale_price ?? page?.regular_price ?? product?.price ?? 0);
   const regularPrice = Number(page?.regular_price ?? product?.price ?? 0) || null;
@@ -49,14 +47,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
     return [...main, ...(page?.addons ?? []).map((item) => ({ name: item.name, price: Number(item.price), old: item.old_price, image: item.image, product_id: item.product_id, delivery_fee: item.delivery_fee == null ? delivery : Number(item.delivery_fee), badge: item.badge }))];
   }, [product, page?.addons, basePrice, regularPrice, heroImage, delivery]);
 
-  const comboOffers = useMemo<Offer[]>(() => {
-    const byId = new Map((comboProducts ?? []).map((p) => [p.id, p]));
-    return (C.combo_offers ?? []).map((item) => {
-      const p = item.product_id ? byId.get(item.product_id) : undefined;
-      if (!p) return null;
-      return { name: p.name, price: Number(p.sale_price ?? p.price), old: Number(p.sale_price ?? 0) > 0 && p.price > Number(p.sale_price ?? p.price) ? p.price : null, image: item.image || p.images?.[0], product_id: p.id, delivery_fee: item.delivery_fee == null ? delivery : Number(item.delivery_fee), badge: "Combo Offer" } satisfies Offer;
-    }).filter((item): item is Offer => Boolean(item));
-  }, [C.combo_offers, comboProducts, delivery]);
+  const comboOffers = useMemo<Offer[]>(() => (C.combo_offers ?? []).filter((item) => item.name?.trim() && Number(item.price) > 0).map((item) => ({ name: item.name.trim(), price: Number(item.price), old: item.old_price == null ? null : Number(item.old_price), image: item.image, delivery_fee: item.delivery_fee == null ? delivery : Number(item.delivery_fee), badge: item.badge || "Combo Offer" })), [C.combo_offers, delivery]);
 
   const current = useMemo(() => {
     if (selected.startsWith("combo-")) return comboOffers[Number(selected.slice(6))] ?? offers[0];
