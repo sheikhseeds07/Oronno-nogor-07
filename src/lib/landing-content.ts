@@ -6,6 +6,7 @@ export type SeedRow = { name: string; qty: string; image?: string };
 export type Feature = { title: string; text?: string; icon?: string };
 export type WhyItem = { title: string; text?: string; icon?: string };
 export type Review = { name: string; rating: number; text: string };
+export type ComboOffer = { product_id?: string; image?: string; delivery_fee?: number | null };
 export type LandingTemplate = "combo" | "premium" | "modern" | "product" | "all-product";
 
 export type LandingContent = {
@@ -56,6 +57,8 @@ export type LandingContent = {
   popup_mode: "text" | "image";
   popup_image: string;
   popup_delay: number;
+  /** Optional All Product template-only combo choices shown as a compact 2-column grid. */
+  combo_offers: ComboOffer[];
 };
 
 export const DEFAULT_SEEDS: SeedRow[] = [
@@ -135,11 +138,12 @@ export const DEFAULT_CONTENT: LandingContent = {
   popup_mode: "text",
   popup_image: "",
   popup_delay: 1200,
+  combo_offers: [],
 };
 
 export function mergeContent(raw: unknown): LandingContent {
   const value = (raw && typeof raw === "object" ? raw : {}) as Partial<LandingContent>;
-  const out = { ...DEFAULT_CONTENT, ...value, seed_table: Array.isArray(value.seed_table) && value.seed_table.length ? value.seed_table : DEFAULT_CONTENT.seed_table } as LandingContent;
+  const out = { ...DEFAULT_CONTENT, ...value, seed_table: Array.isArray(value.seed_table) && value.seed_table.length ? value.seed_table : DEFAULT_CONTENT.seed_table, combo_offers: Array.isArray(value.combo_offers) ? value.combo_offers : DEFAULT_CONTENT.combo_offers } as LandingContent;
   if (out.template === "combo") {
     out.package_kicker = "";
     out.package_title = "";
