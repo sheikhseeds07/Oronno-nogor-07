@@ -395,40 +395,42 @@ function LandingPagesAdmin() {
                     <RepeatList<ComboOffer>
                       items={C.combo_offers || []}
                       onChange={(combo_offers) => setC({ combo_offers })}
-                      empty={{ product_id: undefined, image: "", delivery_fee: 70 }}
-                      render={(item, upd) => {
-                        const selectedProduct = products?.find((p) => p.id === item.product_id);
-                        return (
-                          <>
-                            <div className="flex gap-2">
-                              <ProductPicker
-                                products={products}
-                                value={item.product_id ?? null}
-                                onChange={(pid) => {
-                                  const p = products?.find((x) => x.id === pid);
-                                  upd({ ...item, product_id: pid ?? undefined, image: item.image || p?.images?.[0] || "" });
-                                }}
-                                placeholder="— প্রোডাক্ট সিলেক্ট করুন —"
-                                size="md"
-                              />
+                      empty={{ name: "", price: 0, old_price: undefined, image: "", badge: "", delivery_fee: 70 }}
+                      render={(item, upd) => (
+                        <div className="space-y-4 pr-1">
+                          <div className="rounded-xl border border-emerald-100 bg-gradient-to-br from-white to-emerald-50/40 p-3">
+                            <div className="mb-2 flex items-center justify-between">
+                              <div><div className="text-sm font-black text-slate-900">Manual Combo Product</div><div className="text-[11px] text-slate-500">Existing product থেকে কিছুই নিতে হবে না</div></div>
+                              <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-700">MANUAL</span>
                             </div>
-                            {selectedProduct && <div className="mt-2 rounded-lg bg-white border p-2 text-xs text-slate-600"><span className="font-bold text-slate-800">{selectedProduct.name}</span> · ৳{Number(selectedProduct.sale_price ?? selectedProduct.price).toLocaleString("bn-BD")}</div>}
-                            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <Field label="ডেলিভারি চার্জ (৳)">
-                                <div className="flex items-center gap-2">
-                                  <input type="number" min={0} value={item.delivery_fee ?? 70} onChange={(e) => upd({ ...item, delivery_fee: Math.max(0, Number(e.target.value) || 0) })} className="flex-1 border rounded-lg px-3 py-2" />
-                                  <label className="flex items-center gap-1 text-xs whitespace-nowrap"><input type="checkbox" checked={Number(item.delivery_fee) === 0} onChange={(e) => upd({ ...item, delivery_fee: e.target.checked ? 0 : 70 })} /> ফ্রি</label>
-                                </div>
-                              </Field>
-                              <Field label="Combo Offer ইমেজ">
-                                <input type="file" accept="image/*" onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; const url = await uploadImage(f); if (url) upd({ ...item, image: url }); }} className="w-full text-xs" />
-                                <input value={item.image ?? ""} onChange={(e) => upd({ ...item, image: e.target.value })} placeholder="অথবা image URL" className="w-full border rounded-lg px-3 py-2 text-xs mt-2" />
-                              </Field>
+                            <Field label="প্রডাক্টের নাম">
+                              <input value={item.name} onChange={(e) => upd({ ...item, name: e.target.value })} placeholder="যেমন: ২৪ প্রকার সবজির বীজ কম্বো" className="w-full border rounded-xl px-3 py-2.5 font-semibold" />
+                            </Field>
+                            <Field label="প্রডাক্ট ইমেজ">
+                              <input type="file" accept="image/*" onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; const url = await uploadImage(f); if (url) upd({ ...item, image: url }); }} className="w-full text-xs mt-1" />
+                              <input value={item.image ?? ""} onChange={(e) => upd({ ...item, image: e.target.value })} placeholder="অথবা image URL" className="w-full border rounded-xl px-3 py-2 text-xs mt-2" />
+                              {item.image && <img src={item.image} alt="" className="mt-2 h-24 w-full rounded-xl object-cover border" />}
+                            </Field>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <Field label="প্রডাক্ট প্রাইজ (৳)">
+                              <input type="number" min={0} value={item.price} onChange={(e) => upd({ ...item, price: Math.max(0, Number(e.target.value) || 0) })} className="w-full border rounded-xl px-3 py-2.5 font-bold" />
+                            </Field>
+                            <Field label="আগের দাম (৳) — optional">
+                              <input type="number" min={0} value={item.old_price ?? ""} onChange={(e) => upd({ ...item, old_price: e.target.value ? Math.max(0, Number(e.target.value)) : undefined })} className="w-full border rounded-xl px-3 py-2.5" />
+                            </Field>
+                            <Field label="ব্যাজ — optional">
+                              <input value={item.badge ?? ""} onChange={(e) => upd({ ...item, badge: e.target.value || undefined })} placeholder="BEST OFFER" className="w-full border rounded-xl px-3 py-2.5" />
+                            </Field>
+                          </div>
+                          <Field label="ডেলিভারি চার্জ (৳)">
+                            <div className="flex items-center gap-2">
+                              <input type="number" min={0} value={item.delivery_fee ?? 70} onChange={(e) => upd({ ...item, delivery_fee: Math.max(0, Number(e.target.value) || 0) })} className="flex-1 border rounded-xl px-3 py-2.5 font-semibold" />
+                              <label className="flex items-center gap-1 text-xs whitespace-nowrap"><input type="checkbox" checked={Number(item.delivery_fee) === 0} onChange={(e) => upd({ ...item, delivery_fee: e.target.checked ? 0 : 70 })} /> ফ্রি ডেলিভারি</label>
                             </div>
-                            {item.image && <img src={item.image} alt="" className="mt-2 h-24 w-24 rounded-xl object-cover border" />}
-                          </>
-                        );
-                      }}
+                          </Field>
+                        </div>
+                      )}
                     />
                   </div>
                 </>
