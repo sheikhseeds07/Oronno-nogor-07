@@ -17,6 +17,7 @@ import {
   type Feature,
   type WhyItem,
   type Review,
+  type ComboOffer,
 } from "@/lib/landing-content";
 
 type Addon = {
@@ -88,7 +89,7 @@ function ProductPicker({ products, value, onChange, placeholder, size = "sm" }: 
 function LandingPagesAdmin() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<LP | null>(null);
-  const [tab, setTab] = useState<"main" | "page" | "content" | "products">("main");
+  const [tab, setTab] = useState<"main" | "page" | "content" | "products" | "combo-offer">("main");
   const [createProductFor, setCreateProductFor] = useState<"main" | number | null>(null);
 
   const { data } = useQuery({
@@ -259,6 +260,7 @@ function LandingPagesAdmin() {
                 ["page", "Full page"],
                 ...((C.template as string) === "all" || C.template === "product" || C.template === "all-product" ? [] : [["content", "কনটেন্ট"] as const]),
                 ["products", C.template === "product" || C.template === "all-product" ? "Product" : "Products"],
+                ...((C.template as string) === "all-product" ? [["combo-offer", "Combo Offer"] as const] : []),
               ] as const).map(([k, l]) => (
                 <button key={k} onClick={() => setTab(k as typeof tab)}
                   className={`px-4 py-2 rounded-t-lg font-semibold ${tab === k ? "bg-brand text-white" : "hover:bg-muted"}`}>
@@ -375,6 +377,60 @@ function LandingPagesAdmin() {
                   <div className="pt-3 border-t space-y-3"><div className="font-semibold text-sm">সেকশন হেডিং</div><div className="grid grid-cols-2 gap-3"><Field label="বৈশিষ্ট্য — ছোট"><input value={C.features_kicker} onChange={(e) => setC({ features_kicker: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="বৈশিষ্ট্য — বড়"><input value={C.features_title} onChange={(e) => setC({ features_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="কেন কিনবেন — ছোট"><input value={C.why_kicker} onChange={(e) => setC({ why_kicker: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="কেন কিনবেন — বড়"><input value={C.why_title} onChange={(e) => setC({ why_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="রিভিউ — ছোট"><input value={C.reviews_kicker} onChange={(e) => setC({ reviews_kicker: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="রিভিউ — বড়"><input value={C.reviews_title} onChange={(e) => setC({ reviews_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="প্যাকেজ — ছোট"><input value={C.package_kicker} onChange={(e) => setC({ package_kicker: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="প্যাকেজ — বড়"><input value={C.package_title} onChange={(e) => setC({ package_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field></div></div>
                   <div className="pt-3 border-t space-y-3"><div className="grid grid-cols-2 gap-3"><Field label="নামের লেবেল"><input value={C.name_label} onChange={(e) => setC({ name_label: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="ফোনের লেবেল"><input value={C.phone_label} onChange={(e) => setC({ phone_label: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="ঠিকানার লেবেল"><input value={C.address_label} onChange={(e) => setC({ address_label: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="সাবমিট বাটন"><input value={C.submit_text} onChange={(e) => setC({ submit_text: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field></div><Field label="ফর্মের নিচের ছোট নোট"><input value={C.cod_note} onChange={(e) => setC({ cod_note: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field></div>
                   <button type="button" onClick={() => setEditing({ ...editing, planting_steps: { ...DEFAULT_CONTENT } })} className="text-xs underline text-muted-foreground">সব কনটেন্ট ডিফল্টে ফিরিয়ে নিন</button>
+                </>
+              )}
+
+              {tab === "combo-offer" && C.template === "all-product" && (
+                <>
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-emerald-700 shadow-sm">✦</div>
+                      <div>
+                        <div className="font-black text-sm text-emerald-900">Combo Offer</div>
+                        <p className="mt-1 text-xs leading-5 text-emerald-800/75">All Product landing page-এ Offer Selection-এর নিচে এই প্রোডাক্টগুলো ২ কলামে দেখাবে। কোনো Combo Offer না থাকলে পুরো সেকশনটি স্বয়ংক্রিয়ভাবে hidden থাকবে।</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="pt-1">
+                    <RepeatList<ComboOffer>
+                      items={C.combo_offers || []}
+                      onChange={(combo_offers) => setC({ combo_offers })}
+                      empty={{ product_id: undefined, image: "", delivery_fee: 70 }}
+                      render={(item, upd) => {
+                        const selectedProduct = products?.find((p) => p.id === item.product_id);
+                        return (
+                          <>
+                            <div className="flex gap-2">
+                              <ProductPicker
+                                products={products}
+                                value={item.product_id ?? null}
+                                onChange={(pid) => {
+                                  const p = products?.find((x) => x.id === pid);
+                                  upd({ ...item, product_id: pid ?? undefined, image: item.image || p?.images?.[0] || "" });
+                                }}
+                                placeholder="— প্রোডাক্ট সিলেক্ট করুন —"
+                                size="md"
+                              />
+                            </div>
+                            {selectedProduct && <div className="mt-2 rounded-lg bg-white border p-2 text-xs text-slate-600"><span className="font-bold text-slate-800">{selectedProduct.name}</span> · ৳{Number(selectedProduct.sale_price ?? selectedProduct.price).toLocaleString("bn-BD")}</div>}
+                            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <Field label="ডেলিভারি চার্জ (৳)">
+                                <div className="flex items-center gap-2">
+                                  <input type="number" min={0} value={item.delivery_fee ?? 70} onChange={(e) => upd({ ...item, delivery_fee: Math.max(0, Number(e.target.value) || 0) })} className="flex-1 border rounded-lg px-3 py-2" />
+                                  <label className="flex items-center gap-1 text-xs whitespace-nowrap"><input type="checkbox" checked={Number(item.delivery_fee) === 0} onChange={(e) => upd({ ...item, delivery_fee: e.target.checked ? 0 : 70 })} /> ফ্রি</label>
+                                </div>
+                              </Field>
+                              <Field label="Combo Offer ইমেজ">
+                                <input type="file" accept="image/*" onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; const url = await uploadImage(f); if (url) upd({ ...item, image: url }); }} className="w-full text-xs" />
+                                <input value={item.image ?? ""} onChange={(e) => upd({ ...item, image: e.target.value })} placeholder="অথবা image URL" className="w-full border rounded-lg px-3 py-2 text-xs mt-2" />
+                              </Field>
+                            </div>
+                            {item.image && <img src={item.image} alt="" className="mt-2 h-24 w-24 rounded-xl object-cover border" />}
+                          </>
+                        );
+                      }}
+                    />
+                  </div>
                 </>
               )}
 
