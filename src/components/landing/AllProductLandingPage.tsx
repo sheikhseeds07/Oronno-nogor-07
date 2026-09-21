@@ -92,6 +92,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   const selectOfferFromPopup = (value: string) => {
     setSelected(value);
     setOfferPopupOpen(false);
+    window.setTimeout(() => goOrder(), 80);
   };
 
   const goOrder = () => {
