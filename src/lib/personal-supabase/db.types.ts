@@ -184,39 +184,6 @@ export type Database = {
           },
         ]
       }
-      coupons: {
-        Row: {
-          code: string
-          created_at: string
-          discount_type: string
-          discount_value: number
-          expires_at: string | null
-          id: string
-          is_active: boolean
-          min_order: number
-        }
-        Insert: {
-          code: string
-          created_at?: string
-          discount_type?: string
-          discount_value?: number
-          expires_at?: string | null
-          id?: string
-          is_active?: boolean
-          min_order?: number
-        }
-        Update: {
-          code?: string
-          created_at?: string
-          discount_type?: string
-          discount_value?: number
-          expires_at?: string | null
-          id?: string
-          is_active?: boolean
-          min_order?: number
-        }
-        Relationships: []
-      }
       courier_edge_throttle: {
         Row: {
           id: number
