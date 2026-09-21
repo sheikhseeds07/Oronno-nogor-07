@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth, type Permissions } from "@/lib/auth";
 import { supabase } from "@/lib/personal-supabase/client";
 import { readPublicSettingsCache, writePublicSettingsCache } from "@/lib/public-settings-cache";
-import { LayoutDashboard, Package, ShoppingBag, Users, FolderTree, Image as ImageIcon, Tag, Settings, Globe, UserCog, LogOut, Menu, X, Layers, FileSpreadsheet, PanelLeftClose, PanelLeftOpen, ChevronRight, Sparkles, Leaf } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingBag, Users, FolderTree, Image as ImageIcon, Settings, Globe, UserCog, LogOut, Menu, X, Layers, FileSpreadsheet, PanelLeftClose, PanelLeftOpen, ChevronRight, Sparkles, Leaf } from "lucide-react";
 import { NewOrderNotifier } from "@/components/admin/NewOrderNotifier";
 import { AdminOrderStability } from "@/components/admin/AdminOrderStability";
 import { PresswayyCard } from "@/components/admin/PresswayyCard";
