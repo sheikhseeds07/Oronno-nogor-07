@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 
-const PERM_KEYS = ["dashboard","orders","order_import","products","offers","categories","customers","banners","coupons","landing_pages","employees","all_api","settings"] as const;
 const PermSchema = z.object(Object.fromEntries(PERM_KEYS.map((k) => [k, z.boolean().default(false)])) as Record<(typeof PERM_KEYS)[number], z.ZodDefault<z.ZodBoolean>>);
 
 export type EmployeePermissions = z.infer<typeof PermSchema>;
