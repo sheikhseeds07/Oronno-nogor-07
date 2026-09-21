@@ -5,7 +5,7 @@ import { markStaffBypass } from "@/lib/staff-bypass";
 
 export type StaffRole = "super_admin" | "admin" | "employee" | null;
 // Exactly the 13 modules the CEO can tick in Employees → Permissions.
-export const PERMISSION_KEYS = ["dashboard", "orders", "order_import", "products", "offers", "categories", "customers", "banners", "coupons", "landing_pages", "employees", "all_api", "settings"] as const;
+export const PERMISSION_KEYS = ["dashboard", "orders", "order_import", "products", "offers", "categories", "customers", "banners", "landing_pages", "employees", "all_api", "settings"] as const;
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];
 export type Permissions = Record<PermissionKey, boolean>;
 export const ALL_TRUE: Permissions = Object.fromEntries(PERMISSION_KEYS.map(k => [k, true])) as Permissions;
