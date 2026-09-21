@@ -45,7 +45,30 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   const delivery = Number(page?.main_delivery_fee ?? 70);
   const offers = useMemo<Offer[]>(() => {
     const main = product ? [{ name: product.name, price: basePrice, old: regularPrice, image: heroImage, product_id: product.id, delivery_fee: delivery, badge: "জনপ্রিয়" }] : [];
-    return [...main, ...(page?.addons ?? []).map((item) => ({ name: item.name, price: Number(item.price), old: item.old_price, image: item.image, product_id: item.product_id, delivery_fee: item.delivery_fee == null ? delivery : Number(item.delivery_fee), badge: item.badge }))];
+    const addons = (page?.addons ?? []).map((item) => ({
+      name: item.name,
+      price: Number(item.price),
+      old: item.old_price,
+      image: item.image,
+      product_id: item.product_id,
+      delivery_fee: item.delivery_fee == null ? delivery : Number(item.delivery_fee),
+      badge: item.badge,
+    }));
+    // The configured main product must appear only once. Some legacy landing
+    // pages also contain that same product inside addons, so remove duplicates
+    // by product id (and by exact name when no id is available).
+    const seenIds = new Set(main.map((item) => item.product_id).filter(Boolean));
+    const seenNames = new Set(main.map((item) => item.name.trim().toLowerCase()));
+    const uniqueAddons = addons.filter((item) => {
+      const id = item.product_id;
+      const name = item.name.trim().toLowerCase();
+      if (id && seenIds.has(id)) return false;
+      if (!id && seenNames.has(name)) return false;
+      if (id) seenIds.add(id);
+      seenNames.add(name);
+      return true;
+    });
+    return [...main, ...uniqueAddons];
   }, [product, page?.addons, basePrice, regularPrice, heroImage, delivery]);
 
   const comboOffers = useMemo<Offer[]>(() => (C.combo_offers ?? []).filter((item) => item.name?.trim() && Number(item.price) > 0).map((item) => ({ name: item.name.trim(), price: Number(item.price), old: item.old_price == null ? null : Number(item.old_price), image: item.image, delivery_fee: item.delivery_fee == null ? delivery : Number(item.delivery_fee), quantity: item.quantity?.trim() || "১ পিস" })), [C.combo_offers, delivery]);
@@ -313,97 +336,145 @@ function OfferSelectionPopup({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const mainOffer = offers[0];
-  const extraOffers = offers.slice(1);
-
   return (
-    <div className="fixed inset-0 z-[70] grid place-items-center bg-black/65 px-2.5 py-3 backdrop-blur-[4px]" role="dialog" aria-modal="true" aria-label="প্রোডাক্ট সিলেক্ট করুন" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div ref={popupRef} className="max-h-[82vh] w-full max-w-[380px] overflow-y-auto overscroll-contain rounded-[20px] border border-all-product-line bg-all-product-surface p-2.5 shadow-[0_24px_70px_-28px_rgba(0,0,0,.65)] sm:p-3">
-        <div className="sticky top-0 z-10 -mx-2.5 -mt-2.5 mb-2.5 flex items-center justify-between border-b border-all-product-line/80 bg-all-product-surface/96 px-2.5 py-2 backdrop-blur sm:-mx-3 sm:-mt-3 sm:px-3">
-          <div className="min-w-0">
-            <h3 className="text-[14px] font-black leading-5 text-all-product-ink">প্রডাক্ট সিলেক্ট করুন</h3>
-            <p className="text-[10px] font-semibold leading-4 text-all-product-muted">পছন্দের অফারটি বেছে নিন</p>
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-2.5 py-2.5 backdrop-blur-[5px] sm:px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="প্রোডাক্ট সিলেক্ট করুন"
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        ref={popupRef}
+        className="flex max-h-[86vh] w-full max-w-[410px] flex-col overflow-y-auto overscroll-contain rounded-[22px] border border-all-product-line/80 bg-all-product-surface shadow-[0_28px_90px_-30px_rgba(0,0,0,.72)]"
+      >
+        <div className="sticky top-0 z-20 shrink-0 border-b border-all-product-line bg-all-product-surface px-3.5 py-3 shadow-[0_4px_14px_-12px_rgba(0,0,0,.45)] sm:px-4">
+          <div className="flex items-center gap-3">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-all-product-primary/10 text-all-product-primary ring-1 ring-all-product-primary/15">
+              <ShoppingBag className="h-4.5 w-4.5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-[14px] font-black leading-5 text-all-product-ink">প্রোডাক্ট সিলেক্ট করুন</h3>
+              <p className="mt-0.5 text-[10px] font-semibold leading-4 text-all-product-muted">পছন্দের প্রোডাক্ট বা কম্বো অফারটি বেছে নিন</p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-all-product-soft text-all-product-ink ring-1 ring-all-product-line transition hover:bg-all-product-primary/10 hover:text-all-product-primary"
+              aria-label="বন্ধ করুন"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
-          <button type="button" onClick={onClose} className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-all-product-soft text-all-product-ink ring-1 ring-all-product-line/60 transition hover:bg-all-product-primary/10" aria-label="বন্ধ করুন"><X className="h-3.5 w-3.5" /></button>
         </div>
 
-        {mainOffer && (
-          <section>
-            <div className="mb-1.5 flex items-center justify-between px-0.5">
-              <h4 className="text-[11px] font-black uppercase tracking-wide text-all-product-primary">মেইন প্রডাক্ট</h4>
-              <span className="text-[9px] font-bold text-all-product-muted">সিলেক্ট করুন</span>
-            </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              {offers.map((offer, index) => {
-                const value = `offer-${index}`;
-                const active = selected === value;
-                return (
-                  <button key={value} type="button" onClick={() => onSelect(value)} className={`flex min-w-0 items-center gap-1.5 rounded-lg border p-1.5 text-left transition-all ${active ? "border-all-product-primary bg-all-product-primary/5 ring-1 ring-all-product-primary/15" : "border-all-product-line hover:border-all-product-primary/50"}`}>
-                    {offer.image && <img src={toImg(offer.image, { w: 80, q: 75 })} alt="" className="h-8 w-8 shrink-0 rounded-md object-cover" loading="lazy" />}
-                    <span className="min-w-0 flex-1">
-                      <span className="block break-words text-[9px] font-black leading-3">{offer.name}</span>
-                      <span className="mt-0.5 block text-[9px] font-black text-all-product-primary">{taka(offer.price)}</span>
-                    </span>
-                    {active && <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-all-product-primary text-all-product-primary-foreground"><Check className="h-3 w-3" strokeWidth={3} /></span>}
-                  </button>
-                );
-              })}
-            </div>
+        <div className="p-3 sm:p-3.5">
+          {offers.length > 0 && (
+            <section>
+              <div className="mb-2 flex items-center justify-between px-0.5">
+                <div>
+                  <h4 className="text-[11px] font-black uppercase tracking-wide text-all-product-primary">মেইন প্রডাক্ট</h4>
+                  <p className="mt-0.5 text-[9px] font-semibold text-all-product-muted">একটি পছন্দ করে এগিয়ে যান</p>
+                </div>
+                <span className="rounded-full bg-all-product-primary/10 px-2 py-1 text-[8px] font-black text-all-product-primary">
+                  {offers.length} টি
+                </span>
+              </div>
 
-            {extraOffers.length > 0 && (
-              <div className="mt-1.5 grid grid-cols-2 gap-1.5">
-                {extraOffers.map((offer, index) => {
-                  const realIndex = index + 1;
-                  const value = `offer-${realIndex}`;
+              <div className="grid grid-cols-2 gap-2">
+                {offers.map((offer, index) => {
+                  const value = `offer-${index}`;
                   const active = selected === value;
                   return (
-                    <button key={value} type="button" onClick={() => onSelect(value)} className={`flex min-w-0 items-center gap-1.5 rounded-lg border p-1.5 text-left transition-all ${active ? "border-all-product-primary bg-all-product-primary/5 ring-1 ring-all-product-primary/15" : "border-all-product-line hover:border-all-product-primary/50"}`}>
-                      {offer.image && <img src={toImg(offer.image, { w: 80, q: 75 })} alt="" className="h-8 w-8 shrink-0 rounded-md object-cover" loading="lazy" />}
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => onSelect(value)}
+                      aria-pressed={active}
+                      className={`group flex min-w-0 items-center gap-2 rounded-xl border p-2 text-left transition-all active:scale-[.99] ${
+                        active
+                          ? "border-all-product-primary bg-all-product-primary/5 ring-2 ring-all-product-primary/10 shadow-sm"
+                          : "border-all-product-line bg-all-product-surface hover:border-all-product-primary/45 hover:shadow-sm"
+                      }`}
+                    >
+                      {offer.image && (
+                        <img
+                          src={toImg(offer.image, { w: 96, q: 78 })}
+                          alt=""
+                          loading="lazy"
+                          className="h-10 w-10 shrink-0 rounded-lg object-cover ring-1 ring-black/5"
+                        />
+                      )}
                       <span className="min-w-0 flex-1">
-                        <span className="block break-words text-[9px] font-black leading-3">{offer.name}</span>
-                        <span className="mt-0.5 block text-[9px] font-black text-all-product-primary">{taka(offer.price)}</span>
+                        <span className="block break-words text-[9.5px] font-black leading-[1.25] text-all-product-ink">{offer.name}</span>
+                        <span className="mt-1 block text-[10px] font-black text-all-product-primary">{taka(offer.price)}</span>
+                      </span>
+                      <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border ${
+                        active ? "border-all-product-primary bg-all-product-primary text-all-product-primary-foreground" : "border-all-product-line bg-all-product-soft"
+                      }`}>
+                        {active && <Check className="h-3 w-3" strokeWidth={3} />}
                       </span>
                     </button>
                   );
                 })}
               </div>
-            )}
-          </section>
-        )}
+            </section>
+          )}
 
-        {comboOffers.length > 0 && (
-          <section className="mt-2.5 border-t border-all-product-line/80 pt-2.5">
-            <div className="mb-1.5 flex items-center justify-between px-0.5">
-              <div>
-                <h4 className="text-[11px] font-black uppercase tracking-wide text-all-product-primary">Combo Offer</h4>
-                <p className="text-[9px] font-semibold text-all-product-muted">আরও সাশ্রয়ী প্যাকেজ</p>
+          {comboOffers.length > 0 && (
+            <section className="mt-3 border-t border-all-product-line pt-3">
+              <div className="mb-2 flex items-center justify-between gap-2 px-0.5">
+                <div>
+                  <h4 className="text-[11px] font-black uppercase tracking-wide text-all-product-primary">Combo Offer</h4>
+                  <p className="mt-0.5 text-[9px] font-semibold text-all-product-muted">আরও সাশ্রয়ী প্যাকেজ</p>
+                </div>
+                <span className="rounded-full bg-all-product-primary/10 px-2 py-1 text-[8px] font-black text-all-product-primary">{comboOffers.length} টি</span>
               </div>
-              <span className="rounded-full bg-all-product-primary/10 px-1.5 py-0.5 text-[8px] font-black text-all-product-primary">{comboOffers.length} টি</span>
-            </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              {comboOffers.map((offer, index) => {
-                const value = `combo-${index}`;
-                const active = selected === value;
-                return (
-                  <button key={value} type="button" onClick={() => onSelect(value)} className={`group relative overflow-hidden rounded-xl border bg-all-product-surface p-1 text-left transition-all ${active ? "border-all-product-primary ring-1 ring-all-product-primary/25 shadow-md" : "border-all-product-line hover:border-all-product-primary/50"}`}>
-                    <div className="relative overflow-hidden rounded-lg bg-all-product-soft">
-                      <img src={toImg(offer.image || "/placeholder.svg", { w: 360, q: 78 })} alt={offer.name} loading="lazy" className="aspect-square w-full object-cover" />
-                      {active && <span className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-all-product-primary text-all-product-primary-foreground shadow"><Check className="h-3 w-3" strokeWidth={3} /></span>}
-                    </div>
-                    <div className="px-0.5 pb-0.5 pt-1">
-                      <div className="break-words text-[10px] font-black leading-[1.25]">{offer.name}</div>
-                      <div className="mt-0.5 flex items-center justify-between gap-1">
-                        <span className="min-w-0 truncate rounded-full bg-all-product-primary/10 px-1 py-0.5 text-[8px] font-black text-all-product-primary">{offer.quantity || "১ পিস"}</span>
-                        <span className="shrink-0 text-[13px] font-black leading-none text-all-product-primary">{taka(offer.price)}</span>
+
+              <div className="grid grid-cols-2 gap-2">
+                {comboOffers.map((offer, index) => {
+                  const value = `combo-${index}`;
+                  const active = selected === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => onSelect(value)}
+                      aria-pressed={active}
+                      className={`group relative overflow-hidden rounded-xl border bg-all-product-surface p-1.5 text-left transition-all active:scale-[.99] ${
+                        active
+                          ? "border-all-product-primary ring-2 ring-all-product-primary/15 shadow-md"
+                          : "border-all-product-line hover:border-all-product-primary/45 hover:shadow-sm"
+                      }`}
+                    >
+                      <div className="relative overflow-hidden rounded-lg bg-all-product-soft">
+                        <img
+                          src={toImg(offer.image || "/placeholder.svg", { w: 420, q: 80 })}
+                          alt={offer.name}
+                          loading="lazy"
+                          className="aspect-square w-full object-cover"
+                        />
+                        {active && (
+                          <span className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-all-product-primary text-all-product-primary-foreground shadow">
+                            <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                          </span>
+                        )}
                       </div>
-                      <div className="mt-0.5 text-[8px] font-bold text-all-product-muted">{offer.delivery_fee === 0 ? "ফ্রি ডেলিভারি" : `ডেলিভারি ${taka(offer.delivery_fee)}`}</div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        )}
+                      <div className="px-0.5 pb-1 pt-1.5">
+                        <div className="break-words text-[10px] font-black leading-[1.3] text-all-product-ink">{offer.name}</div>
+                        <div className="mt-1 flex items-center justify-between gap-1.5">
+                          <span className="min-w-0 truncate rounded-full bg-all-product-primary/10 px-1.5 py-0.5 text-[8px] font-black text-all-product-primary">{offer.quantity || "১ পিস"}</span>
+                          <span className="shrink-0 text-[13px] font-black leading-none text-all-product-primary">{taka(offer.price)}</span>
+                        </div>
+                        <div className="mt-1 text-[8px] font-bold text-all-product-muted">{offer.delivery_fee === 0 ? "ফ্রি ডেলিভারি" : `ডেলিভারি ${taka(offer.delivery_fee)}`}</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+        </div>
       </div>
     </div>
   );
