@@ -395,7 +395,7 @@ function LandingPagesAdmin() {
                     <RepeatList<ComboOffer>
                       items={C.combo_offers || []}
                       onChange={(combo_offers) => setC({ combo_offers })}
-                      empty={{ name: "", price: 0, old_price: undefined, image: "", badge: "", delivery_fee: 70, quantity: "১ পিস" }}
+                      empty={{ name: "", price: 0, old_price: undefined, image: "", delivery_fee: 70, quantity: "১ পিস" }}
                       render={(item, upd) => (
                         <div className="space-y-4 pr-1">
                           <div className="rounded-xl border border-emerald-100 bg-gradient-to-br from-white to-emerald-50/40 p-3">
@@ -419,9 +419,6 @@ function LandingPagesAdmin() {
                             </Field>
                             <Field label="আগের দাম (৳) — optional">
                               <input type="number" min={0} value={item.old_price ?? ""} onChange={(e) => upd({ ...item, old_price: e.target.value ? Math.max(0, Number(e.target.value)) : undefined })} className="w-full border rounded-xl px-3 py-2.5" />
-                            </Field>
-                            <Field label="ব্যাজ — optional">
-                              <input value={item.badge ?? ""} onChange={(e) => upd({ ...item, badge: e.target.value || undefined })} placeholder="BEST OFFER" className="w-full border rounded-xl px-3 py-2.5" />
                             </Field>
                           </div>
                           <Field label="ডেলিভারি চার্জ (৳)">
