@@ -501,7 +501,6 @@ export type Database = {
           courier: boolean
           customer_feedback: boolean
           customer_management: boolean
-          coupons: boolean
           customers: boolean
           dashboard: boolean
           dashboard_confirmed_sell: boolean
@@ -544,7 +543,6 @@ export type Database = {
           courier?: boolean
           customer_feedback?: boolean
           customer_management?: boolean
-          coupons?: boolean
           customers?: boolean
           dashboard?: boolean
           dashboard_confirmed_sell?: boolean
@@ -587,7 +585,6 @@ export type Database = {
           courier?: boolean
           customer_feedback?: boolean
           customer_management?: boolean
-          coupons?: boolean
           customers?: boolean
           dashboard?: boolean
           dashboard_confirmed_sell?: boolean
