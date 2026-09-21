@@ -299,7 +299,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
                       <span className="min-w-0 flex-1">
                         <span className="block break-words text-[10px] font-black leading-[1.35] text-all-product-ink">{offer.name}</span>
                         <span className="mt-0.5 flex items-baseline gap-1 whitespace-nowrap">
-                          <span className="text-[13px] font-black leading-none text-all-product-primary">{taka(offer.price)}</span>
+                          <span className="text-[14px] font-black leading-none text-all-product-primary">{taka(offer.price)}</span>
                           {offer.old && offer.old > offer.price && <del className="text-[8px] font-semibold text-all-product-muted">{taka(offer.old)}</del>}
                         </span>
                         <span className="mt-0.5 block whitespace-nowrap text-[8px] font-semibold leading-3 text-all-product-muted">{offer.delivery_fee === 0 ? "ফ্রি ডেলিভারি" : `ডেলিভারি ${taka(offer.delivery_fee)}`}</span>
@@ -481,8 +481,8 @@ function OfferSelectionPopup({
               <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-all-product-gold ring-2 ring-all-product-surface" />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="text-[15px] font-black leading-5 text-all-product-ink">আপনার পছন্দটি বেছে নিন</h3>
-              <p className="mt-0.5 text-[10px] font-semibold leading-4 text-all-product-muted">পছন্দের অফারে ট্যাপ করলেই অর্ডারে চলে যাবে</p>
+              <h3 className="text-[17px] font-black leading-5 text-all-product-ink">আপনার পছন্দটি বেছে নিন</h3>
+              <p className="mt-0.5 text-[11px] font-bold leading-4 text-all-product-muted">পছন্দের অফারে ট্যাপ করলেই অর্ডারে চলে যাবে</p>
             </div>
             <button
               type="button"
@@ -499,8 +499,8 @@ function OfferSelectionPopup({
           {offers.length > 0 && (
             <section>
               <div className="mb-2.5 flex items-center justify-between px-0.5">
-                <p className="text-[9px] font-bold text-all-product-muted">একটি অফার নির্বাচন করুন</p>
-                <span className="rounded-full border border-all-product-primary/15 bg-all-product-primary/[0.07] px-2 py-1 text-[8px] font-black text-all-product-primary">
+                <p className="text-[11px] font-black text-all-product-muted">একটি অফার নির্বাচন করুন</p>
+                <span className="rounded-full border border-all-product-primary/15 bg-all-product-primary/[0.07] px-2 py-1 text-[9px] font-black text-all-product-primary">
                   {offers.length} টি
                 </span>
               </div>
@@ -530,8 +530,8 @@ function OfferSelectionPopup({
                         />
                       )}
                       <span className="min-w-0 flex-1">
-                        <span className="block break-words text-[9.5px] font-black leading-[1.25] text-all-product-ink">{offer.name}</span>
-                        <span className="mt-1 block text-[10px] font-black text-all-product-primary">{taka(offer.price)}</span>
+                        <span className="block break-words text-[11.5px] font-black leading-[1.35] text-all-product-ink">{offer.name}</span>
+                        <span className="mt-1 block text-[12px] font-black leading-none text-all-product-primary">{taka(offer.price)}</span>
                       </span>
                       <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border ${
                         active ? "border-all-product-primary bg-all-product-primary text-all-product-primary-foreground" : "border-all-product-line bg-all-product-soft"
@@ -549,10 +549,10 @@ function OfferSelectionPopup({
             <section className="mt-3 border-t border-all-product-line pt-3">
               <div className="mb-2 flex items-center justify-between gap-2 px-0.5">
                 <div>
-                  <h4 className="text-[11px] font-black uppercase tracking-wide text-all-product-primary">Combo Offer</h4>
-                  <p className="mt-0.5 text-[9px] font-semibold text-all-product-muted">আরও সাশ্রয়ী প্যাকেজ</p>
+                  <h4 className="text-[12px] font-black uppercase tracking-wide text-all-product-primary">Combo Offer</h4>
+                  <p className="mt-0.5 text-[10px] font-bold text-all-product-muted">আরও সাশ্রয়ী প্যাকেজ</p>
                 </div>
-                <span className="rounded-full bg-all-product-primary/10 px-2 py-1 text-[8px] font-black text-all-product-primary">{comboOffers.length} টি</span>
+                <span className="rounded-full bg-all-product-primary/10 px-2 py-1 text-[9px] font-black text-all-product-primary">{comboOffers.length} টি</span>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -585,12 +585,12 @@ function OfferSelectionPopup({
                         )}
                       </div>
                       <div className="px-0.5 pb-1 pt-1.5">
-                        <div className="break-words text-[10px] font-black leading-[1.3] text-all-product-ink">{offer.name}</div>
+                        <div className="break-words text-[11.5px] font-black leading-[1.35] text-all-product-ink">{offer.name}</div>
                         <div className="mt-1 flex items-center justify-between gap-1.5">
-                          <span className="min-w-0 truncate rounded-full bg-all-product-primary/10 px-1.5 py-0.5 text-[8px] font-black text-all-product-primary">{offer.quantity || "১ পিস"}</span>
-                          <span className="shrink-0 text-[13px] font-black leading-none text-all-product-primary">{taka(offer.price)}</span>
+                          <span className="min-w-0 truncate rounded-full bg-all-product-primary/10 px-1.5 py-0.5 text-[9px] font-black text-all-product-primary">{offer.quantity || "১ পিস"}</span>
+                          <span className="shrink-0 text-[14px] font-black leading-none text-all-product-primary">{taka(offer.price)}</span>
                         </div>
-                        <div className="mt-1 text-[8px] font-bold text-all-product-muted">{offer.delivery_fee === 0 ? "ফ্রি ডেলিভারি" : `ডেলিভারি ${taka(offer.delivery_fee)}`}</div>
+                        <div className="mt-1 text-[9px] font-bold text-all-product-muted">{offer.delivery_fee === 0 ? "ফ্রি ডেলিভারি" : `ডেলিভারি ${taka(offer.delivery_fee)}`}</div>
                       </div>
                     </button>
                   );
