@@ -92,6 +92,7 @@ function LandingPagesAdmin() {
   const [tab, setTab] = useState<"main" | "page" | "content" | "products" | "combo-offer">("main");
   const [createProductFor, setCreateProductFor] = useState<"main" | number | null>(null);
   const [productEditor, setProductEditor] = useState<"main" | number | null>(null);
+  const [comboEditor, setComboEditor] = useState<number | null>(null);
 
   const { data } = useQuery({
     queryKey: ["admin-landing"],
