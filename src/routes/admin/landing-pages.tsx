@@ -538,7 +538,6 @@ function LandingPagesAdmin() {
                         </div>
                       ))}
                     </div>
-                    {!editing.product_id && <button type="button" onClick={() => setProductEditor("main")} className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-emerald-200 py-2.5 text-sm font-black text-emerald-700 hover:bg-emerald-50"><Plus className="h-4 w-4" />প্রডাক্ট যোগ করুন</button>}
                     <button type="button" onClick={() => { const list=[...(editing.addons||[]), {name:"",price:0,delivery_fee:70}]; set({addons:list}); setProductEditor(list.length-1); }} className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-200 py-2.5 text-sm font-black text-slate-700 hover:bg-slate-50"><Plus className="h-4 w-4" />অতিরিক্ত প্রডাক্ট যোগ করুন</button>
                   </div>
 
