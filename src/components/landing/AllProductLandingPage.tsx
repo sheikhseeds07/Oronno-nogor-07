@@ -464,7 +464,7 @@ function OfferSelectionPopup({
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-2.5 py-2.5 backdrop-blur-[5px] sm:px-4"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/72 px-2.5 py-2.5 backdrop-blur-[7px] sm:px-4"
       role="dialog"
       aria-modal="true"
       aria-label="প্রোডাক্ট সিলেক্ট করুন"
@@ -472,21 +472,22 @@ function OfferSelectionPopup({
     >
       <div
         ref={popupRef}
-        className="flex max-h-[86vh] w-full max-w-[410px] flex-col overflow-y-auto overscroll-contain rounded-[22px] border border-all-product-line/80 bg-all-product-surface shadow-[0_28px_90px_-30px_rgba(0,0,0,.72)]"
+        className="flex max-h-[86vh] w-full max-w-[430px] flex-col overflow-y-auto overscroll-contain rounded-[24px] border border-all-product-line/80 bg-all-product-surface shadow-[0_32px_100px_-28px_rgba(0,0,0,.78)]"
       >
-        <div className="sticky top-0 z-20 shrink-0 border-b border-all-product-line bg-all-product-surface px-3.5 py-3 shadow-[0_4px_14px_-12px_rgba(0,0,0,.45)] sm:px-4">
+        <div className="sticky top-0 z-20 shrink-0 border-b border-all-product-line/80 bg-gradient-to-br from-all-product-primary/[0.07] via-all-product-surface to-all-product-gold/[0.08] px-3.5 py-3.5 shadow-[0_8px_24px_-18px_rgba(0,0,0,.55)] sm:px-4">
           <div className="flex items-center gap-3">
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-all-product-primary/10 text-all-product-primary ring-1 ring-all-product-primary/15">
-              <ShoppingBag className="h-4.5 w-4.5" />
+            <div className="relative grid h-10 w-10 shrink-0 place-items-center rounded-[13px] bg-all-product-primary text-all-product-primary-foreground shadow-[0_8px_20px_-10px_rgba(20,83,45,.65)]">
+              <ShoppingBag className="h-[18px] w-[18px]" />
+              <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-all-product-gold ring-2 ring-all-product-surface" />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="text-[14px] font-black leading-5 text-all-product-ink">প্রোডাক্ট সিলেক্ট করুন</h3>
-              <p className="mt-0.5 text-[10px] font-semibold leading-4 text-all-product-muted">পছন্দের প্রোডাক্ট বা কম্বো অফারটি বেছে নিন</p>
+              <h3 className="text-[15px] font-black leading-5 text-all-product-ink">আপনার পছন্দটি বেছে নিন</h3>
+              <p className="mt-0.5 text-[10px] font-semibold leading-4 text-all-product-muted">পছন্দের অফারে ট্যাপ করলেই অর্ডারে চলে যাবে</p>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-all-product-soft text-all-product-ink ring-1 ring-all-product-line transition hover:bg-all-product-primary/10 hover:text-all-product-primary"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-all-product-surface/90 text-all-product-ink shadow-sm ring-1 ring-all-product-line transition hover:bg-all-product-primary hover:text-all-product-primary-foreground"
               aria-label="বন্ধ করুন"
             >
               <X className="h-4 w-4" />
@@ -497,12 +498,9 @@ function OfferSelectionPopup({
         <div className="p-3 sm:p-3.5">
           {offers.length > 0 && (
             <section>
-              <div className="mb-2 flex items-center justify-between px-0.5">
-                <div>
-                  <h4 className="text-[11px] font-black uppercase tracking-wide text-all-product-primary">মেইন প্রডাক্ট</h4>
-                  <p className="mt-0.5 text-[9px] font-semibold text-all-product-muted">একটি পছন্দ করে এগিয়ে যান</p>
-                </div>
-                <span className="rounded-full bg-all-product-primary/10 px-2 py-1 text-[8px] font-black text-all-product-primary">
+              <div className="mb-2.5 flex items-center justify-between px-0.5">
+                <p className="text-[9px] font-bold text-all-product-muted">একটি অফার নির্বাচন করুন</p>
+                <span className="rounded-full border border-all-product-primary/15 bg-all-product-primary/[0.07] px-2 py-1 text-[8px] font-black text-all-product-primary">
                   {offers.length} টি
                 </span>
               </div>
@@ -517,10 +515,10 @@ function OfferSelectionPopup({
                       type="button"
                       onClick={() => onSelect(value)}
                       aria-pressed={active}
-                      className={`group flex min-w-0 items-center gap-2 rounded-xl border p-2 text-left transition-all active:scale-[.99] ${
+                      className={`group relative flex min-w-0 items-center gap-2 rounded-[14px] border p-2 text-left transition-all duration-200 active:scale-[.99] ${
                         active
-                          ? "border-all-product-primary bg-all-product-primary/5 ring-2 ring-all-product-primary/10 shadow-sm"
-                          : "border-all-product-line bg-all-product-surface hover:border-all-product-primary/45 hover:shadow-sm"
+                          ? "border-all-product-primary bg-all-product-primary/[0.06] ring-2 ring-all-product-primary/10 shadow-[0_8px_22px_-16px_rgba(20,83,45,.7)]"
+                          : "border-all-product-line bg-all-product-surface hover:border-all-product-primary/40 hover:shadow-[0_8px_22px_-18px_rgba(0,0,0,.22)]"
                       }`}
                     >
                       {offer.image && (
