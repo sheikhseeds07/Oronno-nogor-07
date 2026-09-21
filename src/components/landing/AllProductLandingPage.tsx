@@ -333,18 +333,22 @@ function OfferSelectionPopup({
               <h4 className="text-[11px] font-black uppercase tracking-wide text-all-product-primary">মেইন প্রডাক্ট</h4>
               <span className="text-[9px] font-bold text-all-product-muted">সিলেক্ট করুন</span>
             </div>
-            <button type="button" onClick={() => onSelect("offer-0")} className={`flex w-full items-center gap-2 rounded-xl border p-1.5 text-left transition-all ${selected === "offer-0" ? "border-all-product-primary bg-all-product-primary/5 ring-1 ring-all-product-primary/20" : "border-all-product-line hover:border-all-product-primary/50"}`}>
-              {mainOffer.image && <img src={toImg(mainOffer.image, { w: 120, q: 78 })} alt="" className="h-11 w-11 shrink-0 rounded-lg object-cover" loading="lazy" />}
-              <span className="min-w-0 flex-1">
-                <span className="block break-words text-[11px] font-black leading-[1.3]">{mainOffer.name}</span>
-                <span className="mt-0.5 block text-[9px] font-semibold text-all-product-muted">{mainOffer.delivery_fee === 0 ? "ফ্রি ডেলিভারি" : `ডেলিভারি ${taka(mainOffer.delivery_fee)}`}</span>
-              </span>
-              <span className="shrink-0 text-right">
-                <span className="block text-[14px] font-black leading-none text-all-product-primary">{taka(mainOffer.price)}</span>
-                {mainOffer.old && mainOffer.old > mainOffer.price && <del className="mt-0.5 block text-[8px] text-all-product-muted">{taka(mainOffer.old)}</del>}
-              </span>
-              {selected === "offer-0" && <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-all-product-primary text-all-product-primary-foreground"><Check className="h-3 w-3" strokeWidth={3} /></span>}
-            </button>
+            <div className="grid grid-cols-2 gap-1.5">
+              {offers.map((offer, index) => {
+                const value = `offer-${index}`;
+                const active = selected === value;
+                return (
+                  <button key={value} type="button" onClick={() => onSelect(value)} className={`flex min-w-0 items-center gap-1.5 rounded-lg border p-1.5 text-left transition-all ${active ? "border-all-product-primary bg-all-product-primary/5 ring-1 ring-all-product-primary/15" : "border-all-product-line hover:border-all-product-primary/50"}`}>
+                    {offer.image && <img src={toImg(offer.image, { w: 80, q: 75 })} alt="" className="h-8 w-8 shrink-0 rounded-md object-cover" loading="lazy" />}
+                    <span className="min-w-0 flex-1">
+                      <span className="block break-words text-[9px] font-black leading-3">{offer.name}</span>
+                      <span className="mt-0.5 block text-[9px] font-black text-all-product-primary">{taka(offer.price)}</span>
+                    </span>
+                    {active && <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-all-product-primary text-all-product-primary-foreground"><Check className="h-3 w-3" strokeWidth={3} /></span>}
+                  </button>
+                );
+              })}
+            </div>
 
             {extraOffers.length > 0 && (
               <div className="mt-1.5 grid grid-cols-2 gap-1.5">
