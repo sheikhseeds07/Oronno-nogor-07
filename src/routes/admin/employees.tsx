@@ -10,7 +10,7 @@ import { Plus, Trash2, KeyRound, UserCog, Eye, UsersRound } from "lucide-react";
 import { createEmployee, updateEmployeePermissions, deleteEmployee, resetEmployeePassword, listEmployeesFull, updateEmployeeRole, type EmployeePermissions } from "@/lib/employee-admin.functions";
 export const Route = createFileRoute("/admin/employees")({ component: Employees });
 const PERM_LABELS: { key: keyof EmployeePermissions; label: string }[] = [
-  {key:"dashboard",label:"Dashboard"},{key:"orders",label:"Orders"},{key:"order_import",label:"Import Orders"},{key:"products",label:"Products"},{key:"offers",label:"Offers"},{key:"categories",label:"Categories"},{key:"customers",label:"Customers"},{key:"banners",label:"Banners"},{key:"coupons",label:"Coupons"},{key:"landing_pages",label:"Landing Pages"},{key:"employees",label:"Employees"},{key:"all_api",label:"All APIs"},{key:"settings",label:"Settings"},
+  {key:"dashboard",label:"Dashboard"},{key:"orders",label:"Orders"},{key:"order_import",label:"Import Orders"},{key:"products",label:"Products"},{key:"offers",label:"Offers"},{key:"categories",label:"Categories"},{key:"customers",label:"Customers"},{key:"banners",label:"Banners"},{key:"landing_pages",label:"Landing Pages"},{key:"employees",label:"Employees"},{key:"all_api",label:"All APIs"},{key:"settings",label:"Settings"},
 ];
 const emptyPerms: EmployeePermissions = Object.fromEntries(PERM_LABELS.map(p=>[p.key,false])) as EmployeePermissions;
 function Employees(){
