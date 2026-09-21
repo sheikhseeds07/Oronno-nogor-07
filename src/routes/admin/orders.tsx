@@ -1575,7 +1575,7 @@ async function attachProductImages(orders: OrderRow[]): Promise<OrderRow[]> {
       // Landing pages keep their own package/addon images inside the page row.
       const { data: pages } = await supabase
         .from("landing_pages")
-        .select("hero_image,addons,products(name,images)")
+        .select("hero_image,addons,planting_steps,products(name,images)")
         .limit(200);
       for (const pg of (pages ?? []) as any[]) {
         const mainProduct = pg?.products;
@@ -1588,6 +1588,18 @@ async function attachProductImages(orders: OrderRow[]): Promise<OrderRow[]> {
         for (const a of addons) {
           const key = normalizeProductName(a?.name ?? "");
           const img = a?.image || pg?.hero_image || "";
+          if (key && img && !nameMap[key]) nameMap[key] = img;
+        }
+
+        // All Product landing pages store manually configured Combo Offer
+        // products inside planting_steps.combo_offers, not in products/addons.
+        const plantingSteps = pg?.planting_steps;
+        const comboOffers = plantingSteps && typeof plantingSteps === "object" && Array.isArray((plantingSteps as any).combo_offers)
+          ? (plantingSteps as any).combo_offers
+          : [];
+        for (const offer of comboOffers) {
+          const key = normalizeProductName(offer?.name ?? "");
+          const img = offer?.image || pg?.hero_image || "";
           if (key && img && !nameMap[key]) nameMap[key] = img;
         }
       }
