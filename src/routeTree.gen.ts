@@ -25,7 +25,6 @@ import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminAllApiRouteImport } from './routes/admin/all-api'
 import { Route as AdminBannersRouteImport } from './routes/admin/banners'
 import { Route as AdminCategoriesRouteImport } from './routes/admin/categories'
-import { Route as AdminCouponsRouteImport } from './routes/admin/coupons'
 import { Route as AdminCourierRouteImport } from './routes/admin/courier'
 import { Route as AdminCustomerFeedbackRouteImport } from './routes/admin/customer-feedback'
 import { Route as AdminCustomerManagementRouteImport } from './routes/admin/customer-management'
@@ -138,11 +137,6 @@ const AdminBannersRoute = AdminBannersRouteImport.update({
 const AdminCategoriesRoute = AdminCategoriesRouteImport.update({
   id: '/admin/categories',
   path: '/admin/categories',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminCouponsRoute = AdminCouponsRouteImport.update({
-  id: '/admin/coupons',
-  path: '/admin/coupons',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminCourierRoute = AdminCourierRouteImport.update({
@@ -327,7 +321,6 @@ export interface FileRoutesByFullPath {
   '/admin/all-api': typeof AdminAllApiRoute
   '/admin/banners': typeof AdminBannersRoute
   '/admin/categories': typeof AdminCategoriesRoute
-  '/admin/coupons': typeof AdminCouponsRoute
   '/admin/courier': typeof AdminCourierRoute
   '/admin/customer-feedback': typeof AdminCustomerFeedbackRoute
   '/admin/customer-management': typeof AdminCustomerManagementRoute
@@ -379,7 +372,6 @@ export interface FileRoutesByTo {
   '/admin/all-api': typeof AdminAllApiRoute
   '/admin/banners': typeof AdminBannersRoute
   '/admin/categories': typeof AdminCategoriesRoute
-  '/admin/coupons': typeof AdminCouponsRoute
   '/admin/courier': typeof AdminCourierRoute
   '/admin/customer-feedback': typeof AdminCustomerFeedbackRoute
   '/admin/customer-management': typeof AdminCustomerManagementRoute
@@ -432,7 +424,6 @@ export interface FileRoutesById {
   '/admin/all-api': typeof AdminAllApiRoute
   '/admin/banners': typeof AdminBannersRoute
   '/admin/categories': typeof AdminCategoriesRoute
-  '/admin/coupons': typeof AdminCouponsRoute
   '/admin/courier': typeof AdminCourierRoute
   '/admin/customer-feedback': typeof AdminCustomerFeedbackRoute
   '/admin/customer-management': typeof AdminCustomerManagementRoute
@@ -643,7 +634,6 @@ export interface RootRouteChildren {
   AdminAllApiRoute: typeof AdminAllApiRoute
   AdminBannersRoute: typeof AdminBannersRoute
   AdminCategoriesRoute: typeof AdminCategoriesRoute
-  AdminCouponsRoute: typeof AdminCouponsRoute
   AdminCourierRoute: typeof AdminCourierRoute
   AdminCustomerFeedbackRoute: typeof AdminCustomerFeedbackRoute
   AdminCustomerManagementRoute: typeof AdminCustomerManagementRoute
@@ -798,7 +788,6 @@ declare module '@tanstack/react-router' {
       id: '/admin/coupons'
       path: '/admin/coupons'
       fullPath: '/admin/coupons'
-      preLoaderRoute: typeof AdminCouponsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/courier': {
@@ -1051,7 +1040,6 @@ const rootRouteChildren: RootRouteChildren = {
   AdminAllApiRoute: AdminAllApiRoute,
   AdminBannersRoute: AdminBannersRoute,
   AdminCategoriesRoute: AdminCategoriesRoute,
-  AdminCouponsRoute: AdminCouponsRoute,
   AdminCourierRoute: AdminCourierRoute,
   AdminCustomerFeedbackRoute: AdminCustomerFeedbackRoute,
   AdminCustomerManagementRoute: AdminCustomerManagementRoute,
