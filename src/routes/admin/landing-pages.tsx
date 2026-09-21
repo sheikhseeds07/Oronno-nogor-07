@@ -4,7 +4,7 @@ import { useState } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { supabase } from "@/lib/personal-supabase/client";
 import { toast } from "sonner";
-import { Plus, Trash2, ExternalLink, Edit, X, PackagePlus, Copy, Search } from "lucide-react";
+import { Plus, Trash2, ExternalLink, Edit, X, PackagePlus, Copy, Search, GripVertical } from "lucide-react";
 import { uploadToBucket, safeFileName } from "@/lib/storage-upload";
 import {
   mergeContent,
@@ -92,7 +92,7 @@ function LandingPagesAdmin() {
   const [tab, setTab] = useState<"main" | "page" | "content" | "products" | "combo-offer">("main");
   const [createProductFor, setCreateProductFor] = useState<"main" | number | null>(null);
   const [productEditor, setProductEditor] = useState<"main" | number | null>(null);
-  const [comboEditor, setComboEditor] = useState<number | null>(null);
+  const [comboEditor, setComboEditor] = useState<number | null>(null);\n  const [comboDragIndex, setComboDragIndex] = useState<number | null>(null);
 
   const { data } = useQuery({
     queryKey: ["admin-landing"],
@@ -381,25 +381,40 @@ function LandingPagesAdmin() {
 
               {tab === "combo-offer" && C.template === "all-product" && (
                 <>
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-emerald-700 shadow-sm">✦</div>
-                      <div>
-                        <div className="font-black text-sm text-emerald-900">Combo Offer</div>
-                        <p className="mt-1 text-xs leading-5 text-emerald-800/75">প্রতিটি Combo Offer সাধারণত এক লাইনের compact row-তে থাকবে। নাম, ইমেজ ও দাম দেখা যাবে; Edit/View চাপলে বিস্তারিত মডাল খুলবে।</p>
-                      </div>
-                    </div>
-                  </div>
-
                   <div className="space-y-2 pt-1">
                     {(C.combo_offers || []).map((item, index) => (
-                      <div key={index} className="group flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-2.5 py-2 shadow-sm transition hover:border-emerald-200 hover:shadow-md">
-                        <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg border bg-slate-50">
+                      <div
+                        key={index}
+                        draggable
+                        onDragStart={() => setComboDragIndex(index)}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          if (comboDragIndex === null || comboDragIndex === index) return;
+                          const list = [...(C.combo_offers || [])];
+                          const [moved] = list.splice(comboDragIndex, 1);
+                          list.splice(index, 0, moved);
+                          setC({ combo_offers: list });
+                          setComboDragIndex(index);
+                          if (comboEditor !== null) {
+                            if (comboEditor === comboDragIndex) setComboEditor(index);
+                            else if (comboDragIndex < comboEditor && index >= comboEditor) setComboEditor(comboEditor - 1);
+                            else if (comboDragIndex > comboEditor && index <= comboEditor) setComboEditor(comboEditor + 1);
+                          }
+                        }}
+                        onDragEnd={() => setComboDragIndex(null)}
+                        className={`group flex cursor-grab items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-2.5 py-2 shadow-sm transition hover:border-emerald-200 hover:shadow-md active:cursor-grabbing ${comboDragIndex === index ? "opacity-60" : ""}`}
+                      >
+                        <div className="flex shrink-0 items-center gap-1.5">
+                          <div className="grid h-8 w-5 place-items-center text-slate-400" title="চেপে ধরে টেনে সাজান">
+                            <GripVertical className="h-4 w-4" />
+                          </div>
+                          <div className="h-11 w-11 overflow-hidden rounded-lg border bg-slate-50">
                           {item.image ? (
                             <img src={item.image} alt="" className="h-full w-full object-cover" />
                           ) : (
                             <div className="grid h-full w-full place-items-center text-[10px] font-bold text-slate-400">IMG</div>
                           )}
+                          </div>
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-sm font-black text-slate-900">{item.name || "নাম নেই"}</div>
