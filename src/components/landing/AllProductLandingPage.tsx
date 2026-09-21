@@ -376,7 +376,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
 
     </main>
     <div role="contentinfo" className="bg-all-product-hero px-4 py-6 text-center text-xs text-all-product-hero-muted">© {new Date().getFullYear()} {brand} — বিশ্বস্ত বীজ, সুন্দর ভবিষ্যৎ</div>
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-all-product-line bg-all-product-surface/95 p-2 backdrop-blur-lg"><div className="mx-auto max-w-3xl">{formInView ? <Button type="submit" form="all-product-order-form" disabled={submitting} className="all-product-primary-cta h-12 w-full font-black"><ShieldCheck />{submitting ? "অর্ডার হচ্ছে..." : `অর্ডার টি কনফার্ম করুন — ${taka(total)}`}</Button> : <Button onClick={openOfferPopup} className="all-product-primary-cta h-12 w-full font-black"><ShoppingBag />{page.cta_text || "অর্ডার করুন"} — {taka(total)}</Button>}</div></div>
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-all-product-line bg-all-product-surface/95 p-2 backdrop-blur-lg"><div className="mx-auto max-w-3xl">{formInView ? <Button type="submit" form="all-product-order-form" disabled={submitting} className="all-product-primary-cta h-12 w-full font-black"><ShieldCheck />{submitting ? "অর্ডার হচ্ছে..." : `অর্ডার টি কনফার্ম করুন — ${taka(total)}`}</Button> : <Button onClick={handleCta} className="all-product-primary-cta h-12 w-full font-black"><ShoppingBag />{page.cta_text || "অর্ডার করুন"} — {taka(total)}</Button>}</div></div>
   </div>;
 }
 
