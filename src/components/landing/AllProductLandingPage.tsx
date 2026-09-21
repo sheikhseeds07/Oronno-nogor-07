@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState, type ReactElement, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useRef, type ReactElement, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Check, ChevronDown, Leaf, MapPin, PackageCheck, Phone, ShieldCheck, ShoppingBag, Sparkles, Truck, User, Wallet } from "lucide-react";
+import { Check, ChevronDown, Leaf, MapPin, PackageCheck, Phone, ShieldCheck, ShoppingBag, Sparkles, Truck, User, Wallet, X } from "lucide-react";
 import { supabase } from "@/lib/personal-supabase/client";
 import { placeOrder } from "@/lib/place-order.functions";
 import { useCheckoutAutofill } from "@/lib/useCheckoutAutofill";
@@ -28,6 +28,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   const navigate = useNavigate();
   const runPlaceOrder = useServerFn(placeOrder);
   const [selected, setSelected] = useState("offer-0");
+  const [offerPopupOpen, setOfferPopupOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formInView, setFormInView] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", address: "" });
@@ -83,6 +84,16 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
     return () => obs.disconnect();
   }, [page]);
 
+  const openOfferPopup = () => {
+    if (!offers.length && !comboOffers.length) return;
+    setOfferPopupOpen(true);
+  };
+
+  const selectOfferFromPopup = (value: string) => {
+    setSelected(value);
+    setOfferPopupOpen(false);
+  };
+
   const goOrder = () => {
     const target = document.getElementById("all-product-order-form") ?? document.getElementById("all-product-order");
     if (!target) return;
@@ -122,6 +133,16 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
         <OfferCountdown />
       </div>
     </div>
+
+    {offerPopupOpen && (
+      <OfferSelectionPopup
+        offers={offers}
+        comboOffers={comboOffers}
+        selected={selected}
+        onSelect={selectOfferFromPopup}
+        onClose={() => setOfferPopupOpen(false)}
+      />
+    )}
 
     <main>
       <section className="relative overflow-hidden bg-all-product-hero text-all-product-hero-foreground">
@@ -163,7 +184,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
           </div>
 
           <div className="mx-auto mt-4 max-w-xl text-center">
-            <Button size="lg" onClick={goOrder} className="all-product-primary-cta h-13 w-full text-base font-black shadow-xl sm:h-14"><ShoppingBag className="h-5 w-5" />{page.cta_text || "এখনই অর্ডার করুন"}<span aria-hidden="true">→</span></Button>
+            <Button size="lg" onClick={openOfferPopup} className="all-product-primary-cta h-13 w-full text-base font-black shadow-xl sm:h-14"><ShoppingBag className="h-5 w-5" />{page.cta_text || "এখনই অর্ডার করুন"}<span aria-hidden="true">→</span></Button>
             <p className="mt-2 text-[11px] font-bold text-all-product-hero-muted">ক্যাশ অন ডেলিভারি • সারা দেশে হোম ডেলিভারি</p>
           </div>
         </div>
@@ -186,7 +207,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
       </div></section>
 
       <div className="bg-all-product-surface px-4 pb-2 text-center">
-        <div className="mx-auto max-w-md"><Button size="lg" onClick={goOrder} className="all-product-primary-cta h-12 w-full text-base font-black"><ShoppingBag className="h-5 w-5" />{page.cta_text || "এখনই অর্ডার করুন"}<span aria-hidden="true">→</span></Button><p className="mt-2 text-[11px] font-bold text-all-product-muted">ক্যাশ অন ডেলিভারি • সারা দেশে হোম ডেলিভারি</p></div>
+        <div className="mx-auto max-w-md"><Button size="lg" onClick={openOfferPopup} className="all-product-primary-cta h-12 w-full text-base font-black"><ShoppingBag className="h-5 w-5" />{page.cta_text || "এখনই অর্ডার করুন"}<span aria-hidden="true">→</span></Button><p className="mt-2 text-[11px] font-bold text-all-product-muted">ক্যাশ অন ডেলিভারি • সারা দেশে হোম ডেলিভারি</p></div>
       </div>
 
       <section className="bg-all-product-muted-surface py-7"><div className="mx-auto max-w-3xl px-4">
@@ -205,7 +226,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
       </div></section>
     </main>
     <div role="contentinfo" className="bg-all-product-hero px-4 py-6 text-center text-xs text-all-product-hero-muted">© {new Date().getFullYear()} {brand} — বিশ্বস্ত বীজ, সুন্দর ভবিষ্যৎ</div>
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-all-product-line bg-all-product-surface/95 p-2 backdrop-blur-lg"><div className="mx-auto max-w-3xl">{formInView ? <Button type="submit" form="all-product-order-form" disabled={submitting} className="all-product-primary-cta h-12 w-full font-black"><ShieldCheck />{submitting ? "অর্ডার হচ্ছে..." : `অর্ডার টি কনফার্ম করুন — ${taka(total)}`}</Button> : <Button onClick={goOrder} className="all-product-primary-cta h-12 w-full font-black"><ShoppingBag />{page.cta_text || "অর্ডার করুন"} — {taka(total)}</Button>}</div></div>
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-all-product-line bg-all-product-surface/95 p-2 backdrop-blur-lg"><div className="mx-auto max-w-3xl">{formInView ? <Button type="submit" form="all-product-order-form" disabled={submitting} className="all-product-primary-cta h-12 w-full font-black"><ShieldCheck />{submitting ? "অর্ডার হচ্ছে..." : `অর্ডার টি কনফার্ম করুন — ${taka(total)}`}</Button> : <Button onClick={openOfferPopup} className="all-product-primary-cta h-12 w-full font-black"><ShoppingBag />{page.cta_text || "অর্ডার করুন"} — {taka(total)}</Button>}</div></div>
   </div>;
 }
 
@@ -251,4 +272,114 @@ function OfferCountdown() {
 
 function CheckoutField({ label, icon, children }: { label: string; icon: ReactNode; children: ReactElement<{ className?: string }> }) {
   return <label className="block"><span className="mb-1.5 block text-sm font-bold">{label} <span className="text-all-product-alert">*</span></span><span className="all-product-field relative block"><span className="pointer-events-none absolute left-3 top-3.5 text-all-product-muted [&_svg]:h-4 [&_svg]:w-4">{icon}</span>{children}</span></label>;
+}
+
+
+function OfferSelectionPopup({
+  offers,
+  comboOffers,
+  selected,
+  onSelect,
+  onClose,
+}: {
+  offers: Offer[];
+  comboOffers: Offer[];
+  selected: string;
+  onSelect: (value: string) => void;
+  onClose: () => void;
+}) {
+  const popupRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = popupRef.current;
+    if (!el || typeof window === "undefined") return;
+    if (el.scrollHeight <= el.clientHeight + 8) return;
+    const max = el.scrollHeight - el.clientHeight;
+    const timer = window.setTimeout(() => {
+      el.scrollTo({ top: Math.min(max, 120), behavior: "smooth" });
+      window.setTimeout(() => el.scrollTo({ top: 0, behavior: "smooth" }), 520);
+    }, 260);
+    return () => window.clearTimeout(timer);
+  }, [offers.length, comboOffers.length]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => event.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-[70] grid place-items-center bg-black/60 p-3 backdrop-blur-[3px]" role="dialog" aria-modal="true" aria-label="প্রোডাক্ট সিলেক্ট করুন" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div ref={popupRef} className="max-h-[88vh] w-full max-w-md overflow-y-auto overscroll-contain rounded-2xl border border-all-product-line bg-all-product-surface p-3 shadow-2xl sm:p-4">
+        <div className="sticky top-0 z-10 -mx-3 -mt-3 mb-3 flex items-center justify-between border-b border-all-product-line bg-all-product-surface/95 px-3 py-3 backdrop-blur sm:-mx-4 sm:-mt-4 sm:px-4">
+          <div>
+            <h3 className="text-base font-black text-all-product-ink">প্রডাক্ট সিলেক্ট করুন</h3>
+            <p className="mt-0.5 text-[11px] font-semibold text-all-product-muted">আপনার পছন্দের অফারটি বেছে নিন</p>
+          </div>
+          <button type="button" onClick={onClose} className="grid h-8 w-8 place-items-center rounded-full bg-all-product-soft text-all-product-ink" aria-label="বন্ধ করুন"><X className="h-4 w-4" /></button>
+        </div>
+
+        {offers.length > 0 && (
+          <section>
+            <div className="mb-2 flex items-center justify-between">
+              <h4 className="text-sm font-black">মেইন প্রডাক্ট</h4>
+              <span className="text-[10px] font-bold text-all-product-muted">{offers.length} টি</span>
+            </div>
+            <div className="grid grid-cols-1 gap-2">
+              {offers.map((offer, index) => {
+                const value = `offer-${index}`;
+                const active = selected === value;
+                return (
+                  <button key={value} type="button" onClick={() => onSelect(value)} className={`flex w-full items-center gap-2.5 rounded-xl border p-2 text-left transition-all ${active ? "border-all-product-primary bg-all-product-primary/5 ring-2 ring-all-product-primary/15" : "border-all-product-line hover:border-all-product-primary/50"}`}>
+                    {offer.image && <img src={toImg(offer.image, { w: 180, q: 80 })} alt="" className="h-16 w-16 shrink-0 rounded-lg object-cover" loading="lazy" />}
+                    <span className="min-w-0 flex-1">
+                      <span className="block break-words text-[12px] font-black leading-4">{offer.name}</span>
+                      <span className="mt-1 block text-[10px] font-semibold text-all-product-muted">{offer.delivery_fee === 0 ? "ফ্রি ডেলিভারি" : `ডেলিভারি ${taka(offer.delivery_fee)}`}</span>
+                    </span>
+                    <span className="shrink-0 text-right">
+                      <span className="block text-base font-black text-all-product-primary">{taka(offer.price)}</span>
+                      {offer.old && offer.old > offer.price && <del className="block text-[10px] text-all-product-muted">{taka(offer.old)}</del>}
+                      {active && <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-all-product-primary px-1.5 py-0.5 text-[9px] font-black text-all-product-primary-foreground"><Check className="h-3 w-3" /> নির্বাচিত</span>}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {comboOffers.length > 0 && (
+          <section className="mt-4 border-t border-all-product-line pt-4">
+            <div className="mb-2.5">
+              <h4 className="text-sm font-black">Combo Offer</h4>
+              <p className="mt-0.5 text-[11px] font-semibold text-all-product-muted">আরও সাশ্রয়ী প্যাকেজ থেকে বেছে নিন</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {comboOffers.map((offer, index) => {
+                const value = `combo-${index}`;
+                const active = selected === value;
+                return (
+                  <button key={value} type="button" onClick={() => onSelect(value)} className={`group relative overflow-hidden rounded-xl border bg-all-product-surface p-1.5 text-left transition-all active:scale-[.99] ${active ? "border-all-product-primary ring-2 ring-all-product-primary/20 shadow-lg" : "border-all-product-line hover:border-all-product-primary/50"}`}>
+                    <div className="relative overflow-hidden rounded-lg bg-all-product-soft">
+                      <img src={toImg(offer.image || "/placeholder.svg", { w: 420, q: 80 })} alt={offer.name} loading="lazy" className="aspect-square w-full object-cover" />
+                      {active && <span className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-all-product-primary text-all-product-primary-foreground shadow"><Check className="h-3.5 w-3.5" strokeWidth={3} /></span>}
+                    </div>
+                    <div className="px-0.5 pb-1 pt-1.5">
+                      <div className="break-words text-[12px] font-black leading-[1.35]">{offer.name}</div>
+                      <div className="mt-1 flex items-center justify-between gap-1.5">
+                        <span className="min-w-0 truncate rounded-full bg-all-product-primary/10 px-1.5 py-0.5 text-[9px] font-black text-all-product-primary">{offer.quantity || "১ পিস"}</span>
+                        <span className="shrink-0 text-[16px] font-black leading-none text-all-product-primary">{taka(offer.price)}</span>
+                      </div>
+                      {offer.old && offer.old > offer.price && <del className="mt-0.5 block text-[9px] text-all-product-muted">{taka(offer.old)}</del>}
+                      <div className="mt-0.5 text-[9px] font-bold text-all-product-muted">{offer.delivery_fee === 0 ? "ফ্রি ডেলিভারি" : `ডেলিভারি ${taka(offer.delivery_fee)}`}</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
+      </div>
+    </div>
+  );
 }
