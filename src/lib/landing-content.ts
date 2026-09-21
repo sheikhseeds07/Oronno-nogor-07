@@ -6,7 +6,7 @@ export type SeedRow = { name: string; qty: string; image?: string };
 export type Feature = { title: string; text?: string; icon?: string };
 export type WhyItem = { title: string; text?: string; icon?: string };
 export type Review = { name: string; rating: number; text: string };
-export type ComboOffer = { name: string; price: number; old_price?: number; image?: string; badge?: string; delivery_fee?: number | null; quantity?: string };
+export type ComboOffer = { name: string; price: number; old_price?: number; image?: string; delivery_fee?: number | null; quantity?: string };
 export type LandingTemplate = "combo" | "premium" | "modern" | "product" | "all-product";
 
 export type LandingContent = {
