@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
+import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 
 const PermSchema = z.object(Object.fromEntries(PERM_KEYS.map((k) => [k, z.boolean().default(false)])) as Record<(typeof PERM_KEYS)[number], z.ZodDefault<z.ZodBoolean>>);
 
@@ -98,13 +99,15 @@ export const listEmployeesFull = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const db = context.supabase;
     await assertHrm(db, context.userId);
-    const { data: emps, error: empError } = await db.from("employees").select("*").order("created_at", { ascending: false });
+    // Authorization is checked with the request-scoped client above. Use the server admin client for directory reads so RLS cannot hide authorized employees.
+    const directoryDb = supabaseAdmin;
+    const { data: emps, error: empError } = await directoryDb.from("employees").select("*").order("created_at", { ascending: false });
     if (empError) throw new Error(empError.message);
     const ids = (emps ?? []).map((e: any) => e.user_id).filter(Boolean) as string[];
     const [{ data: perms, error: permError }, { data: roles, error: roleError }] = ids.length
       ? await Promise.all([
-          db.from("employee_permissions").select("*").in("user_id", ids),
-          db.from("user_roles").select("*").in("user_id", ids),
+          directoryDb.from("employee_permissions").select("*").in("user_id", ids),
+          directoryDb.from("user_roles").select("*").in("user_id", ids),
         ])
       : [{ data: [], error: null }, { data: [], error: null }];
     if (permError) throw new Error(permError.message);
