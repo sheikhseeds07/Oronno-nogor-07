@@ -443,9 +443,9 @@ function OfferSelectionPopup({
   useEffect(() => {
     const el = popupRef.current;
     if (!el || typeof window === "undefined" || el.scrollHeight <= el.clientHeight + 8) return;
-    const up = window.setTimeout(() => {
-      const max = el.scrollHeight - el.clientHeight;
-      el.scrollTo({ top: Math.min(max, 90), behavior: "smooth" });
+      const previewTop = Math.min(max, Math.max(150, Math.round(max * 0.68)));
+      el.scrollTo({ top: previewTop, behavior: "smooth" });
+      const back = window.setTimeout(() => el.scrollTo({ top: 0, behavior: "smooth" }), 900);
       const back = window.setTimeout(() => el.scrollTo({ top: 0, behavior: "smooth" }), 500);
       (el as HTMLDivElement & { __apBack?: number }).__apBack = back;
     }, 450);
@@ -505,7 +505,7 @@ function OfferSelectionPopup({
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2.5">
                 {offers.map((offer, index) => {
                   const value = `offer-${index}`;
                   const active = selected === value;
@@ -521,19 +521,19 @@ function OfferSelectionPopup({
                           : "border-all-product-line bg-all-product-surface hover:border-all-product-primary/40 hover:shadow-[0_8px_22px_-18px_rgba(0,0,0,.22)]"
                       }`}
                     >
-                      {offer.image && (
-                        <img
+                          src={toImg(offer.image || "/placeholder.svg", { w: 520, q: 84 })}
+                          alt={offer.name}
                           src={toImg(offer.image, { w: 96, q: 78 })}
-                          alt=""
+                          className="aspect-[1.08/1] w-full rounded-[14px] object-cover ring-1 ring-black/[0.035] transition-transform duration-500 group-hover:scale-[1.02]"
                           loading="lazy"
-                          className="h-10 w-10 shrink-0 rounded-lg object-cover ring-1 ring-black/5"
-                        />
-                      )}
-                      <span className="min-w-0 flex-1">
-                        <span className="block break-words text-[12.5px] font-black leading-[1.35] text-all-product-ink">{offer.name}</span>
+                      <span className="mt-2 block min-w-0 px-0.5">
+                        <span className="block min-h-[32px] break-words text-[12.5px] font-black leading-[1.35] text-all-product-ink">{offer.name}</span>
+                        <span className="mt-1.5 block text-[19px] font-black leading-none text-all-product-primary">{taka(offer.price)}</span>
+                        {offer.old && offer.old > offer.price && <del className="mt-1 block text-[9.5px] font-semibold text-all-product-muted">{taka(offer.old)}</del>}
+                        <span className="mt-1.5 block text-[9.5px] font-bold text-all-product-success">{offer.delivery_fee === 0 ? "ডেলিভারি ফ্রি" : `ডেলিভারি ${taka(offer.delivery_fee)}`}</span>
                         <span className="mt-1 block text-[19px] font-black leading-none text-all-product-primary">{taka(offer.price)}</span>
-                      </span>
-                      <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border ${
+                      <span className={`absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center rounded-full border ${
+                        active ? "border-all-product-primary bg-all-product-primary text-all-product-primary-foreground shadow-md" : "border-white/90 bg-white/90 text-transparent shadow-sm"
                         active ? "border-all-product-primary bg-all-product-primary text-all-product-primary-foreground shadow-md" : "border-white/90 bg-white/90 text-transparent shadow-sm"
                       }`}>
                         {active && <Check className="h-3 w-3" strokeWidth={3} />}
