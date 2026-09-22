@@ -443,17 +443,24 @@ function OfferSelectionPopup({
   useEffect(() => {
     const el = popupRef.current;
     if (!el || typeof window === "undefined" || el.scrollHeight <= el.clientHeight + 8) return;
-    const up = window.setTimeout(() => {
+
+    let backTimer: number | undefined;
+    const upTimer = window.setTimeout(() => {
       const max = el.scrollHeight - el.clientHeight;
-      const previewTop = Math.min(max, Math.max(150, Math.round(max * 0.68)));
+      if (max <= 8) return;
+
+      // Give the visitor a clear preview of the lower packages, then return
+      // smoothly to the top. Keep this animation contained inside the popup.
+      const previewTop = Math.min(max, Math.max(180, Math.round(max * 0.8)));
       el.scrollTo({ top: previewTop, behavior: "smooth" });
-      const back = window.setTimeout(() => el.scrollTo({ top: 0, behavior: "smooth" }), 900);
-      (el as HTMLDivElement & { __apBack?: number }).__apBack = back;
-    }, 450);
+      backTimer = window.setTimeout(() => {
+        el.scrollTo({ top: 0, behavior: "smooth" });
+      }, 1200);
+    }, 500);
+
     return () => {
-      window.clearTimeout(up);
-      const back = (el as HTMLDivElement & { __apBack?: number }).__apBack;
-      if (back) window.clearTimeout(back);
+      window.clearTimeout(upTimer);
+      if (backTimer !== undefined) window.clearTimeout(backTimer);
     };
   }, [offers.length, comboOffers.length]);
 
