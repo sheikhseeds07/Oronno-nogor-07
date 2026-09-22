@@ -518,18 +518,20 @@ function OfferSelectionPopup({
                   const active = selected === value;
                   return (
                     <button key={value} type="button" onClick={() => onSelect(value)} aria-pressed={active}
-                      className={`group relative min-w-0 overflow-hidden rounded-[18px] border-2 bg-all-product-surface p-2.5 text-center transition-all duration-200 active:scale-[.985] ${
-                        active ? "border-all-product-primary bg-all-product-primary/[0.045] ring-2 ring-all-product-primary/10 shadow-[0_14px_30px_-18px_rgba(20,83,45,.65)]" : "border-all-product-line hover:border-all-product-primary/45 hover:shadow-[0_14px_30px_-20px_rgba(0,0,0,.3)]"
+                      className={`group relative min-w-0 overflow-hidden rounded-[16px] border bg-all-product-surface p-1.5 text-center transition-all duration-200 active:scale-[.985] ${
+                        active ? "border-all-product-primary bg-all-product-primary/[0.045] ring-1 ring-all-product-primary/15 shadow-[0_10px_24px_-16px_rgba(20,83,45,.65)]" : "border-all-product-line hover:border-all-product-primary/45 hover:shadow-[0_10px_24px_-18px_rgba(0,0,0,.3)]"
                       }`}>
                       <div className="relative overflow-hidden rounded-[14px] bg-all-product-soft ring-1 ring-black/[0.035]">
                         <img src={toImg(offer.image || "/placeholder.svg", { w: 520, q: 84 })} alt={offer.name} loading="lazy" className="aspect-[1.08/1] w-full object-cover transition-transform duration-300 group-hover:scale-[1.025]" />
                         {active && <span className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-all-product-primary text-white shadow-lg ring-2 ring-white/90"><Check className="h-4 w-4" strokeWidth={3} /></span>}
                       </div>
-                      <div className="px-0.5 pb-0.5 pt-1.5">
-                        <div className="min-h-[29px] break-words text-[11.5px] font-black leading-[1.3] text-all-product-ink">{offer.name}</div>
-                        <div className="mt-1 text-[17px] font-black leading-none text-all-product-primary">{taka(offer.price)}</div>
-                        {offer.old && offer.old > offer.price && <del className="mt-0.5 block text-[9px] font-semibold text-all-product-muted">{taka(offer.old)}</del>}
-                        <div className="mt-1 text-[8.5px] font-bold text-all-product-success">{offer.delivery_fee === 0 ? "ডেলিভারি ফ্রি" : `ডেলিভারি ${taka(offer.delivery_fee)}`}</div>
+                      <div className="px-0.5 pb-0.5 pt-1">
+                        <div className="min-h-[30px] break-words text-[12.5px] font-black leading-[1.3] text-all-product-ink">{offer.name}</div>
+                        <div className="mt-1 flex items-baseline justify-center gap-1.5">
+                          <span className="text-[17px] font-black leading-none text-all-product-primary">{taka(offer.price)}</span>
+                          {offer.old && offer.old > offer.price && <del className="text-[10px] font-semibold leading-none text-all-product-muted">{taka(offer.old)}</del>}
+                        </div>
+                        <div className="mt-1 text-[10px] font-bold leading-none text-all-product-success">{offer.delivery_fee === 0 ? "ডেলিভারি ফ্রি" : `ডেলিভারি ${taka(offer.delivery_fee)}`}</div>
                       </div>
                     </button>
                   );
@@ -549,20 +551,23 @@ function OfferSelectionPopup({
                   const active = selected === value;
                   return (
                     <button key={value} type="button" onClick={() => onSelect(value)} aria-pressed={active}
-                      className={`group relative overflow-hidden rounded-[16px] border-2 bg-all-product-surface p-1.5 text-left transition-all active:scale-[.985] ${
-                        active ? "border-all-product-primary ring-2 ring-all-product-primary/12 shadow-[0_12px_28px_-18px_rgba(20,83,45,.65)]" : "border-all-product-line hover:border-all-product-primary/45 hover:shadow-[0_10px_24px_-18px_rgba(0,0,0,.28)]"
+                      className={`group relative overflow-hidden rounded-[14px] border bg-all-product-surface p-1.5 text-left transition-all active:scale-[.985] ${
+                        active ? "border-all-product-primary ring-1 ring-all-product-primary/15 shadow-[0_10px_24px_-16px_rgba(20,83,45,.65)]" : "border-all-product-line hover:border-all-product-primary/45 hover:shadow-[0_8px_20px_-16px_rgba(0,0,0,.28)]"
                       }`}>
                       <div className="relative overflow-hidden rounded-[12px] bg-all-product-soft">
                         <img src={toImg(offer.image || "/placeholder.svg", { w: 520, q: 82 })} alt={offer.name} loading="lazy" className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-[1.025]" />
                         {active && <span className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-all-product-primary text-white shadow ring-2 ring-white/90"><Check className="h-3.5 w-3.5" strokeWidth={3} /></span>}
                       </div>
-                      <div className="px-0.5 pb-1 pt-1.5">
-                        <div className="min-h-[30px] break-words text-[11.5px] font-black leading-[1.35] text-all-product-ink">{offer.name}</div>
-                        <div className="mt-1.5 flex items-center justify-between gap-1.5">
-                          <span className="min-w-0 truncate rounded-full bg-all-product-primary/10 px-1.5 py-0.5 text-[8.5px] font-black text-all-product-primary">{offer.quantity || "১ পিস"}</span>
-                          <span className="shrink-0 text-[15px] font-black leading-none text-all-product-primary">{taka(offer.price)}</span>
+                      <div className="px-0.5 pb-0.5 pt-1">
+                        <div className="min-h-[30px] break-words text-[12.5px] font-black leading-[1.3] text-all-product-ink">{offer.name}</div>
+                        <div className="mt-1 flex items-center justify-between gap-1.5">
+                          <span className="min-w-0 truncate rounded-full bg-all-product-primary/10 px-1.5 py-0.5 text-[9px] font-black leading-none text-all-product-primary">{offer.quantity || "১ পিস"}</span>
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="text-[17px] font-black leading-none text-all-product-primary">{taka(offer.price)}</span>
+                            {offer.old && offer.old > offer.price && <del className="text-[10px] font-semibold leading-none text-all-product-muted">{taka(offer.old)}</del>}
+                          </div>
                         </div>
-                        <div className="mt-1 text-[9px] font-bold text-all-product-success">{offer.delivery_fee === 0 ? "ডেলিভারি ফ্রি" : `ডেলিভারি ${taka(offer.delivery_fee)}`}</div>
+                        <div className="mt-1 text-[10px] font-bold leading-none text-all-product-success">{offer.delivery_fee === 0 ? "ডেলিভারি ফ্রি" : `ডেলিভারি ${taka(offer.delivery_fee)}`}</div>
                       </div>
                     </button>
                   );
