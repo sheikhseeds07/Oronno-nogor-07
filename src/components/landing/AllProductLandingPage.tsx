@@ -515,7 +515,7 @@ function OfferSelectionPopup({
                       type="button"
                       onClick={() => onSelect(value)}
                       aria-pressed={active}
-                      className={`group relative flex min-w-0 items-center gap-2 rounded-[18px] border-2 p-2.5 text-center transition-all duration-200 active:scale-[.99] ${
+                      className={`group relative min-w-0 overflow-hidden rounded-[18px] border-2 bg-all-product-surface p-2.5 text-center transition-all duration-200 active:scale-[.985] ${
                         active
                           ? "border-all-product-primary bg-all-product-primary/[0.06] ring-2 ring-all-product-primary/10 shadow-[0_8px_22px_-16px_rgba(20,83,45,.7)]"
                           : "border-all-product-line bg-all-product-surface hover:border-all-product-primary/40 hover:shadow-[0_8px_22px_-18px_rgba(0,0,0,.22)]"
@@ -534,7 +534,7 @@ function OfferSelectionPopup({
                         <span className="mt-1 block text-[19px] font-black leading-none text-all-product-primary">{taka(offer.price)}</span>
                       </span>
                       <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border ${
-                        active ? "border-all-product-primary bg-all-product-primary text-all-product-primary-foreground" : "border-all-product-line bg-all-product-soft"
+                        active ? "border-all-product-primary bg-all-product-primary text-all-product-primary-foreground shadow-md" : "border-white/90 bg-white/90 text-transparent shadow-sm"
                       }`}>
                         {active && <Check className="h-3 w-3" strokeWidth={3} />}
                       </span>
