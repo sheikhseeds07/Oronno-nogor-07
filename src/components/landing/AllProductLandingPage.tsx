@@ -284,7 +284,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2.5">
                 {offers.map((offer, index) => {
                   const active = selected === `offer-${index}`;
                   return (
@@ -295,7 +295,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
                       aria-pressed={active}
                       className={`group relative flex min-w-0 items-center gap-1.5 rounded-xl border p-1.5 text-left transition-all active:scale-[.99] ${active ? "border-all-product-primary bg-all-product-primary/[0.04] ring-1 ring-all-product-primary/20" : "border-all-product-line bg-all-product-surface hover:border-all-product-primary/40"}`}
                     >
-                      {offer.image && <img src={toImg(offer.image, { w: 120, q: 78 })} alt="" loading="lazy" className="h-10 w-10 shrink-0 rounded-lg object-cover ring-1 ring-black/5" />}
+                      {offer.image && <img src={toImg(offer.image, { w: 120, q: 78 })} alt="" loading="lazy" className="aspect-[1.08/1] w-full rounded-[14px] object-cover ring-1 ring-black/[0.035]" />}
                       <span className="min-w-0 flex-1">
                         <span className="block break-words text-[10px] font-black leading-[1.35] text-all-product-ink">{offer.name}</span>
                         <span className="mt-0.5 flex items-baseline gap-1 whitespace-nowrap">
@@ -448,7 +448,7 @@ function OfferSelectionPopup({
       el.scrollTo({ top: Math.min(max, 90), behavior: "smooth" });
       const back = window.setTimeout(() => el.scrollTo({ top: 0, behavior: "smooth" }), 500);
       (el as HTMLDivElement & { __apBack?: number }).__apBack = back;
-    }, 220);
+    }, 450);
     return () => {
       window.clearTimeout(up);
       const back = (el as HTMLDivElement & { __apBack?: number }).__apBack;
@@ -467,27 +467,27 @@ function OfferSelectionPopup({
       className="fixed inset-0 z-[70] flex items-center justify-center bg-black/72 px-2.5 py-2.5 backdrop-blur-[7px] sm:px-4"
       role="dialog"
       aria-modal="true"
-      aria-label="প্রোডাক্ট সিলেক্ট করুন"
+      aria-label="প্যাকেজ নির্বাচন করুন"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
         ref={popupRef}
-        className="flex max-h-[86vh] w-full max-w-[430px] flex-col overflow-y-auto overscroll-contain rounded-[24px] border border-all-product-line/80 bg-all-product-surface shadow-[0_32px_100px_-28px_rgba(0,0,0,.78)]"
+        className="flex max-h-[90vh] w-full max-w-[470px] flex-col overflow-y-auto overscroll-contain rounded-[28px] border border-white/70 bg-all-product-surface shadow-[0_36px_120px_-34px_rgba(0,0,0,.82)] ring-1 ring-black/5"
       >
         <div className="sticky top-0 z-20 shrink-0 border-b border-all-product-line/80 bg-gradient-to-br from-all-product-primary/[0.07] via-all-product-surface to-all-product-gold/[0.08] px-3.5 py-3.5 shadow-[0_8px_24px_-18px_rgba(0,0,0,.55)] sm:px-4">
           <div className="flex items-center gap-3">
-            <div className="relative grid h-10 w-10 shrink-0 place-items-center rounded-[13px] bg-all-product-primary text-all-product-primary-foreground shadow-[0_8px_20px_-10px_rgba(20,83,45,.65)]">
-              <ShoppingBag className="h-[18px] w-[18px]" />
+            <div className="relative grid h-11 w-11 shrink-0 place-items-center rounded-[15px] bg-all-product-primary text-all-product-primary-foreground shadow-[0_8px_20px_-10px_rgba(20,83,45,.65)]">
+              <PackageCheck className="h-5 w-5" />
               <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-all-product-gold ring-2 ring-all-product-surface" />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="text-[17px] font-black leading-5 text-all-product-ink">আপনার পছন্দটি বেছে নিন</h3>
-              <p className="mt-0.5 text-[11px] font-bold leading-4 text-all-product-muted">পছন্দের অফারে ট্যাপ করলেই অর্ডারে চলে যাবে</p>
+              <h3 className="text-[20px] font-black leading-6 text-all-product-ink">প্যাকেজ নির্বাচন করুন</h3>
+              <p className="mt-0.5 text-[11px] font-bold leading-4 text-all-product-muted">অর্ডার করতে একটি প্যাকেজ বেছে নিন</p>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-all-product-surface/90 text-all-product-ink shadow-sm ring-1 ring-all-product-line transition hover:bg-all-product-primary hover:text-all-product-primary-foreground"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-all-product-line bg-all-product-soft text-all-product-ink shadow-sm ring-1 ring-all-product-line transition hover:bg-all-product-primary hover:text-all-product-primary-foreground"
               aria-label="বন্ধ করুন"
             >
               <X className="h-4 w-4" />
@@ -499,7 +499,7 @@ function OfferSelectionPopup({
           {offers.length > 0 && (
             <section>
               <div className="mb-2.5 flex items-center justify-between px-0.5">
-                <p className="text-[11px] font-black text-all-product-muted">একটি অফার নির্বাচন করুন</p>
+                <div><p className="text-[10px] font-black uppercase tracking-[0.12em] text-all-product-primary">MAIN PACKAGE</p><h4 className="mt-0.5 text-[14px] font-black text-all-product-ink">আপনার পছন্দের প্যাকেজ</h4></div>
                 <span className="rounded-full border border-all-product-primary/15 bg-all-product-primary/[0.07] px-2 py-1 text-[9px] font-black text-all-product-primary">
                   {offers.length} টি
                 </span>
@@ -515,7 +515,7 @@ function OfferSelectionPopup({
                       type="button"
                       onClick={() => onSelect(value)}
                       aria-pressed={active}
-                      className={`group relative flex min-w-0 items-center gap-2 rounded-[14px] border p-2 text-left transition-all duration-200 active:scale-[.99] ${
+                      className={`group relative flex min-w-0 items-center gap-2 rounded-[18px] border-2 p-2.5 text-center transition-all duration-200 active:scale-[.99] ${
                         active
                           ? "border-all-product-primary bg-all-product-primary/[0.06] ring-2 ring-all-product-primary/10 shadow-[0_8px_22px_-16px_rgba(20,83,45,.7)]"
                           : "border-all-product-line bg-all-product-surface hover:border-all-product-primary/40 hover:shadow-[0_8px_22px_-18px_rgba(0,0,0,.22)]"
@@ -530,8 +530,8 @@ function OfferSelectionPopup({
                         />
                       )}
                       <span className="min-w-0 flex-1">
-                        <span className="block break-words text-[11.5px] font-black leading-[1.35] text-all-product-ink">{offer.name}</span>
-                        <span className="mt-1 block text-[12px] font-black leading-none text-all-product-primary">{taka(offer.price)}</span>
+                        <span className="block break-words text-[12.5px] font-black leading-[1.35] text-all-product-ink">{offer.name}</span>
+                        <span className="mt-1 block text-[19px] font-black leading-none text-all-product-primary">{taka(offer.price)}</span>
                       </span>
                       <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border ${
                         active ? "border-all-product-primary bg-all-product-primary text-all-product-primary-foreground" : "border-all-product-line bg-all-product-soft"
