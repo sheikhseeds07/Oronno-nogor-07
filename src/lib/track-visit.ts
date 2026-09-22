@@ -2,6 +2,8 @@
 // Raw page-view logging was removed: it stored hundreds of thousands of rows
 // that no screen ever read. Visitor stats come from site_visitors instead.
 import { supabase } from "@/lib/personal-supabase/client";
+import { toImg } from "@/lib/img";
+
 
 type Seed = { name: string; qty: string; image?: string };
 
@@ -17,9 +19,10 @@ function addSeedGridStyles() {
     .seedcombo-items-title{margin:0;color:#064e3b;font-size:20px;font-weight:900;line-height:1.25;letter-spacing:-.02em}
     .seedcombo-items-sub{margin:4px 0 0;color:#64748b;font-size:10px;font-weight:650}
     .seedcombo-items-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;position:relative;z-index:1}
-    .seedcombo-item-card{min-width:0;border:1px solid #e2eee6;border-radius:14px;background:rgba(255,255,255,.98);padding:6px 5px 7px;box-shadow:0 7px 18px -13px rgba(6,78,59,.5);transform:translateY(9px) scale(.985);opacity:0;transition:transform .55s cubic-bezier(.22,1,.36,1),opacity .55s ease,box-shadow .25s ease,border-color .25s ease}
-    .seedcombo-item-card.is-visible{transform:translateY(0) scale(1);opacity:1}
+    .seedcombo-item-card{min-width:0;border:1px solid #e2eee6;border-radius:14px;background:rgba(255,255,255,.98);padding:6px 5px 7px;box-shadow:0 7px 18px -13px rgba(6,78,59,.5);opacity:1;transform:none;animation:seedcombo-card-in .45s ease both;transition:box-shadow .25s ease,border-color .25s ease,transform .25s ease}
+    @keyframes seedcombo-card-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
     .seedcombo-item-card:hover{transform:translateY(-3px) scale(1.015);border-color:#b9dfc8;box-shadow:0 14px 24px -15px rgba(6,78,59,.62)}
+
     .seedcombo-item-img-wrap{position:relative;width:100%;aspect-ratio:1/0.82;border-radius:10px;overflow:hidden;background:linear-gradient(135deg,#edf9f0,#f8faf9);margin-bottom:6px}
     .seedcombo-item-img{width:100%;height:100%;display:block;object-fit:cover;transition:transform .55s cubic-bezier(.22,1,.36,1);background:#f1f5f2}
     .seedcombo-item-card:hover .seedcombo-item-img{transform:scale(1.075)}
@@ -27,7 +30,7 @@ function addSeedGridStyles() {
     .seedcombo-item-qty{display:block;width:max-content;max-width:100%;margin:4px auto 0;padding:2px 7px;border-radius:999px;background:#effaf3;color:#087443;font-size:8px;font-weight:850;line-height:1.35;white-space:nowrap}
     .seedcombo-item-placeholder{width:100%;height:100%;display:grid;place-items:center;font-size:28px;color:#16834b;background:linear-gradient(135deg,#ecfdf3,#f8faf9)}
     @media(max-width:640px){.seedcombo-items-premium{border-radius:20px;padding:14px 7px 12px}.seedcombo-items-grid{gap:6px}.seedcombo-item-card{border-radius:12px;padding:5px 4px 6px}.seedcombo-item-img-wrap{border-radius:9px}.seedcombo-item-name{font-size:10.5px}.seedcombo-item-qty{font-size:8px;padding:2px 6px}.seedcombo-items-title{font-size:18px}}
-    @media(prefers-reduced-motion:reduce){.seedcombo-item-card{transition:none;transform:none!important;opacity:1}}
+    @media(prefers-reduced-motion:reduce){.seedcombo-item-card{animation:none;transition:none;transform:none!important;opacity:1}}
   `;
   document.head.appendChild(style);
 }
@@ -52,17 +55,25 @@ async function ensureSeedComboItems() {
   seeds.forEach((seed, index) => {
     const card = document.createElement("article");
     card.className = "seedcombo-item-card";
-    card.style.transitionDelay = `${Math.min(index * 28, 420)}ms`;
+    card.style.animationDelay = `${Math.min(index * 22, 260)}ms`;
     const wrap = document.createElement("div");
     wrap.className = "seedcombo-item-img-wrap";
     if (seed.image) {
       const image = document.createElement("img");
       image.className = "seedcombo-item-img";
-      image.loading = index < 6 ? "eager" : "lazy";
+      // Never lazy-load: lazy + a replaced DOM node made some cards stay blank
+      // until tapped. All 24 thumbnails are tiny and cached through /media.
+      image.loading = "eager";
       image.decoding = "async";
+      image.width = 140;
+      image.height = 115;
       image.alt = `${seed.name} — ${seed.qty}`;
-      image.src = seed.image;
-      image.onerror = () => { wrap.innerHTML = `<div class="seedcombo-item-placeholder">🌱</div>`; };
+      image.src = toImg(seed.image);
+      let retried = false;
+      image.onerror = () => {
+        if (!retried && seed.image) { retried = true; image.src = seed.image; return; }
+        wrap.innerHTML = `<div class="seedcombo-item-placeholder">🌱</div>`;
+      };
       wrap.appendChild(image);
     } else {
       wrap.innerHTML = `<div class="seedcombo-item-placeholder">🌱</div>`;
@@ -72,16 +83,9 @@ async function ensureSeedComboItems() {
     card.append(wrap, title, amount); grid.appendChild(card);
   });
 
-  // Build the premium grid completely before swapping it in, so refresh/navigation
-  // never leaves the old table as the visible fallback.
-  section.setAttribute("data-seedcombo-rendered", "true");
   table.replaceWith(section);
-  const cards = Array.from(section.querySelectorAll<HTMLElement>(".seedcombo-item-card"));
-  if ("IntersectionObserver" in window) {
-    const observer = new IntersectionObserver((entries) => entries.forEach((entry) => { if (entry.isIntersecting) { (entry.target as HTMLElement).classList.add("is-visible"); observer.unobserve(entry.target); } }), { threshold: .08, rootMargin: "0px 0px -35px 0px" });
-    cards.forEach((card) => observer.observe(card));
-  } else cards.forEach((card) => card.classList.add("is-visible"));
 }
+
 function escapeHtml(value: string) { const div = document.createElement("div"); div.textContent = value; return div.innerHTML; }
 
 function ensureSeedCombo() {
@@ -89,7 +93,7 @@ function ensureSeedCombo() {
   const spacingId = "seedcombo-checkout-spacing-fix";
   if (!document.getElementById(spacingId)) {
     const style = document.createElement("style"); style.id = spacingId;
-    style.textContent = `#order{margin-top:10px!important;padding-top:0!important;padding-bottom:8px!important}#order #lp-order-form{margin-top:3px!important;margin-bottom:0!important}@media(max-width:640px){#order{margin-top:8px!important;padding-top:0!important;padding-bottom:5px!important}#order #lp-order-form{margin-top:2px!important;margin-bottom:0!important}}`;
+    style.textContent = `#order{margin-top:24px!important;padding-top:10px!important}#order #lp-order-form{margin-top:8px!important}@media(max-width:640px){#order{margin-top:22px!important;padding-top:8px!important}#order #lp-order-form{margin-top:7px!important}}`;
     document.head.appendChild(style);
   }
   void ensureSeedComboItems();
