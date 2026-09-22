@@ -295,7 +295,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
                       aria-pressed={active}
                       className={`group relative flex min-w-0 items-center gap-1.5 rounded-xl border p-1.5 text-left transition-all active:scale-[.99] ${active ? "border-all-product-primary bg-all-product-primary/[0.04] ring-1 ring-all-product-primary/20" : "border-all-product-line bg-all-product-surface hover:border-all-product-primary/40"}`}
                     >
-                      {offer.image && <img src={toImg(offer.image, { w: 120, q: 78 })} alt="" loading="lazy" className="aspect-[1.08/1] w-full rounded-[14px] object-cover ring-1 ring-black/[0.035]" />}
+                      {offer.image && <img src={toImg(offer.image, { w: 160, q: 80 })} alt="" loading="lazy" className="h-16 w-16 shrink-0 rounded-[11px] object-cover ring-1 ring-black/[0.035] sm:h-[68px] sm:w-[68px]" />}
                       <span className="min-w-0 flex-1">
                         <span className="block break-words text-[10px] font-black leading-[1.35] text-all-product-ink">{offer.name}</span>
                         <span className="mt-0.5 flex items-baseline gap-1 whitespace-nowrap">
