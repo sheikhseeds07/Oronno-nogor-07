@@ -2,6 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 
+// Keep this list aligned with the permission controls exposed in Employee Management.
+const PERM_KEYS = [
+  "dashboard","orders","order_import","products","offers","categories",
+  "customers","banners","landing_pages","employees","all_api","settings",
+] as const;
+
 const PermSchema = z.object(Object.fromEntries(PERM_KEYS.map((k) => [k, z.boolean().default(false)])) as Record<(typeof PERM_KEYS)[number], z.ZodDefault<z.ZodBoolean>>);
 
 export type EmployeePermissions = z.infer<typeof PermSchema>;
@@ -97,8 +103,10 @@ export const listEmployeesFull = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const db = context.supabase;
-    await assertHrm(db, context.userId);
 
+    // The RPC performs the HRM permission check with auth.uid() and reads through
+    // SECURITY DEFINER, avoiding the RLS problem that caused the directory to be empty.
+    // Do not run the old direct employee_permissions RLS check here.
     // Employee directory reads use a SECURITY DEFINER RPC so the existing
     // employee data is returned without exposing a service-role key to the app.
     const { data, error } = await db.rpc("list_employees_full");
