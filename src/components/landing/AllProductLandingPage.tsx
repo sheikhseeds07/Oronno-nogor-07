@@ -293,19 +293,20 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
                       type="button"
                       onClick={() => setSelected(`offer-${index}`)}
                       aria-pressed={active}
-                      className={`group relative flex min-w-0 items-center gap-1.5 rounded-xl border p-1.5 text-left transition-all active:scale-[.99] ${active ? "border-all-product-primary bg-all-product-primary/[0.04] ring-1 ring-all-product-primary/20" : "border-all-product-line bg-all-product-surface hover:border-all-product-primary/40"}`}
+                      className={`group relative flex min-w-0 items-center justify-between gap-2.5 rounded-2xl border px-3 py-2.5 text-left transition-all active:scale-[.99] ${active ? "border-all-product-primary bg-all-product-primary/[0.045] ring-1 ring-all-product-primary/20 shadow-[0_8px_22px_-16px_rgba(20,83,45,.55)]" : "border-all-product-line bg-all-product-surface hover:border-all-product-primary/40 hover:shadow-[0_8px_22px_-18px_rgba(0,0,0,.25)]"}`}
                     >
-                      {offer.image && <img src={toImg(offer.image, { w: 160, q: 80 })} alt="" loading="lazy" className="h-16 w-16 shrink-0 rounded-[11px] object-cover ring-1 ring-black/[0.035] sm:h-[68px] sm:w-[68px]" />}
                       <span className="min-w-0 flex-1">
-                        <span className="block break-words text-[10px] font-black leading-[1.35] text-all-product-ink">{offer.name}</span>
-                        <span className="mt-0.5 flex items-baseline gap-1 whitespace-nowrap">
-                          <span className="text-[14px] font-black leading-none text-all-product-primary">{taka(offer.price)}</span>
-                          {offer.old && offer.old > offer.price && <del className="text-[8px] font-semibold text-all-product-muted">{taka(offer.old)}</del>}
+                        <span className="block break-words text-[12px] font-black leading-[1.4] text-all-product-ink">{offer.name}</span>
+                        <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                          <span className="rounded-full bg-all-product-primary/10 px-2 py-1 text-[11px] font-black leading-none text-all-product-primary">{taka(offer.price)}</span>
+                          <span className={`rounded-full px-2 py-1 text-[9px] font-bold leading-none ${offer.delivery_fee === 0 ? "bg-all-product-success/10 text-all-product-success" : "bg-all-product-soft text-all-product-muted"}`}>
+                            {offer.delivery_fee === 0 ? "ফ্রি ডেলিভারি" : `ডেলিভারি ${taka(offer.delivery_fee)}`}
+                          </span>
+                          {offer.old && offer.old > offer.price && <del className="text-[9px] font-semibold text-all-product-muted">{taka(offer.old)}</del>}
                         </span>
-                        <span className="mt-0.5 block whitespace-nowrap text-[8px] font-semibold leading-3 text-all-product-muted">{offer.delivery_fee === 0 ? "ফ্রি ডেলিভারি" : `ডেলিভারি ${taka(offer.delivery_fee)}`}</span>
                       </span>
-                      <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border ${active ? "border-all-product-primary bg-all-product-primary text-all-product-primary-foreground" : "border-all-product-line bg-all-product-soft text-transparent"}`}>
-                        <Check className="h-3 w-3" strokeWidth={3} />
+                      <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border ${active ? "border-all-product-primary bg-all-product-primary text-all-product-primary-foreground" : "border-all-product-line bg-all-product-soft text-transparent"}`}>
+                        <Check className="h-3.5 w-3.5" strokeWidth={3} />
                       </span>
                     </button>
                   );
