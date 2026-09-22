@@ -487,7 +487,7 @@ function OfferSelectionPopup({
     >
       <div
         ref={popupRef}
-        className="flex max-h-[90vh] w-full max-w-[470px] flex-col overflow-y-auto overscroll-contain rounded-[28px] border border-white/70 bg-all-product-surface shadow-[0_36px_120px_-34px_rgba(0,0,0,.82)] ring-1 ring-black/5"
+        className="flex max-h-[84vh] w-full max-w-[470px] flex-col overflow-y-auto overscroll-contain rounded-[28px] border border-white/70 bg-all-product-surface shadow-[0_36px_120px_-34px_rgba(0,0,0,.82)] ring-1 ring-black/5"
       >
         <div className="sticky top-0 z-20 shrink-0 border-b border-all-product-line/80 bg-gradient-to-br from-all-product-primary/[0.07] via-all-product-surface to-all-product-gold/[0.08] px-4 pb-3.5 pt-4 shadow-[0_10px_28px_-20px_rgba(0,0,0,.5)] backdrop-blur-xl sm:px-5">
           <div className="flex items-start gap-3">
@@ -509,17 +509,10 @@ function OfferSelectionPopup({
           </div>
         </div>
 
-        <div className="space-y-4 p-3.5 sm:p-4">
+        <div className="space-y-3 p-3 sm:p-3.5">
           {offers.length > 0 && (
             <section>
-              <div className="mb-2.5 flex items-end justify-between gap-2 px-0.5">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.12em] text-all-product-primary">MAIN PACKAGE</p>
-                  <h4 className="mt-0.5 text-[14px] font-black text-all-product-ink">আপনার পছন্দের প্যাকেজ</h4>
-                </div>
-                <span className="rounded-full border border-all-product-primary/15 bg-all-product-primary/[0.06] px-2.5 py-1 text-[9px] font-black text-all-product-primary">{offers.length} টি</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-2 gap-2">
                 {offers.map((offer, index) => {
                   const value = `offer-${index}`;
                   const active = selected === value;
@@ -529,14 +522,14 @@ function OfferSelectionPopup({
                         active ? "border-all-product-primary bg-all-product-primary/[0.045] ring-2 ring-all-product-primary/10 shadow-[0_14px_30px_-18px_rgba(20,83,45,.65)]" : "border-all-product-line hover:border-all-product-primary/45 hover:shadow-[0_14px_30px_-20px_rgba(0,0,0,.3)]"
                       }`}>
                       <div className="relative overflow-hidden rounded-[14px] bg-all-product-soft ring-1 ring-black/[0.035]">
-                        <img src={toImg(offer.image || "/placeholder.svg", { w: 520, q: 84 })} alt={offer.name} loading="lazy" className="aspect-[1.08/1] w-full object-cover transition-transform duration-500 group-hover:scale-[1.025]" />
+                        <img src={toImg(offer.image || "/placeholder.svg", { w: 520, q: 84 })} alt={offer.name} loading="lazy" className="aspect-[1.08/1] w-full object-cover transition-transform duration-300 group-hover:scale-[1.025]" />
                         {active && <span className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-all-product-primary text-white shadow-lg ring-2 ring-white/90"><Check className="h-4 w-4" strokeWidth={3} /></span>}
                       </div>
-                      <div className="px-0.5 pb-0.5 pt-2">
-                        <div className="min-h-[32px] break-words text-[12.5px] font-black leading-[1.35] text-all-product-ink">{offer.name}</div>
-                        <div className="mt-1.5 text-[19px] font-black leading-none text-all-product-primary">{taka(offer.price)}</div>
-                        {offer.old && offer.old > offer.price && <del className="mt-1 block text-[9.5px] font-semibold text-all-product-muted">{taka(offer.old)}</del>}
-                        <div className="mt-1.5 text-[9.5px] font-bold text-all-product-success">{offer.delivery_fee === 0 ? "ডেলিভারি ফ্রি" : `ডেলিভারি ${taka(offer.delivery_fee)}`}</div>
+                      <div className="px-0.5 pb-0.5 pt-1.5">
+                        <div className="min-h-[29px] break-words text-[11.5px] font-black leading-[1.3] text-all-product-ink">{offer.name}</div>
+                        <div className="mt-1 text-[17px] font-black leading-none text-all-product-primary">{taka(offer.price)}</div>
+                        {offer.old && offer.old > offer.price && <del className="mt-0.5 block text-[9px] font-semibold text-all-product-muted">{taka(offer.old)}</del>}
+                        <div className="mt-1 text-[8.5px] font-bold text-all-product-success">{offer.delivery_fee === 0 ? "ডেলিভারি ফ্রি" : `ডেলিভারি ${taka(offer.delivery_fee)}`}</div>
                       </div>
                     </button>
                   );
@@ -546,15 +539,11 @@ function OfferSelectionPopup({
           )}
 
           {comboOffers.length > 0 && (
-            <section className="border-t border-all-product-line pt-4">
-              <div className="mb-2.5 flex items-end justify-between gap-2 px-0.5">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.12em] text-all-product-primary">SPECIAL COMBO</p>
-                  <h4 className="mt-0.5 text-[14px] font-black text-all-product-ink">কম্বো অফার <span className="font-semibold text-all-product-muted">(আরও সাশ্রয়)</span></h4>
-                </div>
-                <span className="rounded-full bg-all-product-primary/10 px-2.5 py-1 text-[9px] font-black text-all-product-primary">{comboOffers.length} টি</span>
+            <section className="border-t border-all-product-line pt-3">
+              <div className="mb-2 flex items-center justify-center gap-1 text-center">
+                <h4 className="text-[12px] font-black text-all-product-ink">কম্বো অফার <span className="font-semibold text-all-product-muted">(আরও সাশ্রয়)</span></h4>
               </div>
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-2 gap-2">
                 {comboOffers.map((offer, index) => {
                   const value = `combo-${index}`;
                   const active = selected === value;
