@@ -284,7 +284,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="space-y-1.5">
                 {offers.map((offer, index) => {
                   const active = selected === `offer-${index}`;
                   return (
@@ -293,20 +293,26 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
                       type="button"
                       onClick={() => setSelected(`offer-${index}`)}
                       aria-pressed={active}
-                      className={`group relative flex min-w-0 items-center justify-between gap-2.5 rounded-2xl border px-3 py-2.5 text-left transition-all active:scale-[.99] ${active ? "border-all-product-primary bg-all-product-primary/[0.045] ring-1 ring-all-product-primary/20 shadow-[0_8px_22px_-16px_rgba(20,83,45,.55)]" : "border-all-product-line bg-all-product-surface hover:border-all-product-primary/40 hover:shadow-[0_8px_22px_-18px_rgba(0,0,0,.25)]"}`}
+                      className={`group relative flex w-full min-w-0 items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left transition-all duration-200 active:scale-[.995] ${active ? "border-all-product-primary bg-all-product-primary/[0.045] ring-1 ring-all-product-primary/15 shadow-[0_6px_18px_-14px_rgba(20,83,45,.5)]" : "border-all-product-line bg-all-product-surface hover:border-all-product-primary/40 hover:bg-all-product-soft/30"}`}
                     >
+                      <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-all-product-soft ring-1 ring-black/[0.04] sm:h-14 sm:w-14">
+                        <img src={toImg(offer.image || "/placeholder.svg", { w: 180, q: 82 })} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+                        {active && <span className="absolute right-1 top-1 grid h-4.5 w-4.5 place-items-center rounded-full bg-all-product-primary text-white shadow-sm ring-1 ring-white/90"><Check className="h-2.5 w-2.5" strokeWidth={3.5} /></span>}
+                      </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block break-words text-[12px] font-black leading-[1.4] text-all-product-ink">{offer.name}</span>
-                        <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                          <span className="rounded-full bg-all-product-primary/10 px-2 py-1 text-[11px] font-black leading-none text-all-product-primary">{taka(offer.price)}</span>
-                          <span className={`rounded-full px-2 py-1 text-[9px] font-bold leading-none ${offer.delivery_fee === 0 ? "bg-all-product-success/10 text-all-product-success" : "bg-all-product-soft text-all-product-muted"}`}>
-                            {offer.delivery_fee === 0 ? "ফ্রি ডেলিভারি" : `ডেলিভারি ${taka(offer.delivery_fee)}`}
-                          </span>
+                        <span className="block truncate text-[12px] font-black leading-5 text-all-product-ink sm:text-[12.5px]">{offer.name}</span>
+                        <span className="mt-0.5 flex items-center gap-1.5">
+                          <span className="text-[13px] font-black leading-4 text-all-product-primary">{taka(offer.price)}</span>
                           {offer.old && offer.old > offer.price && <del className="text-[9px] font-semibold text-all-product-muted">{taka(offer.old)}</del>}
                         </span>
                       </span>
-                      <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border ${active ? "border-all-product-primary bg-all-product-primary text-all-product-primary-foreground" : "border-all-product-line bg-all-product-soft text-transparent"}`}>
-                        <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                      <span className="flex shrink-0 flex-col items-end gap-1">
+                        <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-bold leading-none ${offer.delivery_fee === 0 ? "bg-all-product-success/10 text-all-product-success" : "bg-all-product-soft text-all-product-muted"}`}>
+                          {offer.delivery_fee === 0 ? "ফ্রি ডেলিভারি" : `ডেলিভারি ${taka(offer.delivery_fee)}`}
+                        </span>
+                        <span className={`grid h-5 w-5 place-items-center rounded-full border ${active ? "border-all-product-primary bg-all-product-primary text-all-product-primary-foreground" : "border-all-product-line bg-all-product-soft text-transparent"}`}>
+                          <Check className="h-3 w-3" strokeWidth={3} />
+                        </span>
                       </span>
                     </button>
                   );
