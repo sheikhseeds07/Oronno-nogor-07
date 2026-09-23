@@ -368,7 +368,7 @@ function OrderImport() {
                 </div>
               ))}
 
-              {siteOnlyOldOrders.map((old) => (
+              {([] as PrevOrder[]).map((old) => (
                 <div key={old.id} className="rounded-xl border p-3">
                   <div className="mb-2 font-bold">{old.customer_phone}</div>
                   <div className="flex items-start gap-2 rounded-lg bg-slate-50 p-2 text-xs">
