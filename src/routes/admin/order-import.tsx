@@ -7,7 +7,7 @@ import {
   Upload, FileSpreadsheet, Loader2, CheckCircle2, AlertCircle, Trash2, ListOrdered, Users, History,
 } from "lucide-react";
 import { parseOrdersFile, type ParsedOrder } from "@/lib/order-csv";
-import { importOrdersFromFile } from "@/lib/order-import.functions";
+import { deleteImportPreviewOrders, importOrdersFromFile, previewImportOrders } from "@/lib/order-import.functions";
 import { cancelOrders } from "@/lib/admin-order.functions";
 import { taka } from "@/lib/format";
 
@@ -59,12 +59,14 @@ function OrderImport() {
 
   // duplicate-phone popup (same number appears more than once in the file)
   const [dupOpen, setDupOpen] = useState(false);
-  // previous-order popup queue (same number ordered before)
-  const [prevQueue, setPrevQueue] = useState<PrevOrder[]>([]);
-  const [prevIdx, setPrevIdx] = useState(0);
-  const [cancelBusy, setCancelBusy] = useState(false);
+  // One unified duplicate popup: existing site orders + new file orders.
+  const [prevOrders, setPrevOrders] = useState<PrevOrder[]>([]);
+  const [previewBusy, setPreviewBusy] = useState(false);
+  const [deleteBusyId, setDeleteBusyId] = useState<string | null>(null);
 
   const importFn = useServerFn(importOrdersFromFile);
+  const previewFn = useServerFn(previewImportOrders);
+  const deletePreviewFn = useServerFn(deleteImportPreviewOrders);
   const cancelFn = useServerFn(cancelOrders);
 
   // Groups of rows that share the same phone number
@@ -80,7 +82,8 @@ function OrderImport() {
 
   const onFile = async (file: File) => {
     setResult(null);
-    setPrevQueue([]);
+    setPrevOrders([]);
+    setDupOpen(false);
     const text = await file.text();
     const { orders: parsed, errors } = parseOrdersFile(text, file.name);
     setFileName(file.name);
@@ -91,8 +94,22 @@ function OrderImport() {
       return;
     }
     toast.success(`${parsed.length} টি অর্ডার পড়া হয়েছে`);
-    const dupCount = new Set(parsed.map((o) => normPhone(o.customer_phone))).size !== parsed.length;
-    if (dupCount) setDupOpen(true);
+
+    setPreviewBusy(true);
+    try {
+      const preview = await previewFn({
+        data: { phones: parsed.map((o) => o.customer_phone) },
+      });
+      setPrevOrders(preview.previous as PrevOrder[]);
+      const fileHasDuplicate = parsed.some((o, i) =>
+        parsed.some((other, j) => j > i && normPhone(other.customer_phone) === normPhone(o.customer_phone) && !!normPhone(o.customer_phone)),
+      );
+      if (preview.previous.length || fileHasDuplicate) setDupOpen(true);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "ডুপ্লিকেট অর্ডার চেক করা যায়নি");
+    } finally {
+      setPreviewBusy(false);
+    }
   };
 
   const removeRow = (index: number) => {
@@ -101,13 +118,18 @@ function OrderImport() {
   };
 
   const reset = () => {
-    setOrders([]); setParseErrors([]); setFileName(null); setResult(null); setPrevQueue([]);
+    setOrders([]); setParseErrors([]); setFileName(null); setResult(null); setPrevOrders([]);
+    setDupOpen(false);
     if (fileRef.current) fileRef.current.value = "";
   };
 
   const doImport = async () => {
     if (!orders.length) return;
-    if (dupGroups.length) { setDupOpen(true); toast.error("একই নাম্বারে একাধিক অর্ডার আছে — আগে ঠিক করুন"); return; }
+    if (dupGroups.length) {
+      setDupOpen(true);
+      toast.error("একই নাম্বারে একাধিক নতুন অর্ডার আছে — প্রয়োজন হলে ডিলিট করুন");
+      return;
+    }
     setBusy(true);
     try {
       const r = await importFn({
@@ -126,9 +148,8 @@ function OrderImport() {
       setResult({ imported: r.imported, skipped: r.skipped, errors: r.errors });
       if (r.imported) toast.success(`${r.imported} টি অর্ডার অর্ডার লিস্টে যোগ হয়েছে`);
       if (!r.imported && r.skipped) toast.error("সব অর্ডার আগেই ইমপোর্ট করা ছিল");
-      // Show the "this number ordered before" popup at the very end
-      const prev = (r.previous ?? []) as PrevOrder[];
-      if (prev.length) { setPrevQueue(prev); setPrevIdx(0); }
+      setDupOpen(false);
+      setPrevOrders([]);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "ইমপোর্ট ব্যর্থ");
     } finally {
@@ -136,26 +157,27 @@ function OrderImport() {
     }
   };
 
-  const current = prevQueue[prevIdx];
-
-  const nextPrev = () => {
-    if (prevIdx + 1 < prevQueue.length) setPrevIdx(prevIdx + 1);
-    else setPrevQueue([]);
-  };
-
-  const cancelPrev = async () => {
-    if (!current) return;
-    setCancelBusy(true);
+  const deleteOldOrder = async (id: string) => {
+    setDeleteBusyId(id);
     try {
-      await cancelFn({ data: { ids: [current.id] } });
-      toast.success("পুরনো অর্ডারটি বাতিল করা হয়েছে");
-      nextPrev();
+      await deletePreviewFn({ data: { ids: [id] } });
+      setPrevOrders((prev) => prev.filter((o) => o.id !== id));
+      toast.success("পুরনো অর্ডারটি ডিলিট করা হয়েছে");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "বাতিল করা যায়নি");
+      toast.error(e instanceof Error ? e.message : "অর্ডার ডিলিট করা যায়নি");
     } finally {
-      setCancelBusy(false);
+      setDeleteBusyId(null);
     }
   };
+
+  const currentDuplicateGroups = dupGroups.map(([phone, idxs]) => ({
+    phone,
+    newIndexes: idxs,
+    oldOrders: prevOrders.filter((o) => normPhone(o.customer_phone) === phone),
+  })).filter((g) => g.oldOrders.length || g.newIndexes.length > 1);
+
+  const siteOnlyOldOrders = prevOrders.filter((o) => !currentDuplicateGroups.some((g) => g.oldOrders.some((old) => old.id === o.id)));
+
 
   return (
     <AdminLayout>
@@ -267,96 +289,116 @@ function OrderImport() {
         )}
       </div>
 
-      {/* Popup: same phone number appears multiple times in this file */}
+      {/* One popup: old site orders + new file orders for every duplicate phone */}
       {dupOpen && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4">
-          <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-card p-4 shadow-xl">
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-card p-4 shadow-xl">
             <div className="flex items-center gap-2 text-base font-bold text-amber-700">
-              <Users className="h-5 w-5" /> একই নাম্বারে একাধিক অর্ডার
+              <Users className="h-5 w-5" /> ডুপ্লিকেট অর্ডার পাওয়া গেছে
             </div>
-            {dupGroups.length ? (
-              <>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  নিচের নাম্বারগুলোতে ফাইলে একাধিক অর্ডার আছে। যেটা রাখতে চান না সেটা ডিলিট করুন।
-                </p>
-                <div className="mt-3 space-y-3">
-                  {dupGroups.map(([phone, idxs]) => (
-                    <div key={phone} className="rounded-xl border p-2">
-                      <div className="mb-1 text-sm font-bold">{phone} — {idxs.length} টি অর্ডার</div>
-                      <div className="space-y-1">
-                        {idxs.map((i) => (
-                          <div key={i} className="flex items-start gap-2 rounded-lg bg-slate-50 p-2 text-xs">
-                            <div className="min-w-0 flex-1">
-                              <div className="font-semibold">{orders[i].customer_name}</div>
-                              <div className="text-muted-foreground">
-                                {orders[i].items.map((it) => `${it.product_name} ×${it.quantity}`).join(", ")}
-                              </div>
-                              <div className="text-muted-foreground">{taka(orders[i].total)}</div>
-                            </div>
-                            <button
-                              onClick={() => removeRow(i)}
-                              className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 px-2 py-1 font-semibold text-rose-700"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" /> ডিলিট
-                            </button>
-                          </div>
-                        ))}
-                      </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              একই নাম্বারের পুরনো অর্ডার এবং এই ফাইলের নতুন অর্ডার একসাথে দেখানো হয়েছে। যেটা রাখতে চান না, পাশের ডিলিট আইকনে চাপুন।
+            </p>
+
+            <div className="mt-4 space-y-4">
+              {currentDuplicateGroups.map((group) => (
+                <div key={group.phone} className="rounded-xl border p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="font-bold">{group.phone}</div>
+                    <div className="text-xs text-muted-foreground">
+                      পুরনো {group.oldOrders.length} + নতুন {group.newIndexes.length}
                     </div>
-                  ))}
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="rounded-xl border bg-slate-50 p-2">
+                      <div className="mb-2 text-xs font-bold text-slate-600">পুরনো অর্ডার</div>
+                      {group.oldOrders.length ? group.oldOrders.map((old) => (
+                        <div key={old.id} className="mb-2 flex items-start gap-2 rounded-lg bg-white p-2 text-xs last:mb-0">
+                          <div className="min-w-0 flex-1">
+                            <div className="font-semibold">{old.customer_name}</div>
+                            <div className="text-muted-foreground">ইনভয়েস: {old.invoice_no ?? "—"} · {STATUS_BN[old.status] ?? old.status}</div>
+                            <div className="text-muted-foreground">{bnDate(old.created_at)} · {taka(old.total)}</div>
+                          </div>
+                          <button
+                            onClick={() => void deleteOldOrder(old.id)}
+                            disabled={deleteBusyId === old.id}
+                            className="rounded-lg p-1.5 text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+                            title="ডিলিট"
+                          >
+                            {deleteBusyId === old.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                          </button>
+                        </div>
+                      )) : (
+                        <div className="p-2 text-xs text-muted-foreground">কোনো পুরনো অর্ডার নেই</div>
+                      )}
+                    </div>
+
+                    <div className="rounded-xl border bg-emerald-50/40 p-2">
+                      <div className="mb-2 text-xs font-bold text-emerald-700">নতুন অর্ডার — ফাইল থেকে</div>
+                      {group.newIndexes.map((i) => (
+                        <div key={i} className="mb-2 flex items-start gap-2 rounded-lg bg-white p-2 text-xs last:mb-0">
+                          <div className="min-w-0 flex-1">
+                            <div className="font-semibold">{orders[i].customer_name}</div>
+                            <div className="text-muted-foreground">
+                              {orders[i].items.map((it) => `${it.product_name} ×${it.quantity}`).join(", ")}
+                            </div>
+                            <div className="text-muted-foreground">{taka(orders[i].total)}</div>
+                          </div>
+                          <button
+                            onClick={() => removeRow(i)}
+                            className="rounded-lg p-1.5 text-rose-600 hover:bg-rose-50"
+                            title="ডিলিট"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </>
-            ) : (
-              <p className="mt-2 text-sm text-green-700">আর কোনো ডুপ্লিকেট নাম্বার নেই।</p>
-            )}
-            <button
-              onClick={() => setDupOpen(false)}
-              className="mt-4 w-full rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white"
-            >
-              ঠিক আছে
-            </button>
+              ))}
+
+              {siteOnlyOldOrders.map((old) => (
+                <div key={old.id} className="rounded-xl border p-3">
+                  <div className="mb-2 font-bold">{old.customer_phone}</div>
+                  <div className="flex items-start gap-2 rounded-lg bg-slate-50 p-2 text-xs">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold">{old.customer_name}</div>
+                      <div className="text-muted-foreground">ইনভয়েস: {old.invoice_no ?? "—"} · {STATUS_BN[old.status] ?? old.status}</div>
+                      <div className="text-muted-foreground">{bnDate(old.created_at)} · {taka(old.total)}</div>
+                    </div>
+                    <button
+                      onClick={() => void deleteOldOrder(old.id)}
+                      disabled={deleteBusyId === old.id}
+                      className="rounded-lg p-1.5 text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+                      title="ডিলিট"
+                    >
+                      {deleteBusyId === old.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={() => setDupOpen(false)}
+                className="flex-1 rounded-lg border px-4 py-2 text-sm font-bold"
+              >
+                বন্ধ
+              </button>
+              <button
+                onClick={() => void doImport()}
+                disabled={busy || previewBusy || !orders.length || !!dupGroups.length}
+                className="flex-1 rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+              >
+                {busy ? "ইমপোর্ট হচ্ছে..." : "ঠিক আছে — Import চালিয়ে যান"}
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Popup: this number ordered before — show status, cancel or continue */}
-      {current && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-card p-4 shadow-xl">
-            <div className="flex items-center gap-2 text-base font-bold text-brand-dark">
-              <History className="h-5 w-5" /> আগেও অর্ডার করা হয়েছিল
-            </div>
-            <p className="mt-2 text-sm">
-              <b>{bnDate(current.created_at)}</b> তারিখে <b>{current.customer_name}</b> নামে
-              এই নাম্বারে ({current.customer_phone}) অর্ডার করা হয়েছিল।
-            </p>
-            <div className="mt-3 space-y-1 rounded-xl border bg-slate-50 p-3 text-sm">
-              <div>ইনভয়েস: <b>{current.invoice_no ?? "—"}</b></div>
-              <div>বর্তমান স্টাটাস: <b className="text-brand-dark">{STATUS_BN[current.status] ?? current.status}</b></div>
-              {current.courier_status && <div>কুরিয়ার স্টাটাস: <b>{current.courier_status}</b></div>}
-              <div>মোট: <b>{taka(current.total)}</b></div>
-            </div>
-            <div className="mt-2 text-xs text-muted-foreground">
-              {prevIdx + 1} / {prevQueue.length}
-            </div>
-            <div className="mt-3 flex gap-2">
-              <button
-                onClick={cancelPrev}
-                disabled={cancelBusy}
-                className="flex-1 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-bold text-rose-700 disabled:opacity-60"
-              >
-                {cancelBusy ? "বাতিল হচ্ছে..." : "পুরনোটি বাতিল করুন"}
-              </button>
-              <button
-                onClick={nextPrev}
-                className="flex-1 rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white"
-              >
-                চালিয়ে যান
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </AdminLayout>
   );
 }
