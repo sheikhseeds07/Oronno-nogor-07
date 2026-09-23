@@ -20,6 +20,53 @@ const OrderSchema = z.object({
   items: z.array(ItemSchema).min(1).max(50),
 });
 
+export const previewImportOrders = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({
+    phones: z.array(z.string().min(3).max(40)).min(1).max(500),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertCanManageOrders(context.userId);
+    const phones = [...new Set(data.phones.map((p) => p.replace(/\\D/g, "").slice(-11)).filter(Boolean))];
+    if (!phones.length) return { previous: [] as Array<{
+      id: string; invoice_no: string | null; customer_name: string; customer_phone: string;
+      status: string; courier_status: string | null; total: number; created_at: string;
+    }> };
+
+    const { data: rows, error } = await supabaseAdmin
+      .from("orders")
+      .select("id,invoice_no,customer_name,customer_phone,status,courier_status,total,created_at")
+      .in("customer_phone", phones)
+      .order("created_at", { ascending: false })
+      .limit(500);
+
+    if (error) throw new Error(error.message);
+    return {
+      previous: (rows ?? []).map((r) => ({
+        id: r.id,
+        invoice_no: r.invoice_no ?? null,
+        customer_name: r.customer_name,
+        customer_phone: r.customer_phone,
+        status: String(r.status),
+        courier_status: r.courier_status ?? null,
+        total: Number(r.total) || 0,
+        created_at: r.created_at ?? new Date().toISOString(),
+      })),
+    };
+  });
+
+export const deleteImportPreviewOrders = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ ids: z.array(z.string().uuid()).min(1).max(500) }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertCanManageOrders(context.userId);
+    const { error: itemError } = await supabaseAdmin.from("order_items").delete().in("order_id", data.ids);
+    if (itemError) throw new Error(itemError.message);
+    const { error } = await supabaseAdmin.from("orders").delete().in("id", data.ids);
+    if (error) throw new Error(error.message);
+    return { deleted: data.ids.length };
+  });
+
 export const importOrdersFromFile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => z.object({ orders: z.array(OrderSchema).min(1).max(500) }).parse(input))
