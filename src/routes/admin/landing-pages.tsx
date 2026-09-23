@@ -431,6 +431,16 @@ function LandingPagesAdmin() {
                         </div>
                         <button
                           type="button"
+                          role="switch"
+                          aria-checked={item.is_active !== false}
+                          onClick={() => setC({ combo_offers: (C.combo_offers || []).map((offer, i) => i === index ? { ...offer, is_active: offer.is_active === false } : offer) })}
+                          className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full p-1 transition-colors ${item.is_active !== false ? "bg-emerald-600" : "bg-slate-300"}`}
+                          title={item.is_active !== false ? "Landing page-এ দেখানো হচ্ছে — বন্ধ করতে চাপুন" : "Landing page-এ দেখানো হচ্ছে না — চালু করতে চাপুন"}
+                        >
+                          <span className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${item.is_active !== false ? "translate-x-5" : "translate-x-0"}`} />
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => setComboEditor(index)}
                           className="shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] font-bold text-slate-700 transition hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700"
                           title="এডিট / ভিউ"
