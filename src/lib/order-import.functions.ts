@@ -27,7 +27,7 @@ export const previewImportOrders = createServerFn({ method: "POST" })
   }).parse(input))
   .handler(async ({ data, context }) => {
     await assertCanManageOrders(context.userId);
-    const phones = [...new Set(data.phones.map((p) => p.replace(/\\D/g, "").slice(-11)).filter(Boolean))];
+    const phones = [...new Set(data.phones.map((p) => p.replace(/\D/g, "").slice(-11)).filter(Boolean))];
     if (!phones.length) return { previous: [] as Array<{
       id: string; invoice_no: string | null; customer_name: string; customer_phone: string;
       status: string; courier_status: string | null; total: number; created_at: string;
