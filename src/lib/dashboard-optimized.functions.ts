@@ -138,11 +138,9 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
     // Incomplete cancellations belong to the employee assigned to that
     // order. Web cancellations keep confirmed_by/created_by attribution.
     const source = sourceByOrder.get(String(row?.id ?? "")) ?? "";
-    const actor = cancelActorByOrder.get(String(row?.id ?? "")) ?? (
-      source === "incomplete"
-        ? row?.assigned_to
-        : (row?.confirmed_by ?? row?.created_by)
-    );
+    const actor = source === "incomplete"
+      ? (cancelActorByOrder.get(String(row?.id ?? "")) ?? row?.assigned_to)
+      : cancelActorByOrder.get(String(row?.id ?? ""));
     if (actor) actorByOrder.set(String(row.id), String(actor));
   }
   for (const row of deletedR.data ?? []) {
@@ -150,11 +148,9 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
     const raw = row?.order_data;
     const data = raw && typeof raw === "object" ? raw : {};
     const source = sourceByOrder.get(String(row?.id ?? "")) ?? "";
-    const actor = cancelActorByOrder.get(String(row?.id ?? "")) ?? (
-      source === "incomplete"
-        ? (data?.assigned_to ?? data?.confirmed_by ?? data?.created_by)
-        : (data?.confirmed_by ?? data?.created_by)
-    );
+    const actor = source === "incomplete"
+      ? (cancelActorByOrder.get(String(row?.id ?? "")) ?? data?.assigned_to)
+      : cancelActorByOrder.get(String(row?.id ?? ""));
     if (actor) actorByOrder.set(String(row.id), String(actor));
   }
 
