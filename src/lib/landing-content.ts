@@ -6,7 +6,7 @@ export type SeedRow = { name: string; qty: string; image?: string };
 export type Feature = { title: string; text?: string; icon?: string };
 export type WhyItem = { title: string; text?: string; icon?: string };
 export type Review = { name: string; rating: number; text: string };
-export type ComboOffer = { name: string; price: number; old_price?: number; image?: string; delivery_fee?: number | null; quantity?: string };
+export type ComboOffer = { name: string; price: number; old_price?: number; image?: string; delivery_fee?: number | null; quantity?: string; is_active?: boolean };
 export type LandingTemplate = "combo" | "premium" | "modern" | "product" | "all-product";
 
 export type LandingContent = {
@@ -143,7 +143,7 @@ export const DEFAULT_CONTENT: LandingContent = {
 
 export function mergeContent(raw: unknown): LandingContent {
   const value = (raw && typeof raw === "object" ? raw : {}) as Partial<LandingContent>;
-  const out = { ...DEFAULT_CONTENT, ...value, seed_table: Array.isArray(value.seed_table) && value.seed_table.length ? value.seed_table : DEFAULT_CONTENT.seed_table, combo_offers: Array.isArray(value.combo_offers) ? value.combo_offers : DEFAULT_CONTENT.combo_offers } as LandingContent;
+  const out = { ...DEFAULT_CONTENT, ...value, seed_table: Array.isArray(value.seed_table) && value.seed_table.length ? value.seed_table : DEFAULT_CONTENT.seed_table, combo_offers: Array.isArray(value.combo_offers) ? value.combo_offers.map((item) => ({ ...item, is_active: item.is_active !== false })) : DEFAULT_CONTENT.combo_offers } as LandingContent;
   if (out.template === "combo") {
     out.package_kicker = "";
     out.package_title = "";
