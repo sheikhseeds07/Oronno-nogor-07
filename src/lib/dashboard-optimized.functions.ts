@@ -88,7 +88,7 @@ async function getMetaProfitData(from: string, to: string) {
  */
 async function getLiveEmployeeCancellationPerformance(from: string, to: string, baseRows: any[]) {
   const db = supabaseAdmin as any;
-  const [historyR, employeesR] = await Promise.all([
+  const [historyR, employeesR, actionEventsR] = await Promise.all([
     db
       .from("order_cancellation_history")
       .select("order_id,source,cancelled_at")
@@ -98,9 +98,16 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
       .from("employees")
       .select("user_id,name")
       .eq("is_active", true),
+    db
+      .from("order_action_events")
+      .select("order_id,actor_id,action,created_at")
+      .eq("action", "cancel")
+      .gte("created_at", from)
+      .lte("created_at", to),
   ]);
   if (historyR.error) throw new Error(historyR.error.message);
   if (employeesR.error) throw new Error(employeesR.error.message);
+  if (actionEventsR.error) throw new Error(actionEventsR.error.message);
 
   const history = historyR.data ?? [];
   if (!history.length) return baseRows;
@@ -121,14 +128,21 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
     String(h?.order_id ?? ""),
     String(h?.source ?? "").toLowerCase(),
   ]));
+  const cancelActorByOrder = new Map<string, string>();
+  for (const event of actionEventsR.data ?? []) {
+    if (event?.order_id && event?.actor_id) cancelActorByOrder.set(String(event.order_id), String(event.actor_id));
+  }
+
   const actorByOrder = new Map<string, string>();
   for (const row of ordersR.data ?? []) {
     // Incomplete cancellations belong to the employee assigned to that
     // order. Web cancellations keep confirmed_by/created_by attribution.
     const source = sourceByOrder.get(String(row?.id ?? "")) ?? "";
-    const actor = source === "incomplete"
-      ? row?.assigned_to
-      : (row?.confirmed_by ?? row?.created_by);
+    const actor = cancelActorByOrder.get(String(row?.id ?? "")) ?? (
+      source === "incomplete"
+        ? row?.assigned_to
+        : (row?.confirmed_by ?? row?.created_by)
+    );
     if (actor) actorByOrder.set(String(row.id), String(actor));
   }
   for (const row of deletedR.data ?? []) {
@@ -136,9 +150,11 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
     const raw = row?.order_data;
     const data = raw && typeof raw === "object" ? raw : {};
     const source = sourceByOrder.get(String(row?.id ?? "")) ?? "";
-    const actor = source === "incomplete"
-      ? (data?.assigned_to ?? data?.confirmed_by ?? data?.created_by)
-      : (data?.confirmed_by ?? data?.created_by);
+    const actor = cancelActorByOrder.get(String(row?.id ?? "")) ?? (
+      source === "incomplete"
+        ? (data?.assigned_to ?? data?.confirmed_by ?? data?.created_by)
+        : (data?.confirmed_by ?? data?.created_by)
+    );
     if (actor) actorByOrder.set(String(row.id), String(actor));
   }
 
