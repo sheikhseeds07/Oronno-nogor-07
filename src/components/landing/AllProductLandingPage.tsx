@@ -71,7 +71,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
     return [...main, ...uniqueAddons];
   }, [product, page?.addons, basePrice, regularPrice, heroImage, delivery]);
 
-  const comboOffers = useMemo<Offer[]>(() => (C.combo_offers ?? []).filter((item) => item.name?.trim() && Number(item.price) > 0).map((item) => ({ name: item.name.trim(), price: Number(item.price), old: item.old_price == null ? null : Number(item.old_price), image: item.image, delivery_fee: item.delivery_fee == null ? delivery : Number(item.delivery_fee), quantity: item.quantity?.trim() || "১ পিস" })), [C.combo_offers, delivery]);
+  const comboOffers = useMemo<Offer[]>(() => (C.combo_offers ?? []).filter((item) => item.is_active !== false && item.name?.trim() && Number(item.price) > 0).map((item) => ({ name: item.name.trim(), price: Number(item.price), old: item.old_price == null ? null : Number(item.old_price), image: item.image, delivery_fee: item.delivery_fee == null ? delivery : Number(item.delivery_fee), quantity: item.quantity?.trim() || "১ পিস" })), [C.combo_offers, delivery]);
 
   const current = useMemo(() => {
     if (!selected) return null;
