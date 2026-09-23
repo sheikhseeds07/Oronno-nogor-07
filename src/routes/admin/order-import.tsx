@@ -4,11 +4,10 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
-  Upload, FileSpreadsheet, Loader2, CheckCircle2, AlertCircle, Trash2, ListOrdered, Users, History,
+  Upload, FileSpreadsheet, Loader2, CheckCircle2, AlertCircle, Trash2, ListOrdered, Users,
 } from "lucide-react";
 import { parseOrdersFile, type ParsedOrder } from "@/lib/order-csv";
 import { deleteImportPreviewOrders, importOrdersFromFile, previewImportOrders } from "@/lib/order-import.functions";
-import { cancelOrders } from "@/lib/admin-order.functions";
 import { taka } from "@/lib/format";
 
 export const Route = createFileRoute("/admin/order-import")({
@@ -67,7 +66,6 @@ function OrderImport() {
   const importFn = useServerFn(importOrdersFromFile);
   const previewFn = useServerFn(previewImportOrders);
   const deletePreviewFn = useServerFn(deleteImportPreviewOrders);
-  const cancelFn = useServerFn(cancelOrders);
 
   // Groups of rows that share the same phone number
   const dupGroups = useMemo(() => {
@@ -170,13 +168,25 @@ function OrderImport() {
     }
   };
 
-  const currentDuplicateGroups = dupGroups.map(([phone, idxs]) => ({
-    phone,
-    newIndexes: idxs,
-    oldOrders: prevOrders.filter((o) => normPhone(o.customer_phone) === phone),
-  })).filter((g) => g.oldOrders.length || g.newIndexes.length > 1);
-
-  const siteOnlyOldOrders = prevOrders.filter((o) => !currentDuplicateGroups.some((g) => g.oldOrders.some((old) => old.id === o.id)));
+  const currentDuplicateGroups = (() => {
+    const phoneSet = new Set<string>();
+    for (const o of orders) {
+      const phone = normPhone(o.customer_phone);
+      if (phone) phoneSet.add(phone);
+    }
+    for (const o of prevOrders) {
+      const phone = normPhone(o.customer_phone);
+      if (phone) phoneSet.add(phone);
+    }
+    return [...phoneSet].map((phone) => {
+      const newIndexes = orders
+        .map((o, i) => ({ phone: normPhone(o.customer_phone), i }))
+        .filter((x) => x.phone === phone)
+        .map((x) => x.i);
+      const oldOrders = prevOrders.filter((o) => normPhone(o.customer_phone) === phone);
+      return { phone, newIndexes, oldOrders };
+    }).filter((g) => g.oldOrders.length > 0 || g.newIndexes.length > 1);
+  })();
 
 
   return (
