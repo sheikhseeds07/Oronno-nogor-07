@@ -108,7 +108,7 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
   const ids = Array.from(new Set(history.map((row: any) => String(row.order_id ?? "")).filter(Boolean)));
   const [ordersR, deletedR] = await Promise.all([
     ids.length
-      ? db.from("orders").select("id,created_by,confirmed_by").in("id", ids)
+      ? db.from("orders").select("id,created_by,confirmed_by,assigned_to").in("id", ids)
       : Promise.resolve({ data: [], error: null }),
     ids.length
       ? db.from("deleted_orders").select("id,order_data").in("id", ids)
@@ -117,12 +117,16 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
   if (ordersR.error) throw new Error(ordersR.error.message);
   if (deletedR.error) throw new Error(deletedR.error.message);
 
+  const sourceByOrder = new Map<string, string>(history.map((h: any) => [
+    String(h?.order_id ?? ""),
+    String(h?.source ?? "").toLowerCase(),
+  ]));
   const actorByOrder = new Map<string, string>();
   for (const row of ordersR.data ?? []) {
-    // Incomplete cancellations belong to the employee currently assigned to
-    // the incomplete order. Web cancellations keep confirmed_by/created_by.
-    const historyRow = history.find((h: any) => String(h?.order_id ?? "") === String(row?.id ?? ""));
-    const actor = String(historyRow?.source ?? "").toLowerCase() === "incomplete"
+    // Incomplete cancellations belong to the employee assigned to that
+    // order. Web cancellations keep confirmed_by/created_by attribution.
+    const source = sourceByOrder.get(String(row?.id ?? "")) ?? "";
+    const actor = source === "incomplete"
       ? row?.assigned_to
       : (row?.confirmed_by ?? row?.created_by);
     if (actor) actorByOrder.set(String(row.id), String(actor));
@@ -131,7 +135,10 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
     if (actorByOrder.has(String(row.id))) continue;
     const raw = row?.order_data;
     const data = raw && typeof raw === "object" ? raw : {};
-    const actor = data?.confirmed_by ?? data?.created_by;
+    const source = sourceByOrder.get(String(row?.id ?? "")) ?? "";
+    const actor = source === "incomplete"
+      ? (data?.assigned_to ?? data?.confirmed_by ?? data?.created_by)
+      : (data?.confirmed_by ?? data?.created_by);
     if (actor) actorByOrder.set(String(row.id), String(actor));
   }
 
