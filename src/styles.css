@@ -867,7 +867,7 @@ html.texture-mesh::before {
 }
 .seed-combo-page .seed-quality-note-title{
   display:flex;align-items:center;justify-content:center;gap:6px;margin:0 0 6px;
-  color:#075b3c;font-family:'Noto Serif Bengali','Hind Siliguri',serif;font-size:13px;font-weight:900;
+  color:#075b3c;font-family:'Noto Serif Bengali','Hind Siliguri',serif;font-size:15px;font-weight:950;
   line-height:1.35;letter-spacing:-.01em;text-shadow:0 1px 0 rgba(255,255,255,.8);
 }
 .seed-combo-page .seed-quality-note-title::before,.seed-combo-page .seed-quality-note-title::after{
@@ -875,8 +875,8 @@ html.texture-mesh::before {
 }
 .seed-combo-page .seed-quality-note-title::after{background:linear-gradient(90deg,#c39b35,transparent)}
 .seed-combo-page .seed-quality-note p{
-  margin:0;text-align:center;color:#465e53;font-family:'Hind Siliguri','Noto Sans Bengali',sans-serif;
-  font-size:11px;font-weight:600;line-height:1.65;letter-spacing:.005em;
+  margin:0;text-align:center;color:#334f43;font-family:'Hind Siliguri','Noto Sans Bengali',sans-serif;
+  font-size:12.5px;font-weight:800;line-height:1.62;letter-spacing:.005em;
 }
 .seed-combo-page .seed-quality-note b{color:#075b3c;font-weight:900}
 @keyframes seedQualityFloat{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
@@ -884,9 +884,9 @@ html.texture-mesh::before {
 @keyframes seedQualityShine{0%,55%{left:-42%}75%,100%{left:125%}}
 @media(max-width:640px){
   .seed-combo-page .seed-quality-note{margin-top:9px;padding:11px 9px 10px;border-radius:14px}
-  .seed-combo-page .seed-quality-note-title{font-size:12px;margin-bottom:5px}
+  .seed-combo-page .seed-quality-note-title{font-size:13.5px;margin-bottom:5px}
   .seed-combo-page .seed-quality-note-title::before,.seed-combo-page .seed-quality-note-title::after{width:18px}
-  .seed-combo-page .seed-quality-note p{font-size:10px;line-height:1.6}
+  .seed-combo-page .seed-quality-note p{font-size:11.5px;line-height:1.58}
 }
 @media(prefers-reduced-motion:reduce){
   .seed-combo-page .seed-quality-note,.seed-combo-page .seed-quality-note::before,.seed-combo-page .seed-quality-note::after{animation:none}
