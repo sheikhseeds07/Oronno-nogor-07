@@ -844,3 +844,26 @@ html.texture-mesh::before {
   border-left:0 !important;
   border-right:0 !important;
 }
+
+
+/* Seed Combo: compact quality + payment reassurance note */
+.seed-combo-page .seed-quality-note{
+  width:100%;max-width:520px;margin:9px auto 4px;padding:10px 11px;
+  border:1px solid rgba(16,122,79,.16);border-radius:13px;
+  background:linear-gradient(135deg,#fbfffc 0%,#f1faf4 100%);
+  box-shadow:0 8px 20px -16px rgba(6,78,59,.48),0 1px 0 rgba(255,255,255,.9) inset;
+  color:#234537;
+}
+.seed-combo-page .seed-quality-note-title{
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  margin:0 0 4px;color:#075e3d;font-size:11px;font-weight:900;line-height:1.3;
+}
+.seed-combo-page .seed-quality-note p{
+  margin:0;text-align:center;color:#52675d;font-size:10.5px;font-weight:600;line-height:1.55;
+}
+.seed-combo-page .seed-quality-note b{color:#075e3d;font-weight:900}
+@media(max-width:640px){
+  .seed-combo-page .seed-quality-note{margin-top:8px;padding:9px 9px;border-radius:12px}
+  .seed-combo-page .seed-quality-note-title{font-size:10.5px}
+  .seed-combo-page .seed-quality-note p{font-size:10px;line-height:1.52}
+}
