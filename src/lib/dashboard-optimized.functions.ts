@@ -202,6 +202,138 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
   });
 }
 
+const EmployeeMetricSchema = z.object({
+  userId: z.string().uuid(),
+  metric: z.enum(["confirmed", "web_cancel", "incomplete_cancel"]),
+  from: z.string().datetime(),
+  to: z.string().datetime(),
+});
+
+const EmployeeMetricStatusSchema = z.object({
+  orderIds: z.array(z.string().uuid()).min(1).max(200),
+  status: z.enum(["web_pending", "pending", "rts", "shipped", "delivered", "pending_return", "returned", "partial", "cancelled", "hold"]),
+});
+
+export const getEmployeeMetricOrders = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => EmployeeMetricSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const role = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .in("role", ["admin", "super_admin", "employee"])
+      .limit(1);
+    if (role.error) throw new Error(role.error.message);
+    if (!role.data?.length) throw new Error("Unauthorized");
+
+    const db = supabaseAdmin as any;
+    const action = data.metric === "confirmed" ? "confirm" : "cancel";
+    const { data: events, error: eventsError } = await db
+      .from("order_action_events")
+      .select("order_id,actor_id,action,created_at")
+      .eq("actor_id", data.userId)
+      .eq("action", action)
+      .gte("created_at", data.from)
+      .lte("created_at", data.to)
+      .order("created_at", { ascending: false });
+    if (eventsError) throw new Error(eventsError.message);
+
+    const eventIds = Array.from(new Set((events ?? []).map((e: any) => String(e.order_id ?? "")).filter(Boolean)));
+    if (!eventIds.length) return [];
+
+    const { data: history, error: historyError } = await db
+      .from("order_cancellation_history")
+      .select("order_id,source,cancelled_at")
+      .in("order_id", eventIds)
+      .gte("cancelled_at", data.from)
+      .lte("cancelled_at", data.to);
+    if (historyError) throw new Error(historyError.message);
+
+    const sourceByOrder = new Map<string, string>((history ?? []).map((h: any) => [
+      String(h.order_id),
+      String(h.source ?? "").toLowerCase(),
+    ]));
+    const ids = data.metric === "confirmed"
+      ? eventIds
+      : eventIds.filter((id) => sourceByOrder.get(id) === (data.metric === "incomplete_cancel" ? "incomplete" : "web"));
+
+    if (!ids.length) return [];
+
+    const [ordersR, deletedR] = await Promise.all([
+      db.from("orders")
+        .select("id,invoice_no,customer_name,customer_phone,total,status,created_at,updated_at")
+        .in("id", ids),
+      db.from("deleted_orders")
+        .select("id,invoice_no,customer_name,customer_phone,total,original_status,original_created_at,deleted_at")
+        .in("id", ids),
+    ]);
+    if (ordersR.error) throw new Error(ordersR.error.message);
+    if (deletedR.error) throw new Error(deletedR.error.message);
+
+    const byId = new Map<string, any>();
+    for (const o of ordersR.data ?? []) byId.set(String(o.id), { ...o, archived: false });
+    for (const o of deletedR.data ?? []) {
+      if (!byId.has(String(o.id))) {
+        byId.set(String(o.id), {
+          id: o.id,
+          invoice_no: o.invoice_no,
+          customer_name: o.customer_name,
+          customer_phone: o.customer_phone,
+          total: o.total,
+          status: o.original_status,
+          created_at: o.original_created_at,
+          updated_at: o.deleted_at,
+          archived: true,
+        });
+      }
+    }
+
+    return eventIds
+      .filter((id) => ids.includes(id))
+      .map((id) => byId.get(id))
+      .filter(Boolean);
+  });
+
+export const bulkUpdateEmployeeMetricOrders = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => EmployeeMetricStatusSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const role = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .in("role", ["admin", "super_admin", "employee"])
+      .limit(1);
+    if (role.error) throw new Error(role.error.message);
+    if (!role.data?.length) throw new Error("Unauthorized");
+
+    const db = supabaseAdmin as any;
+    const { data: existing, error: existingError } = await db
+      .from("orders")
+      .select("id")
+      .in("id", data.orderIds);
+    if (existingError) throw new Error(existingError.message);
+
+    const existingIds = new Set((existing ?? []).map((o: any) => String(o.id)));
+    const archivedIds = data.orderIds.filter((id) => !existingIds.has(id));
+
+    if (archivedIds.length) {
+      for (const id of archivedIds) {
+        const { error } = await db.rpc("restore_deleted_order", { p_id: id, p_status: data.status });
+        if (error) throw new Error(error.message);
+      }
+    }
+
+    const liveIds = data.orderIds.filter((id) => existingIds.has(id));
+    if (liveIds.length) {
+      const { error } = await db.from("orders").update({ status: data.status, updated_at: new Date().toISOString() }).in("id", liveIds);
+      if (error) throw new Error(error.message);
+    }
+
+    return { updated: data.orderIds.length };
+  });
+
 export const getWebProcessingOrderCount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
