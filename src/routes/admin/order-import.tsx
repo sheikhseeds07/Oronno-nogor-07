@@ -299,108 +299,84 @@ function OrderImport() {
         )}
       </div>
 
-      {/* One popup: old site orders + new file orders for every duplicate phone */}
+      {/* Compact unified duplicate popup */}
       {dupOpen && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 p-4">
-          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-card p-4 shadow-xl">
-            <div className="flex items-center gap-2 text-base font-bold text-amber-700">
-              <Users className="h-5 w-5" /> ডুপ্লিকেট অর্ডার পাওয়া গেছে
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 p-3">
+          <div className="max-h-[82vh] w-full max-w-2xl overflow-hidden rounded-xl bg-card shadow-2xl">
+            <div className="border-b px-4 py-3">
+              <div className="flex items-center gap-2 text-sm font-bold text-amber-700">
+                <Users className="h-4 w-4" /> ডুপ্লিকেট অর্ডার পাওয়া গেছে
+              </div>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                একই নাম্বারের পুরনো ও নতুন অর্ডার নিচে এক লাইনে দেখানো হয়েছে। প্রয়োজন হলে ডিলিট করুন।
+              </p>
             </div>
-            <p className="mt-1 text-sm text-muted-foreground">
-              একই নাম্বারের পুরনো অর্ডার এবং এই ফাইলের নতুন অর্ডার একসাথে দেখানো হয়েছে। যেটা রাখতে চান না, পাশের ডিলিট আইকনে চাপুন।
-            </p>
 
-            <div className="mt-4 space-y-4">
+            <div className="max-h-[58vh] overflow-y-auto px-3 py-2 space-y-2">
               {currentDuplicateGroups.map((group) => (
-                <div key={group.phone} className="rounded-xl border p-3">
-                  <div className="mb-2 flex items-center justify-between">
-                    <div className="font-bold">{group.phone}</div>
-                    <div className="text-xs text-muted-foreground">
-                      পুরনো {group.oldOrders.length} + নতুন {group.newIndexes.length}
+                <div key={group.phone} className="overflow-hidden rounded-lg border bg-background">
+                  <div className="flex items-center justify-between border-b bg-slate-50 px-3 py-2">
+                    <div className="text-xs font-bold">{group.phone}</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      পুরনো {group.oldOrders.length} · নতুন {group.newIndexes.length}
                     </div>
                   </div>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div className="rounded-xl border bg-slate-50 p-2">
-                      <div className="mb-2 text-xs font-bold text-slate-600">পুরনো অর্ডার</div>
-                      {group.oldOrders.length ? group.oldOrders.map((old) => (
-                        <div key={old.id} className="mb-2 flex items-start gap-2 rounded-lg bg-white p-2 text-xs last:mb-0">
-                          <div className="min-w-0 flex-1">
-                            <div className="font-semibold">{old.customer_name}</div>
-                            <div className="text-muted-foreground">ইনভয়েস: {old.invoice_no ?? "—"} · {STATUS_BN[old.status] ?? old.status}</div>
-                            <div className="text-muted-foreground">{bnDate(old.created_at)} · {taka(old.total)}</div>
-                          </div>
-                          <button
-                            onClick={() => void deleteOldOrder(old.id)}
-                            disabled={deleteBusyId === old.id}
-                            className="rounded-lg p-1.5 text-rose-600 hover:bg-rose-50 disabled:opacity-50"
-                            title="ডিলিট"
-                          >
-                            {deleteBusyId === old.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                          </button>
-                        </div>
-                      )) : (
-                        <div className="p-2 text-xs text-muted-foreground">কোনো পুরনো অর্ডার নেই</div>
-                      )}
-                    </div>
 
-                    <div className="rounded-xl border bg-emerald-50/40 p-2">
-                      <div className="mb-2 text-xs font-bold text-emerald-700">নতুন অর্ডার — ফাইল থেকে</div>
-                      {group.newIndexes.map((i) => (
-                        <div key={i} className="mb-2 flex items-start gap-2 rounded-lg bg-white p-2 text-xs last:mb-0">
-                          <div className="min-w-0 flex-1">
-                            <div className="font-semibold">{orders[i].customer_name}</div>
-                            <div className="text-muted-foreground">
-                              {orders[i].items.map((it) => `${it.product_name} ×${it.quantity}`).join(", ")}
-                            </div>
-                            <div className="text-muted-foreground">{taka(orders[i].total)}</div>
-                          </div>
-                          <button
-                            onClick={() => removeRow(i)}
-                            className="rounded-lg p-1.5 text-rose-600 hover:bg-rose-50"
-                            title="ডিলিট"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                  <div className="divide-y">
+                    {group.oldOrders.map((old) => (
+                      <div key={old.id} className="flex min-h-10 items-center gap-2 px-3 py-2 text-xs">
+                        <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">পুরনো</span>
+                        <div className="min-w-0 flex-1">
+                          <span className="font-semibold">{old.customer_name}</span>
+                          <span className="ml-2 text-muted-foreground">
+                            {old.invoice_no ?? "—"} · {STATUS_BN[old.status] ?? old.status} · {taka(old.total)} · {bnDate(old.created_at)}
+                          </span>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                        <button
+                          onClick={() => void deleteOldOrder(old.id)}
+                          disabled={deleteBusyId === old.id}
+                          className="shrink-0 rounded-md p-1.5 text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+                          title="পুরনো অর্ডার ডিলিট"
+                        >
+                          {deleteBusyId === old.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
+                    ))}
 
-              {([] as PrevOrder[]).map((old) => (
-                <div key={old.id} className="rounded-xl border p-3">
-                  <div className="mb-2 font-bold">{old.customer_phone}</div>
-                  <div className="flex items-start gap-2 rounded-lg bg-slate-50 p-2 text-xs">
-                    <div className="min-w-0 flex-1">
-                      <div className="font-semibold">{old.customer_name}</div>
-                      <div className="text-muted-foreground">ইনভয়েস: {old.invoice_no ?? "—"} · {STATUS_BN[old.status] ?? old.status}</div>
-                      <div className="text-muted-foreground">{bnDate(old.created_at)} · {taka(old.total)}</div>
-                    </div>
-                    <button
-                      onClick={() => void deleteOldOrder(old.id)}
-                      disabled={deleteBusyId === old.id}
-                      className="rounded-lg p-1.5 text-rose-600 hover:bg-rose-50 disabled:opacity-50"
-                      title="ডিলিট"
-                    >
-                      {deleteBusyId === old.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                    </button>
+                    {group.newIndexes.map((i) => (
+                      <div key={i} className="flex min-h-10 items-center gap-2 bg-emerald-50/30 px-3 py-2 text-xs">
+                        <span className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">নতুন</span>
+                        <div className="min-w-0 flex-1">
+                          <span className="font-semibold">{orders[i].customer_name}</span>
+                          <span className="ml-2 text-muted-foreground">
+                            {orders[i].items.map((it) => `${it.product_name} ×${it.quantity}`).join(", ")} · {taka(orders[i].total)}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => removeRow(i)}
+                          className="shrink-0 rounded-md p-1.5 text-rose-600 hover:bg-rose-50"
+                          title="ফাইলের অর্ডার ডিলিট"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="mt-4 flex gap-2">
+            <div className="flex gap-2 border-t bg-slate-50 px-3 py-3">
               <button
                 onClick={() => setDupOpen(false)}
-                className="flex-1 rounded-lg border px-4 py-2 text-sm font-bold"
+                className="flex-1 rounded-lg border bg-white px-3 py-2 text-xs font-bold hover:bg-slate-50"
               >
                 বন্ধ
               </button>
               <button
                 onClick={() => void doImport()}
                 disabled={busy || previewBusy || !orders.length || !!dupGroups.length}
-                className="flex-1 rounded-lg bg-brand px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+                className="flex-1 rounded-lg bg-brand px-3 py-2 text-xs font-bold text-white shadow-sm disabled:opacity-50"
               >
                 {busy ? "ইমপোর্ট হচ্ছে..." : "ঠিক আছে — Import চালিয়ে যান"}
               </button>
