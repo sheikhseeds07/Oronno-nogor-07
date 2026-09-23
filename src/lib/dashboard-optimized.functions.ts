@@ -119,7 +119,12 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
 
   const actorByOrder = new Map<string, string>();
   for (const row of ordersR.data ?? []) {
-    const actor = row?.confirmed_by ?? row?.created_by;
+    // Incomplete cancellations belong to the employee currently assigned to
+    // the incomplete order. Web cancellations keep confirmed_by/created_by.
+    const historyRow = history.find((h: any) => String(h?.order_id ?? "") === String(row?.id ?? ""));
+    const actor = String(historyRow?.source ?? "").toLowerCase() === "incomplete"
+      ? row?.assigned_to
+      : (row?.confirmed_by ?? row?.created_by);
     if (actor) actorByOrder.set(String(row.id), String(actor));
   }
   for (const row of deletedR.data ?? []) {
