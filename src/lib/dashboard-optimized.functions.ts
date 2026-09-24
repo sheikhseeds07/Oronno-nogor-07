@@ -235,10 +235,18 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
         const orderId = String(event?.order_id ?? "");
         const target = rows.get(actor);
         if (!target || !orderId) continue;
-        const source = cancelSourceByOrder.get(orderId) ?? sourceByOrder.get(orderId) ?? "";
+
+        // Massage/import origin is authoritative. Do not let an older
+        // cancellation-history source ("web") hide a massage cancellation.
+        const orderSource = sourceByOrder.get(orderId) ?? "";
+        if (orderSource === "__import__") {
+          target.massage_cancelled += 1;
+          continue;
+        }
+
+        const source = cancelSourceByOrder.get(orderId) ?? orderSource;
         if (source === "incomplete") target.incomplete_cancelled += 1;
         else if (source === "web") target.cancelled += 1;
-        else if (source === "__import__") target.massage_cancelled += 1;
       }
     }
   } catch {
@@ -246,7 +254,10 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
   }
 
   for (const row of rows.values()) {
-    row.confirmed = Number(row.web_confirmed ?? 0) + Number(row.incomplete_confirmed ?? 0);
+    row.confirmed =
+      Number(row.web_confirmed ?? 0) +
+      Number(row.incomplete_confirmed ?? 0) +
+      Number(row.massage_confirmed ?? 0);
     row.total = row.confirmed + Number(row.cancelled ?? 0) + Number(row.incomplete_cancelled ?? 0);
   }
 
