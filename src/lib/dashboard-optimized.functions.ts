@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
+import { isMassageOrder } from "@/lib/order-origin";
 
 const RangeSchema = z.object({ from: z.string().datetime(), to: z.string().datetime() });
 const empty = { total: 0, confirmed: 0, processing: 0, cancelled: 0 };
@@ -122,12 +123,12 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
   ));
 
   const confirmOrdersR = confirmIds.length
-    ? await db.from("orders").select("id,source,originated_from_import").in("id", confirmIds)
+    ? await db.from("orders").select("id,source,originated_from_import,notes").in("id", confirmIds)
     : { data: [], error: null };
   if (confirmOrdersR.error) throw new Error(confirmOrdersR.error.message);
 
   const confirmSourceByOrder = new Map<string, string>(
-    (confirmOrdersR.data ?? []).map((row: any) => [String(row.id), String(row.originated_from_import ? "__import__" : row.source ?? "").toLowerCase()])
+    (confirmOrdersR.data ?? []).map((row: any) => [String(row.id), isMassageOrder(row) ? "__import__" : String(row.source ?? "").toLowerCase()])
   );
 
   // Imported/deleted orders can still have confirmation events. Fill missing
@@ -138,7 +139,7 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
     if (!deletedConfirmR.error) {
       for (const row of deletedConfirmR.data ?? []) {
         const data = row?.order_data && typeof row.order_data === "object" ? row.order_data : {};
-        confirmSourceByOrder.set(String(row.id), data?.originated_from_import ? "__import__" : String(data?.source ?? "").toLowerCase());
+        confirmSourceByOrder.set(String(row.id), isMassageOrder(data) ? "__import__" : String(data?.source ?? "").toLowerCase());
       }
     }
   }
@@ -208,17 +209,17 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
       ));
 
       const [ordersR, deletedR, cancelHistoryR] = await Promise.all([
-        cancelIds.length ? db.from("orders").select("id,source,originated_from_import").in("id", cancelIds) : Promise.resolve({ data: [], error: null }),
+        cancelIds.length ? db.from("orders").select("id,source,originated_from_import,notes").in("id", cancelIds) : Promise.resolve({ data: [], error: null }),
         cancelIds.length ? db.from("deleted_orders").select("id,order_data").in("id", cancelIds) : Promise.resolve({ data: [], error: null }),
         cancelIds.length ? db.from("order_cancellation_history").select("order_id,source,cancelled_at").in("order_id", cancelIds).gte("cancelled_at", from).lte("cancelled_at", to) : Promise.resolve({ data: [], error: null }),
       ]);
 
       const sourceByOrder = new Map<string, string>();
-      for (const row of ordersR.data ?? []) sourceByOrder.set(String(row.id), String(row.originated_from_import ? "__import__" : row.source ?? "").toLowerCase());
+      for (const row of ordersR.data ?? []) sourceByOrder.set(String(row.id), isMassageOrder(row) ? "__import__" : String(row.source ?? "").toLowerCase());
       for (const row of deletedR.data ?? []) {
         if (!sourceByOrder.has(String(row.id))) {
           const data = row?.order_data && typeof row.order_data === "object" ? row.order_data : {};
-          sourceByOrder.set(String(row.id), data?.originated_from_import ? "__import__" : String(data?.source ?? "").toLowerCase());
+          sourceByOrder.set(String(row.id), isMassageOrder(data) ? "__import__" : String(data?.source ?? "").toLowerCase());
         }
       }
       const cancelSourceByOrder = new Map<string, string>();
@@ -307,7 +308,7 @@ export const getEmployeeMetricOrders = createServerFn({ method: "POST" })
 
     const [ordersR, deletedR] = await Promise.all([
       db.from("orders")
-        .select("id,source,originated_from_import,invoice_no,customer_name,customer_phone,total,status,created_at,updated_at")
+        .select("id,source,originated_from_import,notes,invoice_no,customer_name,customer_phone,total,status,created_at,updated_at")
         .in("id", ids),
       db.from("deleted_orders")
         .select("id,order_data,invoice_no,customer_name,customer_phone,total,original_status,original_created_at,deleted_at")
@@ -338,7 +339,7 @@ export const getEmployeeMetricOrders = createServerFn({ method: "POST" })
       ? eventIds.filter((id) => {
           const live = (ordersR.data ?? []).find((o: any) => String(o.id) === id);
           const archived = (deletedR.data ?? []).find((o: any) => String(o.id) === id);
-          const source = live?.originated_from_import || archived?.order_data?.originated_from_import ? "__import__" : String(live?.source ?? archived?.order_data?.source ?? "").toLowerCase();
+          const source = isMassageOrder(live ?? archived?.order_data) ? "__import__" : String(live?.source ?? archived?.order_data?.source ?? "").toLowerCase();
           return source === (data.metric === "incomplete_confirm" ? "incomplete" : "web");
         })
       : ids;
