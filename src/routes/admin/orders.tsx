@@ -1233,9 +1233,14 @@ function OrdersTable({
             <span>অর্ডার · মোট {totalRows}</span>
           </div>
           <div className="flex items-center gap-1">
-            <button disabled={page === 1} onClick={() => setPage((p) => Math.max(1,p-1))} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold disabled:opacity-40">Previous</button>
-            {Array.from({length:totalPages},(_,i)=>i+1).map((p) => <button key={p} onClick={() => setPage(p)} className={`min-w-8 rounded-lg px-2 py-1.5 text-xs font-bold ${page===p ? 'bg-gradient-to-br from-brand to-brand-dark text-white shadow-sm' : 'border border-slate-200 text-slate-700 hover:bg-slate-50'}`}>{p}</button>)}
-            <button disabled={page === totalPages} onClick={() => setPage((p) => Math.min(totalPages,p+1))} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold disabled:opacity-40">Next</button>
+            <button disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold disabled:opacity-40">Previous</button>
+            {Array.from({ length: Math.min(10, totalPages) }, (_, i) => {
+              const start = Math.floor((page - 1) / 10) * 10 + 1;
+              return start + i;
+            }).filter((p) => p <= totalPages).map((p) => (
+              <button key={p} onClick={() => setPage(p)} className={`min-w-8 rounded-lg px-2 py-1.5 text-xs font-bold ${page===p ? 'bg-gradient-to-br from-brand to-brand-dark text-white shadow-sm' : 'border border-slate-200 text-slate-700 hover:bg-slate-50'}`}>{p}</button>
+            ))}
+            <button disabled={page === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-bold disabled:opacity-40">Next</button>
           </div>
         </div>
       )}
