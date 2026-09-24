@@ -53,7 +53,14 @@ async function getMetaProfitData(from: string, to: string) {
     const base = `https://graph.facebook.com/v23.0/act_${encodeURIComponent(accountId)}`;
     const timeRange = encodeURIComponent(JSON.stringify({ since: bdDay(from), until: bdDay(to) }));
     const auth = `access_token=${encodeURIComponent(String(cfg.access_token).trim())}`;
-    const response = await fetch(`${base}/insights?fields=spend&time_range=${timeRange}&level=account&${auth}`);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    let response: Response;
+    try {
+      response = await fetch(`${base}/insights?fields=spend&time_range=${timeRange}&level=account&${auth}`, { signal: controller.signal });
+    } finally {
+      clearTimeout(timeout);
+    }
     const json = await response.json();
     if (!response.ok || json?.error) throw new Error(json?.error?.message || "Meta spend request failed");
     const adSpendUsd = Number(json?.data?.[0]?.spend || 0);
@@ -414,7 +421,13 @@ export const getOptimizedDashboardReport = createServerFn({ method: "POST" })
     const sourceBreakdown = Array.isArray(s.sourceBreakdown) ? s.sourceBreakdown : [];
     let employeePerformance = Array.isArray(s.employeePerformance) ? s.employeePerformance : [];
 
-    employeePerformance = await getLiveEmployeeCancellationPerformance(data.from, data.to, employeePerformance);
+    // Employee analytics is supplementary: never block the whole dashboard if
+    // its audit/history tables are temporarily unavailable.
+    try {
+      employeePerformance = await getLiveEmployeeCancellationPerformance(data.from, data.to, employeePerformance);
+    } catch {
+      // Keep the RPC-provided employee data so the rest of the dashboard still loads.
+    }
 
     const [productsR, customersR, todayVisitorsR] = await Promise.all([
       supabaseAdmin.from("products").select("id,name,stock,is_active,cost").eq("is_active", true).order("stock", { ascending: true }).limit(100),
@@ -425,9 +438,9 @@ export const getOptimizedDashboardReport = createServerFn({ method: "POST" })
         .gte("last_seen", new Date(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Dhaka" }) + "T00:00:00+06:00").toISOString())
         .or("path.eq./,path.like./landing/*"),
     ]);
-    for (const result of [productsR, customersR, todayVisitorsR]) if (result.error) throw new Error(result.error.message);
-
-    const products = productsR.data ?? [];
+    // These cards are independent from the sales report. A temporary failure
+    // in one auxiliary table must not blank the entire dashboard.
+    const products = productsR.error ? [] : (productsR.data ?? []);
     const lowStock = products.filter((p: any) => Number(p.stock ?? 0) <= 5).slice(0, 10).map((p: any) => ({ id: p.id, name: p.name, stock: p.stock ?? 0 }));
     const stockSummary = {
       total: products.length,
@@ -480,8 +493,8 @@ export const getOptimizedDashboardReport = createServerFn({ method: "POST" })
       bestSelling,
       lowStock,
       stockSummary,
-      todayVisitors: Number(todayVisitorsR.count ?? 0),
+      todayVisitors: Number(todayVisitorsR.error ? 0 : todayVisitorsR.count ?? 0),
       employeePerformance,
-      customerCount: Number(customersR.count ?? 0),
+      customerCount: Number(customersR.error ? 0 : customersR.count ?? 0),
     };
   });
