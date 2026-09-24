@@ -1695,7 +1695,7 @@ function CourierSuccessCell({ phone }: { phone: string }) {
   const fn = useServerFn(fetchCourierHistory);
   const cellRef = useRef<HTMLDivElement>(null);
   const [nearViewport, setNearViewport] = useState(false);
-  const digits = (phone || "").replace(/\D/g, "").slice(-11);
+  const digits = normalizePhone(phone);
   const enabled = digits.length >= 10;
 
   useEffect(() => {
@@ -1722,7 +1722,9 @@ function CourierSuccessCell({ phone }: { phone: string }) {
     queryKey: ["courier-rate", digits],
     enabled: enabled && nearViewport,
     queryFn: () => fn({ data: { phone: digits } }),
-    staleTime: 10 * 60_000,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     retry: 2,
     retryDelay: (attempt) => 600 * (attempt + 1),
   });
@@ -1731,9 +1733,9 @@ function CourierSuccessCell({ phone }: { phone: string }) {
   if (enabled && nearViewport && isFetching && !data) {
     content = <span className="text-xs text-muted-foreground">লোড...</span>;
   } else if (data?.configured) {
-    const total = data.stats.reduce((sum, stat) => sum + stat.total, 0);
-    const success = data.stats.reduce((sum, stat) => sum + stat.success, 0);
-    const cancelled = data.stats.reduce((sum, stat) => sum + stat.cancelled, 0);
+    const total = data.overall?.total ?? data.stats.reduce((sum, stat) => sum + stat.total, 0);
+    const success = data.overall?.success ?? data.stats.reduce((sum, stat) => sum + stat.success, 0);
+    const cancelled = data.overall?.cancelled ?? data.stats.reduce((sum, stat) => sum + stat.cancelled, 0);
     if (total) {
       const rate = Math.round((success / total) * 100);
       const ring = rate >= 80 ? "border-emerald-500 text-emerald-700" : rate >= 50 ? "border-amber-500 text-amber-700" : "border-rose-500 text-rose-700";
@@ -1975,15 +1977,17 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
     queryKey: ["hoorin-courier-history", phoneDigits],
     enabled: phoneReady,
     queryFn: () => courierHistoryFn({ data: { phone: phoneDigits } }),
-    staleTime: 5 * 60_000,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     retry: 2,
     retryDelay: (attempt) => 600 * (attempt + 1),
     placeholderData: (prev) => prev,
   });
   const courierStats = extHistory?.configured ? extHistory.stats : [];
-  const overallTotal = courierStats.reduce((a, s) => a + s.total, 0);
-  const overallSuccess = courierStats.reduce((a, s) => a + s.success, 0);
-  const overallCancelled = courierStats.reduce((a, s) => a + s.cancelled, 0);
+  const overallTotal = extHistory?.overall?.total ?? courierStats.reduce((a, s) => a + s.total, 0);
+  const overallSuccess = extHistory?.overall?.success ?? courierStats.reduce((a, s) => a + s.success, 0);
+  const overallCancelled = extHistory?.overall?.cancelled ?? courierStats.reduce((a, s) => a + s.cancelled, 0);
   const hoorinError = extHistory?.error ?? null;
   const hoorinReady = !!extHistory?.configured;
 
@@ -2561,9 +2565,9 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
     extHistory?.configured ? extHistory.stats : [];
 
   // Overall = sum of all couriers from Hoorin only. Independent of "Our Record".
-  const overallTotal = courierStats.reduce((a, s) => a + s.total, 0);
-  const overallSuccess = courierStats.reduce((a, s) => a + s.success, 0);
-  const overallCancelled = courierStats.reduce((a, s) => a + s.cancelled, 0);
+  const overallTotal = extHistory?.overall?.total ?? courierStats.reduce((a, s) => a + s.total, 0);
+  const overallSuccess = extHistory?.overall?.success ?? courierStats.reduce((a, s) => a + s.success, 0);
+  const overallCancelled = extHistory?.overall?.cancelled ?? courierStats.reduce((a, s) => a + s.cancelled, 0);
   const hoorinError = extHistory?.error ?? null;
   const hoorinReady = !!extHistory?.configured;
 
