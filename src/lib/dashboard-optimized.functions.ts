@@ -96,7 +96,7 @@ async function getMetaProfitData(from: string, to: string) {
 async function getLiveEmployeeCancellationPerformance(from: string, to: string, baseRows: any[]) {
   const db = supabaseAdmin as any;
 
-  const [employeesR, divisionMembersR, cancelEventsR, confirmEventsR] = await Promise.all([
+  const [employeesR, divisionMembersR, cancelEventsR] = await Promise.all([
     db.from("employees").select("user_id,name").eq("is_active", true),
     db.from("order_distribution_members").select("user_id,enabled").eq("enabled", true),
     db.from("order_action_events")
@@ -104,22 +104,14 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
       .eq("action", "cancel")
       .gte("created_at", from)
       .lte("created_at", to),
-    db.from("order_action_events")
-      .select("order_id,actor_id,action,created_at")
-      .eq("action", "confirm")
-      .gte("created_at", from)
-      .lte("created_at", to),
   ]);
 
   if (employeesR.error) throw new Error(employeesR.error.message);
   if (divisionMembersR.error) throw new Error(divisionMembersR.error.message);
   if (cancelEventsR.error) throw new Error(cancelEventsR.error.message);
-  if (confirmEventsR.error) throw new Error(confirmEventsR.error.message);
-
   const cancelEvents = cancelEventsR.data ?? [];
-  const confirmEvents = confirmEventsR.data ?? [];
   const allIds = Array.from(new Set(
-    [...cancelEvents, ...confirmEvents]
+    cancelEvents
       .map((e: any) => String(e?.order_id ?? ""))
       .filter(Boolean)
   ));
@@ -163,10 +155,11 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
     if (!id) continue;
     rows.set(id, {
       ...row,
-      // These are rebuilt from the append-only action events below.
-      confirmed: 0,
-      web_confirmed: 0,
-      incomplete_confirmed: 0,
+      // Confirmation metrics come from the dashboard RPC and are kept intact.
+      // Only cancellation metrics are rebuilt from the append-only events.
+      confirmed: Number(row?.confirmed ?? 0),
+      web_confirmed: Number(row?.web_confirmed ?? 0),
+      incomplete_confirmed: Number(row?.incomplete_confirmed ?? 0),
       cancelled: 0,
       incomplete_cancelled: 0,
       total: Number(row?.total ?? 0),
@@ -189,25 +182,6 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
         order_division_active: orderDivisionActiveIds.has(id),
       });
     }
-  }
-
-  // Confirmation attribution is based on the actual confirmation event actor
-  // and the order's persisted source. Therefore Web and Incomplete can never
-  // be mixed together.
-  for (const event of confirmEvents) {
-    const actor = String(event?.actor_id ?? "");
-    const orderId = String(event?.order_id ?? "");
-    if (!actor || !orderId) continue;
-    const target = rows.get(actor);
-    if (!target) continue;
-
-    const source = sourceByOrder.get(orderId);
-    if (source === "incomplete") target.incomplete_confirmed += 1;
-    else if (source === "web") target.web_confirmed += 1;
-  }
-
-  for (const target of rows.values()) {
-    target.confirmed = Number(target.web_confirmed ?? 0) + Number(target.incomplete_confirmed ?? 0);
   }
 
   // Cancellation attribution uses the cancellation event actor, while the
