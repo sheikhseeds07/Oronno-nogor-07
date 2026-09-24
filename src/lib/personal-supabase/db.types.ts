@@ -1420,6 +1420,7 @@ export type Database = {
           invoice_no: string | null
           notes: string | null
           originated_from_incomplete: boolean
+          originated_from_import: boolean
           payment_method: string | null
           printed_at: string | null
           source: Database["public"]["Enums"]["order_source"]
@@ -1450,6 +1451,7 @@ export type Database = {
           invoice_no?: string | null
           notes?: string | null
           originated_from_incomplete?: boolean
+          originated_from_import?: boolean
           payment_method?: string | null
           printed_at?: string | null
           source?: Database["public"]["Enums"]["order_source"]
@@ -1480,6 +1482,7 @@ export type Database = {
           invoice_no?: string | null
           notes?: string | null
           originated_from_incomplete?: boolean
+          originated_from_import?: boolean
           payment_method?: string | null
           printed_at?: string | null
           source?: Database["public"]["Enums"]["order_source"]
