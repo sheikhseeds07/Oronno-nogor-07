@@ -96,9 +96,14 @@ async function getMetaProfitData(from: string, to: string) {
 async function getLiveEmployeeCancellationPerformance(from: string, to: string, baseRows: any[]) {
   const db = supabaseAdmin as any;
 
-  const [employeesR, divisionMembersR, cancelEventsR] = await Promise.all([
+  const [employeesR, divisionMembersR, confirmEventsR, cancelEventsR] = await Promise.all([
     db.from("employees").select("user_id,name").eq("is_active", true),
     db.from("order_distribution_members").select("user_id,enabled").eq("enabled", true),
+    db.from("order_action_events")
+      .select("order_id,actor_id,action,created_at")
+      .eq("action", "confirm")
+      .gte("created_at", from)
+      .lte("created_at", to),
     db.from("order_action_events")
       .select("order_id,actor_id,action,created_at")
       .eq("action", "cancel")
@@ -108,10 +113,12 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
 
   if (employeesR.error) throw new Error(employeesR.error.message);
   if (divisionMembersR.error) throw new Error(divisionMembersR.error.message);
+  if (confirmEventsR.error) throw new Error(confirmEventsR.error.message);
   if (cancelEventsR.error) throw new Error(cancelEventsR.error.message);
+  const confirmEvents = confirmEventsR.data ?? [];
   const cancelEvents = cancelEventsR.data ?? [];
   const allIds = Array.from(new Set(
-    cancelEvents
+    [...confirmEvents, ...cancelEvents]
       .map((e: any) => String(e?.order_id ?? ""))
       .filter(Boolean)
   ));
@@ -186,6 +193,21 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
 
   // Cancellation attribution uses the cancellation event actor, while the
   // source is read from the persistent order/cancellation record.
+  // Confirmation attribution is event-based so it reflects the real employee
+  // action in the selected date range, with the order source determining whether
+  // the confirmation belongs to Web or Incomplete.
+  for (const event of confirmEvents) {
+    const actor = String(event?.actor_id ?? "");
+    const orderId = String(event?.order_id ?? "");
+    if (!actor || !orderId) continue;
+    const target = rows.get(actor);
+    if (!target) continue;
+
+    const source = sourceByOrder.get(orderId) ?? "";
+    if (source === "incomplete") target.incomplete_confirmed += 1;
+    else if (source === "web") target.web_confirmed += 1;
+  }
+
   const cancelSourceByOrder = new Map<string, string>();
   for (const row of cancelHistoryR.data ?? []) {
     cancelSourceByOrder.set(String(row.order_id), String(row.source ?? "").toLowerCase());
