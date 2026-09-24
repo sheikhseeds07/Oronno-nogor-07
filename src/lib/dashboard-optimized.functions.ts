@@ -88,7 +88,7 @@ async function getMetaProfitData(from: string, to: string) {
  */
 async function getLiveEmployeeCancellationPerformance(from: string, to: string, baseRows: any[]) {
   const db = supabaseAdmin as any;
-  const [historyR, employeesR, actionEventsR] = await Promise.all([
+  const [historyR, employeesR, actionEventsR, confirmEventsR] = await Promise.all([
     db
       .from("order_cancellation_history")
       .select("order_id,source,cancelled_at")
@@ -104,10 +104,17 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
       .eq("action", "cancel")
       .gte("created_at", from)
       .lte("created_at", to),
+    db
+      .from("order_action_events")
+      .select("order_id,actor_id,action,created_at")
+      .eq("action", "confirm")
+      .gte("created_at", from)
+      .lte("created_at", to),
   ]);
   if (historyR.error) throw new Error(historyR.error.message);
   if (employeesR.error) throw new Error(employeesR.error.message);
   if (actionEventsR.error) throw new Error(actionEventsR.error.message);
+  if (confirmEventsR.error) throw new Error(confirmEventsR.error.message);
 
   const history = historyR.data ?? [];
   if (!history.length) return baseRows;
@@ -154,6 +161,17 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
     if (actor) actorByOrder.set(String(row.id), String(actor));
   }
 
+  const confirmIds = Array.from(new Set((confirmEventsR.data ?? []).map((row: any) => String(row.order_id ?? "")).filter(Boolean)));
+  const [confirmOrdersR, confirmDeletedR] = await Promise.all([
+    confirmIds.length ? db.from("orders").select("id,source").in("id", confirmIds) : Promise.resolve({ data: [], error: null }),
+    confirmIds.length ? db.from("deleted_orders").select("id,order_data").in("id", confirmIds) : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (confirmOrdersR.error) throw new Error(confirmOrdersR.error.message);
+  if (confirmDeletedR.error) throw new Error(confirmDeletedR.error.message);
+  const confirmSourceByOrder = new Map<string, string>();
+  for (const row of confirmOrdersR.data ?? []) confirmSourceByOrder.set(String(row.id), String(row.source ?? "").toLowerCase());
+  for (const row of confirmDeletedR.data ?? []) confirmSourceByOrder.set(String(row.id), String(row.order_data?.source ?? "").toLowerCase());
+
   const rows = new Map<string, any>();
   for (const row of baseRows) {
     const id = String(row?.user_id ?? "");
@@ -162,6 +180,7 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
       ...row,
       cancelled: 0,
       incomplete_cancelled: 0,
+      incomplete_confirmed: 0,
       total: Number(row?.total ?? 0),
     });
   }
@@ -175,9 +194,18 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
         confirmed: 0,
         cancelled: 0,
         incomplete_cancelled: 0,
+        incomplete_confirmed: 0,
         total: 0,
       });
     }
+  }
+
+  for (const event of confirmEventsR.data ?? []) {
+    const actor = String(event?.actor_id ?? "");
+    const orderId = String(event?.order_id ?? "");
+    if (!actor || confirmSourceByOrder.get(orderId) !== "incomplete") continue;
+    const target = rows.get(actor);
+    if (target) target.incomplete_confirmed += 1;
   }
 
   for (const row of history) {
@@ -200,7 +228,7 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
 
 const EmployeeMetricSchema = z.object({
   userId: z.string().uuid(),
-  metric: z.enum(["confirmed", "web_cancel", "incomplete_cancel"]),
+  metric: z.enum(["web_confirm", "incomplete_confirm", "web_cancel", "incomplete_cancel"]),
   from: z.string().datetime(),
   to: z.string().datetime(),
 });
@@ -224,7 +252,7 @@ export const getEmployeeMetricOrders = createServerFn({ method: "POST" })
     if (!role.data?.length) throw new Error("Unauthorized");
 
     const db = supabaseAdmin as any;
-    const action = data.metric === "confirmed" ? "confirm" : "cancel";
+    const action = data.metric === "web_confirm" || data.metric === "incomplete_confirm" ? "confirm" : "cancel";
     const { data: events, error: eventsError } = await db
       .from("order_action_events")
       .select("order_id,actor_id,action,created_at")
@@ -238,30 +266,27 @@ export const getEmployeeMetricOrders = createServerFn({ method: "POST" })
     const eventIds = Array.from(new Set((events ?? []).map((e: any) => String(e.order_id ?? "")).filter(Boolean)));
     if (!eventIds.length) return [];
 
-    const { data: history, error: historyError } = await db
+    const history = data.metric === "web_cancel" || data.metric === "incomplete_cancel" ? await db
       .from("order_cancellation_history")
       .select("order_id,source,cancelled_at")
       .in("order_id", eventIds)
       .gte("cancelled_at", data.from)
-      .lte("cancelled_at", data.to);
-    if (historyError) throw new Error(historyError.message);
+      .lte("cancelled_at", data.to) : { data: [], error: null };
+    if (history.error) throw new Error(history.error.message);
 
-    const sourceByOrder = new Map<string, string>((history ?? []).map((h: any) => [
-      String(h.order_id),
-      String(h.source ?? "").toLowerCase(),
-    ]));
-    const ids = data.metric === "confirmed"
-      ? eventIds
-      : eventIds.filter((id) => sourceByOrder.get(id) === (data.metric === "incomplete_cancel" ? "incomplete" : "web"));
+    const sourceByOrder = new Map<string, string>((history.data ?? []).map((h: any) => [String(h.order_id), String(h.source ?? "").toLowerCase()]));
+    const ids = data.metric === "web_cancel" || data.metric === "incomplete_cancel"
+      ? eventIds.filter((id) => sourceByOrder.get(id) === (data.metric === "incomplete_cancel" ? "incomplete" : "web"))
+      : eventIds;
 
     if (!ids.length) return [];
 
     const [ordersR, deletedR] = await Promise.all([
       db.from("orders")
-        .select("id,invoice_no,customer_name,customer_phone,total,status,created_at,updated_at")
+        .select("id,source,invoice_no,customer_name,customer_phone,total,status,created_at,updated_at")
         .in("id", ids),
       db.from("deleted_orders")
-        .select("id,invoice_no,customer_name,customer_phone,total,original_status,original_created_at,deleted_at")
+        .select("id,order_data,invoice_no,customer_name,customer_phone,total,original_status,original_created_at,deleted_at")
         .in("id", ids),
     ]);
     if (ordersR.error) throw new Error(ordersR.error.message);
@@ -285,8 +310,17 @@ export const getEmployeeMetricOrders = createServerFn({ method: "POST" })
       }
     }
 
+    const filteredIds = (data.metric === "web_confirm" || data.metric === "incomplete_confirm")
+      ? eventIds.filter((id) => {
+          const live = (ordersR.data ?? []).find((o: any) => String(o.id) === id);
+          const archived = (deletedR.data ?? []).find((o: any) => String(o.id) === id);
+          const source = String(live?.source ?? archived?.order_data?.source ?? "").toLowerCase();
+          return source === (data.metric === "incomplete_confirm" ? "incomplete" : "web");
+        })
+      : ids;
+
     return eventIds
-      .filter((id) => ids.includes(id))
+      .filter((id) => filteredIds.includes(id))
       .map((id) => byId.get(id))
       .filter(Boolean);
   });
