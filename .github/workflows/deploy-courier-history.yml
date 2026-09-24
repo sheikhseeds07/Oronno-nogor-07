@@ -1,0 +1,22 @@
+name: Deploy courier history bridge
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/courier-history-bridge/**"
+      - ".github/workflows/deploy-courier-history.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Deploy courier history bridge
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SHEIKH }}
+        run: supabase functions deploy courier-history-bridge --project-ref bvuhvzccziuniujeogng
