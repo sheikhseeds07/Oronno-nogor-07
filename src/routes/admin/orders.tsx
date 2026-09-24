@@ -1694,7 +1694,6 @@ function escapeHtml(s: string) {
 function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCreatedAt?: string | null }) {
   const fn = useServerFn(fetchCourierHistory);
   const cellRef = useRef<HTMLDivElement>(null);
-  const [nearViewport, setNearViewport] = useState(false);
   const digits = normalizePhone(phone);
   const enabled = digits.length >= 10;
   const clientCacheKey = useMemo(
@@ -1720,29 +1719,9 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
 
   const cachedClientResult = readClientCache();
 
-  useEffect(() => {
-    const node = cellRef.current;
-    if (!node) return;
-    if (typeof IntersectionObserver === "undefined") {
-      setNearViewport(true);
-      return;
-    }
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          setNearViewport(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: "250px 0px" },
-    );
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
-
   const { data, isFetching } = useQuery({
     queryKey: ["hoorin-courier-history", digits, orderCreatedAt ?? ""],
-    enabled: enabled && nearViewport && !cachedClientResult,
+    enabled: enabled && !cachedClientResult,
     queryFn: () => fn({ data: { phone: digits, orderCreatedAt } }),
     initialData: cachedClientResult ?? undefined,
     staleTime: Infinity,
@@ -1764,7 +1743,7 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
 
   let content: ReactNode = <span className="text-xs text-muted-foreground">—</span>;
   const displayData = data ?? cachedClientResult;
-  if (enabled && nearViewport && isFetching && !displayData) {
+  if (enabled && isFetching && !displayData) {
     content = <span className="text-xs text-muted-foreground">লোড...</span>;
   } else if (displayData?.configured) {
     const total = displayData.overall?.total ?? displayData.stats.reduce((sum: number, stat: any) => sum + stat.total, 0);
