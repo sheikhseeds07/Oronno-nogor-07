@@ -2,12 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 
-// Keep this list aligned with the permission controls exposed in Employee Management.
-const PERM_KEYS = [
-  "dashboard","orders","order_import","products","offers","categories",
-  "customers","banners","landing_pages","employees","all_api","settings",
-] as const;
-
+const PERM_KEYS = ["dashboard","orders","order_import","products","offers","categories","customers","banners","coupons","landing_pages","employees","all_api","settings","dash_visitors","dash_web_orders","dash_incomplete","dash_confirmed_sales","dash_stock_alerts","dash_ads","dash_top_selling","dash_employee_perf","dash_stock_control","dash_hourly"] as const;
 const PermSchema = z.object(Object.fromEntries(PERM_KEYS.map((k) => [k, z.boolean().default(false)])) as Record<(typeof PERM_KEYS)[number], z.ZodDefault<z.ZodBoolean>>);
 
 export type EmployeePermissions = z.infer<typeof PermSchema>;
@@ -67,7 +62,7 @@ export const updateEmployeePermissions = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ user_id: z.string().uuid(), permissions: PermSchema }).parse(input))
   .handler(async ({ data, context }) => {
     await assertSuperAdmin(context.supabase, context.userId);
-    const { error } = await context.supabase.from("employee_permissions").upsert(
+    const { error } = await context.supabase.from("employee_permissions" as any).upsert(
       { user_id: data.user_id, ...data.permissions, updated_at: new Date().toISOString() },
       { onConflict: "user_id" } as never,
     );
@@ -103,19 +98,23 @@ export const listEmployeesFull = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const db = context.supabase;
-
-    // The RPC performs the HRM permission check with auth.uid() and reads through
-    // SECURITY DEFINER, avoiding the RLS problem that caused the directory to be empty.
-    // Do not run the old direct employee_permissions RLS check here.
-    // Employee directory reads use a SECURITY DEFINER RPC so the existing
-    // employee data is returned without exposing a service-role key to the app.
-    const { data, error } = await db.rpc("list_employees_full");
-    if (error) throw new Error(error.message);
-    return (data ?? []).map((e: any) => ({
+    await assertHrm(db, context.userId);
+    const { data: emps, error: empError } = await db.from("employees").select("*").order("created_at", { ascending: false });
+    if (empError) throw new Error(empError.message);
+    const ids = (emps ?? []).map((e: any) => e.user_id).filter(Boolean) as string[];
+    const [{ data: perms, error: permError }, { data: roles, error: roleError }] = ids.length
+      ? await Promise.all([
+          db.from("employee_permissions").select("*").in("user_id", ids),
+          db.from("user_roles").select("*").in("user_id", ids),
+        ])
+      : [{ data: [], error: null }, { data: [], error: null }];
+    if (permError) throw new Error(permError.message);
+    if (roleError) throw new Error(roleError.message);
+    const permMap = new Map((perms ?? []).map((p: any) => [p.user_id, p]));
+    const roleMap = new Map((roles ?? []).map((r: any) => [r.user_id, r.role]));
+    return (emps ?? []).map((e: any) => ({
       ...e,
-      role: e.role ?? "employee",
-      permissions: e.permissions && Object.keys(e.permissions).length
-        ? { user_id: e.user_id, ...e.permissions }
-        : null,
+      role: e.user_id ? roleMap.get(e.user_id) ?? "employee" : "employee",
+      permissions: (e.user_id ? permMap.get(e.user_id) ?? null : null) as (EmployeePermissions & { user_id: string }) | null,
     }));
   });
