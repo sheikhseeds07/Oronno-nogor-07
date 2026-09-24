@@ -1691,7 +1691,7 @@ function escapeHtml(s: string) {
   return (s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 }
 
-function CourierSuccessCell({ phone }: { phone: string }) {
+function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCreatedAt?: string | null }) {
   const fn = useServerFn(fetchCourierHistory);
   const cellRef = useRef<HTMLDivElement>(null);
   const [nearViewport, setNearViewport] = useState(false);
@@ -1719,12 +1719,13 @@ function CourierSuccessCell({ phone }: { phone: string }) {
   }, []);
 
   const { data, isFetching } = useQuery({
-    queryKey: ["hoorin-courier-history", digits],
+    queryKey: ["hoorin-courier-history", digits, orderCreatedAt ?? ""],
     enabled: enabled && nearViewport,
-    queryFn: () => fn({ data: { phone: digits } }),
-    staleTime: 0,
-    refetchOnMount: "always",
-    refetchOnWindowFocus: true,
+    queryFn: () => fn({ data: { phone: digits, orderCreatedAt } }),
+    staleTime: Infinity,
+    gcTime: 24 * 60 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
     retry: 2,
     retryDelay: (attempt) => 600 * (attempt + 1),
   });
@@ -1878,7 +1879,7 @@ function OrdersTableRows({
                 </td>
                 {/* Courier Success Rate */}
                 <td className="p-3 min-w-[190px] whitespace-nowrap">
-                  <CourierSuccessCell phone={o.customer_phone} />
+                  <CourierSuccessCell phone={o.customer_phone} orderCreatedAt={o.created_at} />
                 </td>
                 {/* Action */}
                 <td className="p-3 text-right min-w-[150px] whitespace-nowrap">
