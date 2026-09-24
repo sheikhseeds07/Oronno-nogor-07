@@ -89,8 +89,9 @@ async function getMetaProfitData(from: string, to: string) {
 async function getLiveEmployeeCancellationPerformance(from: string, to: string, baseRows: any[]) {
   const db = supabaseAdmin as any;
 
-  const [employeesR, cancelEventsR, confirmEventsR] = await Promise.all([
+  const [employeesR, divisionMembersR, cancelEventsR, confirmEventsR] = await Promise.all([
     db.from("employees").select("user_id,name").eq("is_active", true),
+    db.from("order_distribution_members").select("user_id,enabled").eq("enabled", true),
     db.from("order_action_events")
       .select("order_id,actor_id,action,created_at")
       .eq("action", "cancel")
@@ -104,6 +105,7 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
   ]);
 
   if (employeesR.error) throw new Error(employeesR.error.message);
+  if (divisionMembersR.error) throw new Error(divisionMembersR.error.message);
   if (cancelEventsR.error) throw new Error(cancelEventsR.error.message);
   if (confirmEventsR.error) throw new Error(confirmEventsR.error.message);
 
@@ -146,6 +148,8 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
     }
   }
 
+  const orderDivisionActiveIds = new Set((divisionMembersR.data ?? []).map((row: any) => String(row?.user_id ?? "")).filter(Boolean));
+
   const rows = new Map<string, any>();
   for (const row of baseRows) {
     const id = String(row?.user_id ?? "");
@@ -159,6 +163,7 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
       cancelled: 0,
       incomplete_cancelled: 0,
       total: Number(row?.total ?? 0),
+      order_division_active: orderDivisionActiveIds.has(id),
     });
   }
   for (const employee of employeesR.data ?? []) {
@@ -174,6 +179,7 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
         cancelled: 0,
         incomplete_cancelled: 0,
         total: 0,
+        order_division_active: orderDivisionActiveIds.has(id),
       });
     }
   }
