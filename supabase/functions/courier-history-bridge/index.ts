@@ -123,7 +123,7 @@ function parseStats(payload: unknown): CourierStat[] {
     const inner = row.summary && typeof row.summary === "object" && !Array.isArray(row.summary) ? row.summary as JsonRecord : row;
     const total = num(inner["Total Parcels"] ?? inner["Total Delivery"] ?? inner.total_parcel ?? inner.totalParcel ?? inner.total ?? inner["total_parcel_count"] ?? inner.Total_parcels ?? inner.total_parcels ?? inner.totalParcelCount);
     const success = num(inner["Delivered Parcels"] ?? inner["Successful Delivery"] ?? inner.delivered_parcels ?? inner.success_parcel ?? inner.successParcel ?? inner.success ?? inner.delivered ?? inner["delivered_parcel"] ?? inner.total_delivered ?? inner.delivered_count);
-    const cancelled = num(inner["Canceled Parcels"] ?? inner["Canceled Delivery"] ?? inner["Cancelled Parcels"] ?? inner.cancelled_parcels ?? inner.canceled_parcels ?? inner.cancelled_parcel ?? inner.cancelledParcel ?? inner.cancel ?? inner.cancelled ?? inner["cancelled_parcel"] ?? inner.total_cancelled ?? inner.cancelled_count);
+    const cancelled = num(inner["Canceled Parcels"] ?? inner["Canceled Delivery"] ?? inner["Cancelled Parcels"] ?? inner.cancelled_parcels ?? inner.cancelled_parcels ?? inner.cancelled_parcel ?? inner.cancelledParcel ?? inner.cancel ?? inner.cancelled ?? inner["cancelled_parcel"] ?? inner.total_cancelled ?? inner.cancelled_count);
     const hasCounts = COUNT_KEYS.some((k) => Object.prototype.hasOwnProperty.call(inner, k));
 
     const rawName = typeof inner.name === "string" && inner.name.trim() ? inner.name.trim() : key;
@@ -188,7 +188,7 @@ async function fetchHoorin(admin: ReturnType<typeof createClient>, phone: string
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), HOORIN_TIMEOUT_MS);
     try {
-      const res = await fetch(`${cfg.endpoint}?apiKey=${encodeURIComponent(cfg.apiKey)}&searchTerm=${encodeURIComponent(phone)}`, { method: "GET", headers: { Accept: "application/json" }, signal: controller.signal });
+      const res = await fetch(`${cfg.endpoint}?apiKey=${encodeURIComponent(cfg.apiKey)}&searchTerm=${encodeURIComponent(phone)}&view=full&cache=off`, { method: "GET", headers: { Accept: "application/json" }, signal: controller.signal });
       const text = await res.text();
       let payload: unknown = null;
       try { payload = JSON.parse(text); } catch { payload = null; }
