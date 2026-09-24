@@ -253,7 +253,7 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
 
 const EmployeeMetricSchema = z.object({
   userId: z.string().uuid(),
-  metric: z.enum(["web_confirm", "incomplete_confirm", "web_cancel", "incomplete_cancel"]),
+  metric: z.enum(["web_confirm", "incomplete_confirm", "massage_confirm", "web_cancel", "incomplete_cancel", "massage_cancel"]),
   from: z.string().datetime(),
   to: z.string().datetime(),
 });
@@ -277,7 +277,7 @@ export const getEmployeeMetricOrders = createServerFn({ method: "POST" })
     if (!role.data?.length) throw new Error("Unauthorized");
 
     const db = supabaseAdmin as any;
-    const action = data.metric === "web_confirm" || data.metric === "incomplete_confirm" ? "confirm" : "cancel";
+    const action = data.metric === "web_confirm" || data.metric === "incomplete_confirm" || data.metric === "massage_confirm" ? "confirm" : "cancel";
     const { data: events, error: eventsError } = await db
       .from("order_action_events")
       .select("order_id,actor_id,action,created_at")
@@ -291,7 +291,7 @@ export const getEmployeeMetricOrders = createServerFn({ method: "POST" })
     const eventIds = Array.from(new Set((events ?? []).map((e: any) => String(e.order_id ?? "")).filter(Boolean)));
     if (!eventIds.length) return [];
 
-    const history = data.metric === "web_cancel" || data.metric === "incomplete_cancel" ? await db
+    const history = data.metric === "web_cancel" || data.metric === "incomplete_cancel" || data.metric === "massage_cancel" ? await db
       .from("order_cancellation_history")
       .select("order_id,source,cancelled_at")
       .in("order_id", eventIds)
@@ -300,8 +300,29 @@ export const getEmployeeMetricOrders = createServerFn({ method: "POST" })
     if (history.error) throw new Error(history.error.message);
 
     const sourceByOrder = new Map<string, string>((history.data ?? []).map((h: any) => [String(h.order_id), String(h.source ?? "").toLowerCase()]));
-    const ids = data.metric === "web_cancel" || data.metric === "incomplete_cancel"
-      ? eventIds.filter((id) => sourceByOrder.get(id) === (data.metric === "incomplete_cancel" ? "incomplete" : "web"))
+    for (const id of eventIds) {
+      if (!sourceByOrder.has(id)) sourceByOrder.set(id, "");
+    }
+    if (data.metric === "massage_cancel") {
+      const { data: cancelOrders, error: cancelOrdersError } = await db
+        .from("orders")
+        .select("id,source,originated_from_import,notes")
+        .in("id", eventIds);
+      if (cancelOrdersError) throw new Error(cancelOrdersError.message);
+      for (const o of cancelOrders ?? []) {
+        if (isMassageOrder(o)) sourceByOrder.set(String(o.id), "massage");
+      }
+      const { data: deletedCancelOrders } = await db.from("deleted_orders").select("id,order_data").in("id", eventIds);
+      for (const o of deletedCancelOrders ?? []) {
+        if (!sourceByOrder.has(String(o.id)) && isMassageOrder(o?.order_data)) sourceByOrder.set(String(o.id), "massage");
+      }
+    }
+    const ids = data.metric === "web_cancel" || data.metric === "incomplete_cancel" || data.metric === "massage_cancel"
+      ? eventIds.filter((id) => {
+          const source = sourceByOrder.get(id);
+          if (data.metric === "massage_cancel") return source === "massage";
+          return source === (data.metric === "incomplete_cancel" ? "incomplete" : "web");
+        })
       : eventIds;
 
     if (!ids.length) return [];
@@ -335,11 +356,12 @@ export const getEmployeeMetricOrders = createServerFn({ method: "POST" })
       }
     }
 
-    const filteredIds = (data.metric === "web_confirm" || data.metric === "incomplete_confirm")
+    const filteredIds = (data.metric === "web_confirm" || data.metric === "incomplete_confirm" || data.metric === "massage_confirm")
       ? eventIds.filter((id) => {
           const live = (ordersR.data ?? []).find((o: any) => String(o.id) === id);
           const archived = (deletedR.data ?? []).find((o: any) => String(o.id) === id);
           const source = isMassageOrder(live ?? archived?.order_data) ? "__import__" : String(live?.source ?? archived?.order_data?.source ?? "").toLowerCase();
+          if (data.metric === "massage_confirm") return isMassageOrder(live ?? archived?.order_data);
           return source === (data.metric === "incomplete_confirm" ? "incomplete" : "web");
         })
       : ids;
