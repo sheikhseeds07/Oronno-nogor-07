@@ -26,13 +26,6 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 const num = (value: unknown) => { const n = Number(value); return Number.isFinite(n) ? n : 0; };
 const pretty = (s: string) => s.replace(/[_-]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-// Hoorin sometimes answers with a demo/placeholder RedX row (10 total / 6 success / 4 cancelled)
-// that is identical for every phone number. Never show or cache those rows.
-const PLACEHOLDER_SIGNATURES = new Set(["redx|10|6|4"]);
-const isPlaceholderStat = (s: CourierStat) =>
-  PLACEHOLDER_SIGNATURES.has(`${String(s.name).replace(/[\s_-]/g, "").toLowerCase()}|${s.total}|${s.success}|${s.cancelled}`);
-const sanitizeStats = (stats: CourierStat[]) => stats.filter((s) => !isPlaceholderStat(s));
-
 function readMemory(key: string): HistoryResult | null {
   const hit = historyCache.get(key);
   if (!hit) return null;
@@ -123,7 +116,7 @@ function parseStats(payload: unknown): CourierStat[] {
     const inner = row.summary && typeof row.summary === "object" && !Array.isArray(row.summary) ? row.summary as JsonRecord : row;
     const total = num(inner["Total Parcels"] ?? inner["Total Delivery"] ?? inner.total_parcel ?? inner.totalParcel ?? inner.total ?? inner["total_parcel_count"] ?? inner.Total_parcels ?? inner.total_parcels ?? inner.totalParcelCount);
     const success = num(inner["Delivered Parcels"] ?? inner["Successful Delivery"] ?? inner.delivered_parcels ?? inner.success_parcel ?? inner.successParcel ?? inner.success ?? inner.delivered ?? inner["delivered_parcel"] ?? inner.total_delivered ?? inner.delivered_count);
-    const cancelled = num(inner["Canceled Parcels"] ?? inner["Canceled Delivery"] ?? inner["Cancelled Parcels"] ?? inner.cancelled_parcels ?? inner.cancelled_parcels ?? inner.cancelled_parcel ?? inner.cancelledParcel ?? inner.cancel ?? inner.cancelled ?? inner["cancelled_parcel"] ?? inner.total_cancelled ?? inner.cancelled_count);
+    const cancelled = num(inner["Canceled Parcels"] ?? inner["Canceled Delivery"] ?? inner["Cancelled Parcels"] ?? inner.cancelled_parcels ?? inner.canceled_parcels ?? inner.cancelled_parcel ?? inner.cancelledParcel ?? inner.cancel ?? inner.cancelled ?? inner["cancelled_parcel"] ?? inner.total_cancelled ?? inner.cancelled_count);
     const hasCounts = COUNT_KEYS.some((k) => Object.prototype.hasOwnProperty.call(inner, k));
 
     const rawName = typeof inner.name === "string" && inner.name.trim() ? inner.name.trim() : key;
@@ -153,21 +146,13 @@ function parseStats(payload: unknown): CourierStat[] {
 async function readPersistent(admin: ReturnType<typeof createClient>, phone: string): Promise<PersistentHit | null> {
   const { data, error } = await admin.from("courier_history_cache").select("configured,stats,error,expires_at").eq("phone", phone).maybeSingle();
   if (error || !data) return null;
-  const rawStats = Array.isArray(data.stats) ? data.stats as CourierStat[] : [];
-  const cleanStats = sanitizeStats(rawStats);
-  if (cleanStats.length !== rawStats.length) {
-    // Poisoned cache row from a placeholder provider response: drop it and refetch.
-    await admin.from("courier_history_cache").delete().eq("phone", phone);
-    return null;
-  }
-  const result: HistoryResult = { configured: Boolean(data.configured), stats: cleanStats, error: typeof data.error === "string" ? data.error : null, source: "cache" };
+  const result: HistoryResult = { configured: Boolean(data.configured), stats: Array.isArray(data.stats) ? data.stats as CourierStat[] : [], error: typeof data.error === "string" ? data.error : null, source: "cache" };
   const expiresAt = new Date(String(data.expires_at ?? "")).getTime();
   return { result, fresh: Number.isFinite(expiresAt) && expiresAt > Date.now() };
 }
 
 async function writePersistent(admin: ReturnType<typeof createClient>, phone: string, result: HistoryResult) {
   if (!result.configured || result.error || result.stats.length === 0) return;
-  if (result.stats.some(isPlaceholderStat)) return;
   const now = Date.now();
   await admin.from("courier_history_cache").upsert({ phone, configured: true, stats: result.stats, error: null, steadfast_source: "hoorin", fetched_at: new Date(now).toISOString(), expires_at: new Date(now + SUCCESS_CACHE_TTL_MS).toISOString() }, { onConflict: "phone" });
 }
@@ -188,12 +173,12 @@ async function fetchHoorin(admin: ReturnType<typeof createClient>, phone: string
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), HOORIN_TIMEOUT_MS);
     try {
-      const res = await fetch(`${cfg.endpoint}?apiKey=${encodeURIComponent(cfg.apiKey)}&searchTerm=${encodeURIComponent(phone)}&view=full&cache=off`, { method: "GET", headers: { Accept: "application/json" }, signal: controller.signal });
+      const res = await fetch(`${cfg.endpoint}?apiKey=${encodeURIComponent(cfg.apiKey)}&searchTerm=${encodeURIComponent(phone)}`, { method: "GET", headers: { Accept: "application/json" }, signal: controller.signal });
       const text = await res.text();
       let payload: unknown = null;
       try { payload = JSON.parse(text); } catch { payload = null; }
       if (res.ok) {
-        const stats = sanitizeStats(parseStats(payload));
+        const stats = parseStats(payload);
         return { configured: true, stats, error: null, source: "hoorin" };
       }
       lastError = `Hoorin HTTP ${res.status}`;
