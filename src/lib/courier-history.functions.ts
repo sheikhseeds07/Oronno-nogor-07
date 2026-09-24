@@ -20,7 +20,7 @@ type CourierHistoryResult = {
 };
 
 type CacheEntry = { expiresAt: number; result: CourierHistoryResult };
-type PersistentHit = { result: CourierHistoryResult; fresh: boolean };
+type PersistentHit = { result: CourierHistoryResult; fresh: boolean; fetchedAtMs: number };
 
 const SUCCESS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const FAILURE_CACHE_TTL_MS = 15 * 1000;
@@ -73,7 +73,7 @@ async function readPersistentCache(phone: string): Promise<PersistentHit | null>
   const admin = supabaseAdmin as any;
   const { data, error } = await admin
     .from("courier_history_cache")
-    .select("configured,stats,error,expires_at")
+    .select("configured,stats,error,expires_at,fetched_at")
     .eq("phone", phone)
     .maybeSingle();
   if (error || !data) return null;
@@ -85,13 +85,15 @@ async function readPersistentCache(phone: string): Promise<PersistentHit | null>
     source: "cache",
   };
   const expiresAt = new Date(String(data.expires_at ?? "")).getTime();
-  return { result, fresh: Number.isFinite(expiresAt) && expiresAt > Date.now() };
+  const fetchedAtMs = new Date(String(data.fetched_at ?? "")).getTime();
+  return { result, fresh: Number.isFinite(expiresAt) && expiresAt > Date.now(), fetchedAtMs };
 }
 
 export const fetchCourierHistory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({
     phone: z.string().min(6).max(20),
+    orderCreatedAt: z.string().optional(),
     cacheOnly: z.boolean().optional().default(false),
   }))
   .handler(async ({ data, context }) => {
@@ -99,6 +101,7 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
 
     const phone = data.phone.replace(/\D/g, "");
     const cacheKey = `${CACHE_VERSION}:${phone}`;
+    const orderCreatedAtMs = data.orderCreatedAt ? new Date(data.orderCreatedAt).getTime() : 0;
     const memoryCached = readCache(cacheKey);
     const persistent = await readPersistentCache(phone);
 
@@ -117,12 +120,18 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
 
     const request = (async (): Promise<CourierHistoryResult> => {
       const beforeInvoke = persistent ?? await readPersistentCache(phone);
+      // A newly-created order may use a phone number whose courier history was cached earlier.
+      // Refresh once for that new order, then subsequent page refreshes reuse the saved result.
+      const needsFirstLoadForOrder = Boolean(orderCreatedAtMs && (!beforeInvoke || !Number.isFinite(beforeInvoke.fetchedAtMs) || beforeInvoke.fetchedAtMs < orderCreatedAtMs));
+      if (beforeInvoke?.result.configured && !beforeInvoke.result.error && !needsFirstLoadForOrder) {
+        return beforeInvoke.result;
+      }
 
       let result: unknown = null;
       let error: { message?: string } | null = null;
       for (let attempt = 0; attempt < 2; attempt += 1) {
         const res = await context.supabase.functions.invoke("courier-history-bridge", {
-          body: { phone, forceRefresh: true },
+          body: { phone, forceRefresh: needsFirstLoadForOrder },
         });
         result = res.data;
         error = res.error as { message?: string } | null;
