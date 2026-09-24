@@ -25,7 +25,7 @@ type PersistentHit = { result: CourierHistoryResult; fresh: boolean };
 const SUCCESS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const FAILURE_CACHE_TTL_MS = 15 * 1000;
 const STALE_CACHE_TTL_MS = 30 * 60 * 1000;
-const CACHE_VERSION = "courier-history-v10-hoorin-fast";
+const CACHE_VERSION = "courier-history-v12-live-courier-history";
 const MAX_CACHE_ENTRIES = 3000;
 
 const courierCache = new Map<string, CacheEntry>();
@@ -100,13 +100,7 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
     const phone = data.phone.replace(/\D/g, "");
     const cacheKey = `${CACHE_VERSION}:${phone}`;
     const memoryCached = readCache(cacheKey);
-    if (memoryCached?.configured && !memoryCached.error && !memoryCached.stale) return memoryCached;
-
     const persistent = await readPersistentCache(phone);
-    if (persistent?.fresh && persistent.result.configured && !persistent.result.error) {
-      writeCache(cacheKey, persistent.result);
-      return persistent.result;
-    }
 
     if (data.cacheOnly) {
       if (persistent?.result.configured && !persistent.result.error) {
@@ -118,22 +112,17 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
       return { configured: false, stats: [], error: null };
     }
 
-    if (memoryCached && !memoryCached.error) return memoryCached;
-
     const existing = inFlight.get(cacheKey);
     if (existing) return existing;
 
     const request = (async (): Promise<CourierHistoryResult> => {
-      const beforeInvoke = await readPersistentCache(phone);
-      if (beforeInvoke?.fresh && beforeInvoke.result.configured && !beforeInvoke.result.error) {
-        return beforeInvoke.result;
-      }
+      const beforeInvoke = persistent ?? await readPersistentCache(phone);
 
       let result: unknown = null;
       let error: { message?: string } | null = null;
       for (let attempt = 0; attempt < 2; attempt += 1) {
         const res = await context.supabase.functions.invoke("courier-history-bridge", {
-          body: { phone },
+          body: { phone, forceRefresh: true },
         });
         result = res.data;
         error = res.error as { message?: string } | null;
