@@ -1719,7 +1719,7 @@ function CourierSuccessCell({ phone }: { phone: string }) {
   }, []);
 
   const { data, isFetching } = useQuery({
-    queryKey: ["courier-rate", digits],
+    queryKey: ["hoorin-courier-history", digits],
     enabled: enabled && nearViewport,
     queryFn: () => fn({ data: { phone: digits } }),
     staleTime: 0,
@@ -1982,7 +1982,6 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
     refetchOnWindowFocus: true,
     retry: 2,
     retryDelay: (attempt) => 600 * (attempt + 1),
-    placeholderData: (prev) => prev,
   });
   const courierStats = extHistory?.configured ? extHistory.stats : [];
   const overallTotal = extHistory?.overall?.total ?? courierStats.reduce((a, s) => a + s.total, 0);
