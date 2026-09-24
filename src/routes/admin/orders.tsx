@@ -643,7 +643,7 @@ function OrdersTable({
     const list = (filter === "all" ? statuses : [filter]).filter((status) => status !== "incomplete");
     let query = supabase
       .from("orders")
-      .select("id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment,courier_display_name,printed_at,created_at,updated_at,created_by,assigned_to,originated_from_incomplete,originated_from_import,order_items(id,product_name,quantity,price,product_id)", { count: "exact" })
+      .select("id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment,courier_display_name,printed_at,created_at,updated_at,created_by,assigned_to,originated_from_incomplete,originated_from_import,notes,order_items(id,product_name,quantity,price,product_id)", { count: "exact" })
       .in("status", list as Exclude<OrderStatus, "incomplete">[]);
     query = mode === "list"
       ? query.order("invoice_no", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false })
@@ -1471,6 +1471,7 @@ type OrderRow = {
   order_items?: OrderItemRow[];
   assigned_to?: string | null;
   created_by?: string | null;
+  notes?: string | null;
   originated_from_incomplete?: boolean | null;
   originated_from_import?: boolean | null;
 };
@@ -1887,7 +1888,7 @@ function OrdersTableRows({
                   <OrderItemsThumbs items={items} />
                   <div className="text-xs font-bold pt-1.5 mt-1.5 border-t">টোটাল: {taka(o.total)}</div>
                   <div className={`text-[11px] font-bold mt-1 ${o.originated_from_incomplete ? "text-red-600" : "text-green-600"}`}>
-                    {o.originated_from_import ? "massage order" : o.originated_from_incomplete ? "incomplete source order" : "web order"}
+                    {(o.originated_from_import || (o.notes ?? "").includes("Ref:")) ? "massage order" : o.originated_from_incomplete ? "incomplete source order" : "web order"}
                   </div>
                 </td>
                 {/* Courier Success Rate */}
