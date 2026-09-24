@@ -20,13 +20,14 @@ function addSeedGridStyles() {
     .seedcombo-items-sub{margin:4px 0 0;color:#64748b;font-size:10px;font-weight:650}
     .seedcombo-items-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;position:relative;z-index:1}
     .seedcombo-item-card{min-width:0;border:1px solid #e2eee6;border-radius:14px;background:rgba(255,255,255,.98);padding:6px 5px 7px;box-shadow:0 7px 18px -13px rgba(6,78,59,.5);opacity:1}
+
     .seedcombo-item-img-wrap{position:relative;width:100%;aspect-ratio:1/0.82;border-radius:10px;overflow:hidden;background:linear-gradient(135deg,#edf9f0,#f8faf9);margin-bottom:6px}
     .seedcombo-item-img{width:100%;height:100%;display:block;object-fit:cover;background:#f1f5f2;content-visibility:visible}
     .seedcombo-item-name{font-size:11px;font-weight:850;color:#123b2c;line-height:1.3;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .seedcombo-item-qty{display:block;width:max-content;max-width:100%;margin:4px auto 0;padding:2px 7px;border-radius:999px;background:#effaf3;color:#087443;font-size:8px;font-weight:850;line-height:1.35;white-space:nowrap}
     .seedcombo-item-placeholder{width:100%;height:100%;display:grid;place-items:center;font-size:28px;color:#16834b;background:linear-gradient(135deg,#ecfdf3,#f8faf9)}
     @media(max-width:640px){.seedcombo-items-premium{border-radius:20px;padding:14px 7px 12px}.seedcombo-items-grid{gap:6px}.seedcombo-item-card{border-radius:12px;padding:5px 4px 6px}.seedcombo-item-img-wrap{border-radius:9px}.seedcombo-item-name{font-size:10.5px}.seedcombo-item-qty{font-size:8px;padding:2px 6px}.seedcombo-items-title{font-size:18px}}
-  ;
+  `;
   document.head.appendChild(style);
 }
 
@@ -45,7 +46,7 @@ async function ensureSeedComboItems() {
   section.id = "seedcombo-items-premium";
   section.className = "seedcombo-items-premium";
   section.setAttribute("aria-label", "Seed Combo contents");
-  section.innerHTML = `<div class="seedcombo-items-head"><div class="seedcombo-items-kicker">🌱 PREMIUM SEED COLLECTION</div><h2 class="seedcombo-items-title">${escapeHtml("໫໪ ৯রুচোর বীজ ঙ੬যৄযৄ েক কম্বোতেই 🌿")}</h2><p class="seedcombo-items-sub">পরতिটিটिর বীজের নাম ओ পরিমাণ ঄গ নजरে</p></div><div class="seedcombo-items-grid"></div>`;
+  section.innerHTML = `<div class="seedcombo-items-head"><div class="seedcombo-items-kicker">🌱 PREMIUM SEED COLLECTION</div><h2 class="seedcombo-items-title">${escapeHtml("২৪ প্রকার বীজ এক কম্বোতেই 🌿")}</h2><p class="seedcombo-items-sub">প্রতিটি বীজের নাম ও পরিমাণ এক নজরে</p></div><div class="seedcombo-items-grid"></div>`;
   const grid = section.querySelector(".seedcombo-items-grid") as HTMLElement;
   seeds.forEach((seed, index) => {
     const card = document.createElement("article");
