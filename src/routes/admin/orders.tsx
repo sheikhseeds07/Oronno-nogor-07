@@ -23,6 +23,7 @@ import { acquireOrderLock, heartbeatOrderLock, releaseOrderLock, listOrderLocks 
 import { useAuth } from "@/lib/auth";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { safeUUID } from "@/lib/uuid";
+import { isMassageOrder } from "@/lib/order-origin";
 
 
 
@@ -1893,7 +1894,7 @@ function OrdersTableRows({
                   <OrderItemsThumbs items={items} />
                   <div className="text-xs font-bold pt-1.5 mt-1.5 border-t">টোটাল: {taka(o.total)}</div>
                   <div className={`text-[11px] font-bold mt-1 ${o.originated_from_incomplete ? "text-red-600" : "text-green-600"}`}>
-                    {(o.originated_from_import || (o.notes ?? "").includes("Ref:")) ? "massage order" : o.originated_from_incomplete ? "incomplete source order" : "web order"}
+                    {isMassageOrder(o) ? "massage order" : o.originated_from_incomplete ? "incomplete source order" : "web order"}
                   </div>
                 </td>
                 {/* Courier Success Rate */}
