@@ -320,7 +320,7 @@ export const getEmployeeMetricOrders = createServerFn({ method: "POST" })
       }
       const { data: deletedCancelOrders } = await db.from("deleted_orders").select("id,order_data").in("id", eventIds);
       for (const o of deletedCancelOrders ?? []) {
-        if (!sourceByOrder.has(String(o.id)) && isMassageOrder(o?.order_data)) sourceByOrder.set(String(o.id), "massage");
+        if (isMassageOrder(o?.order_data)) sourceByOrder.set(String(o.id), "massage");
       }
     }
     const ids = data.metric === "web_cancel" || data.metric === "incomplete_cancel" || data.metric === "massage_cancel"
