@@ -26,6 +26,13 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 const num = (value: unknown) => { const n = Number(value); return Number.isFinite(n) ? n : 0; };
 const pretty = (s: string) => s.replace(/[_-]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
+// Hoorin sometimes answers with a demo/placeholder RedX row (10 total / 6 success / 4 cancelled)
+// that is identical for every phone number. Never show or cache those rows.
+const PLACEHOLDER_SIGNATURES = new Set(["redx|10|6|4"]);
+const isPlaceholderStat = (s: CourierStat) =>
+  PLACEHOLDER_SIGNATURES.has(`${String(s.name).replace(/[\s_-]/g, "").toLowerCase()}|${s.total}|${s.success}|${s.cancelled}`);
+const sanitizeStats = (stats: CourierStat[]) => stats.filter((s) => !isPlaceholderStat(s));
+
 function readMemory(key: string): HistoryResult | null {
   const hit = historyCache.get(key);
   if (!hit) return null;
@@ -146,13 +153,21 @@ function parseStats(payload: unknown): CourierStat[] {
 async function readPersistent(admin: ReturnType<typeof createClient>, phone: string): Promise<PersistentHit | null> {
   const { data, error } = await admin.from("courier_history_cache").select("configured,stats,error,expires_at").eq("phone", phone).maybeSingle();
   if (error || !data) return null;
-  const result: HistoryResult = { configured: Boolean(data.configured), stats: Array.isArray(data.stats) ? data.stats as CourierStat[] : [], error: typeof data.error === "string" ? data.error : null, source: "cache" };
+  const rawStats = Array.isArray(data.stats) ? data.stats as CourierStat[] : [];
+  const cleanStats = sanitizeStats(rawStats);
+  if (cleanStats.length !== rawStats.length) {
+    // Poisoned cache row from a placeholder provider response: drop it and refetch.
+    await admin.from("courier_history_cache").delete().eq("phone", phone);
+    return null;
+  }
+  const result: HistoryResult = { configured: Boolean(data.configured), stats: cleanStats, error: typeof data.error === "string" ? data.error : null, source: "cache" };
   const expiresAt = new Date(String(data.expires_at ?? "")).getTime();
   return { result, fresh: Number.isFinite(expiresAt) && expiresAt > Date.now() };
 }
 
 async function writePersistent(admin: ReturnType<typeof createClient>, phone: string, result: HistoryResult) {
   if (!result.configured || result.error || result.stats.length === 0) return;
+  if (result.stats.some(isPlaceholderStat)) return;
   const now = Date.now();
   await admin.from("courier_history_cache").upsert({ phone, configured: true, stats: result.stats, error: null, steadfast_source: "hoorin", fetched_at: new Date(now).toISOString(), expires_at: new Date(now + SUCCESS_CACHE_TTL_MS).toISOString() }, { onConflict: "phone" });
 }
@@ -178,7 +193,7 @@ async function fetchHoorin(admin: ReturnType<typeof createClient>, phone: string
       let payload: unknown = null;
       try { payload = JSON.parse(text); } catch { payload = null; }
       if (res.ok) {
-        const stats = parseStats(payload);
+        const stats = sanitizeStats(parseStats(payload));
         return { configured: true, stats, error: null, source: "hoorin" };
       }
       lastError = `Hoorin HTTP ${res.status}`;
