@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 
 type CourierStat = { name: string; total: number; success: number; cancelled: number };
 type JsonRecord = Record<string, unknown>;
-type HistoryResult = { configured: boolean; stats: CourierStat[]; error: string | null; stale?: boolean; source?: string };
+type HistoryResult = { configured: boolean; stats: CourierStat[]; overall?: CourierStat; error: string | null; stale?: boolean; source?: string };
 type PersistentHit = { result: HistoryResult; fresh: boolean };
 
 const SUCCESS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -164,14 +164,16 @@ async function reserveProviderSlot(admin: ReturnType<typeof createClient>) {
   return Number.isFinite(wait) ? Math.max(0, Math.min(wait, 2_500)) : 0;
 }
 
-function hasRedx(stats: CourierStat[]) {
-  return stats.some((s) => s.name.replace(/[\s_-]/g, "").toLowerCase() === "redx");
-}
-
-function withRedxFallback(stats: CourierStat[], cached?: CourierStat[]): CourierStat[] {
-  if (hasRedx(stats)) return stats;
-  const cachedRedx = (cached ?? []).find((s) => s.name.replace(/[\s_-]/g, "").toLowerCase() === "redx");
-  return [...stats, cachedRedx ?? { name: "RedX", total: 10, success: 6, cancelled: 4 }].sort((a, b) => b.total - a.total);
+function parseOverall(payload: unknown): CourierStat | undefined {
+  if (!payload || typeof payload !== "object") return undefined;
+  const row = (payload as JsonRecord).overall;
+  if (!row || typeof row !== "object" || Array.isArray(row)) return undefined;
+  const value = row as JsonRecord;
+  const total = num(value.total_parcels ?? value.total_parcel ?? value.total);
+  const success = num(value.delivered_parcels ?? value.delivered ?? value.success);
+  const cancelled = num(value.cancelled_parcels ?? value.cancelled ?? value.cancel);
+  if (total <= 0 && success <= 0 && cancelled <= 0) return undefined;
+  return { name: "Overall", total, success, cancelled };
 }
 
 async function fetchHoorin(admin: ReturnType<typeof createClient>, phone: string): Promise<HistoryResult> {
@@ -190,7 +192,8 @@ async function fetchHoorin(admin: ReturnType<typeof createClient>, phone: string
       try { payload = JSON.parse(text); } catch { payload = null; }
       if (res.ok) {
         const stats = parseStats(payload);
-        return { configured: true, stats, error: null, source: "hoorin" };
+        const overall = parseOverall(payload);
+        return { configured: true, stats, overall, error: null, source: "hoorin" };
       }
       lastError = `Hoorin HTTP ${res.status}`;
       if (attempt < 2 && (res.status === 429 || res.status >= 500)) { await sleep(300 * (attempt + 1)); continue; }
@@ -230,13 +233,11 @@ Deno.serve(async (req) => {
     if (!forceRefresh && afterWait?.fresh && !afterWait.result.error && afterWait.result.stats.length > 0) return afterWait.result;
     const result = await fetchHoorin(admin, phone);
     if (!result.error && result.stats.length > 0) {
-      const live = { ...result, stats: withRedxFallback(result.stats, afterWait?.result.stats ?? persistent?.result.stats) };
+      const live = { ...result };
       await writePersistent(admin, phone, live);
       return live;
     }
     if (!result.error && result.stats.length === 0) return { configured: true, stats: [], error: "Hoorin returned no courier history" };
-    const stale = afterWait ?? persistent;
-    if (stale?.result.configured && !stale.result.error && stale.result.stats.length > 0) return { ...stale.result, stale: true };
     return result;
   })();
   inFlight.set(phone, request);
