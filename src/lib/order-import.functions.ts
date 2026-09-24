@@ -115,8 +115,8 @@ export const importOrdersFromFile = createServerFn({ method: "POST" })
         delivery_fee: number;
         discount: number;
         total: number;
-        source: "manual";
-        status: "pending";
+        source: "web";
+        status: "web_pending";
         payment_method: "cod";
       };
       items: Array<{
@@ -162,8 +162,8 @@ export const importOrdersFromFile = createServerFn({ method: "POST" })
           delivery_fee: deliveryFee,
           discount: 0,
           total,
-          source: "manual",
-          status: "pending",
+          source: "web",
+          status: "web_pending",
           payment_method: "cod",
         },
       });
