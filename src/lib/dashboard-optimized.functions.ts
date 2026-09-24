@@ -155,6 +155,8 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
       incomplete_confirmed: 0,
       cancelled: 0,
       incomplete_cancelled: 0,
+      massage_confirmed: 0,
+      massage_cancelled: 0,
       total: 0,
       order_division_active: orderDivisionActiveIds.has(id),
     });
@@ -172,6 +174,8 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
         incomplete_confirmed: 0,
         cancelled: 0,
         incomplete_cancelled: 0,
+        massage_confirmed: 0,
+        massage_cancelled: 0,
         total: 0,
         order_division_active: orderDivisionActiveIds.has(id),
       });
@@ -191,6 +195,7 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
     const source = confirmSourceByOrder.get(orderId) ?? "";
     if (source === "web") target.web_confirmed += 1;
     else if (source === "incomplete") target.incomplete_confirmed += 1;
+    else if (source === "__import__") target.massage_confirmed += 1;
   }
 
   // Cancellation metrics are supplementary and must never be allowed to
@@ -233,6 +238,7 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
         const source = cancelSourceByOrder.get(orderId) ?? sourceByOrder.get(orderId) ?? "";
         if (source === "incomplete") target.incomplete_cancelled += 1;
         else if (source === "web") target.cancelled += 1;
+        else if (source === "__import__") target.massage_cancelled += 1;
       }
     }
   } catch {
