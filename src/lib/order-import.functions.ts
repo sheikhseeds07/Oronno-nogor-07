@@ -165,6 +165,7 @@ export const importOrdersFromFile = createServerFn({ method: "POST" })
           source: "web",
           status: "web_pending",
           payment_method: "cod",
+          originated_from_import: true,
         },
       });
     }
