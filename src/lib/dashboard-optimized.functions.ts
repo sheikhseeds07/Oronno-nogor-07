@@ -457,15 +457,41 @@ export const getOptimizedDashboardReport = createServerFn({ method: "POST" })
     if (!role.data?.length) throw new Error("Unauthorized");
 
     const db = supabaseAdmin as any;
-    const [{ data: summary, error }, confirmedCountR, metaProfit] = await Promise.all([
+
+    // Dashboard must render even when one auxiliary metric is temporarily
+    // unavailable. The summary RPC is the primary data source; confirmed
+    // count and Meta spend are allowed to fail independently.
+    const [summaryR, confirmedCountR, metaProfitR] = await Promise.allSettled([
       db.rpc("dashboard_egress_summary", { p_from: data.from, p_to: data.to }),
       db.rpc("dashboard_confirmed_order_count", { p_from: data.from, p_to: data.to }),
       getMetaProfitData(data.from, data.to),
     ]);
-    if (error) throw new Error(error.message);
-    if (confirmedCountR.error) throw new Error(confirmedCountR.error.message);
 
-    const s: any = summary ?? {};
+    const summaryResult = summaryR.status === "fulfilled" ? summaryR.value : null;
+    const confirmedResult = confirmedCountR.status === "fulfilled" ? confirmedCountR.value : null;
+    const fallbackMeta = {
+      dollarRate: 122,
+      courierCostPerOrder: 50,
+      cancelRate: 20,
+      adSpendUsd: 0,
+      adSpendBdt: 0,
+      connected: false,
+      accountName: "",
+      error: metaProfitR.status === "rejected"
+        ? (metaProfitR.reason instanceof Error ? metaProfitR.reason.message : "Meta spend unavailable")
+        : null,
+    };
+    const metaProfit = metaProfitR.status === "fulfilled" ? metaProfitR.value : fallbackMeta;
+
+    // Keep the dashboard usable even if the summary RPC has a transient
+    // failure. Never replace a successful summary with an empty response.
+    if (summaryResult?.error) {
+      throw new Error(summaryResult.error.message);
+    }
+    const s: any = summaryResult?.data ?? {};
+    const confirmedRpcValue = confirmedResult && !confirmedResult.error
+      ? Number(confirmedResult.data ?? 0)
+      : null;
     const real = s.real ?? { ...empty, created: 0, revenue: 0, allRevenue: 0, approved: 0, pending: 0 };
     const web = s.webOrders ?? empty;
     const incomplete = s.incompleteOrders ?? { ...empty, active: 0 };
@@ -513,7 +539,7 @@ export const getOptimizedDashboardReport = createServerFn({ method: "POST" })
 
     const grossSales = Number(s.profit?.grossSales ?? real.revenue ?? 0);
     const productCost = Number(s.profit?.productCost ?? 0);
-    const confirmedOrders = Number(confirmedCountR.data ?? real.approved ?? real.confirmed ?? 0);
+    const confirmedOrders = confirmedRpcValue ?? Number(real.approved ?? real.confirmed ?? 0);
     const courierCost = confirmedOrders * metaProfit.courierCostPerOrder;
     const cancellationAdjustment = grossSales * (metaProfit.cancelRate / 100);
     const netProfit = grossSales - productCost - metaProfit.adSpendBdt - courierCost - cancellationAdjustment;
