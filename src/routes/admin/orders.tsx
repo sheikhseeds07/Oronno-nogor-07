@@ -1697,6 +1697,28 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
   const [nearViewport, setNearViewport] = useState(false);
   const digits = normalizePhone(phone);
   const enabled = digits.length >= 10;
+  const clientCacheKey = useMemo(
+    () => `hoorin-courier-history-v1:${digits}:${orderCreatedAt ?? ""}`,
+    [digits, orderCreatedAt],
+  );
+
+  // Persist the last successful result in the browser. This lets a full
+  // page refresh render the saved rate immediately, without waiting for
+  // Supabase/Edge Function/network round-trips.
+  const readClientCache = useCallback((): any | null => {
+    if (!enabled || typeof window === "undefined") return null;
+    try {
+      const raw = window.localStorage.getItem(clientCacheKey);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || !parsed.configured || parsed.error) return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  }, [clientCacheKey, enabled]);
+
+  const cachedClientResult = readClientCache();
 
   useEffect(() => {
     const node = cellRef.current;
@@ -1720,8 +1742,9 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
 
   const { data, isFetching } = useQuery({
     queryKey: ["hoorin-courier-history", digits, orderCreatedAt ?? ""],
-    enabled: enabled && nearViewport,
+    enabled: enabled && nearViewport && !cachedClientResult,
     queryFn: () => fn({ data: { phone: digits, orderCreatedAt } }),
+    initialData: cachedClientResult ?? undefined,
     staleTime: Infinity,
     gcTime: 24 * 60 * 60 * 1000,
     refetchOnMount: false,
@@ -1730,13 +1753,23 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
     retryDelay: (attempt) => 600 * (attempt + 1),
   });
 
+  useEffect(() => {
+    if (!data?.configured || data.error || typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(clientCacheKey, JSON.stringify(data));
+    } catch {
+      // Server-side persistent cache remains the fallback.
+    }
+  }, [clientCacheKey, data]);
+
   let content: ReactNode = <span className="text-xs text-muted-foreground">—</span>;
-  if (enabled && nearViewport && isFetching && !data) {
+  const displayData = data ?? cachedClientResult;
+  if (enabled && nearViewport && isFetching && !displayData) {
     content = <span className="text-xs text-muted-foreground">লোড...</span>;
-  } else if (data?.configured) {
-    const total = data.overall?.total ?? data.stats.reduce((sum, stat) => sum + stat.total, 0);
-    const success = data.overall?.success ?? data.stats.reduce((sum, stat) => sum + stat.success, 0);
-    const cancelled = data.overall?.cancelled ?? data.stats.reduce((sum, stat) => sum + stat.cancelled, 0);
+  } else if (displayData?.configured) {
+    const total = displayData.overall?.total ?? displayData.stats.reduce((sum: number, stat: any) => sum + stat.total, 0);
+    const success = displayData.overall?.success ?? displayData.stats.reduce((sum: number, stat: any) => sum + stat.success, 0);
+    const cancelled = displayData.overall?.cancelled ?? displayData.stats.reduce((sum: number, stat: any) => sum + stat.cancelled, 0);
     if (total) {
       const rate = Math.round((success / total) * 100);
       const ring = rate >= 80 ? "border-emerald-500 text-emerald-700" : rate >= 50 ? "border-amber-500 text-amber-700" : "border-rose-500 text-rose-700";
