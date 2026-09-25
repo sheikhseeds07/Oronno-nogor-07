@@ -105,7 +105,7 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
       .eq("action", "confirm")
       .gte("created_at", from)
       .lte("created_at", to),
-    db.from("orders").select("assigned_to").eq("status", "web_pending").not("assigned_to", "is", null),
+    db.from("orders").select("assigned_to").eq("status", "web_pending").eq("originated_from_import", false).not("assigned_to", "is", null),
   ]);
 
   if (employeesR.error) throw new Error(employeesR.error.message);
@@ -316,6 +316,7 @@ export const getEmployeeMetricOrders = createServerFn({ method: "POST" })
         .select("id,source,originated_from_import,notes,invoice_no,customer_name,customer_phone,total,status,created_at,updated_at")
         .eq("assigned_to", data.userId)
         .eq("status", "web_pending")
+        .eq("originated_from_import", false)
         .order("updated_at", { ascending: false });
       if (processingError) throw new Error(processingError.message);
       return (processingOrders ?? []).map((o: any) => ({ ...o, archived: false }));
@@ -471,7 +472,7 @@ export const getEmployeeLiveProcessingCounts = createServerFn({ method: "POST" }
     const db = supabaseAdmin as any;
     const [employeesR, processingR] = await Promise.all([
       db.from("employees").select("user_id,name").eq("is_active", true),
-      db.from("orders").select("assigned_to").eq("status", "web_pending").not("assigned_to", "is", null),
+      db.from("orders").select("assigned_to").eq("status", "web_pending").eq("originated_from_import", false).not("assigned_to", "is", null),
     ]);
     if (employeesR.error) throw new Error(employeesR.error.message);
     if (processingR.error) throw new Error(processingR.error.message);
