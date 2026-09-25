@@ -183,17 +183,15 @@ export const importOrdersFromFile = createServerFn({ method: "POST" })
 
     if (!prepared.length) return { imported: 0, skipped, errors, previous: [] as PrevOrder[] };
 
-    // --- One invoice allocation for the whole batch ---
-    const { allocateInvoiceNos } = await import("@/lib/invoice-no.server");
-    const invoices = await allocateInvoiceNos(prepared.length);
-
     // --- Bulk insert orders + items in a few chunked requests ---
     const CHUNK = 100;
     let imported = 0;
     const createdIds: string[] = [];
     for (let i = 0; i < prepared.length; i += CHUNK) {
       const chunk = prepared.slice(i, i + CHUNK);
-      const rows = chunk.map((p, idx) => ({ ...p.order, invoice_no: invoices[i + idx] }));
+      // Imported orders stay in processing without an invoice. The normal Create Order flow
+      // will move them to pending; the database invoice trigger assigns the invoice then.
+      const rows = chunk.map((p) => ({ ...p.order }));
       const { data: created, error } = await supabaseAdmin.from("orders").insert(rows).select("id");
       if (error || !created || created.length !== chunk.length) {
         errors.push(`${chunk[0]?.name ?? "অর্ডার"}: ${error?.message ?? "তৈরি হয়নি"}`);
