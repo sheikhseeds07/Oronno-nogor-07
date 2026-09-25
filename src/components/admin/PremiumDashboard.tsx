@@ -92,6 +92,7 @@ function EmployeeMetricModal({ employee, metric, range, onClose }: { employee: a
 function MonthlyBonusCard() {
   const { user } = useAuth();
   const fetchBonus = useServerFn(getEmployeeMonthlyBonusProgress);
+  const [showDetails, setShowDetails] = useState(false);
   const { data, isLoading } = useQuery({
     queryKey: ["employee-monthly-bonus"],
     queryFn: () => fetchBonus(),
@@ -106,36 +107,76 @@ function MonthlyBonusCard() {
   const target = Number(data?.target ?? 300);
   const confirmProgress = Math.min(100, (confirmed / target) * 100);
   const deliveryProgress = Math.min(100, (delivered / target) * 100);
-  return <div className="relative mx-4 my-3 overflow-hidden rounded-[20px] border border-emerald-200/80 bg-gradient-to-br from-emerald-50 via-white to-amber-50/50 p-4 shadow-sm sm:mx-5">
-    <div className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full bg-emerald-100/70 blur-2xl"/>
-    <div className="relative">
-      <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 shadow-sm"><Sparkles className="h-5 w-5"/></div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2">
-            <div className="text-[13px] font-black text-slate-900">Hello, {data?.employeeName ?? "আপনি"}, 👋</div>
-            <div className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[8px] font-black uppercase tracking-wide text-amber-700"><LockKeyhole className="h-3 w-3"/> Locked</div>
+
+  return <>
+    <div className="relative mx-4 my-3 overflow-hidden rounded-[20px] border border-emerald-200/80 bg-gradient-to-br from-emerald-50 via-white to-amber-50/50 p-4 shadow-sm sm:mx-5">
+      <div className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full bg-emerald-100/70 blur-2xl"/>
+      <div className="relative">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 shadow-sm"><Sparkles className="h-5 w-5"/></div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-[13px] font-black text-slate-900">Hello, {data?.employeeName ?? "আপনি"}, 👋</div>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <button type="button" onClick={() => setShowDetails(true)} className="inline-flex items-center rounded-full border border-slate-200 bg-white/90 px-2 py-1 text-[8px] font-black text-slate-600 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700">বিস্তারিত দেখুন</button>
+                <div className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[8px] font-black uppercase tracking-wide text-amber-700"><LockKeyhole className="h-3 w-3"/> Locked</div>
+              </div>
+            </div>
+            <div className="mt-1 text-[10px] leading-5 text-slate-600"><b className="text-emerald-700">🎉 Good News!</b> আগামী মাসের ১ তারিখ থেকে <b>Monthly Bonus</b> চালু হবে। এক মাসে Incomplete Order থেকে <b>৩০০টি Confirm</b> করে Delivery সম্পন্ন করতে পারলে মাস শেষে পাবেন <b className="text-emerald-700">৳২,০০০ Extra Bonus</b>। 💰</div>
           </div>
-          <div className="mt-1 text-[10px] leading-5 text-slate-600"><b className="text-emerald-700">🎉 Good News!</b> আগামী মাসের ১ তারিখ থেকে <b>Monthly Bonus</b> চালু হবে। এক মাসে Incomplete Order থেকে <b>৩০০টি Confirm</b> করে Delivery সম্পন্ন করতে পারলে মাস শেষে পাবেন <b className="text-emerald-700">৳২,০০০ Extra Bonus</b>। 💰</div>
+        </div>
+        <div className="relative mt-3 grid grid-cols-3 gap-2">
+          <div className="rounded-2xl border border-emerald-100 bg-white/85 p-2.5 text-center"><div className="text-lg font-black text-emerald-700">{isLoading ? "—" : enDigits(confirmed)}</div><div className="text-[8px] font-bold text-slate-400">INCOMPLETE CONFIRM</div></div>
+          <div className="rounded-2xl border border-blue-100 bg-white/85 p-2.5 text-center"><div className="text-lg font-black text-blue-700">{isLoading ? "—" : enDigits(delivered)}</div><div className="text-[8px] font-bold text-slate-400">DELIVERED</div></div>
+          <div className="rounded-2xl border border-rose-100 bg-white/85 p-2.5 text-center"><div className="text-lg font-black text-rose-600">{isLoading ? "—" : enDigits(cancelled)}</div><div className="text-[8px] font-bold text-slate-400">CANCELLED</div></div>
+        </div>
+        <div className="mt-3 rounded-2xl border border-white/90 bg-white/75 p-3">
+          <div className="flex items-center justify-between text-[9px] font-black text-slate-500"><span>এই মাসের Current Progress</span><span className="text-emerald-700">{enDigits(confirmed)} / {enDigits(target)} Confirm</span></div>
+          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-emerald-100"><div className="h-full rounded-full bg-emerald-500 transition-all duration-700" style={{width: `${confirmProgress}%`}}/></div>
+          <div className="mt-2 flex items-center justify-between text-[8px] font-semibold text-slate-500"><span>Delivered: <b className="text-blue-700">{enDigits(delivered)} / {enDigits(target)}</b></span><span>Cancel: <b className="text-rose-600">{enDigits(cancelled)}</b></span></div>
+          <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-blue-100"><div className="h-full rounded-full bg-blue-500 transition-all duration-700" style={{width: `${deliveryProgress}%`}}/></div>
+        </div>
+        <div className="mt-2.5 text-[9px] font-semibold leading-4 text-slate-500">🔥 প্রতিদিন গড়ে ১৫টি Incomplete Order Confirm করার লক্ষ্য রাখুন। নিয়মিত Follow-up ও ভালোভাবে Customer Convince করলে Target পূরণে সাহায্য করবে।</div>
+        <div className="mt-2 flex items-center justify-center gap-1.5 rounded-xl bg-slate-900/[0.04] px-3 py-2 text-[8px] font-bold text-slate-500"><LockKeyhole className="h-3 w-3"/> Bonus এখন Locked — আগামী মাসের ১ তারিখ থেকে Progress গণনা Bonus-এর জন্য কার্যকর হবে।</div>
+      </div>
+    </div>
+
+    {showDetails && <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-[2px]" onClick={() => setShowDetails(false)}>
+      <div className="relative w-full max-w-md overflow-hidden rounded-[24px] border border-white/70 bg-white shadow-2xl shadow-slate-950/20" onClick={(e) => e.stopPropagation()}>
+        <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-emerald-100/70 blur-3xl"/>
+        <div className="relative border-b border-slate-100 bg-gradient-to-r from-emerald-50 via-white to-amber-50/60 px-4 py-3.5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 shadow-sm"><Sparkles className="h-5 w-5"/></div>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-black text-slate-900">Monthly Bonus · বিস্তারিত</div>
+              <div className="mt-0.5 text-[9px] font-medium text-slate-400">আপনার লক্ষ্য ও Bonus পাওয়ার নিয়ম</div>
+            </div>
+            <button type="button" onClick={() => setShowDetails(false)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-800" aria-label="Close"><XCircle className="h-4 w-4"/></button>
+          </div>
+        </div>
+        <div className="relative max-h-[70vh] overflow-y-auto px-4 py-4">
+          <div className="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-3.5">
+            <div className="text-[11px] font-black leading-5 text-slate-800">আপনি যদি এক মাসে Incomplete Order থেকে ৩০০টি অর্ডার Confirm করে Delivery সম্পন্ন করতে পারেন, তাহলে মাস শেষে পাবেন <span className="text-emerald-700">৳২,০০০ Extra Bonus</span>। 💰</div>
+          </div>
+          <div className="mt-3 rounded-2xl border border-blue-100 bg-blue-50/60 p-3.5">
+            <div className="text-[10px] font-bold leading-5 text-slate-700">আমাদের হিসাব অনুযায়ী সাধারণত <b>১৫টি Order Confirm</b> করলে গড়ে <b>১০টি Delivery</b> হয়। তাই প্রতিদিন গড়ে <b>১৫টি Incomplete Order Confirm</b> করতে পারলে আশা করা যায় মাস শেষে আপনার <b>৩০০ Delivery-এর Target</b> পূরণ করা সম্ভব হবে।</div>
+          </div>
+          <div className="mt-3 rounded-2xl border border-amber-100 bg-amber-50/60 p-3.5">
+            <div className="flex items-center gap-2 text-[10px] font-black text-amber-800"><span className="text-base">🔥</span> Incomplete Order বেশি Confirm করার কৌশল:</div>
+            <div className="mt-2 text-[10px] font-medium leading-5 text-slate-600">কাস্টমারের সঙ্গে ভালোভাবে কথা বলে তাকে কনভিন্স করার চেষ্টা করবেন। প্রয়োজন হলে আকর্ষণীয় Offer দিতে পারেন, কোনো ছোট Gift/Free Item অফার করতে পারেন, অথবা কাস্টমারের প্রয়োজন অনুযায়ী অন্যভাবে তাকে অর্ডারটি Confirm করতে উৎসাহিত করবেন।</div>
+          </div>
+          <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-3.5">
+            <div className="text-[10px] font-black leading-5 text-slate-700">💪 নিয়মিত Follow-up + ভালোভাবে Customer Convince = <span className="text-emerald-700">Target Complete + ৳২,০০০ Bonus</span> 🎯</div>
+          </div>
+          <div className="mt-3 rounded-2xl border border-rose-100 bg-gradient-to-r from-rose-50 to-white px-3.5 py-2.5 text-center text-[10px] font-bold text-rose-700">আশা করি আপনি Target-টা সুন্দরভাবে Complete করতে পারবেন। Best of luck! ❤️</div>
+        </div>
+        <div className="border-t border-slate-100 bg-white px-4 py-3">
+          <button type="button" onClick={() => setShowDetails(false)} className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-[10px] font-black text-white shadow-lg shadow-slate-900/10 transition hover:-translate-y-0.5 hover:bg-slate-800 active:translate-y-0">বুঝতে পারছি</button>
         </div>
       </div>
-      <div className="relative mt-3 grid grid-cols-3 gap-2">
-        <div className="rounded-2xl border border-emerald-100 bg-white/85 p-2.5 text-center"><div className="text-lg font-black text-emerald-700">{isLoading ? "—" : enDigits(confirmed)}</div><div className="text-[8px] font-bold text-slate-400">INCOMPLETE CONFIRM</div></div>
-        <div className="rounded-2xl border border-blue-100 bg-white/85 p-2.5 text-center"><div className="text-lg font-black text-blue-700">{isLoading ? "—" : enDigits(delivered)}</div><div className="text-[8px] font-bold text-slate-400">DELIVERED</div></div>
-        <div className="rounded-2xl border border-rose-100 bg-white/85 p-2.5 text-center"><div className="text-lg font-black text-rose-600">{isLoading ? "—" : enDigits(cancelled)}</div><div className="text-[8px] font-bold text-slate-400">CANCELLED</div></div>
-      </div>
-      <div className="mt-3 rounded-2xl border border-white/90 bg-white/75 p-3">
-        <div className="flex items-center justify-between text-[9px] font-black text-slate-500"><span>এই মাসের Current Progress</span><span className="text-emerald-700">{enDigits(confirmed)} / {enDigits(target)} Confirm</span></div>
-        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-emerald-100"><div className="h-full rounded-full bg-emerald-500 transition-all duration-700" style={{width: `${confirmProgress}%`}}/></div>
-        <div className="mt-2 flex items-center justify-between text-[8px] font-semibold text-slate-500"><span>Delivered: <b className="text-blue-700">{enDigits(delivered)} / {enDigits(target)}</b></span><span>Cancel: <b className="text-rose-600">{enDigits(cancelled)}</b></span></div>
-        <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-blue-100"><div className="h-full rounded-full bg-blue-500 transition-all duration-700" style={{width: `${deliveryProgress}%`}}/></div>
-      </div>
-      <div className="mt-2.5 text-[9px] font-semibold leading-4 text-slate-500">🔥 প্রতিদিন গড়ে ১৫টি Incomplete Order Confirm করার লক্ষ্য রাখুন। নিয়মিত Follow-up ও ভালোভাবে Customer Convince করলে Target পূরণে সাহায্য করবে।</div>
-      <div className="mt-2 flex items-center justify-center gap-1.5 rounded-xl bg-slate-900/[0.04] px-3 py-2 text-[8px] font-bold text-slate-500"><LockKeyhole className="h-3 w-3"/> Bonus এখন Locked — আগামী মাসের ১ তারিখ থেকে Progress গণনা Bonus-এর জন্য কার্যকর হবে।</div>
-    </div>
-  </div>;
+    </div>}
+  </>;
 }
-
 function statusLabel(status: string) {
   const labels: Record<string, string> = { web_pending:"Processing", pending:"Pending", rts:"RTS", shipped:"Shipped", delivered:"Delivered", pending_return:"Return Pending", returned:"Returned", partial:"Partial", cancelled:"Cancelled", hold:"Hold", incomplete:"Incomplete" };
   return labels[status] ?? status;
