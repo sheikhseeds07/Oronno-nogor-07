@@ -305,7 +305,9 @@ export const getEmployeeMetricOrders = createServerFn({ method: "POST" })
       .in("role", ["admin", "super_admin", "employee"])
       .limit(1);
     if (role.error) throw new Error(role.error.message);
-    if (!role.data?.length) throw new Error("Unauthorized");
+    const roles = (role.data ?? []).map((r: any) => String(r.role));
+    const isAdminRole = roles.includes("admin") || roles.includes("super_admin");
+    if (!isAdminRole) throw new Error("Forbidden");
 
     const db = supabaseAdmin as any;
     if (data.metric === "live_processing") {
@@ -424,7 +426,9 @@ export const bulkUpdateEmployeeMetricOrders = createServerFn({ method: "POST" })
       .in("role", ["admin", "super_admin", "employee"])
       .limit(1);
     if (role.error) throw new Error(role.error.message);
-    if (!role.data?.length) throw new Error("Unauthorized");
+    const roles = (role.data ?? []).map((r: any) => String(r.role));
+    const isAdminRole = roles.includes("admin") || roles.includes("super_admin");
+    if (!isAdminRole) throw new Error("Forbidden");
 
     const db = supabaseAdmin as any;
     const { data: existing, error: existingError } = await db
