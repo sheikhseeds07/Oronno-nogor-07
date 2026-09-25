@@ -443,7 +443,8 @@ export const getWebProcessingOrderCount = createServerFn({ method: "POST" })
     const { count, error } = await supabaseAdmin
       .from("orders")
       .select("id", { count: "exact", head: true })
-      .eq("status", "web_pending");
+      .eq("status", "web_pending")
+      .eq("originated_from_import", false);
     if (error) throw new Error(error.message);
     return Number(count ?? 0);
   });
