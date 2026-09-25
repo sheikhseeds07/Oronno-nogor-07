@@ -516,10 +516,10 @@ export const getEmployeeMonthlyBonusProgress = createServerFn({ method: "POST" }
     const db = supabaseAdmin as any;
     const roleR = await db.from("user_roles").select("role").eq("user_id", context.userId).in("role", ["admin", "super_admin", "employee"]).limit(1);
     if (roleR.error) throw new Error(roleR.error.message);
-    if (String(roleR.data?.[0]?.role ?? "") !== "employee") throw new Error("Unauthorized");
+    if (String(roleR.data?.[0]?.role ?? "") !== "employee") return { visible: false };
     const permR = await db.from("employee_permissions").select("dash_employee_perf").eq("user_id", context.userId).maybeSingle();
     if (permR.error) throw new Error(permR.error.message);
-    if (!permR.data?.dash_employee_perf) throw new Error("Forbidden");
+    if (!permR.data?.dash_employee_perf) return { visible: false };
 
     const now = new Date();
     const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dhaka", year: "numeric", month: "2-digit" }).formatToParts(now);
@@ -532,7 +532,7 @@ export const getEmployeeMonthlyBonusProgress = createServerFn({ method: "POST" }
     const eventsR = await db.from("order_action_events").select("order_id").eq("actor_id", context.userId).eq("action", "confirm").gte("created_at", from).lte("created_at", to);
     if (eventsR.error) throw new Error(eventsR.error.message);
     const ids = Array.from(new Set((eventsR.data ?? []).map((e: any) => String(e.order_id ?? "")).filter(Boolean)));
-    if (!ids.length) return { confirmed: 0, delivered: 0, cancelled: 0, target: 300 };
+    if (!ids.length) return { visible: true, confirmed: 0, delivered: 0, cancelled: 0, target: 300 };
 
     const [ordersR, deletedR] = await Promise.all([
       db.from("orders").select("id,source,status,originated_from_import,notes").in("id", ids),
@@ -555,7 +555,7 @@ export const getEmployeeMonthlyBonusProgress = createServerFn({ method: "POST" }
       if (status === "delivered") delivered++;
       if (status === "cancelled" || status === "canceled") cancelled++;
     }
-    return { confirmed: incompleteIds.length, delivered, cancelled, target: 300 };
+    return { visible: true, confirmed: incompleteIds.length, delivered, cancelled, target: 300 };
   });
 
 export const getOptimizedDashboardReport = createServerFn({ method: "POST" })
