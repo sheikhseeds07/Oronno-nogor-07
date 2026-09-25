@@ -525,8 +525,9 @@ export const getEmployeeMonthlyBonusProgress = createServerFn({ method: "POST" }
     const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dhaka", year: "numeric", month: "2-digit" }).formatToParts(now);
     const year = Number(parts.find((p: any) => p.type === "year")?.value);
     const month = Number(parts.find((p: any) => p.type === "month")?.value);
-    const from = new Date(Date.UTC(year, month - 1, 1)).toISOString();
-    const to = new Date(Date.UTC(year, month, 1) - 1).toISOString();
+    const dhakaOffsetMs = 6 * 60 * 60 * 1000;
+    const from = new Date(Date.UTC(year, month - 1, 1) - dhakaOffsetMs).toISOString();
+    const to = new Date(Date.UTC(year, month, 1) - dhakaOffsetMs - 1).toISOString();
 
     const eventsR = await db.from("order_action_events").select("order_id").eq("actor_id", context.userId).eq("action", "confirm").gte("created_at", from).lte("created_at", to);
     if (eventsR.error) throw new Error(eventsR.error.message);
