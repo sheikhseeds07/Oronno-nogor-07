@@ -489,11 +489,12 @@ export const getWebProcessingOrderCount = createServerFn({ method: "POST" })
     if (role.error) throw new Error(role.error.message);
     if (!role.data?.length) throw new Error("Unauthorized");
 
+    // Total Processing must match the live Order List Processing queue.
+    // Count every order currently in web_pending, regardless of source/import origin.
     const { count, error } = await supabaseAdmin
       .from("orders")
       .select("id", { count: "exact", head: true })
-      .eq("status", "web_pending")
-      .eq("originated_from_import", false);
+      .eq("status", "web_pending");
     if (error) throw new Error(error.message);
     return Number(count ?? 0);
   });
