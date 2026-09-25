@@ -1566,67 +1566,117 @@ async function attachProductImages(orders: OrderRow[]): Promise<OrderRow[]> {
   const allItems = orders.flatMap((o) => o.order_items ?? []);
   const ids = Array.from(new Set(allItems.map((it) => it.product_id).filter((x): x is string => !!x)));
   const idMap: Record<string, string> = {};
-  if (ids.length) {
-    const { data: prods } = await supabase.from("products").select("id,images").in("id", ids);
-    for (const p of prods ?? []) idMap[p.id] = ((p.images as string[] | null) ?? [])[0] ?? "";
+  const nameMap: Record<string, string> = {};
+
+  // Load the product catalog once. Imported orders often contain a slightly
+  // different product title (offer text, price, emoji, etc.), so exact-name
+  // matching alone can leave the thumbnail blank.
+  const { data: catalog } = await supabase.from("products").select("id,name,images");
+  for (const p of catalog ?? []) {
+    const img = ((p.images as string[] | null) ?? [])[0] ?? "";
+    if (p.id && img) idMap[p.id] = img;
+    const key = normalizeProductName(String(p.name ?? ""));
+    if (key && img && !nameMap[key]) nameMap[key] = img;
   }
 
-  // Items still without a picture (no product_id, or product has no image)
-  const unresolvedNames = Array.from(new Set(
-    allItems
-      .filter((it) => !(it.product_id && idMap[it.product_id]) && !it.image)
-      .map((it) => normalizeProductName(it.product_name))
-      .filter(Boolean)
-  ));
+  const productCatalog = (catalog ?? [])
+    .map((p: any) => ({
+      name: normalizeProductName(String(p.name ?? "")),
+      image: (((p.images as string[] | null) ?? [])[0] ?? "") as string,
+    }))
+    .filter((p) => p.name && p.image);
 
-  const nameMap: Record<string, string> = {};
-  if (unresolvedNames.length) {
-    const rawNames = Array.from(new Set(
-      allItems
-        .filter((it) => !(it.product_id && idMap[it.product_id]) && !it.image)
-        .map((it) => it.product_name)
-        .filter(Boolean)
-    ));
-    const { data: byName } = await supabase.from("products").select("name,images").in("name", rawNames);
-    for (const p of byName ?? []) {
-      const img = ((p.images as string[] | null) ?? [])[0] ?? "";
-      const key = normalizeProductName(p.name as string);
-      if (img && key && !nameMap[key]) nameMap[key] = img;
+  // Items still without a picture (no product_id, unmatched product, or
+  // product without an image).
+  const unresolved = allItems.filter((it) => !(it.product_id && idMap[it.product_id]) && !it.image);
+
+  // Match imported/legacy names robustly: exact -> containment -> shared
+  // meaningful tokens. This handles titles such as "২৪ প্রকার ... মাত্র ৳২২৯".
+  const bestCatalogImage = (raw: string) => {
+    const target = normalizeProductName(raw);
+    if (!target) return "";
+    if (nameMap[target]) return nameMap[target];
+
+    const targetTokens = new Set(target.split(/[^\p{L}\p{N}]+/u).filter((x) => x.length >= 2));
+    let best = "";
+    let bestScore = 0;
+    for (const p of productCatalog) {
+      if (!p.name || !p.image) continue;
+      let score = 0;
+      if (target.includes(p.name) || p.name.includes(target)) score += 8;
+      const shared = p.name.split(/[^\p{L}\p{N}]+/u).filter((x) => x.length >= 2)
+        .filter((x) => targetTokens.has(x)).length;
+      score += shared * 2;
+      if (shared >= 2 && score > bestScore) {
+        bestScore = score;
+        best = p.image;
+      }
+    }
+    return best;
+  };
+
+  for (const it of unresolved) {
+    const img = bestCatalogImage(it.product_name);
+    if (img) nameMap[normalizeProductName(it.product_name)] = img;
+  }
+
+  const stillMissing = unresolved.filter((it) => !nameMap[normalizeProductName(it.product_name)]);
+  if (stillMissing.length) {
+    // Landing pages keep package/addon/combo-offer images separately from products.
+    const { data: pages } = await supabase
+      .from("landing_pages")
+      .select("hero_image,addons,planting_steps,products(name,images)")
+      .limit(200);
+
+    const landingCandidates: Array<{ name: string; image: string }> = [];
+    for (const pg of (pages ?? []) as any[]) {
+      const mainProduct = pg?.products;
+      if (mainProduct?.name) {
+        landingCandidates.push({
+          name: normalizeProductName(mainProduct.name),
+          image: (Array.isArray(mainProduct.images) ? mainProduct.images[0] : "") || pg?.hero_image || "",
+        });
+      }
+      for (const a of Array.isArray(pg?.addons) ? pg.addons : []) {
+        landingCandidates.push({
+          name: normalizeProductName(a?.name ?? ""),
+          image: a?.image || pg?.hero_image || "",
+        });
+      }
+      const plantingSteps = pg?.planting_steps;
+      const comboOffers = plantingSteps && typeof plantingSteps === "object" && Array.isArray((plantingSteps as any).combo_offers)
+        ? (plantingSteps as any).combo_offers
+        : [];
+      for (const offer of comboOffers) {
+        landingCandidates.push({
+          name: normalizeProductName(offer?.name ?? ""),
+          image: offer?.image || pg?.hero_image || "",
+        });
+      }
     }
 
-    const stillMissing = unresolvedNames.filter((n) => !nameMap[n]);
-    if (stillMissing.length) {
-      // Landing pages keep their own package/addon images inside the page row.
-      const { data: pages } = await supabase
-        .from("landing_pages")
-        .select("hero_image,addons,planting_steps,products(name,images)")
-        .limit(200);
-      for (const pg of (pages ?? []) as any[]) {
-        const mainProduct = pg?.products;
-        if (mainProduct?.name) {
-          const key = normalizeProductName(mainProduct.name);
-          const img = (Array.isArray(mainProduct.images) ? mainProduct.images[0] : "") || pg?.hero_image || "";
-          if (key && img && !nameMap[key]) nameMap[key] = img;
-        }
-        const addons = Array.isArray(pg?.addons) ? pg.addons : [];
-        for (const a of addons) {
-          const key = normalizeProductName(a?.name ?? "");
-          const img = a?.image || pg?.hero_image || "";
-          if (key && img && !nameMap[key]) nameMap[key] = img;
-        }
-
-        // All Product landing pages store manually configured Combo Offer
-        // products inside planting_steps.combo_offers, not in products/addons.
-        const plantingSteps = pg?.planting_steps;
-        const comboOffers = plantingSteps && typeof plantingSteps === "object" && Array.isArray((plantingSteps as any).combo_offers)
-          ? (plantingSteps as any).combo_offers
-          : [];
-        for (const offer of comboOffers) {
-          const key = normalizeProductName(offer?.name ?? "");
-          const img = offer?.image || pg?.hero_image || "";
-          if (key && img && !nameMap[key]) nameMap[key] = img;
+    for (const it of stillMissing) {
+      const target = normalizeProductName(it.product_name);
+      const exact = landingCandidates.find((x) => x.name === target && x.image);
+      if (exact) {
+        nameMap[target] = exact.image;
+        continue;
+      }
+      const targetTokens = new Set(target.split(/[^\p{L}\p{N}]+/u).filter((x) => x.length >= 2));
+      let best = "";
+      let bestScore = 0;
+      for (const c of landingCandidates) {
+        if (!c.name || !c.image) continue;
+        let score = target.includes(c.name) || c.name.includes(target) ? 8 : 0;
+        const shared = c.name.split(/[^\p{L}\p{N}]+/u).filter((x) => x.length >= 2)
+          .filter((x) => targetTokens.has(x)).length;
+        score += shared * 2;
+        if (shared >= 2 && score > bestScore) {
+          bestScore = score;
+          best = c.image;
         }
       }
+      if (best) nameMap[target] = best;
     }
   }
 
