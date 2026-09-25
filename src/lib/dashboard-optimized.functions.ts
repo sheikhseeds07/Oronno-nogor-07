@@ -146,10 +146,14 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
     }
   }
 
+  // Live Processing is a current operational metric, not an employee-permission metric.
+  // Build it from every assigned web_pending order so every employee row receives
+  // its own real-time count, regardless of that employee's dashboard permissions.
   const liveProcessingByEmployee = new Map<string, number>();
   for (const order of processingR.data ?? []) {
     const id = String(order?.assigned_to ?? "");
-    if (id) liveProcessingByEmployee.set(id, (liveProcessingByEmployee.get(id) ?? 0) + 1);
+    if (!id) continue;
+    liveProcessingByEmployee.set(id, (liveProcessingByEmployee.get(id) ?? 0) + 1);
   }
 
   const rows = new Map<string, any>();
