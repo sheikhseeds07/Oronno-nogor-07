@@ -452,6 +452,38 @@ export const bulkUpdateEmployeeMetricOrders = createServerFn({ method: "POST" })
     return { updated: data.orderIds.length };
   });
 
+export const getEmployeeLiveProcessingCounts = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const role = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .in("role", ["admin", "super_admin", "employee"])
+      .limit(1);
+    if (role.error) throw new Error(role.error.message);
+    if (!role.data?.length) throw new Error("Unauthorized");
+
+    const db = supabaseAdmin as any;
+    const [employeesR, processingR] = await Promise.all([
+      db.from("employees").select("user_id,name").eq("is_active", true),
+      db.from("orders").select("assigned_to").eq("status", "web_pending").not("assigned_to", "is", null),
+    ]);
+    if (employeesR.error) throw new Error(employeesR.error.message);
+    if (processingR.error) throw new Error(processingR.error.message);
+
+    const counts = new Map<string, number>();
+    for (const order of processingR.data ?? []) {
+      const id = String(order?.assigned_to ?? "");
+      if (id) counts.set(id, (counts.get(id) ?? 0) + 1);
+    }
+    return (employeesR.data ?? []).map((employee: any) => ({
+      user_id: String(employee.user_id),
+      name: employee.name ?? "Unknown",
+      live_processing: counts.get(String(employee.user_id)) ?? 0,
+    }));
+  });
+
 export const getWebProcessingOrderCount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
