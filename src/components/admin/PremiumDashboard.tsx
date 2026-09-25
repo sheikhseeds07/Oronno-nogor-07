@@ -113,7 +113,7 @@ function MonthlyBonusCard() {
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 shadow-sm"><Sparkles className="h-5 w-5"/></div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <div className="text-[13px] font-black text-slate-900">Hello, {user?.name ?? "আপনি"}, 👋</div>
+            <div className="text-[13px] font-black text-slate-900">Hello, {data?.employeeName ?? "আপনি"}, 👋</div>
             <div className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[8px] font-black uppercase tracking-wide text-amber-700"><LockKeyhole className="h-3 w-3"/> Locked</div>
           </div>
           <div className="mt-1 text-[10px] leading-5 text-slate-600"><b className="text-emerald-700">🎉 Good News!</b> আগামী মাসের ১ তারিখ থেকে <b>Monthly Bonus</b> চালু হবে। এক মাসে Incomplete Order থেকে <b>৩০০টি Confirm</b> করে Delivery সম্পন্ন করতে পারলে মাস শেষে পাবেন <b className="text-emerald-700">৳২,০০০ Extra Bonus</b>। 💰</div>
