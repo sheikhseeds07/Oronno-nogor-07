@@ -90,6 +90,7 @@ function EmployeeMetricModal({ employee, metric, range, onClose }: { employee: a
 }
 
 function MonthlyBonusCard() {
+  const { user } = useAuth();
   const fetchBonus = useServerFn(getEmployeeMonthlyBonusProgress);
   const { data, isLoading } = useQuery({
     queryKey: ["employee-monthly-bonus"],
