@@ -95,9 +95,10 @@ async function getMetaProfitData(from: string, to: string) {
  * this append-only history directly and keeps confirmation numbers untouched.
  */
 async function fetchAllActionEvents(db: any, action: string, from: string, to: string, actorId?: string) {
-  // PostgREST caps a response page at 1,000 rows. Fetch the first page with
-  // an exact count, then fetch remaining pages concurrently so historical
-  // dashboard ranges do not become a long serial chain of requests.
+  // Supabase/PostgREST returns at most 1,000 rows per response by default.
+  // Fetch the first page with an exact count, then load remaining pages
+  // concurrently so historical ranges stay complete without a long chain
+  // of sequential HTTP requests.
   const pageSize = 1000;
   let firstQuery = db.from("order_action_events")
     .select("order_id,actor_id,action,created_at", { count: "exact" })
@@ -105,15 +106,15 @@ async function fetchAllActionEvents(db: any, action: string, from: string, to: s
     .order("created_at", { ascending: true }).range(0, pageSize - 1);
   if (actorId) firstQuery = firstQuery.eq("actor_id", actorId);
 
-  const { data: firstPage, count, error } = await firstQuery;
-  if (error) throw new Error(error.message);
+  const { data: firstPage, count, error: firstError } = await firstQuery;
+  if (firstError) throw new Error(firstError.message);
 
-  const total = Number(count ?? firstPage?.length ?? 0);
+  const total = Number(count ?? (firstPage ?? []).length);
   if (total <= pageSize) return firstPage ?? [];
 
   const pageStarts = Array.from(
     { length: Math.ceil(total / pageSize) - 1 },
-    (_, i) => (i + 1) * pageSize,
+    (_, index) => (index + 1) * pageSize,
   );
 
   const pages = await Promise.all(pageStarts.map(async (offset) => {
@@ -127,16 +128,15 @@ async function fetchAllActionEvents(db: any, action: string, from: string, to: s
     return data ?? [];
   }));
 
-  return [ ...(firstPage ?? []), ...pages.flat() ];
+  return [...(firstPage ?? []), ...pages.flat()];
 }
 
 async function fetchRowsByIds(db: any, table: string, columns: string, ids: string[], idColumn = "id") {
-  const chunkSize = 500;
+  const chunkSize = 1000;
   const chunks = Array.from(
     { length: Math.ceil(ids.length / chunkSize) },
-    (_, i) => ids.slice(i * chunkSize, (i + 1) * chunkSize),
+    (_, index) => ids.slice(index * chunkSize, (index + 1) * chunkSize),
   );
-  if (!chunks.length) return [];
 
   const results = await Promise.all(chunks.map(async (chunk) => {
     const { data, error } = await db.from(table).select(columns).in(idColumn, chunk);
