@@ -637,8 +637,24 @@ function OrdersTable({
   }, [isShippedFilter, syncStatuses, qc]);
 
   // Realtime live-updates are handled once in <Orders /> via useLiveOrders().
-
-
+  // Keep the visible Processing query synchronized with every order change.
+  useEffect(() => {
+    if (mode !== "web" || filter !== "web_pending") return;
+    const channel = supabase
+      .channel("processing-list-live-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
+        qc.invalidateQueries({ queryKey: ["admin-orders", "web", "web_pending"] });
+        qc.invalidateQueries({ queryKey: ["order-status-counts"] });
+      })
+      .subscribe();
+    const timer = window.setInterval(() => {
+      qc.invalidateQueries({ queryKey: ["admin-orders", "web", "web_pending"] });
+    }, 5000);
+    return () => {
+      supabase.removeChannel(channel);
+      window.clearInterval(timer);
+    };
+  }, [mode, filter, qc]);
 
   const fetchOrdersPage = useCallback(async (pageNum: number): Promise<{ rows: OrderRow[]; total: number }> => {
     const list = (filter === "all" ? statuses : [filter]).filter((status) => status !== "incomplete");
