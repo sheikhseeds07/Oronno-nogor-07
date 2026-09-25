@@ -95,56 +95,30 @@ async function getMetaProfitData(from: string, to: string) {
  * this append-only history directly and keeps confirmation numbers untouched.
  */
 async function fetchAllActionEvents(db: any, action: string, from: string, to: string, actorId?: string) {
-  // Supabase/PostgREST returns at most 1,000 rows per response by default.
-  // Fetch the first page with an exact count, then load remaining pages
-  // concurrently so historical ranges stay complete without a long chain
-  // of sequential HTTP requests.
   const pageSize = 1000;
-  let firstQuery = db.from("order_action_events")
-    .select("order_id,actor_id,action,created_at", { count: "exact" })
-    .eq("action", action).gte("created_at", from).lte("created_at", to)
-    .order("created_at", { ascending: true }).range(0, pageSize - 1);
-  if (actorId) firstQuery = firstQuery.eq("actor_id", actorId);
-
-  const { data: firstPage, count, error: firstError } = await firstQuery;
-  if (firstError) throw new Error(firstError.message);
-
-  const total = Number(count ?? (firstPage ?? []).length);
-  if (total <= pageSize) return firstPage ?? [];
-
-  const pageStarts = Array.from(
-    { length: Math.ceil(total / pageSize) - 1 },
-    (_, index) => (index + 1) * pageSize,
-  );
-
-  const pages = await Promise.all(pageStarts.map(async (offset) => {
-    let query = db.from("order_action_events")
-      .select("order_id,actor_id,action,created_at")
+  const all: any[] = [];
+  for (let offset = 0; ; offset += pageSize) {
+    let query = db.from("order_action_events").select("order_id,actor_id,action,created_at")
       .eq("action", action).gte("created_at", from).lte("created_at", to)
       .order("created_at", { ascending: true }).range(offset, offset + pageSize - 1);
     if (actorId) query = query.eq("actor_id", actorId);
     const { data, error } = await query;
     if (error) throw new Error(error.message);
-    return data ?? [];
-  }));
-
-  return [...(firstPage ?? []), ...pages.flat()];
+    all.push(...(data ?? []));
+    if ((data ?? []).length < pageSize) break;
+  }
+  return all;
 }
 
 async function fetchRowsByIds(db: any, table: string, columns: string, ids: string[], idColumn = "id") {
-  const chunkSize = 1000;
-  const chunks = Array.from(
-    { length: Math.ceil(ids.length / chunkSize) },
-    (_, index) => ids.slice(index * chunkSize, (index + 1) * chunkSize),
-  );
-
-  const results = await Promise.all(chunks.map(async (chunk) => {
-    const { data, error } = await db.from(table).select(columns).in(idColumn, chunk);
+  const chunkSize = 500;
+  const all: any[] = [];
+  for (let i = 0; i < ids.length; i += chunkSize) {
+    const { data, error } = await db.from(table).select(columns).in(idColumn, ids.slice(i, i + chunkSize));
     if (error) throw new Error(error.message);
-    return data ?? [];
-  }));
-
-  return results.flat();
+    all.push(...(data ?? []));
+  }
+  return all;
 }
 
 async function getLiveEmployeeCancellationPerformance(from: string, to: string, baseRows: any[]) {
