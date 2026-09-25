@@ -27,7 +27,7 @@ export const getOrderStatusCounts = createServerFn({ method: "POST" })
       : ["web_pending", "pending", "rts", "shipped", "delivered", "pending_return", "returned", "partial", "cancelled", "hold"];
 
     const results = await Promise.all(wanted.map(async (status) => {
-      let q = db.from("orders").select("id", { count: "exact", head: true }).eq("status", status as any);
+      let q = db.from("orders").select("id", { count: "exact", head: true }).eq("status", status as any).eq("originated_from_import", false);
       if (data.from) q = q.gte("created_at", data.from);
       if (data.to) q = q.lte("created_at", data.to);
       const { count, error } = await q;
