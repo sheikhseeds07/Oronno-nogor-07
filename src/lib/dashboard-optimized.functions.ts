@@ -510,6 +510,53 @@ export const getWebProcessingOrderCount = createServerFn({ method: "POST" })
     return Number(count ?? 0);
   });
 
+export const getEmployeeMonthlyBonusProgress = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const db = supabaseAdmin as any;
+    const roleR = await db.from("user_roles").select("role").eq("user_id", context.userId).in("role", ["admin", "super_admin", "employee"]).limit(1);
+    if (roleR.error) throw new Error(roleR.error.message);
+    if (String(roleR.data?.[0]?.role ?? "") !== "employee") throw new Error("Unauthorized");
+    const permR = await db.from("employee_permissions").select("dash_employee_perf").eq("user_id", context.userId).maybeSingle();
+    if (permR.error) throw new Error(permR.error.message);
+    if (!permR.data?.dash_employee_perf) throw new Error("Forbidden");
+
+    const now = new Date();
+    const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dhaka", year: "numeric", month: "2-digit" }).formatToParts(now);
+    const year = Number(parts.find((p: any) => p.type === "year")?.value);
+    const month = Number(parts.find((p: any) => p.type === "month")?.value);
+    const from = new Date(Date.UTC(year, month - 1, 1)).toISOString();
+    const to = new Date(Date.UTC(year, month, 1) - 1).toISOString();
+
+    const eventsR = await db.from("order_action_events").select("order_id").eq("actor_id", context.userId).eq("action", "confirm").gte("created_at", from).lte("created_at", to);
+    if (eventsR.error) throw new Error(eventsR.error.message);
+    const ids = Array.from(new Set((eventsR.data ?? []).map((e: any) => String(e.order_id ?? "")).filter(Boolean)));
+    if (!ids.length) return { confirmed: 0, delivered: 0, cancelled: 0, target: 300 };
+
+    const [ordersR, deletedR] = await Promise.all([
+      db.from("orders").select("id,source,status,originated_from_import,notes").in("id", ids),
+      db.from("deleted_orders").select("id,original_status,order_data").in("id", ids),
+    ]);
+    if (ordersR.error) throw new Error(ordersR.error.message);
+    if (deletedR.error) throw new Error(deletedR.error.message);
+
+    const rows = new Map<string, any>();
+    for (const row of ordersR.data ?? []) rows.set(String(row.id), row);
+    for (const row of deletedR.data ?? []) if (!rows.has(String(row.id))) rows.set(String(row.id), row?.order_data && typeof row.order_data === "object" ? { ...row.order_data, status: row.original_status ?? row.order_data.status } : { status: row.original_status });
+
+    const incompleteIds = ids.filter((id) => {
+      const row = rows.get(id) ?? {};
+      return String(row.source ?? "").toLowerCase() === "incomplete" && !isMassageOrder(row);
+    });
+    let delivered = 0, cancelled = 0;
+    for (const id of incompleteIds) {
+      const status = String(rows.get(id)?.status ?? "").toLowerCase();
+      if (status === "delivered") delivered++;
+      if (status === "cancelled" || status === "canceled") cancelled++;
+    }
+    return { confirmed: incompleteIds.length, delivered, cancelled, target: 300 };
+  });
+
 export const getOptimizedDashboardReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => RangeSchema.parse(input))
