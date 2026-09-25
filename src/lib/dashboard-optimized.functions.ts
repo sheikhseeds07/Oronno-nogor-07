@@ -270,7 +270,7 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
 
 const EmployeeMetricSchema = z.object({
   userId: z.string().uuid(),
-  metric: z.enum(["web_confirm", "incomplete_confirm", "massage_confirm", "web_cancel", "incomplete_cancel", "massage_cancel"]),
+  metric: z.enum(["web_confirm", "incomplete_confirm", "massage_confirm", "web_cancel", "incomplete_cancel", "massage_cancel", "live_processing"]),
   from: z.string().datetime(),
   to: z.string().datetime(),
 });
@@ -294,6 +294,16 @@ export const getEmployeeMetricOrders = createServerFn({ method: "POST" })
     if (!role.data?.length) throw new Error("Unauthorized");
 
     const db = supabaseAdmin as any;
+    if (data.metric === "live_processing") {
+      const { data: processingOrders, error: processingError } = await db
+        .from("orders")
+        .select("id,source,originated_from_import,notes,invoice_no,customer_name,customer_phone,total,status,created_at,updated_at")
+        .eq("assigned_to", data.userId)
+        .eq("status", "web_pending")
+        .order("updated_at", { ascending: false });
+      if (processingError) throw new Error(processingError.message);
+      return (processingOrders ?? []).map((o: any) => ({ ...o, archived: false }));
+    }
     const action = data.metric === "web_confirm" || data.metric === "incomplete_confirm" || data.metric === "massage_confirm" ? "confirm" : "cancel";
     const { data: events, error: eventsError } = await db
       .from("order_action_events")
