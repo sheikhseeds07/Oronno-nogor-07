@@ -28,10 +28,10 @@ export const getOrderStatusCounts = createServerFn({ method: "POST" })
 
     const results = await Promise.all(wanted.map(async (status) => {
       let q = db.from("orders").select("id", { count: "exact", head: true }).eq("status", status as any);
-      // Imported orders must appear in the Order List Pending badge, but they must
-      // remain excluded from Web Order counts. The Web Order counters apply their
-      // own originated_from_import=false filter where appropriate.
-      if (status !== "pending") q = q.eq("originated_from_import", false);
+      // Imported orders must appear in every Order List status count,
+      // but must remain excluded from all Web Order counts.
+      // All status badges use this function; Web Order-specific queries apply
+      // originated_from_import=false separately.
       if (data.from) q = q.gte("created_at", data.from);
       if (data.to) q = q.lte("created_at", data.to);
       const { count, error } = await q;
