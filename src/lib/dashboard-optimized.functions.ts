@@ -94,26 +94,46 @@ async function getMetaProfitData(from: string, to: string) {
  * The dashboard RPC can lag behind the live schema, so the dashboard reads
  * this append-only history directly and keeps confirmation numbers untouched.
  */
+async function fetchAllActionEvents(db: any, action: string, from: string, to: string, actorId?: string) {
+  const pageSize = 1000;
+  const all: any[] = [];
+  for (let offset = 0; ; offset += pageSize) {
+    let query = db.from("order_action_events").select("order_id,actor_id,action,created_at")
+      .eq("action", action).gte("created_at", from).lte("created_at", to)
+      .order("created_at", { ascending: true }).range(offset, offset + pageSize - 1);
+    if (actorId) query = query.eq("actor_id", actorId);
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+    all.push(...(data ?? []));
+    if ((data ?? []).length < pageSize) break;
+  }
+  return all;
+}
+
+async function fetchRowsByIds(db: any, table: string, columns: string, ids: string[], idColumn = "id") {
+  const chunkSize = 500;
+  const all: any[] = [];
+  for (let i = 0; i < ids.length; i += chunkSize) {
+    const { data, error } = await db.from(table).select(columns).in(idColumn, ids.slice(i, i + chunkSize));
+    if (error) throw new Error(error.message);
+    all.push(...(data ?? []));
+  }
+  return all;
+}
+
 async function getLiveEmployeeCancellationPerformance(from: string, to: string, baseRows: any[]) {
   const db = supabaseAdmin as any;
 
-  const [employeesR, divisionMembersR, confirmEventsR, processingR] = await Promise.all([
+  const [employeesR, divisionMembersR, processingR, confirmEvents] = await Promise.all([
     db.from("employees").select("user_id,name").eq("is_active", true),
     db.from("order_distribution_members").select("user_id,enabled").eq("enabled", true),
-    db.from("order_action_events")
-      .select("order_id,actor_id,action,created_at")
-      .eq("action", "confirm")
-      .gte("created_at", from)
-      .lte("created_at", to),
     db.from("orders").select("assigned_to").eq("status", "web_pending").eq("originated_from_import", false).not("assigned_to", "is", null),
+    fetchAllActionEvents(db, "confirm", from, to),
   ]);
 
   if (employeesR.error) throw new Error(employeesR.error.message);
   if (processingR.error) throw new Error(processingR.error.message);
   if (divisionMembersR.error) throw new Error(divisionMembersR.error.message);
-  if (confirmEventsR.error) throw new Error(confirmEventsR.error.message);
-
-  const confirmEvents = confirmEventsR.data ?? [];
   const orderDivisionActiveIds = new Set(
     (divisionMembersR.data ?? []).map((row: any) => String(row?.user_id ?? "")).filter(Boolean)
   );
@@ -124,27 +144,23 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
     confirmEvents.map((e: any) => String(e?.order_id ?? "")).filter(Boolean)
   ));
 
-  const confirmOrdersR = confirmIds.length
-    ? await db.from("orders").select("id,source,originated_from_import,notes").in("id", confirmIds)
-    : { data: [], error: null };
-  if (confirmOrdersR.error) throw new Error(confirmOrdersR.error.message);
-
+  const confirmOrderRows = confirmIds.length
+    ? await fetchRowsByIds(db, "orders", "id,source,originated_from_import,notes", confirmIds)
+    : [];
   const confirmSourceByOrder = new Map<string, string>(
-    (confirmOrdersR.data ?? []).map((row: any) => [String(row.id), isMassageOrder(row) ? "__import__" : String(row.source ?? "").toLowerCase()])
+    confirmOrderRows.map((row: any) => [String(row.id), isMassageOrder(row) ? "__import__" : String(row.source ?? "").toLowerCase()])
   );
 
   // Imported/deleted orders can still have confirmation events. Fill missing
   // sources from deleted_orders without making cancellation data a dependency.
   const missingConfirmIds = confirmIds.filter((id) => !confirmSourceByOrder.has(id));
   if (missingConfirmIds.length) {
-    const deletedConfirmR = await db.from("deleted_orders").select("id,order_data").in("id", missingConfirmIds);
-    if (!deletedConfirmR.error) {
-      for (const row of deletedConfirmR.data ?? []) {
+    const deletedConfirmRows = await fetchRowsByIds(db, "deleted_orders", "id,order_data", missingConfirmIds);
+    for (const row of deletedConfirmRows) {
         const data = row?.order_data && typeof row.order_data === "object" ? row.order_data : {};
         confirmSourceByOrder.set(String(row.id), isMassageOrder(data) ? "__import__" : String(data?.source ?? "").toLowerCase());
       }
     }
-  }
 
   // Live Processing is a current operational metric, not an employee-permission metric.
   // Build it from every assigned web_pending order so every employee row receives
@@ -215,34 +231,28 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
   // Cancellation metrics are supplementary and must never be allowed to
   // wipe/zero the real confirmation metrics if their history is unavailable.
   try {
-    const cancelEventsR = await db.from("order_action_events")
-      .select("order_id,actor_id,action,created_at")
-      .eq("action", "cancel")
-      .gte("created_at", from)
-      .lte("created_at", to);
-
-    if (!cancelEventsR.error) {
-      const cancelEvents = cancelEventsR.data ?? [];
+    const cancelEvents = await fetchAllActionEvents(db, "cancel", from, to);
+    if (cancelEvents) {
       const cancelIds = Array.from(new Set(
         cancelEvents.map((e: any) => String(e?.order_id ?? "")).filter(Boolean)
       ));
 
-      const [ordersR, deletedR, cancelHistoryR] = await Promise.all([
-        cancelIds.length ? db.from("orders").select("id,source,originated_from_import,notes").in("id", cancelIds) : Promise.resolve({ data: [], error: null }),
-        cancelIds.length ? db.from("deleted_orders").select("id,order_data").in("id", cancelIds) : Promise.resolve({ data: [], error: null }),
-        cancelIds.length ? db.from("order_cancellation_history").select("order_id,source,cancelled_at").in("order_id", cancelIds).gte("cancelled_at", from).lte("cancelled_at", to) : Promise.resolve({ data: [], error: null }),
+      const [ordersRows, deletedRows, cancelHistoryRows] = await Promise.all([
+        cancelIds.length ? fetchRowsByIds(db, "orders", "id,source,originated_from_import,notes", cancelIds) : Promise.resolve([]),
+        cancelIds.length ? fetchRowsByIds(db, "deleted_orders", "id,order_data", cancelIds) : Promise.resolve([]),
+        cancelIds.length ? fetchRowsByIds(db, "order_cancellation_history", "order_id,source,cancelled_at", cancelIds, "order_id") : Promise.resolve([]),
       ]);
 
       const sourceByOrder = new Map<string, string>();
-      for (const row of ordersR.data ?? []) sourceByOrder.set(String(row.id), isMassageOrder(row) ? "__import__" : String(row.source ?? "").toLowerCase());
-      for (const row of deletedR.data ?? []) {
+      for (const row of ordersRows) sourceByOrder.set(String(row.id), isMassageOrder(row) ? "__import__" : String(row.source ?? "").toLowerCase());
+      for (const row of deletedRows) {
         if (!sourceByOrder.has(String(row.id))) {
           const data = row?.order_data && typeof row.order_data === "object" ? row.order_data : {};
           sourceByOrder.set(String(row.id), isMassageOrder(data) ? "__import__" : String(data?.source ?? "").toLowerCase());
         }
       }
       const cancelSourceByOrder = new Map<string, string>();
-      for (const row of cancelHistoryR.data ?? []) cancelSourceByOrder.set(String(row.order_id), String(row.source ?? "").toLowerCase());
+      for (const row of cancelHistoryRows) cancelSourceByOrder.set(String(row.order_id), String(row.source ?? "").toLowerCase());
 
       for (const event of cancelEvents) {
         const actor = String(event?.actor_id ?? "");
@@ -322,42 +332,26 @@ export const getEmployeeMetricOrders = createServerFn({ method: "POST" })
       return (processingOrders ?? []).map((o: any) => ({ ...o, archived: false }));
     }
     const action = data.metric === "web_confirm" || data.metric === "incomplete_confirm" || data.metric === "massage_confirm" ? "confirm" : "cancel";
-    const { data: events, error: eventsError } = await db
-      .from("order_action_events")
-      .select("order_id,actor_id,action,created_at")
-      .eq("actor_id", data.userId)
-      .eq("action", action)
-      .gte("created_at", data.from)
-      .lte("created_at", data.to)
-      .order("created_at", { ascending: false });
-    if (eventsError) throw new Error(eventsError.message);
+    const events = await fetchAllActionEvents(db, action, data.from, data.to, data.userId);
 
     const eventIds = Array.from(new Set((events ?? []).map((e: any) => String(e.order_id ?? "")).filter(Boolean)));
     if (!eventIds.length) return [];
 
-    const history = data.metric === "web_cancel" || data.metric === "incomplete_cancel" || data.metric === "massage_cancel" ? await db
-      .from("order_cancellation_history")
-      .select("order_id,source,cancelled_at")
-      .in("order_id", eventIds)
-      .gte("cancelled_at", data.from)
-      .lte("cancelled_at", data.to) : { data: [], error: null };
-    if (history.error) throw new Error(history.error.message);
+    const historyRows = data.metric === "web_cancel" || data.metric === "incomplete_cancel" || data.metric === "massage_cancel"
+      ? await fetchRowsByIds(db, "order_cancellation_history", "order_id,source,cancelled_at", eventIds, "order_id")
+      : [];
 
-    const sourceByOrder = new Map<string, string>((history.data ?? []).map((h: any) => [String(h.order_id), String(h.source ?? "").toLowerCase()]));
+    const sourceByOrder = new Map<string, string>(historyRows.map((h: any) => [String(h.order_id), String(h.source ?? "").toLowerCase()]));
     for (const id of eventIds) {
       if (!sourceByOrder.has(id)) sourceByOrder.set(id, "");
     }
     if (data.metric === "massage_cancel") {
-      const { data: cancelOrders, error: cancelOrdersError } = await db
-        .from("orders")
-        .select("id,source,originated_from_import,notes")
-        .in("id", eventIds);
-      if (cancelOrdersError) throw new Error(cancelOrdersError.message);
-      for (const o of cancelOrders ?? []) {
+      const cancelOrders = await fetchRowsByIds(db, "orders", "id,source,originated_from_import,notes", eventIds);
+      for (const o of cancelOrders) {
         if (isMassageOrder(o)) sourceByOrder.set(String(o.id), "massage");
       }
-      const { data: deletedCancelOrders } = await db.from("deleted_orders").select("id,order_data").in("id", eventIds);
-      for (const o of deletedCancelOrders ?? []) {
+      const deletedCancelOrders = await fetchRowsByIds(db, "deleted_orders", "id,order_data", eventIds);
+      for (const o of deletedCancelOrders) {
         if (isMassageOrder(o?.order_data)) sourceByOrder.set(String(o.id), "massage");
       }
     }
@@ -371,16 +365,10 @@ export const getEmployeeMetricOrders = createServerFn({ method: "POST" })
 
     if (!ids.length) return [];
 
-    const [ordersR, deletedR] = await Promise.all([
-      db.from("orders")
-        .select("id,source,originated_from_import,notes,invoice_no,customer_name,customer_phone,total,status,created_at,updated_at")
-        .in("id", ids),
-      db.from("deleted_orders")
-        .select("id,order_data,invoice_no,customer_name,customer_phone,total,original_status,original_created_at,deleted_at")
-        .in("id", ids),
+    const [ordersRows, deletedRows] = await Promise.all([
+      fetchRowsByIds(db, "orders", "id,source,originated_from_import,notes,invoice_no,customer_name,customer_phone,total,status,created_at,updated_at", ids),
+      fetchRowsByIds(db, "deleted_orders", "id,order_data,invoice_no,customer_name,customer_phone,total,original_status,original_created_at,deleted_at", ids),
     ]);
-    if (ordersR.error) throw new Error(ordersR.error.message);
-    if (deletedR.error) throw new Error(deletedR.error.message);
 
     const byId = new Map<string, any>();
     for (const o of ordersR.data ?? []) byId.set(String(o.id), { ...o, archived: false });
@@ -402,8 +390,8 @@ export const getEmployeeMetricOrders = createServerFn({ method: "POST" })
 
     const filteredIds = (data.metric === "web_confirm" || data.metric === "incomplete_confirm" || data.metric === "massage_confirm")
       ? eventIds.filter((id) => {
-          const live = (ordersR.data ?? []).find((o: any) => String(o.id) === id);
-          const archived = (deletedR.data ?? []).find((o: any) => String(o.id) === id);
+          const live = ordersRows.find((o: any) => String(o.id) === id);
+          const archived = deletedRows.find((o: any) => String(o.id) === id);
           const source = isMassageOrder(live ?? archived?.order_data) ? "__import__" : String(live?.source ?? archived?.order_data?.source ?? "").toLowerCase();
           if (data.metric === "massage_confirm") return isMassageOrder(live ?? archived?.order_data);
           return source === (data.metric === "incomplete_confirm" ? "incomplete" : "web");
