@@ -97,7 +97,7 @@ async function getMetaProfitData(from: string, to: string) {
 async function getLiveEmployeeCancellationPerformance(from: string, to: string, baseRows: any[]) {
   const db = supabaseAdmin as any;
 
-  const [employeesR, divisionMembersR, confirmEventsR] = await Promise.all([
+  const [employeesR, divisionMembersR, confirmEventsR, processingR] = await Promise.all([
     db.from("employees").select("user_id,name").eq("is_active", true),
     db.from("order_distribution_members").select("user_id,enabled").eq("enabled", true),
     db.from("order_action_events")
@@ -105,9 +105,11 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
       .eq("action", "confirm")
       .gte("created_at", from)
       .lte("created_at", to),
+    db.from("orders").select("assigned_to").eq("status", "web_pending").not("assigned_to", "is", null),
   ]);
 
   if (employeesR.error) throw new Error(employeesR.error.message);
+  if (processingR.error) throw new Error(processingR.error.message);
   if (divisionMembersR.error) throw new Error(divisionMembersR.error.message);
   if (confirmEventsR.error) throw new Error(confirmEventsR.error.message);
 
@@ -144,6 +146,12 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
     }
   }
 
+  const liveProcessingByEmployee = new Map<string, number>();
+  for (const order of processingR.data ?? []) {
+    const id = String(order?.assigned_to ?? "");
+    if (id) liveProcessingByEmployee.set(id, (liveProcessingByEmployee.get(id) ?? 0) + 1);
+  }
+
   const rows = new Map<string, any>();
   for (const row of baseRows) {
     const id = String(row?.user_id ?? "");
@@ -158,6 +166,7 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
       massage_confirmed: 0,
       massage_cancelled: 0,
       total: 0,
+      live_processing: liveProcessingByEmployee.get(id) ?? 0,
       order_division_active: orderDivisionActiveIds.has(id),
     });
   }
@@ -177,6 +186,7 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
         massage_confirmed: 0,
         massage_cancelled: 0,
         total: 0,
+        live_processing: liveProcessingByEmployee.get(id) ?? 0,
         order_division_active: orderDivisionActiveIds.has(id),
       });
     } else {
