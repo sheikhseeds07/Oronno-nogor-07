@@ -18,10 +18,11 @@ import { isValidBdPhone, phoneSubmitError } from "@/lib/bd-phone";
 import { Button } from "@/components/ui/button";
 import brandLogoFile from "@/assets/logo.jpg";
 import { GuaranteePopup } from "@/components/landing/GuaranteePopup";
+import { NutrimixReviews } from "@/components/landing/NutrimixReviews";
 
 type Product = { id: string; name: string; price: number; sale_price: number | null; images: string[] | null };
 type Addon = { product_id?: string; name: string; price: number; image?: string; old_price?: number; badge?: string; delivery_fee?: number | null };
-type Page = { id: string; slug: string; title: string; top_bar_text?: string | null; hero_title?: string | null; hero_subtitle?: string | null; hero_image?: string | null; cta_text?: string | null; regular_price?: number | null; sale_price?: number | null; main_delivery_fee?: number | null; features?: Feature[] | null; why_choose_us?: WhyItem[] | null; addons?: Addon[] | null; theme_color?: string | null; planting_steps?: unknown; description?: string | null; is_published?: boolean; products?: Product | null };
+type Page = { id: string; slug: string; title: string; reviews?: { name: string; rating: number; text: string; image?: string }[] | null; show_reviews?: boolean; top_bar_text?: string | null; hero_title?: string | null; hero_subtitle?: string | null; hero_image?: string | null; cta_text?: string | null; regular_price?: number | null; sale_price?: number | null; main_delivery_fee?: number | null; features?: Feature[] | null; why_choose_us?: WhyItem[] | null; addons?: Addon[] | null; theme_color?: string | null; planting_steps?: unknown; description?: string | null; is_published?: boolean; products?: Product | null };
 type Offer = { name: string; price: number; old?: number | null; image?: string; product_id?: string; delivery_fee: number; badge?: string; quantity?: string };
 
 export function AllProductLandingPage({ slug }: { slug: string }) {
@@ -263,6 +264,10 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
           <table className="w-full border-collapse text-left"><tbody>{why.slice(0,6).map((item, index) => <tr key={index} className="border-b border-all-product-line/40 last:border-0 transition-colors hover:bg-all-product-soft/40"><td className="px-4 py-3.5 text-[13.5px] leading-6"><span className="mr-2">{item.icon || ["💵","🚚","🛡️","☎️","🌱","⭐"][index]}</span><span className="font-black">{item.title}</span>{item.text && <span className="text-all-product-muted"> — {item.text}</span>}</td></tr>)}</tbody></table>
         </div>
       </div></section>
+
+      {isNutrimix && page.show_reviews !== false && Array.isArray(page.reviews) && page.reviews.length > 0 && (
+        <NutrimixReviews reviews={page.reviews} themeColor={page.theme_color || undefined} />
+      )}
 
       <section id="all-product-order" className="scroll-mt-20 bg-all-product-checkout py-10 sm:py-14">
         <div className="mx-auto max-w-3xl px-4">
