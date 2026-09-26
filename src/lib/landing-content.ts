@@ -19,6 +19,8 @@ export type LandingContent = {
   hero_note: string;
   red_cta_text: string;
   hero_image_2?: string;
+  /** Nutrimix-only hero image rotation list. */
+  hero_gallery_images?: string[];
   gift_cta_text: string;
   gift_title_1: string;
   gift_title_2: string;
@@ -100,6 +102,7 @@ export const DEFAULT_CONTENT: LandingContent = {
   hero_note: "সারা দেশে ক্যাশ অন হোম ডেলিভারি",
   red_cta_text: "অর্ডার করতে ক্লিক করুন",
   hero_image_2: "",
+  hero_gallery_images: [],
   gift_cta_text: "১ প্যাকেট বিদেশি বীজ ফ্রী নিন!",
   gift_title_1: "১ প্যাকেট",
   gift_title_2: "বিদেশি বীজ ফ্রী",
