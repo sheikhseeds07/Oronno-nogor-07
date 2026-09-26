@@ -107,40 +107,50 @@ const ORDER_QUERY_KEYS = [
   "order-detail",
 ] as const;
 
-/** Live-refresh every order related query on any DB change (no page refresh needed). */
+/** Lightweight realtime bridge.
+ * AdminOrderStability patches UPDATE/DELETE events directly into the visible
+ * order cache. We therefore must NOT refetch the whole order page on every
+ * status/field change. Only INSERTs invalidate the active list so a genuinely
+ * new order appears; status badges are refreshed cheaply on any order change.
+ */
 function useLiveOrders() {
   const qc = useQueryClient();
   useEffect(() => {
-    let scheduled = false;
-    const invalidate = () => {
-      if (scheduled) return;
-      scheduled = true;
-      setTimeout(() => {
-        scheduled = false;
-        for (const key of ORDER_QUERY_KEYS) {
-          qc.invalidateQueries({ queryKey: [key], refetchType: "all" });
-        }
-      }, 120);
+    let timer: number | null = null;
+    let pendingInsert = false;
+
+    const scheduleInsertRefresh = () => {
+      if (pendingInsert) return;
+      pendingInsert = true;
+      timer = window.setTimeout(() => {
+        pendingInsert = false;
+        timer = null;
+        qc.invalidateQueries({ queryKey: ["admin-orders"], refetchType: "active" });
+      }, 250);
     };
+
+    const onOrderChange = (payload: any) => {
+      if (payload?.eventType === "INSERT") scheduleInsertRefresh();
+      qc.invalidateQueries({ queryKey: ["order-status-counts"], refetchType: "active" });
+    };
+
+    const onIncompleteChange = () => {
+      qc.invalidateQueries({ queryKey: ["admin-orders-incomplete"], refetchType: "active" });
+      qc.invalidateQueries({ queryKey: ["incomplete-count"], refetchType: "active" });
+    };
+
     const channel = supabase
-      .channel("admin-orders-live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, invalidate)
-      .on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, invalidate)
-      .on("postgres_changes", { event: "*", schema: "public", table: "incomplete_orders" }, invalidate)
+      .channel("admin-orders-live-light")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, onOrderChange)
+      .on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, () => {})
+      .on("postgres_changes", { event: "*", schema: "public", table: "incomplete_orders" }, onIncompleteChange)
       .subscribe();
 
-    // Safety net if realtime is unavailable: light periodic refresh only.
-    // Switching browser tabs must NOT reload or invalidate queries — that's handled by realtime or explicit actions.
-    const poll = setInterval(() => { 
-      // Only refresh if explicitly needed and not in background to avoid visual reloads on tab switch
-      // invalidate(); 
-    }, 120_000); // Increased interval to 2 minutes
     return () => {
+      if (timer !== null) window.clearTimeout(timer);
       supabase.removeChannel(channel);
-      clearInterval(poll);
     };
   }, [qc]);
-
 }
 
 function Orders() {
@@ -636,25 +646,9 @@ function OrdersTable({
     return () => { alive = false; clearInterval(t); };
   }, [isShippedFilter, syncStatuses, qc]);
 
-  // Realtime live-updates are handled once in <Orders /> via useLiveOrders().
-  // Keep the visible Processing query synchronized with every order change.
-  useEffect(() => {
-    if (mode !== "web" || filter !== "web_pending") return;
-    const channel = supabase
-      .channel("processing-list-live-sync")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
-        qc.invalidateQueries({ queryKey: ["admin-orders", "web", "web_pending"] });
-        qc.invalidateQueries({ queryKey: ["order-status-counts"] });
-      })
-      .subscribe();
-    const timer = window.setInterval(() => {
-      qc.invalidateQueries({ queryKey: ["admin-orders", "web", "web_pending"] });
-    }, 5000);
-    return () => {
-      supabase.removeChannel(channel);
-      window.clearInterval(timer);
-    };
-  }, [mode, filter, qc]);
+  // Realtime is handled centrally by useLiveOrders() and AdminOrderStability().
+  // Do not poll the Processing queue: a 5-second full-page refetch created
+  // unnecessary database load and was a major source of Admin-panel slowness.
 
   const fetchOrdersPage = useCallback(async (pageNum: number): Promise<{ rows: OrderRow[]; total: number }> => {
     const list = (filter === "all" ? statuses : [filter]).filter((status) => status !== "incomplete");
