@@ -1680,16 +1680,39 @@ async function attachProductImages(orders: OrderRow[]): Promise<OrderRow[]> {
     }
   }
 
+  // Combo Offer images are authoritative: an offer can point at a
+  // normal product but must keep its own configured thumbnail.
+  const comboImageMap: Record<string, string> = {};
+  const { data: comboPages } = await supabase
+    .from("landing_pages")
+    .select("planting_steps")
+    .limit(200);
+  for (const pg of (comboPages ?? []) as any[]) {
+    const steps = pg?.planting_steps;
+    const combos = steps && typeof steps === "object" && Array.isArray(steps.combo_offers)
+      ? steps.combo_offers
+      : [];
+    for (const combo of combos) {
+      const key = normalizeProductName(String(combo?.name ?? ""));
+      const image = String(combo?.image ?? "").trim();
+      if (key && image) comboImageMap[key] = image;
+    }
+  }
+
   return orders.map((o) => ({
     ...o,
-    order_items: (o.order_items ?? []).map((it) => ({
-      ...it,
-      image:
-        (it.product_id ? idMap[it.product_id] : "") ||
-        it.image ||
-        nameMap[normalizeProductName(it.product_name)] ||
-        "",
-    })),
+    order_items: (o.order_items ?? []).map((it) => {
+      const key = normalizeProductName(it.product_name);
+      return {
+        ...it,
+        image:
+          comboImageMap[key] ||
+          it.image ||
+          (it.product_id ? idMap[it.product_id] : "") ||
+          nameMap[key] ||
+          "",
+      };
+    }),
   }));
 }
 
