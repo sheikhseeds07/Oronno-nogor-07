@@ -11,7 +11,6 @@ const InputSchema = z.object({ customer_name: z.string().min(1).max(255), custom
 type Input = z.infer<typeof InputSchema>;
 const IncompleteInputSchema = z.object({ customer_name: z.string().max(255).optional().nullable(), customer_phone: z.string().regex(PHONE_RE), customer_address: z.string().max(1000).optional().nullable(), delivery_zone: z.string().max(100).optional().nullable(), delivery_fee: z.number().min(0).max(10000), subtotal: z.number().min(0).max(10_000_000), total: z.number().min(0).max(10_000_000), note: z.string().max(2000).optional().nullable(), items: z.array(ItemSchema).min(1).max(100) });
 
-export const getSeedComboNutrimix = createServerFn({ method: "POST" }).inputValidator((input) => z.object({ product_id: z.string().uuid() }).parse(input)).handler(async ({ data }) => { const { data: product } = await supabaseAdmin.from("products").select("id,name,price,sale_price,images,is_active").eq("id", data.product_id).maybeSingle(); return product ?? null; });
 
 export const lookupCustomerByPhone = createServerFn({ method: "POST" }).inputValidator((input) => z.object({ phone: z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number") }).parse(input)).handler(async ({ data }) => {
   const { data: order } = await supabaseAdmin.from("orders").select("customer_name,customer_address").eq("customer_phone", data.phone).order("created_at", { ascending: false }).limit(1).maybeSingle();
