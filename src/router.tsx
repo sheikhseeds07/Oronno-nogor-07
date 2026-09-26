@@ -24,6 +24,16 @@ export const getRouter = () => {
     },
   });
 
+  // Admin pages should feel instant when moving between sections: keep warm cache data
+  // on navigation/focus instead of issuing a fresh request just because the route mounted.
+  // Realtime/explicit invalidation remains responsible for data that must update immediately.
+  queryClient.setQueryDefaults(["admin"], {
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
+  });
+
   for (const key of ["admin-orders", "admin-orders-incomplete"] as const) {
     queryClient.setQueryDefaults([key], {
       refetchOnWindowFocus: false,
