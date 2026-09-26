@@ -1637,7 +1637,16 @@ async function attachProductImages(orders: OrderRow[]): Promise<OrderRow[]> {
           image: a?.image || pg?.hero_image || "",
         });
       }
-      const plantingSteps = pg?.planting_steps;\n      // Seed Combo NUTRIMIX popup is independent of products; its configured\n      // image is stored in the landing-page planting_steps content.\n      const popup = plantingSteps;\n      if (popup && typeof popup === "object" && popup.nutrimix_offer_image) {\n        landingCandidates.push({\n          name: normalizeProductName(String(popup.nutrimix_offer_name ?? "")),\n          image: String(popup.nutrimix_offer_image),\n        });\n      }
+      const plantingSteps = pg?.planting_steps;
+      // Seed Combo NUTRIMIX popup is independent of products; its configured
+      // image is stored in the landing-page planting_steps content.
+      const popup = plantingSteps;
+      if (popup && typeof popup === "object" && popup.nutrimix_offer_image) {
+        landingCandidates.push({
+          name: normalizeProductName(String(popup.nutrimix_offer_name ?? "")),
+          image: String(popup.nutrimix_offer_image),
+        });
+      }
       const comboOffers = plantingSteps && typeof plantingSteps === "object" && Array.isArray((plantingSteps as any).combo_offers)
         ? (plantingSteps as any).combo_offers
         : [];
