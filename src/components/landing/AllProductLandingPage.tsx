@@ -42,6 +42,15 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   const product = page?.products ?? null;
   const C = mergeContent(page?.planting_steps);
   const heroImage = page?.hero_image || product?.images?.[0] || "/placeholder.svg";
+  const configuredHeroImages = Array.isArray(C.hero_gallery_images) ? C.hero_gallery_images.filter(Boolean) : [];
+  const heroImages = isNutrimix ? Array.from(new Set([heroImage, ...configuredHeroImages])) : [heroImage];
+  const [heroImageIndex, setHeroImageIndex] = useState(0);
+  useEffect(() => { setHeroImageIndex(0); }, [page?.id, heroImages.length]);
+  useEffect(() => {
+    if (!isNutrimix || heroImages.length < 2) return;
+    const timer = window.setInterval(() => setHeroImageIndex((current) => (current + 1) % heroImages.length), 5000);
+    return () => window.clearInterval(timer);
+  }, [isNutrimix, heroImages.length]);
   const basePrice = Number(page?.sale_price ?? product?.sale_price ?? page?.regular_price ?? product?.price ?? 0);
   const regularPrice = Number(page?.regular_price ?? product?.price ?? 0) || null;
   const delivery = Number(page?.main_delivery_fee ?? 70);
@@ -203,11 +212,13 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
 
           <div className="mt-5 sm:mt-6">
             <div className="all-product-image-wrap mx-auto max-w-xl overflow-hidden rounded-2xl border-2 border-all-product-gold/45 bg-all-product-surface shadow-2xl">
-              <div className="relative">
-                <img src={toImg(heroImage, { w: 1100, q: 88 })} onError={event => imgFallback(event, heroImage)} alt={page.hero_title || page.title} width={760} height={760} fetchPriority="high" className="aspect-square w-full object-cover" />
+              <div className="relative aspect-square overflow-hidden">
+                {heroImages.map((image, index) => (
+                  <img key={image + index} src={toImg(image, { w: 1100, q: 88 })} onError={event => imgFallback(event, image)} alt={page.hero_title || page.title} width={760} height={760} fetchPriority={index === 0 ? "high" : "auto"} className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[1400ms] ease-in-out ${index === heroImageIndex ? "opacity-100" : "opacity-0"}`} />
+                ))}
                 {!isNutrimix && <span className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-all-product-surface/95 px-3 py-2 text-xs font-black text-all-product-primary shadow-lg"><Leaf className="h-4 w-4" /> ১০০% অরিজিনাল</span>}
-              </div>
-              <div className="border-t-2 border-all-product-gold/35 bg-gradient-to-r from-all-product-primary/10 via-all-product-gold/15 to-all-product-primary/10 px-4 py-3.5 sm:px-5 sm:py-4">
+                {isNutrimix && heroImages.length > 1 && <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5 rounded-full bg-black/25 px-2.5 py-1.5 backdrop-blur-md">{heroImages.map((_, index) => <button key={index} type="button" onClick={() => setHeroImageIndex(index)} aria-label={`ইমেজ ${index + 1}`} className={`h-1.5 rounded-full transition-all duration-500 ${index === heroImageIndex ? "w-7 bg-white" : "w-1.5 bg-white/55"}`} />)}</div>}
+              </div>           <div className="border-t-2 border-all-product-gold/35 bg-gradient-to-r from-all-product-primary/10 via-all-product-gold/15 to-all-product-primary/10 px-4 py-3.5 sm:px-5 sm:py-4">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <span className="block text-[11px] font-black tracking-wide text-all-product-primary">আজকের অফার মূল্য</span>
