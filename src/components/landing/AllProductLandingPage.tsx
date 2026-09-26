@@ -272,9 +272,11 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
         </div>
       </div></section>}
 
+      {isNutrimix && <NutrimixNutrients />}
+
       <section className="bg-all-product-surface py-7"><div className="mx-auto max-w-3xl px-4">
         <div className="overflow-hidden rounded-xl border border-all-product-line bg-all-product-surface shadow-all-product">
-          <div className="flex items-center justify-center gap-2 border-b border-all-product-line bg-all-product-soft px-4 py-2.5 text-center"><Sparkles className="h-4 w-4 shrink-0 text-all-product-primary" /><h2 className="text-[13.5px] font-black leading-5">প্রোডাক্ট বৈশিষ্ট্য</h2></div>
+          <div className="flex items-center justify-center gap-2 border-b border-all-product-line bg-all-product-soft px-4 py-2.5 text-center"><Sparkles className="h-4 w-4 shrink-0 text-all-product-primary" /><h2 className="text-[13.5px] font-black leading-5">{isNutrimix ? "ব্যবহারের উপকারিতা" : "প্রোডাক্ট বৈশিষ্ট্য"}</h2></div>
           <table className="w-full border-collapse text-left"><tbody>{features.slice(0,6).map((feature, index) => <tr key={index} className="border-b border-all-product-line/50 last:border-0"><td className="px-4 py-3 text-[13.5px] leading-6"><span className="mr-2">{feature.icon || ["🌱","✓","🚚","🛡️","💧","☀️"][index]}</span><span className="font-black">{feature.title}</span>{feature.text && <span className="text-all-product-muted"> — {feature.text}</span>}</td></tr>)}</tbody></table>
         </div>
       </div></section>
@@ -289,6 +291,17 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
           <table className="w-full border-collapse text-left"><tbody>{why.slice(0,6).map((item, index) => <tr key={index} className="border-b border-all-product-line/40 last:border-0 transition-colors hover:bg-all-product-soft/40"><td className="px-4 py-3.5 text-[13.5px] leading-6"><span className="mr-2">{item.icon || ["💵","🚚","🛡️","☎️","🌱","⭐"][index]}</span><span className="font-black">{item.title}</span>{item.text && <span className="text-all-product-muted"> — {item.text}</span>}</td></tr>)}</tbody></table>
         </div>
       </div></section>
+
+      {isNutrimix && (
+        <div className="bg-all-product-surface px-4 pb-3 pt-1 text-center">
+          <div className="mx-auto max-w-md">
+            <Button size="lg" onClick={handleCta} className="all-product-primary-cta h-12 w-full text-base font-black shadow-lg">
+              <ShoppingBag className="h-5 w-5" />{page.cta_text || "এখনই অর্ডার করুন"}<span aria-hidden="true">→</span>
+            </Button>
+            <p className="mt-2 text-[11px] font-bold text-all-product-muted">ক্যাশ অন ডেলিভারি • সারা দেশে হোম ডেলিভারি</p>
+          </div>
+        </div>
+      )}
 
       {isNutrimix && page.show_reviews !== false && Array.isArray(page.reviews) && page.reviews.length > 0 && (
         <NutrimixReviews reviews={page.reviews} themeColor={page.theme_color || undefined} />
@@ -427,6 +440,45 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
     <div role="contentinfo" className="bg-all-product-hero px-4 py-6 text-center text-xs text-all-product-hero-muted">© {new Date().getFullYear()} {brand} — বিশ্বস্ত বীজ, সুন্দর ভবিষ্যৎ</div>
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-all-product-line bg-all-product-surface/95 p-2 backdrop-blur-lg"><div className="mx-auto max-w-3xl">{formInView ? <Button type="submit" form="all-product-order-form" disabled={submitting} className="all-product-primary-cta h-12 w-full font-black"><ShieldCheck />{submitting ? "অর্ডার হচ্ছে..." : `অর্ডার টি কনফার্ম করুন — ${taka(total)}`}</Button> : <Button onClick={handleCta} className="all-product-primary-cta h-12 w-full font-black"><ShoppingBag />{page.cta_text || "এখনই অর্ডার করুন"}{selected ? ` — ${taka(total)}` : ""}</Button>}</div></div>
   </div>;
+}
+
+
+function NutrimixNutrients() {
+  const nutrients = [
+    { symbol: "Mg", name: "Magnesium", tone: "bg-slate-100 text-slate-700 border-slate-200" },
+    { symbol: "Ca", name: "Calcium", tone: "bg-blue-50 text-blue-700 border-blue-100" },
+    { symbol: "Na", name: "Sodium", tone: "bg-sky-50 text-sky-700 border-sky-100" },
+    { symbol: "S", name: "Sulfur", tone: "bg-amber-50 text-amber-700 border-amber-100" },
+    { symbol: "B", name: "Boron", tone: "bg-red-50 text-red-700 border-red-100" },
+    { symbol: "Zn", name: "Zinc", tone: "bg-emerald-50 text-emerald-700 border-emerald-100" },
+  ];
+  return (
+    <section className="bg-all-product-muted-surface px-4 pb-2 pt-1 sm:pb-3">
+      <div className="mx-auto max-w-3xl">
+        <div className="relative overflow-hidden rounded-2xl border border-all-product-gold/25 bg-gradient-to-br from-white via-all-product-soft to-all-product-gold/[0.08] p-3.5 shadow-[0_12px_36px_-22px_rgba(20,83,45,.45)] sm:p-4">
+          <div className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full bg-all-product-gold/15 blur-2xl" />
+          <div className="relative">
+            <div className="mb-2.5 flex items-center justify-between gap-2">
+              <div>
+                <span className="text-[9px] font-black uppercase tracking-[0.14em] text-all-product-gold-foreground">Premium Nutrient Blend</span>
+                <h2 className="mt-0.5 text-sm font-black text-all-product-ink sm:text-base">NUTRIMIX-এ রয়েছে ৬টি প্রয়োজনীয় পুষ্টি উপাদান</h2>
+              </div>
+              <span className="hidden shrink-0 rounded-full bg-all-product-primary/10 px-2 py-1 text-[9px] font-black text-all-product-primary sm:inline-flex">6 ELEMENTS</span>
+            </div>
+            <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6 sm:gap-2">
+              {nutrients.map((item) => (
+                <div key={item.symbol} className={`flex min-w-0 items-center gap-1.5 rounded-xl border px-2 py-2 ${item.tone} sm:flex-col sm:justify-center sm:gap-0.5 sm:py-2.5`}>
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/80 text-[11px] font-black shadow-sm sm:h-8 sm:w-8 sm:text-xs">{item.symbol}</span>
+                  <span className="truncate text-[9px] font-black leading-4 sm:text-[10px]">{item.name}</span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 text-center text-[9px] font-semibold text-all-product-muted">গাছের প্রয়োজনীয় পুষ্টি ঘাটতি পূরণে একটি সুষম মিশ্রণ</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 const AP_COUNTDOWN_STYLE = `
