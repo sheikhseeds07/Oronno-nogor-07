@@ -308,6 +308,19 @@ function LandingPagesAdmin() {
                     <input value={editing.hero_image ?? ""} onChange={(e) => set({ hero_image: e.target.value })} placeholder="অথবা URL পেস্ট" className="w-full border rounded-lg px-3 py-2 text-sm mt-2" />
                     {editing.hero_image && <img src={editing.hero_image} className="mt-2 w-full max-h-48 object-cover rounded" alt="" />}
                   </Field>
+                  {editing.slug === "nutrimix" && (
+                    <div className="rounded-xl border-2 border-emerald-200 bg-emerald-50/40 p-3">
+                      <div className="mb-2">
+                        <div className="font-bold text-sm">NUTRIMIX — অতিরিক্ত হিরো ইমেজ</div>
+                        <div className="text-[11px] text-muted-foreground">মূল ইমেজের সাথে এখানে যোগ করা ইমেজগুলো একই জায়গায় ৫ সেকেন্ড পরপর প্রিমিয়াম smooth transition-এ পরিবর্তন হবে।</div>
+                      </div>
+                      <ImageList
+                        items={C.hero_gallery_images ?? []}
+                        onChange={(hero_gallery_images) => setC({ hero_gallery_images })}
+                        uploadImage={uploadImage}
+                      />
+                    </div>
+                  )}
                   <Field label="CTA বাটন টেক্সট"><input value={editing.cta_text ?? ""} onChange={(e) => set({ cta_text: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field>
                   <div className="grid grid-cols-2 gap-3">
                     <Field label="রেগুলার দাম (৳)"><input type="number" value={editing.regular_price ?? ""} onChange={(e) => set({ regular_price: e.target.value ? Number(e.target.value) : null })} className="w-full border rounded-lg px-3 py-2" /></Field>
