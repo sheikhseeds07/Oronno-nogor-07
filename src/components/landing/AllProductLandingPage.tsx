@@ -282,7 +282,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
       </div></section>
 
       <div className="bg-all-product-surface px-4 pb-2 text-center">
-        <div className="mx-auto max-w-md"><Button size="lg" onClick={handleCta} className="all-product-primary-cta h-12 w-full text-base font-black"><ShoppingBag className="h-5 w-5" />ফ্রী ডেলিভারিতে অর্ডার করুন<span aria-hidden="true">→</span></Button><p className="mt-2 text-[11px] font-bold text-all-product-muted">সারা দেশে হোম ডেলিভারি • ক্যাশ অন ডেলিভারি</p></div>
+        <div className="mx-auto max-w-md"><Button size="lg" onClick={handleCta} className="all-product-primary-cta h-12 w-full text-base font-black"><ShoppingBag className="h-5 w-5" />{page.cta_text || "এখনই অর্ডার করুন"}<span aria-hidden="true">→</span></Button><p className="mt-2 text-[11px] font-bold text-all-product-muted">ক্যাশ অন ডেলিভারি • সারা দেশে হোম ডেলিভারি</p></div>
       </div>
 
       <section className="bg-all-product-muted-surface py-7"><div className="mx-auto max-w-3xl px-4">
@@ -296,9 +296,9 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
         <div className="bg-all-product-surface px-4 pb-3 pt-1 text-center">
           <div className="mx-auto max-w-md">
             <Button size="lg" onClick={handleCta} className="all-product-primary-cta h-12 w-full text-base font-black shadow-lg">
-              <ShoppingBag className="h-5 w-5" />{page.cta_text || "এখনই অর্ডার করুন"}<span aria-hidden="true">→</span>
+              <ShoppingBag className="h-5 w-5" />ফ্রী ডেলিভারিতে অর্ডার করুন<span aria-hidden="true">→</span>
             </Button>
-            <p className="mt-2 text-[11px] font-bold text-all-product-muted">ক্যাশ অন ডেলিভারি • সারা দেশে হোম ডেলিভারি</p>
+            <p className="mt-2 text-[11px] font-bold text-all-product-muted">সারা দেশে হোম ডেলিভারি • ক্যাশ অন ডেলিভারি</p>
           </div>
         </div>
       )}
@@ -461,13 +461,24 @@ function NutrimixNutrients() {
           <div className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full bg-all-product-gold/15 blur-2xl" />
           <div className="relative">
             <div className="mb-2.5 flex items-center justify-between gap-2">
-              <div><span className="text-[9px] font-black uppercase tracking-[0.14em] text-all-product-gold-foreground">Premium Nutrient Blend</span><h2 className="mt-0.5 text-sm font-black text-all-product-ink sm:text-base">NUTRIMIX-এ রয়েছে ৬টি প্রয়োজনীয় পুষ্টি উপাদান</h2></div>
+              <div>
+                <span className="text-[9px] font-black uppercase tracking-[0.14em] text-all-product-gold-foreground">Premium Nutrient Blend</span>
+                <h2 className="mt-0.5 text-sm font-black text-all-product-ink sm:text-base">NUTRIMIX-এ রয়েছে ৬টি প্রয়োজনীয় পুষ্টি উপাদান</h2>
+              </div>
               <span className="hidden shrink-0 rounded-full bg-all-product-primary/10 px-2 py-1 text-[9px] font-black text-all-product-primary sm:inline-flex">6 ELEMENTS</span>
             </div>
             <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6 sm:gap-2">
-              {nutrients.map((item) => <button key={item.symbol} type="button" onClick={() => setActive(active === item.symbol ? null : item.symbol)} aria-expanded={active === item.symbol} className={`flex min-w-0 items-center gap-1.5 rounded-xl border px-2 py-2 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm active:scale-[.98] ${item.tone} sm:flex-col sm:justify-center sm:gap-0.5 sm:py-2.5`}><span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/80 text-[11px] font-black shadow-sm sm:h-8 sm:w-8 sm:text-xs">{item.symbol}</span><span className="truncate text-[9px] font-black leading-4 sm:text-[10px]">{item.name}</span></button>)}
+              {nutrients.map((item) => (
+                <button key={item.symbol} type="button" onClick={() => setActive(active === item.symbol ? null : item.symbol)} aria-expanded={active === item.symbol}
+                  className={`flex min-w-0 items-center gap-1.5 rounded-xl border px-2 py-2 ${item.tone} transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm active:scale-[.98] sm:flex-col sm:justify-center sm:gap-0.5 sm:py-2.5`}>
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/80 text-[11px] font-black shadow-sm sm:h-8 sm:w-8 sm:text-xs">{item.symbol}</span>
+                  <span className="truncate text-[9px] font-black leading-4 sm:text-[10px]">{item.name}</span>
+                </button>
+              ))}
             </div>
-            <div className={`overflow-hidden transition-all duration-300 ease-out ${selected ? "mt-2.5 max-h-20 opacity-100" : "max-h-0 opacity-0"}`} aria-live="polite">{selected && <div className="rounded-xl border border-all-product-primary/15 bg-all-product-surface px-3 py-2 text-center shadow-sm"><span className="text-[9px] font-black text-all-product-primary">{selected.symbol} • {selected.name}</span><p className="mt-0.5 text-[10.5px] font-semibold leading-4 text-all-product-muted">{selected.benefit}</p></div>}</div>
+            <div className={`overflow-hidden transition-all duration-300 ease-out ${selected ? "mt-2.5 max-h-20 opacity-100" : "max-h-0 opacity-0"}`} aria-live="polite">
+              {selected && <div className="rounded-xl border border-all-product-primary/15 bg-all-product-surface px-3 py-2 text-center shadow-sm"><span className="text-[9px] font-black text-all-product-primary">{selected.symbol} • {selected.name}</span><p className="mt-0.5 text-[10.5px] font-semibold leading-4 text-all-product-muted">{selected.benefit}</p></div>}
+            </div>
             <p className="mt-2 text-center text-[9px] font-semibold text-all-product-muted">উপাদানের নামের উপর চাপ দিলে সংশ্লিষ্ট উপকারিতা দেখুন</p>
           </div>
         </div>
