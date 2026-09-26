@@ -257,7 +257,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
           </div>
 
           <div className="mx-auto mt-4 max-w-xl text-center">
-            <Button size="lg" onClick={handleCta} className="all-product-primary-cta h-13 w-full text-base font-black shadow-xl sm:h-14"><ShoppingBag className="h-5 w-5" />{page.cta_text || "এখনই অর্ডার করুন"}<span aria-hidden="true">→</span></Button>
+            <Button size="lg" onClick={handleCta} className="all-product-primary-cta h-13 w-full text-base font-black shadow-xl sm:h-14"><ShoppingBag className="h-5 w-5" />{isNutrimix ? "২৪ প্রকার বীজ ফ্রী নিন" : (page.cta_text || "এখনই অর্ডার করুন")}<span aria-hidden="true">→</span></Button>
             <p className="mt-2 text-[11px] font-bold text-all-product-hero-muted">ক্যাশ অন ডেলিভারি • সারা দেশে হোম ডেলিভারি</p>
           </div>
         </div>
@@ -282,7 +282,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
       </div></section>
 
       <div className="bg-all-product-surface px-4 pb-2 text-center">
-        <div className="mx-auto max-w-md"><Button size="lg" onClick={handleCta} className="all-product-primary-cta h-12 w-full text-base font-black"><ShoppingBag className="h-5 w-5" />{page.cta_text || "এখনই অর্ডার করুন"}<span aria-hidden="true">→</span></Button><p className="mt-2 text-[11px] font-bold text-all-product-muted">ক্যাশ অন ডেলিভারি • সারা দেশে হোম ডেলিভারি</p></div>
+        <div className="mx-auto max-w-md"><Button size="lg" onClick={handleCta} className="all-product-primary-cta h-12 w-full text-base font-black"><ShoppingBag className="h-5 w-5" />ফ্রী ডেলিভারিতে অর্ডার করুন<span aria-hidden="true">→</span></Button><p className="mt-2 text-[11px] font-bold text-all-product-muted">সারা দেশে হোম ডেলিভারি • ক্যাশ অন ডেলিভারি</p></div>
       </div>
 
       <section className="bg-all-product-muted-surface py-7"><div className="mx-auto max-w-3xl px-4">
@@ -444,14 +444,16 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
 
 
 function NutrimixNutrients() {
+  const [active, setActive] = useState<string | null>(null);
   const nutrients = [
-    { symbol: "Mg", name: "Magnesium", tone: "bg-slate-100 text-slate-700 border-slate-200" },
-    { symbol: "Ca", name: "Calcium", tone: "bg-blue-50 text-blue-700 border-blue-100" },
-    { symbol: "Na", name: "Sodium", tone: "bg-sky-50 text-sky-700 border-sky-100" },
-    { symbol: "S", name: "Sulfur", tone: "bg-amber-50 text-amber-700 border-amber-100" },
-    { symbol: "B", name: "Boron", tone: "bg-red-50 text-red-700 border-red-100" },
-    { symbol: "Zn", name: "Zinc", tone: "bg-emerald-50 text-emerald-700 border-emerald-100" },
+    { symbol: "Mg", name: "Magnesium", benefit: "ক্লোরোফিল তৈরিতে সহায়তা করে এবং পাতাকে সবুজ ও সতেজ রাখতে ভূমিকা রাখে।", tone: "bg-slate-100 text-slate-700 border-slate-200" },
+    { symbol: "Ca", name: "Calcium", benefit: "গাছের কোষ ও নতুন বৃদ্ধিকে শক্তিশালী রাখতে সহায়তা করে।", tone: "bg-blue-50 text-blue-700 border-blue-100" },
+    { symbol: "Na", name: "Sodium", benefit: "কিছু গাছে পানি ও আয়ন ভারসাম্য বজায় রাখতে সহায়তা করতে পারে।", tone: "bg-sky-50 text-sky-700 border-sky-100" },
+    { symbol: "S", name: "Sulfur", benefit: "প্রোটিন ও গুরুত্বপূর্ণ এনজাইম তৈরিতে সহায়তা করে এবং গাছের স্বাভাবিক বৃদ্ধি সমর্থন করে।", tone: "bg-amber-50 text-amber-700 border-amber-100" },
+    { symbol: "B", name: "Boron", benefit: "ফুল, পরাগায়ন ও নতুন টিস্যুর স্বাভাবিক বিকাশে সহায়তা করে।", tone: "bg-red-50 text-red-700 border-red-100" },
+    { symbol: "Zn", name: "Zinc", benefit: "এনজাইমের কার্যক্রম ও গাছের স্বাভাবিক বৃদ্ধি সমর্থনে গুরুত্বপূর্ণ ভূমিকা রাখে।", tone: "bg-emerald-50 text-emerald-700 border-emerald-100" },
   ];
+  const selected = nutrients.find((item) => item.symbol === active) ?? null;
   return (
     <section className="bg-all-product-muted-surface px-4 pb-2 pt-1 sm:pb-3">
       <div className="mx-auto max-w-3xl">
@@ -459,21 +461,14 @@ function NutrimixNutrients() {
           <div className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full bg-all-product-gold/15 blur-2xl" />
           <div className="relative">
             <div className="mb-2.5 flex items-center justify-between gap-2">
-              <div>
-                <span className="text-[9px] font-black uppercase tracking-[0.14em] text-all-product-gold-foreground">Premium Nutrient Blend</span>
-                <h2 className="mt-0.5 text-sm font-black text-all-product-ink sm:text-base">NUTRIMIX-এ রয়েছে ৬টি প্রয়োজনীয় পুষ্টি উপাদান</h2>
-              </div>
+              <div><span className="text-[9px] font-black uppercase tracking-[0.14em] text-all-product-gold-foreground">Premium Nutrient Blend</span><h2 className="mt-0.5 text-sm font-black text-all-product-ink sm:text-base">NUTRIMIX-এ রয়েছে ৬টি প্রয়োজনীয় পুষ্টি উপাদান</h2></div>
               <span className="hidden shrink-0 rounded-full bg-all-product-primary/10 px-2 py-1 text-[9px] font-black text-all-product-primary sm:inline-flex">6 ELEMENTS</span>
             </div>
             <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6 sm:gap-2">
-              {nutrients.map((item) => (
-                <div key={item.symbol} className={`flex min-w-0 items-center gap-1.5 rounded-xl border px-2 py-2 ${item.tone} sm:flex-col sm:justify-center sm:gap-0.5 sm:py-2.5`}>
-                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/80 text-[11px] font-black shadow-sm sm:h-8 sm:w-8 sm:text-xs">{item.symbol}</span>
-                  <span className="truncate text-[9px] font-black leading-4 sm:text-[10px]">{item.name}</span>
-                </div>
-              ))}
+              {nutrients.map((item) => <button key={item.symbol} type="button" onClick={() => setActive(active === item.symbol ? null : item.symbol)} aria-expanded={active === item.symbol} className={`flex min-w-0 items-center gap-1.5 rounded-xl border px-2 py-2 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm active:scale-[.98] ${item.tone} sm:flex-col sm:justify-center sm:gap-0.5 sm:py-2.5`}><span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white/80 text-[11px] font-black shadow-sm sm:h-8 sm:w-8 sm:text-xs">{item.symbol}</span><span className="truncate text-[9px] font-black leading-4 sm:text-[10px]">{item.name}</span></button>)}
             </div>
-            <p className="mt-2 text-center text-[9px] font-semibold text-all-product-muted">গাছের প্রয়োজনীয় পুষ্টি ঘাটতি পূরণে একটি সুষম মিশ্রণ</p>
+            <div className={`overflow-hidden transition-all duration-300 ease-out ${selected ? "mt-2.5 max-h-20 opacity-100" : "max-h-0 opacity-0"}`} aria-live="polite">{selected && <div className="rounded-xl border border-all-product-primary/15 bg-all-product-surface px-3 py-2 text-center shadow-sm"><span className="text-[9px] font-black text-all-product-primary">{selected.symbol} • {selected.name}</span><p className="mt-0.5 text-[10.5px] font-semibold leading-4 text-all-product-muted">{selected.benefit}</p></div>}</div>
+            <p className="mt-2 text-center text-[9px] font-semibold text-all-product-muted">উপাদানের নামের উপর চাপ দিলে সংশ্লিষ্ট উপকারিতা দেখুন</p>
           </div>
         </div>
       </div>
