@@ -14,7 +14,7 @@ import { toast } from "sonner";
 
 function Card({title,value,hint,icon:Icon,tone}:{title:string;value:string;hint:string;icon:any;tone:string}){return <div className={`group relative isolate flex min-h-[156px] h-full min-w-0 flex-col overflow-hidden rounded-[22px] border bg-white/95 p-4 shadow-[0_8px_30px_rgba(15,23,42,0.06)] backdrop-blur transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_18px_45px_rgba(15,23,42,0.12)] ${tone}`}><div className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full bg-slate-100/70 blur-2xl transition-transform duration-700 group-hover:scale-150"/><div className="relative flex items-center justify-between"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-50 ring-1 ring-slate-100 transition-all duration-500 group-hover:rotate-6 group-hover:scale-110"><Icon className="h-5 w-5"/></div><Activity className="h-4 w-4 text-slate-300 transition-all duration-500 group-hover:animate-pulse group-hover:text-slate-500"/></div><div className="relative mt-4 text-[11px] font-semibold text-slate-500">{title}</div><div className="relative mt-1 text-[27px] font-black tracking-tight text-slate-950 transition-transform duration-300 group-hover:translate-x-0.5">{value}</div><div className="relative mt-auto pt-2 text-[10px] font-medium text-slate-400">{hint}</div></div>}
 
-function Section({title,children,right}:{title:string;children:any;right?:any}){return <section className="mb-4 overflow-hidden rounded-[22px] border border-slate-200/80 bg-white/95 shadow-[0_8px_30px_rgba(15,23,42,0.05)] transition-shadow duration-300 hover:shadow-[0_14px_38px_rgba(15,23,42,0.08)]"><div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-gradient-to-r from-white to-slate-50/70 px-4 py-3.5 sm:px-5"><div className="flex min-w-0 items-center gap-2.5"><span className="h-5 w-1 rounded-full bg-slate-900"/><h2 className="truncate text-[13px] font-black tracking-tight text-slate-900">{title}</h2></div>{right}</div>{children}</section>}
+function Section({title,children,right}:{title:string;children:any;right?:any}){return <section className={`mb-4 overflow-hidden rounded-[22px] border border-slate-200/80 bg-white/95 shadow-[0_8px_30px_rgba(15,23,42,0.05)] transition-shadow duration-300 hover:shadow-[0_14px_38px_rgba(15,23,42,0.08)] ${title.includes("Employee Confirmation") ? "employee-performance-section" : ""}`}><div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-gradient-to-r from-white to-slate-50/70 px-4 py-3.5 sm:px-5"><div className="flex min-w-0 items-center gap-2.5"><span className="h-5 w-1 rounded-full bg-slate-900"/><h2 className="truncate text-[13px] font-black tracking-tight text-slate-900">{title}</h2></div>{right}</div>{children}</section>}
 
 function PipelineCard({data,title="Web Orders",accent="indigo"}:{data:any;title?:string;accent?:"indigo"|"violet"}){const [open,setOpen]=useState(false);const total=Number(data?.total??0),confirmed=Number(data?.confirmed??0),processing=Number(data?.processing??0),cancelled=Number(data?.cancelled??0),active=Number(data?.active??0);const indigo=accent==="indigo";const stats=[{label:"Confirmed",value:confirmed,icon:CheckCircle2,tone:"text-emerald-700 bg-emerald-50 border-emerald-100"},{label:"Processing",value:processing,icon:Clock3,tone:"text-amber-700 bg-amber-50 border-amber-100"},{label:"Cancelled",value:cancelled,icon:XCircle,tone:"text-rose-700 bg-rose-50 border-rose-100"}];return <div className="min-w-0"><div onClick={()=>setOpen(v=>!v)} role="button" tabIndex={0} onKeyDown={e=>{if(e.key==="Enter"||e.key===" ")setOpen(v=>!v)}} className={`group relative flex h-full min-h-[156px] min-w-0 cursor-pointer flex-col overflow-hidden rounded-[22px] border bg-white/95 p-4 shadow-[0_8px_30px_rgba(15,23,42,0.06)] transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_18px_45px_rgba(15,23,42,0.12)] ${open?(indigo?"border-indigo-300 ring-4 ring-indigo-50":"border-violet-300 ring-4 ring-violet-50"):(indigo?"border-indigo-100":"border-violet-100")}`}><div className={`pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full blur-2xl transition-transform duration-700 group-hover:scale-150 ${indigo?"bg-indigo-100/50":"bg-violet-100/50"}`}/><div className="relative flex items-start justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 ${open?(indigo?"bg-indigo-100":"bg-violet-100"):(indigo?"bg-indigo-50":"bg-violet-50")}`}><ShoppingCart className={`h-5 w-5 ${indigo?"text-indigo-600":"text-violet-600"}`}/></div><div className="min-w-0"><div className="text-[11px] font-bold text-slate-500">{title}</div><div className="mt-0.5 text-[27px] font-black tracking-tight text-slate-950">{enDigits(total)}</div><div className="truncate text-[9px] font-medium text-slate-400">{title === "Incomplete Orders" ? "Incomplete source · selected range" : "Real web orders · selected range"}</div>{title === "Incomplete Orders" && active > 0 && <div className="mt-1 text-[9px] font-bold text-violet-600">Active incomplete: {enDigits(active)}</div>}</div></div><div className="flex shrink-0 items-center gap-1"><span className={`rounded-full px-2 py-1 text-[8px] font-black tracking-wide transition-all duration-300 ${open?(indigo?"bg-indigo-600":"bg-violet-600")+" text-white":"bg-slate-100 text-slate-500"}`}>{open?"CLOSE":"DETAILS"}</span><ChevronDown className={`h-5 w-5 text-slate-400 transition-transform duration-500 ${open?"rotate-180":""}`}/></div></div><div className={`relative grid transition-all duration-500 ease-out ${open?"mt-4 max-h-40 translate-y-0 opacity-100":"mt-0 max-h-0 translate-y-2 overflow-hidden opacity-0"}`}><div className="grid grid-cols-3 gap-2 border-t border-slate-100 pt-3">{stats.map(s=>{const Icon=s.icon;return <div key={s.label} className={`rounded-2xl border p-2.5 text-center transition duration-300 hover:-translate-y-0.5 ${s.tone}`}><Icon className="mx-auto h-4 w-4"/><div className="mt-1 text-lg font-black">{enDigits(s.value)}</div><div className="text-[8px] font-bold opacity-70">{s.label}</div></div>})}</div></div><div className={`relative mt-auto flex items-center justify-center gap-1 pt-2 text-[9px] font-semibold text-slate-400 transition-opacity duration-300 ${open?"opacity-0":"opacity-100"}`}>Confirmed + Processing + Cancelled <ChevronDown className="h-3 w-3"/></div></div></div>}
 
@@ -90,6 +90,95 @@ function EmployeeMetricModal({ employee, metric, range, onClose }: { employee: a
 }
 
 function MonthlyBonusCard() {
+<style>{`
+@media (min-width: 1024px) {
+  .employee-performance-section > div:first-child {
+    padding-left: 20px;
+    padding-right: 20px;
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+  .employee-performance-section > div:first-child h2 {
+    font-size: 16px;
+  }
+  .employee-performance-section > .divide-y > .group {
+    padding: 16px 20px;
+  }
+  .employee-performance-section > .divide-y > .group > .text-xs {
+    font-size: 14px;
+  }
+
+  .monthly-bonus-card {
+    margin-left: 20px;
+    margin-right: 20px;
+    margin-top: 14px;
+    margin-bottom: 14px;
+    padding: 20px;
+    border-radius: 22px;
+  }
+  .monthly-bonus-card .h-9.w-9 {
+    width: 44px;
+    height: 44px;
+  }
+  .monthly-bonus-card .h-9.w-9 svg {
+    width: 20px;
+    height: 20px;
+  }
+  .monthly-bonus-card .text-\[12px\] {
+    font-size: 17px;
+  }
+  .monthly-bonus-card .text-\[9px\] {
+    font-size: 12px;
+  }
+  .monthly-bonus-card .text-base {
+    font-size: 24px;
+  }
+  .monthly-bonus-card .text-\[7px\] {
+    font-size: 10px;
+  }
+  .monthly-bonus-card .text-\[8px\] {
+    font-size: 11px;
+  }
+  .monthly-bonus-card .h-1\.5 {
+    height: 8px;
+  }
+
+  .employee-performance-self-card {
+    margin-left: 20px;
+    margin-right: 20px;
+    margin-top: 14px;
+    margin-bottom: 14px;
+    padding: 20px;
+    border-radius: 22px;
+  }
+  .employee-performance-self-card .h-9.w-9 {
+    width: 44px;
+    height: 44px;
+  }
+  .employee-performance-self-card .h-9.w-9 svg {
+    width: 20px;
+    height: 20px;
+  }
+  .employee-performance-self-card .text-\[12px\] {
+    font-size: 17px;
+  }
+  .employee-performance-self-card .text-\[9px\] {
+    font-size: 12px;
+  }
+  .employee-performance-self-card .text-base {
+    font-size: 24px;
+  }
+  .employee-performance-self-card .text-\[7px\] {
+    font-size: 10px;
+  }
+  .employee-performance-self-card .text-\[8px\] {
+    font-size: 11px;
+  }
+  .employee-performance-self-card .text-\[8px\].leading-3\.5 {
+    line-height: 1.5;
+  }
+}
+`}</style>
   const { user } = useAuth();
   const fetchBonus = useServerFn(getEmployeeMonthlyBonusProgress);
   const [showDetails, setShowDetails] = useState(false);
@@ -109,7 +198,7 @@ function MonthlyBonusCard() {
   const deliveryProgress = Math.min(100, (delivered / target) * 100);
 
   return <>
-    <div className="relative mx-3 my-2.5 overflow-hidden rounded-[18px] border border-emerald-200/80 bg-gradient-to-br from-emerald-50 via-white to-amber-50/40 p-3 sm:mx-4">
+    <div className="monthly-bonus-card relative mx-3 my-2.5 overflow-hidden rounded-[18px] border border-emerald-200/80 bg-gradient-to-br from-emerald-50 via-white to-amber-50/40 p-3 sm:mx-4">
       <div className="pointer-events-none absolute -right-8 -top-8 h-20 w-20 rounded-full bg-emerald-100/70 blur-2xl"/>
       <div className="relative">
         <div className="flex items-center gap-2.5">
@@ -195,7 +284,7 @@ export function PremiumDashboard(){const {isSuperAdmin,isAdmin,permissions,user,
     amber:{wrap:"border-amber-200 bg-gradient-to-br from-amber-50 via-white to-amber-50/40",icon:"bg-amber-100 text-amber-700",accent:"text-amber-700",bar:"bg-amber-500",track:"bg-amber-100"},
     rose:{wrap:"border-rose-200 bg-gradient-to-br from-rose-50 via-white to-rose-50/40",icon:"bg-rose-100 text-rose-700",accent:"text-rose-700",bar:"bg-rose-500",track:"bg-rose-100"}
   }[tone];
-  return <div className={`relative mx-3 my-2.5 overflow-hidden rounded-[18px] border p-3 shadow-sm sm:mx-4 ${toneMap.wrap}`}>
+  return <div className={`employee-performance-self-card relative mx-3 my-2.5 overflow-hidden rounded-[18px] border p-3 shadow-sm sm:mx-4 ${toneMap.wrap}`}>
     <div className="relative">
       <div className="flex items-center gap-2.5">
         <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-sm ${toneMap.icon}`}><Sparkles className="h-4 w-4"/></div>
