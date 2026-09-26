@@ -297,6 +297,18 @@ function LandingPagesAdmin() {
                   </Field>
                   <div className="pt-3 border-t"><Field label="থিম কালার"><input type="color" value={editing.theme_color ?? "#16a34a"} onChange={(e) => set({ theme_color: e.target.value })} className="w-full h-10 border rounded-lg" /></Field></div>
                   <label className="flex items-center gap-2 pt-3 border-t"><input type="checkbox" checked={editing.is_published ?? false} onChange={(e) => set({ is_published: e.target.checked })} /><span className="font-semibold">পাবলিশ করুন</span></label>
+                  {editing.slug === "seedcombo" && (
+                    <div className="mt-3 rounded-xl border-2 border-emerald-200 bg-emerald-50/50 p-3">
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input type="checkbox" className="mt-1 h-4 w-4 accent-emerald-600" checked={C.nutrimix_popup_enabled !== false} onChange={(e) => setC({ nutrimix_popup_enabled: e.target.checked })} />
+                        <span>
+                          <span className="block font-bold text-sm text-emerald-900">NUTRIMIX popup — ON / OFF</span>
+                          <span className="block text-[11px] leading-4 text-emerald-800/80 mt-0.5">ON করলে অর্ডার কনফার্ম বাটনে Nutrimix অফার popup দেখাবে। OFF করলে popup-এর পুরো logic বন্ধ থাকবে এবং Seed Combo landing page আগের মতো সরাসরি অর্ডার নেবে।</span>
+                          <span className="block text-[11px] font-semibold text-slate-500 mt-1">NUTRIMIX প্রোডাক্ট inactive থাকলেও ON থাকলে popup দেখাবে। Popup-এর দাম সবসময় live product-এর বর্তমান দাম থেকে নেওয়া হবে।</span>
+                        </span>
+                      </label>
+                    </div>
+                  )}
                 </>
               )}
               {tab === "page" && (
