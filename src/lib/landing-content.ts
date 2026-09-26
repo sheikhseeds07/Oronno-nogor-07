@@ -61,6 +61,11 @@ export type LandingContent = {
   popup_delay: number;
   /** Seed Combo-only Nutrimix upsell popup master switch. */
   nutrimix_popup_enabled: boolean;
+  /** Seed Combo popup product is fully independent of the products table. */
+  nutrimix_offer_name: string;
+  nutrimix_offer_price: number;
+  nutrimix_offer_old_price?: number;
+  nutrimix_offer_image: string;
   /** Optional All Product template-only combo choices shown as a compact 2-column grid. */
   combo_offers: ComboOffer[];
 };
@@ -144,6 +149,10 @@ export const DEFAULT_CONTENT: LandingContent = {
   popup_image: "",
   popup_delay: 1200,
   nutrimix_popup_enabled: true,
+  nutrimix_offer_name: "🎁 NUTRIMIX - গাছের খাদ্য",
+  nutrimix_offer_price: 200,
+  nutrimix_offer_old_price: 600,
+  nutrimix_offer_image: "",
   combo_offers: [],
 };
 
