@@ -1637,7 +1637,7 @@ async function attachProductImages(orders: OrderRow[]): Promise<OrderRow[]> {
           image: a?.image || pg?.hero_image || "",
         });
       }
-      const plantingSteps = pg?.planting_steps;
+      // Seed Combo NUTRIMIX popup is an independent product, so its image is stored in\n      // the Seed Combo landing-page content rather than the products table.\n      const popup = pg?.planting_steps;\n      if (popup && typeof popup === "object" && popup.nutrimix_offer_image) {\n        landingCandidates.push({\n          name: normalizeProductName(String(popup.nutrimix_offer_name ?? "")),\n          image: String(popup.nutrimix_offer_image),\n        });\n      }\n      const plantingSteps = pg?.planting_steps;
       const comboOffers = plantingSteps && typeof plantingSteps === "object" && Array.isArray((plantingSteps as any).combo_offers)
         ? (plantingSteps as any).combo_offers
         : [];
