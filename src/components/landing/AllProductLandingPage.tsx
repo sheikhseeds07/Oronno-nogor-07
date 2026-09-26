@@ -27,6 +27,7 @@ type Offer = { name: string; price: number; old?: number | null; image?: string;
 export function AllProductLandingPage({ slug }: { slug: string }) {
   const navigate = useNavigate();
   const runPlaceOrder = useServerFn(placeOrder);
+  const isNutrimix = slug === "nutrimix";
   const [selected, setSelected] = useState<string | null>(null);
   const [offerPopupOpen, setOfferPopupOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -73,6 +74,12 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
 
   const comboOffers = useMemo<Offer[]>(() => (C.combo_offers ?? []).filter((item) => item.is_active !== false && item.name?.trim() && Number(item.price) > 0).map((item) => ({ name: item.name.trim(), price: Number(item.price), old: item.old_price == null ? null : Number(item.old_price), image: item.image, delivery_fee: item.delivery_fee == null ? delivery : Number(item.delivery_fee), quantity: item.quantity?.trim() || "১ পিস" })), [C.combo_offers, delivery]);
 
+  useEffect(() => {
+    if (selected || isLoading) return;
+    if (offers.length > 0) setSelected("offer-0");
+    else if (comboOffers.length > 0) setSelected("combo-0");
+  }, [isLoading, offers.length, comboOffers.length, selected]);
+
   const current = useMemo(() => {
     if (!selected) return null;
     if (selected.startsWith("combo-")) return comboOffers[Number(selected.slice(6))] ?? null;
@@ -111,6 +118,11 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
 
   const handleCta = () => {
     if (!offers.length && !comboOffers.length) return;
+    if (isNutrimix) {
+      if (!selected) setSelected(offers.length ? "offer-0" : "combo-0");
+      goOrder();
+      return;
+    }
     if (!selected) {
       setOfferPopupOpen(true);
       return;
@@ -158,7 +170,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
 
   return <div className="all-product-landing min-h-screen bg-all-product-surface text-all-product-ink">
     <FacebookPixel eager />
-    <GuaranteePopup slug={slug} logo={logo} brand={brand} />
+    <GuaranteePopup slug={slug} logo={logo} brand={brand} nutrimix={isNutrimix} />
     {page.top_bar_text && <div className="bg-all-product-alert px-3 py-0.5 text-center text-[10px] font-bold leading-4 text-all-product-alert-foreground sm:text-[11px]">{page.top_bar_text}</div>}
     <div role="banner" className="sticky top-0 z-40 bg-all-product-surface/92 shadow-[0_2px_14px_-6px_rgba(0,0,0,0.35)] backdrop-blur-xl">
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-all-product-gold/70 to-transparent" />
@@ -192,7 +204,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
             <div className="all-product-image-wrap mx-auto max-w-xl overflow-hidden rounded-2xl border-2 border-all-product-gold/45 bg-all-product-surface shadow-2xl">
               <div className="relative">
                 <img src={toImg(heroImage, { w: 1100, q: 88 })} onError={event => imgFallback(event, heroImage)} alt={page.hero_title || page.title} width={760} height={760} fetchPriority="high" className="aspect-square w-full object-cover" />
-                <span className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-all-product-surface/95 px-3 py-2 text-xs font-black text-all-product-primary shadow-lg"><Leaf className="h-4 w-4" /> ১০০% অরিজিনাল</span>
+                <span className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-all-product-surface/95 px-3 py-2 text-xs font-black text-all-product-primary shadow-lg">{!isNutrimix && <><Leaf className="h-4 w-4" /> ১০০% অরিজিনাল</>}</span>
               </div>
               <div className="border-t-2 border-all-product-gold/35 bg-gradient-to-r from-all-product-primary/10 via-all-product-gold/15 to-all-product-primary/10 px-4 py-3.5 sm:px-5 sm:py-4">
                 <div className="flex items-center justify-between gap-3">
