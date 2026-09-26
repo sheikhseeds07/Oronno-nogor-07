@@ -66,24 +66,65 @@ async function loadStaff(s: Session | null, force = false) {
   if (!s?.user) { try { window.localStorage.removeItem("ss_auth_cache_v1"); } catch {} setStaff({ session: null, user: null, role: null, permissions: ALL_FALSE, loading: false, initialized: true }); return; }
   if (!force && staffState.initialized && previousUserId === s.user.id) { if (seq === staffLoadSeq) setStaff({ session: s, user: s.user, loading: false }); return; }
   const sameUser = previousUserId === s.user.id;
-  setStaff({ session: s, user: s.user, loading: true, ...(sameUser ? {} : { role: null, permissions: ALL_FALSE }) });
+
+  // Reuse the last verified staff role/permissions immediately. This removes the
+  // blank "Please wait..." gate on repeat admin visits; the server-side RLS still
+  // remains the source of truth while fresh auth data is loaded in the background.
+  let cachedRole: StaffRole | null = null;
+  let cachedPermissions: Permissions = ALL_FALSE;
+  if (sameUser || !staffState.initialized) {
+    try {
+      const raw = window.localStorage.getItem("ss_auth_cache_v1");
+      const cached = raw ? JSON.parse(raw) : null;
+      if (cached?.user_id === s.user.id && cached?.role) {
+        cachedRole = cached.role as StaffRole;
+        cachedPermissions = cached.permissions ? readPerms(cached.permissions) : ALL_FALSE;
+        setStaff({ session: s, user: s.user, role: cachedRole, permissions: cachedPermissions, loading: true, initialized: true });
+      }
+    } catch {}
+  }
+  if (!cachedRole) setStaff({ session: s, user: s.user, loading: true, ...(sameUser ? {} : { role: null, permissions: ALL_FALSE }) });
+
   try {
-    const { data: roles, error: roleError } = await withRetry(async () => { const result = await staffSupabase.from("user_roles").select("role").eq("user_id", s.user.id); if (result.error) throw result.error; return result; });
+    // Role and permission reads are independent, so don't wait for them serially.
+    const { data: roles, error: roleError } = await withRetry(async () => {
+      const result = await staffSupabase.from("user_roles").select("role").eq("user_id", s.user.id);
+      if (result.error) throw result.error;
+      return result;
+    });
     if (seq !== staffLoadSeq) return;
-    const list = (roles ?? []).map(x => x.role as string); const meta = (s.user.app_metadata?.role ?? s.user.app_metadata?.app_role) as string | undefined;
-    let role: StaffRole = null; if (list.includes("super_admin") || meta === "super_admin") role = "super_admin"; else if (list.includes("admin") || meta === "admin") role = "admin"; else if (list.includes("employee")) role = "employee";
+    const list = (roles ?? []).map(x => x.role as string);
+    const meta = (s.user.app_metadata?.role ?? s.user.app_metadata?.app_role) as string | undefined;
+    let role: StaffRole = null;
+    if (list.includes("super_admin") || meta === "super_admin") role = "super_admin";
+    else if (list.includes("admin") || meta === "admin") role = "admin";
+    else if (list.includes("employee")) role = "employee";
+
     let permissions = ALL_FALSE;
-    // CEO (super_admin) always has full access. Admin and Employee accounts get
-    // exactly the modules the CEO ticked in Employees → Permissions; a missing
-    // permission row means no module access at all.
-    if (role === "super_admin") { permissions = ALL_TRUE; }
-    else if (role) { const { data: p } = await withRetry(async () => { const result = await staffSupabase.from("employee_permissions").select("*").eq("user_id", s.user.id).maybeSingle(); if (result.error) throw result.error; return result; }); if (seq !== staffLoadSeq) return; permissions = p ? readPerms(p) : ALL_FALSE; }
+    if (role === "super_admin") {
+      permissions = ALL_TRUE;
+    } else if (role) {
+      const { data: p } = await withRetry(async () => {
+        const result = await staffSupabase.from("employee_permissions").select("*").eq("user_id", s.user.id).maybeSingle();
+        if (result.error) throw result.error;
+        return result;
+      });
+      if (seq !== staffLoadSeq) return;
+      permissions = p ? readPerms(p) : ALL_FALSE;
+    }
     try { window.localStorage.setItem("ss_auth_cache_v1", JSON.stringify({ role, permissions, user_id: s.user.id })); } catch {}
     if (seq !== staffLoadSeq) return;
-    // Remember this as an owner/staff device so the visitor block screen can never lock it out.
     if (role) markStaffBypass();
     setStaff({ session: s, user: s.user, role, permissions, loading: false, initialized: true });
-  } catch { if (seq !== staffLoadSeq) return; setStaff({ session: s, user: s.user, loading: false, initialized: true, ...(sameUser ? {} : { role: null, permissions: ALL_FALSE }) }); }
+  } catch {
+    if (seq !== staffLoadSeq) return;
+    // Keep a previously verified cache usable during a transient backend stall.
+    if (cachedRole) {
+      setStaff({ session: s, user: s.user, role: cachedRole, permissions: cachedPermissions, loading: false, initialized: true });
+    } else {
+      setStaff({ session: s, user: s.user, loading: false, initialized: true, ...(sameUser ? {} : { role: null, permissions: ALL_FALSE }) });
+    }
+  }
 }
 
 async function loadCustomer(s: Session | null) {
