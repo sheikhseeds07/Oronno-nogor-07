@@ -107,8 +107,31 @@ function bootstrap() {
   bootstrapped = true;
   staffSupabase.auth.onAuthStateChange((event, s) => { if (event === "TOKEN_REFRESHED") { void loadStaff(s, false); return; } void loadStaff(s, true); });
   customerSupabase.auth.onAuthStateChange((_event, s) => { void loadCustomer(s); });
-  void staffSupabase.auth.getSession().then(({ data: { session } }) => loadStaff(session, true));
-  void customerSupabase.auth.getSession().then(({ data: { session } }) => loadCustomer(session));
+
+  // Auth must never be allowed to hold the entire storefront/admin UI on
+  // "Please wait..." indefinitely. A stuck network/storage lock in Supabase
+  // auth should degrade to a signed-out state; a later auth event can still
+  // restore the real session without requiring a page reload.
+  const getSessionWithTimeout = async (client: typeof staffSupabase) => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        client.auth.getSession().then(({ data }) => data.session),
+        new Promise<Session | null>((resolve) => {
+          timer = setTimeout(() => resolve(null), 8000);
+        }),
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  };
+
+  void getSessionWithTimeout(staffSupabase)
+    .then(session => loadStaff(session, true))
+    .catch(() => loadStaff(null, true));
+  void getSessionWithTimeout(customerSupabase)
+    .then(session => loadCustomer(session))
+    .catch(() => loadCustomer(null));
 }
 
 function hideIncompleteForEmployee(role: StaffRole) {
