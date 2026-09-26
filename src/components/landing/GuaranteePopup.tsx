@@ -48,7 +48,7 @@ export const GUARANTEE_POPUP_STYLE = `
 @media (prefers-reduced-motion:reduce){.gp-popup,.gp-card,.gp-logo,.gp-logo-aura,.gp-cta{animation:none!important}}
 `;
 
-export function GuaranteePopup({ slug, delay = 600, logo, brand = "" }: { slug: string; delay?: number; logo?: string; brand?: string }) {
+export function GuaranteePopup({ slug, delay = 600, logo, brand = "", nutrimix = false }: { slug: string; delay?: number; logo?: string; brand?: string; nutrimix?: boolean }) {
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
   const popupKey = `hng-guarantee-seen:${slug}`;
@@ -86,14 +86,14 @@ export function GuaranteePopup({ slug, delay = 600, logo, brand = "" }: { slug: 
             <span className="gp-logo-aura" aria-hidden="true" />
             {logo && <img className="gp-logo" src={logo} alt={brand} width={68} height={68} />}
           </div>
-          <h2 className="gp-title">গ্যারান্টি কার্ড</h2>
+          <h2 className="gp-title">{nutrimix ? "ফ্রী গিফট" : "গ্যারান্টি কার্ড"}</h2>
           <span className="gp-divider" aria-hidden="true">✦</span>
-          <p>আমাদের কাছ থেকে বীজ কিনলেই পাবেন <strong>গ্যারান্টি কার্ড</strong> এবং বীজ থেকে চারা তৈরির সম্পূর্ণ গাইডলাইন</p>
+          <p>{nutrimix ? <>আমাদের থেকে এই <strong>NUTRIMIX</strong> কিনলেই পাবেন <strong>২৪ প্রকার সবজির বীজ একদম ফ্রী</strong> + গ্যারান্টি কার্ড এবং বীজ থেকে চারা তৈরি + NUTRIMIX ব্যবহারের গাইডলাইন</> : <>আমাদের কাছ থেকে বীজ কিনলেই পাবেন <strong>গ্যারান্টি কার্ড</strong> এবং বীজ থেকে চারা তৈরির সম্পূর্ণ গাইডলাইন</>}</p>
           <button type="button" className="gp-cta" onClick={close}>
             <span>এখনই অর্ডার করুন</span>
             <span aria-hidden="true">→</span>
           </button>
-          <span className="gp-trust"><span className="gp-tick" aria-hidden="true">✓</span> ১০০% অরিজিনাল বীজের নিশ্চয়তা</span>
+          {!nutrimix && <span className="gp-trust"><span className="gp-tick" aria-hidden="true">✓</span> ১০০% অরিজিনাল বীজের নিশ্চয়তা</span>}
         </div>
       </div>
     </>
