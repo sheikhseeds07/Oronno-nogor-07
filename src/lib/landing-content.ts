@@ -59,6 +59,8 @@ export type LandingContent = {
   popup_mode: "text" | "image";
   popup_image: string;
   popup_delay: number;
+  /** Seed Combo-only Nutrimix upsell popup master switch. */
+  nutrimix_popup_enabled: boolean;
   /** Optional All Product template-only combo choices shown as a compact 2-column grid. */
   combo_offers: ComboOffer[];
 };
@@ -141,6 +143,7 @@ export const DEFAULT_CONTENT: LandingContent = {
   popup_mode: "text",
   popup_image: "",
   popup_delay: 1200,
+  nutrimix_popup_enabled: true,
   combo_offers: [],
 };
 
