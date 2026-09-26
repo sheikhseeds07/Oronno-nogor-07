@@ -1680,41 +1680,16 @@ async function attachProductImages(orders: OrderRow[]): Promise<OrderRow[]> {
     }
   }
 
-  // Combo Offers are configured independently on landing pages and their
-  // image is authoritative for that exact offer name. Resolve these BEFORE
-  // product_id so a shared/main product id can never replace the combo image.
-  const comboImageMap: Record<string, string> = {};
-  const { data: comboPages } = await supabase
-    .from("landing_pages")
-    .select("planting_steps")
-    .limit(200);
-  for (const pg of (comboPages ?? []) as any[]) {
-    const steps = pg?.planting_steps;
-    const combos = steps && typeof steps === "object" && Array.isArray(steps.combo_offers)
-      ? steps.combo_offers
-      : [];
-    for (const combo of combos) {
-      const key = normalizeProductName(String(combo?.name ?? ""));
-      const image = String(combo?.image ?? "").trim();
-      if (key && image) comboImageMap[key] = image;
-    }
-  }
-
   return orders.map((o) => ({
     ...o,
-    order_items: (o.order_items ?? []).map((it) => {
-      const key = normalizeProductName(it.product_name);
-      return {
-        ...it,
-        // Exact Combo Offer match wins over the linked product image.
-        image:
-          comboImageMap[key] ||
-          it.image ||
-          (it.product_id ? idMap[it.product_id] : "") ||
-          nameMap[key] ||
-          "",
-      };
-    }),
+    order_items: (o.order_items ?? []).map((it) => ({
+      ...it,
+      image:
+        (it.product_id ? idMap[it.product_id] : "") ||
+        it.image ||
+        nameMap[normalizeProductName(it.product_name)] ||
+        "",
+    })),
   }));
 }
 
