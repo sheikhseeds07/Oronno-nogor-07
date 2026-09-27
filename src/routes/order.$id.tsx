@@ -116,7 +116,7 @@ function OrderPage() {
 
   if(isLoading)return <main className="min-h-screen grid place-items-center bg-[#f5faf7]"><div className="h-10 w-10 animate-spin rounded-full border-4 border-brand/20 border-t-brand"/></main>;
   if(!order)return <main className="min-h-screen grid place-items-center bg-[#f5faf7] px-4 text-center"><div><p className="text-lg font-bold">অর্ডার পাওয়া যায়নি</p><Link to="/shop" className="mt-4 inline-flex rounded-xl bg-brand px-5 py-3 font-bold text-white">শপে ফিরে যান</Link></div></main>;
-  <style>{\`
+  <style>{`
     @keyframes orderFloat{0%,100%{transform:translateY(0) rotate(0deg);opacity:.45}50%{transform:translateY(-18px) rotate(8deg);opacity:.9}}
     @keyframes orderGlow{0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,.18)}50%{box-shadow:0 0 0 14px rgba(16,185,129,0)}}
     @keyframes orderShine{0%{transform:translateX(-120%)}55%,100%{transform:translateX(140%)}}
