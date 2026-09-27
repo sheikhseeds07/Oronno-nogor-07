@@ -261,6 +261,8 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
         onClose={() => setNutrimixOpen(false)}
         popupHeading={C.nutrimix_popup_heading}
         popupDescription={C.nutrimix_popup_description}
+        popupAcceptText={C.nutrimix_popup_accept_text}
+        popupDeclineText={C.nutrimix_popup_decline_text}
       />
     )}
 
