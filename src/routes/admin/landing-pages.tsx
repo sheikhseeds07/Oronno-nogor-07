@@ -326,7 +326,8 @@ function LandingPagesAdmin() {
                             {C.nutrimix_offer_image && <img src={C.nutrimix_offer_image} alt="" className="mt-2 h-20 w-20 rounded-xl border object-cover" />}
                           </Field>
                         </div>
-                      </div>\n                      )}
+                      </div>
+                      )}
                     </div>
                   )}
                 </>
