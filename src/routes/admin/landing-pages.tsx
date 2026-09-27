@@ -306,7 +306,8 @@ function LandingPagesAdmin() {
                           <span className="block text-[11px] leading-4 text-emerald-800/80 mt-0.5">ON করলে অর্ডার কনফার্ম বাটনে নিচের সেট করা প্রোডাক্টের অফার popup দেখাবে। OFF করলে popup-এর পুরো logic বন্ধ থাকবে এবং এই landing page আগের মতো সরাসরি অর্ডার নেবে।</span>
                         </span>
                       </label>
-{editing.slug === "seedcombo" && (\n                      <div className="border-t border-emerald-200 pt-3">
+{editing.slug === "seedcombo" && (
+                      <div className="border-t border-emerald-200 pt-3">
                         <div className="font-bold text-sm text-slate-900">Popup Product</div>
                         <div className="text-[11px] text-slate-500 mb-3">এটি আলাদা popup product হিসেবে সংরক্ষণ হবে। Products table-এর কোনো existing product-এর সাথে এর কোনো সম্পর্ক থাকবে না।</div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
