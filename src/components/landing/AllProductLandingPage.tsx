@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import brandLogoFile from "@/assets/logo.jpg";
 import { GuaranteePopup } from "@/components/landing/GuaranteePopup";
 import { NutrimixReviews } from "@/components/landing/NutrimixReviews";
+import { SeedComboNutrimixPopup } from "@/components/landing/CleanLandingPage";
 
 type Product = { id: string; name: string; price: number; sale_price: number | null; images: string[] | null };
 type Addon = { product_id?: string; name: string; price: number; image?: string; old_price?: number; badge?: string; delivery_fee?: number | null };
@@ -31,6 +32,8 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   const isNutrimix = slug === "nutrimix";
   const [selected, setSelected] = useState<string | null>(null);
   const [offerPopupOpen, setOfferPopupOpen] = useState(false);
+  const [nutrimixOpen, setNutrimixOpen] = useState(false);
+  const [nutrimix, setNutrimix] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formInView, setFormInView] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", address: "" });
@@ -159,11 +162,68 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
     const top = Math.max(0, target.getBoundingClientRect().top + window.scrollY - headerHeight - 12);
     window.scrollTo({ top, behavior: "smooth" });
   };
+  const openNutrimix = () => {
+    if (C.nutrimix_popup_enabled === false || submitting || !current) return;
+    const p = {
+      id: "landing-popup-nutrimix",
+      name: C.nutrimix_offer_name || "NUTRIMIX - গাছের খাদ্য",
+      price: Number(C.nutrimix_offer_price) || 0,
+      sale_price: Number(C.nutrimix_offer_price) || 0,
+      old_price: Number(C.nutrimix_offer_old_price) || 0,
+      images: C.nutrimix_offer_image ? [C.nutrimix_offer_image] : [],
+    };
+    if (p.price <= 0) {
+      toast.error("Popup Product-এর নাম ও দাম সেট করুন");
+      return;
+    }
+    setNutrimix(p);
+    setNutrimixOpen(true);
+  };
+
+  const placeWithNutrimix = async (include: boolean) => {
+    setNutrimixOpen(false);
+    if (!include || !current || !nutrimix) {
+      const ev = { preventDefault: () => {} } as React.FormEvent;
+      await submit(ev);
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const nutrimixPrice = Number(nutrimix.sale_price ?? nutrimix.price);
+      const items = [
+        { id: current.product_id || "offer-" + selected, name: current.name, price: current.price, quantity: 1 },
+        { id: nutrimix.id, name: nutrimix.name, price: nutrimixPrice, quantity: 1 },
+      ];
+      const orderTotal = current.price + nutrimixPrice + shipping;
+      const order = await runPlaceOrder({
+        data: {
+          customer_name: form.name,
+          customer_phone: form.phone.replace(/[\\s-]/g, ""),
+          customer_address: form.address,
+          delivery_fee: shipping,
+          items,
+          notes: null,
+          ...getFbContext(),
+        },
+      });
+      trackPurchase(items, orderTotal, order.id);
+      toast.success("অর্ডার সফল হয়েছে!");
+      navigate({ to: "/order/$id", params: { id: order.id } });
+    } catch (error) {
+      notifyOrderError(error);
+      setSubmitting(false);
+    }
+  };
+
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!form.name || !form.address) return toast.error("নাম ও ঠিকানা পূরণ করুন");
     if (!isValidBdPhone(form.phone)) return toast.error(phoneSubmitError(form.phone));
     if (!current) return toast.error("একটি অফার নির্বাচন করুন");
+    if (C.nutrimix_popup_enabled !== false) {
+      openNutrimix();
+      return;
+    }
     setSubmitting(true);
     try {
       const items = [{ id: current.product_id || `offer-${selected}`, name: current.name, price: current.price, quantity: 1 }];
@@ -190,6 +250,16 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
         <OfferCountdown />
       </div>
     </div>
+
+    {nutrimixOpen && nutrimix && (
+      <SeedComboNutrimixPopup
+        product={nutrimix}
+        seedName={current?.name || page.title}
+        seedPrice={Number(current?.price || 0)}
+        seedDeliveryFee={Number(current?.delivery_fee ?? delivery)}
+        onChoice={placeWithNutrimix}
+      />
+    )}
 
     {offerPopupOpen && (
       <OfferSelectionPopup
