@@ -220,7 +220,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
     if (!form.name || !form.address) return toast.error("নাম ও ঠিকানা পূরণ করুন");
     if (!isValidBdPhone(form.phone)) return toast.error(phoneSubmitError(form.phone));
     if (!current) return toast.error("একটি অফার নির্বাচন করুন");
-    if (C.nutrimix_popup_enabled !== false) {
+    if (!isNutrimix && C.nutrimix_popup_enabled !== false) {
       openNutrimix();
       return;
     }
@@ -251,7 +251,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
       </div>
     </div>
 
-    {nutrimixOpen && nutrimix && (
+    {!isNutrimix && nutrimixOpen && nutrimix && (
       <SeedComboNutrimixPopup
         product={nutrimix}
         seedName={current?.name || page.title}
