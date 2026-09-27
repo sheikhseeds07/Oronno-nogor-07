@@ -2565,6 +2565,10 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
   const [deliveryCharge, setDeliveryCharge] = useState(0);
   const [items, setItems] = useState<DetailItem[]>([]);
   const [search, setSearch] = useState("");
+  const [customProductOpen, setCustomProductOpen] = useState(false);
+  const [customProductName, setCustomProductName] = useState("");
+  const [customProductPrice, setCustomProductPrice] = useState("");
+  const [customProductQuantity, setCustomProductQuantity] = useState("1");
   const [saving, setSaving] = useState(false);
   const [assignedTo, setAssignedTo] = useState<string | null>(null);
   const [transferring, setTransferring] = useState(false);
@@ -2707,6 +2711,27 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
   };
 
   const removeItem = (idx: number) => setItems((prev) => prev.filter((_, i) => i !== idx));
+
+  const addCustomProduct = () => {
+    const productName = customProductName.trim();
+    const price = Number(customProductPrice);
+    const quantity = Number(customProductQuantity);
+    if (!productName) { toast.error("প্রডাক্টের নাম দিন"); return; }
+    if (!Number.isFinite(price) || price < 0) { toast.error("সঠিক প্রাইজ দিন"); return; }
+    if (!Number.isInteger(quantity) || quantity < 1) { toast.error("সঠিক কোয়ান্টিটি দিন"); return; }
+    setItems((prev) => [...prev, {
+      id: safeUUID(),
+      product_id: null,
+      product_name: productName,
+      price,
+      quantity,
+      subtotal: price * quantity,
+    }]);
+    setCustomProductName("");
+    setCustomProductPrice("");
+    setCustomProductQuantity("1");
+    setCustomProductOpen(false);
+  };
 
   const save = async (confirm = false) => {
     if (!detail) return;
@@ -2983,7 +3008,13 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
             </div>
 
             <div className="bg-white border rounded-xl p-3">
-              <h3 className="font-bold mb-2">Click To Add Products</h3>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h3 className="font-bold">Click To Add Products</h3>
+                <button type="button" onClick={() => setCustomProductOpen(true)}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-brand/20 bg-brand-light/40 px-2.5 py-1.5 text-[11px] font-extrabold text-brand-dark transition hover:border-brand/40 hover:bg-brand-light">
+                  <Plus className="h-3.5 w-3.5" /> Add Custom Product
+                </button>
+              </div>
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Type to search..." className="w-full border rounded-lg px-3 py-2 text-sm mb-2" />
               <div className="space-y-1 max-h-[360px] overflow-y-auto">
                 {products?.map((p) => (
@@ -3000,6 +3031,39 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
               </div>
             </div>
           </div>
+
+          {customProductOpen && (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4" onClick={() => setCustomProductOpen(false)}>
+              <div className="w-full max-w-sm rounded-xl bg-white p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-sm font-extrabold">Add Custom Product</h3>
+                  <button type="button" onClick={() => setCustomProductOpen(false)} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100" aria-label="Close">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="space-y-2.5">
+                  <div>
+                    <label className="mb-1 block text-[11px] font-semibold">Product Name</label>
+                    <input autoFocus value={customProductName} onChange={(e) => setCustomProductName(e.target.value)} placeholder="প্রডাক্টের নাম" className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="mb-1 block text-[11px] font-semibold">Price</label>
+                      <input type="number" min={0} value={customProductPrice} onChange={(e) => setCustomProductPrice(e.target.value)} placeholder="0" className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[11px] font-semibold">Quantity</label>
+                      <input type="number" min={1} step={1} value={customProductQuantity} onChange={(e) => setCustomProductQuantity(e.target.value)} className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" />
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4 flex gap-2">
+                  <button type="button" onClick={() => setCustomProductOpen(false)} className="flex-1 rounded-lg border px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50">Cancel</button>
+                  <button type="button" onClick={addCustomProduct} className="flex-1 rounded-lg bg-gradient-to-br from-brand to-brand-dark px-3 py-2 text-xs font-extrabold text-white shadow-sm hover:shadow-md">Add Product</button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Totals */}
           <div className="p-4 border-t grid sm:grid-cols-3 gap-3">
