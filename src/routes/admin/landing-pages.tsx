@@ -326,10 +326,10 @@ function LandingPagesAdmin() {
                             <Field label="Popup Description">
                               <textarea value={C.nutrimix_popup_description} onChange={(e) => setC({ nutrimix_popup_description: e.target.value })} rows={4} placeholder="Popup-এর বিস্তারিত বর্ণনা লিখুন" className="w-full border rounded-lg px-3 py-2 resize-none" />
                             </Field>
-                            <Field label="Nutrimix নেয়ার বাটন টেক্সট">
+                            <Field label="বাটন ১ — Nutrimix নেয়ার টেক্সট">
                               <input value={C.nutrimix_popup_accept_text} onChange={(e) => setC({ nutrimix_popup_accept_text: e.target.value })} placeholder="🎁 ২৪ প্রকার বীজ কম্বোর সাথে অনুখাদ্যও নিন" className="w-full border rounded-lg px-3 py-2" />
                             </Field>
-                            <Field label="Nutrimix না নেয়ার বাটন টেক্সট">
+                            <Field label="বাটন ২ — Nutrimix না নেয়ার টেক্সট">
                               <input value={C.nutrimix_popup_decline_text} onChange={(e) => setC({ nutrimix_popup_decline_text: e.target.value })} placeholder="না, শুধু ২৪ প্রকার বীজই নিবো" className="w-full border rounded-lg px-3 py-2" />
                             </Field>
                             <Field label="প্রডাক্ট ইমেজ">
