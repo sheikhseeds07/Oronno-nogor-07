@@ -320,7 +320,13 @@ function LandingPagesAdmin() {
                           <Field label="আগের দাম (৳) — optional">
                             <input type="number" min={0} value={C.nutrimix_offer_old_price ?? ""} onChange={(e) => setC({ nutrimix_offer_old_price: e.target.value ? Math.max(0, Number(e.target.value)) : undefined })} className="w-full border rounded-lg px-3 py-2" />
                           </Field>
-                          <Field label="প্রডাক্ট ইমেজ">
+                          <Field label="Popup Heading">
+                              <input value={C.nutrimix_popup_heading} onChange={(e) => setC({ nutrimix_popup_heading: e.target.value })} placeholder="বীজ কম্বোর সাথে “অনুখাদ্য” নিন 🌱" className="w-full border rounded-lg px-3 py-2" />
+                            </Field>
+                            <Field label="Popup Description">
+                              <textarea value={C.nutrimix_popup_description} onChange={(e) => setC({ nutrimix_popup_description: e.target.value })} rows={4} placeholder="Popup-এর বিস্তারিত বর্ণনা লিখুন" className="w-full border rounded-lg px-3 py-2 resize-none" />
+                            </Field>
+                            <Field label="প্রডাক্ট ইমেজ">
                             <input type="file" accept="image/*" onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; const url = await uploadImage(f); if (url) setC({ nutrimix_offer_image: url }); e.target.value = ""; }} className="w-full text-sm" />
                             <input value={C.nutrimix_offer_image} onChange={(e) => setC({ nutrimix_offer_image: e.target.value })} placeholder="অথবা Image URL পেস্ট" className="w-full border rounded-lg px-3 py-2 text-xs mt-2" />
                             {C.nutrimix_offer_image && <img src={C.nutrimix_offer_image} alt="" className="mt-2 h-20 w-20 rounded-xl border object-cover" />}
