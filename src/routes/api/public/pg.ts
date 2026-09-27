@@ -22,6 +22,9 @@ const PUBLIC_TABLES = new Set([
 
 const PUBLIC_RPCS = new Set(["get_home_data_v1"]);
 
+// Home RPC contains frequently edited product price/popular fields.
+// Keep it cached briefly for egress protection without making admin changes stale for minutes.
+const HOME_RPC_TTL_SECONDS = 10;
 const EDGE_TTL_SECONDS = 300;
 const STALE_SECONDS = 1800;
 const BROWSER_TTL_SECONDS = 60;
@@ -94,13 +97,14 @@ export const Route = createFileRoute("/api/public/pg")({
           method,
           headers,
           body: method === "POST" ? (body ?? "{}") : undefined,
-          ...({ cf: { cacheEverything: true, cacheTtl: EDGE_TTL_SECONDS } } as RequestInit),
+          ...({ cf: { cacheEverything: true, cacheTtl: path.includes("/rpc/get_home_data_v1") ? HOME_RPC_TTL_SECONDS : EDGE_TTL_SECONDS } } as RequestInit),
         });
 
         const payload = await origin.text();
         if (!origin.ok) return noStore(payload, origin.status);
 
-        const policy = `public, max-age=${BROWSER_TTL_SECONDS}, s-maxage=${EDGE_TTL_SECONDS}, stale-while-revalidate=${STALE_SECONDS}`;
+        const edgeTtl = path.includes("/rpc/get_home_data_v1") ? HOME_RPC_TTL_SECONDS : EDGE_TTL_SECONDS;
+        const policy = `public, max-age=${path.includes("/rpc/get_home_data_v1") ? 0 : BROWSER_TTL_SECONDS}, s-maxage=${edgeTtl}, stale-while-revalidate=${path.includes("/rpc/get_home_data_v1") ? 0 : STALE_SECONDS}`;
         const make = (state: string) => {
           const out = new Headers({
             "Content-Type": origin.headers.get("content-type") || "application/json",
