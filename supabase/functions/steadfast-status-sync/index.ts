@@ -39,7 +39,7 @@ Deno.serve(async(req)=>{
  const cfgs=(ints??[]).map((r:R)=>({name:s(r.name),cfg:(r.config??{}) as R})).filter(x=>s(x.cfg.api_key)&&s(x.cfg.secret_key));
  const byDisplay=new Map(cfgs.map(x=>[s(x.cfg.display_name),x.cfg]));
  const fallbackCfg=cfgs.length===1?cfgs[0].cfg:null;
- const{data:orders,error}=await a.from("orders").select("id,status,courier_consignment,courier_display_name,courier_status,courier_synced_at").not("courier_consignment","is",null).order("courier_synced_at",{ascending:true,nullsFirst:true}).limit(200);
+ const{data:orders,error}=await a.from("orders").select("id,status,courier_consignment,courier_display_name,courier_status,courier_synced_at").not("courier_consignment","is",null).order("courier_synced_at",{ascending:true,nullsFirst:true}).limit(400);
  if(error)return json({error:error.message},500);
  let checked=0,updated=0,failed=0,skipped=0;
  for(let i=0;i<orders.length;i+=50){
