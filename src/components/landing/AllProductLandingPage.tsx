@@ -184,7 +184,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
     setNutrimixOpen(false);
     if (!include || !current || !nutrimix) {
       const ev = { preventDefault: () => {} } as React.FormEvent;
-      await submit(ev);
+      await submit(ev, true);
       return;
     }
     setSubmitting(true);
@@ -215,12 +215,12 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
     }
   };
 
-  const submit = async (event: React.FormEvent) => {
+  const submit = async (event: React.FormEvent, skipNutrimixPopup = false) => {
     event.preventDefault();
     if (!form.name || !form.address) return toast.error("নাম ও ঠিকানা পূরণ করুন");
     if (!isValidBdPhone(form.phone)) return toast.error(phoneSubmitError(form.phone));
     if (!current) return toast.error("একটি অফার নির্বাচন করুন");
-    if (!isNutrimix && C.nutrimix_popup_enabled !== false) {
+    if (!isNutrimix && !skipNutrimixPopup && C.nutrimix_popup_enabled !== false) {
       openNutrimix();
       return;
     }
