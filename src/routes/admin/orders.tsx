@@ -977,14 +977,6 @@ function OrdersTable({
     bulkMoveTo("shipped", "Shipped");
   };
 
-  const handleSyncNow = async () => {
-    toast.info("কুরিয়ার স্ট্যাটাস সিঙ্ক হচ্ছে...");
-    const r = await syncStatuses({});
-    if (r.error) toast.error(r.error);
-    else toast.success(`${r.updated} টি অর্ডার আপডেট হয়েছে`);
-    qc.invalidateQueries({ queryKey: ["admin-orders"] });
-  };
-
   const bulkUpdateStatus = async (status: Exclude<OrderStatus, "incomplete">) => {
     if (!selectedIds.size) return;
     const ids = Array.from(selectedIds);
@@ -1146,15 +1138,6 @@ function OrdersTable({
             </button>
           );
         })}
-        {isShippedFilter && (
-          <button
-            onClick={handleSyncNow}
-            className="ml-auto px-3 py-1.5 rounded-full text-xs whitespace-nowrap font-bold bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-md hover:shadow-lg inline-flex items-center gap-1.5 transition"
-            title="কুরিয়ার থেকে স্ট্যাটাস সিঙ্ক করুন"
-          >
-            <Loader2 className="w-3 h-3" /> স্ট্যাটাস সিঙ্ক
-          </button>
-        )}
       </div>
 
       {selectedIds.size > 0 && (
