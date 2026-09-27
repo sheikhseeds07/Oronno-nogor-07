@@ -16,7 +16,7 @@ const LEGACY_SLUGS = new Set(["seeds-combo-24"]);
 // Every landing template reads the same row (`*, products(*)`). Fetch it once on
 // the server during SSR and seed every template cache key, so the visitor gets
 // finished HTML instead of a blank screen plus a browser round-trip. The fetch
-// runs per request, so admin edits stay instantly live.
+// revalidates every 10 seconds, so admin edits stay visible quickly without making every ad request hit Postgres.
 const LANDING_CACHE_KEYS = ["landing", "landing-clean", "landing-all-product", "landing-professional", "landing-product-style", "landing-template"] as const;
 
 
