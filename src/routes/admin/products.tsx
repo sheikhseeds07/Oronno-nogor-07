@@ -102,7 +102,14 @@ function Products() {
         </div>
       </div>
 
-      {editing && <ProductModal product={editing} categories={categories ?? []} onClose={() => setEditing(null)} onSaved={() => { qc.invalidateQueries({ queryKey: ["admin-products"] }); setEditing(null); }} onAdded={() => qc.invalidateQueries({ queryKey: ["admin-products"] })} />}
+      {editing && <ProductModal product={editing} categories={categories ?? []} onClose={() => setEditing(null)} onSaved={() => {
+          qc.invalidateQueries({ queryKey: ["admin-products"] });
+          qc.invalidateQueries({ queryKey: ["home-data-v1"] });
+          setEditing(null);
+        }} onAdded={() => {
+          qc.invalidateQueries({ queryKey: ["admin-products"] });
+          qc.invalidateQueries({ queryKey: ["home-data-v1"] });
+        }} />}
     </AdminLayout>
   );
 }
