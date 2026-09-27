@@ -121,7 +121,7 @@ function OrderPage() {
     @keyframes orderGlow{0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,.18)}50%{box-shadow:0 0 0 14px rgba(16,185,129,0)}}
     @keyframes orderShine{0%{transform:translateX(-120%)}55%,100%{transform:translateX(140%)}}
     @keyframes orderPop{0%{transform:scale(.72);opacity:0}70%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
-  \`}</style>
+  `}</style>
   return <main className="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,#dcfce7_0%,#f7fbf8_34%,#f8faf9_100%)] px-3 py-5 sm:px-5 sm:py-10">
   <div className="pointer-events-none fixed inset-0 overflow-hidden"><div className="absolute -left-24 top-20 h-56 w-56 rounded-full bg-emerald-300/15 blur-3xl"/><div className="absolute -right-24 top-52 h-72 w-72 rounded-full bg-lime-300/10 blur-3xl"/></div>
   <div className="relative mx-auto w-full max-w-xl">
