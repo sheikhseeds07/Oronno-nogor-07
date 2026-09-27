@@ -297,7 +297,7 @@ function LandingPagesAdmin() {
                   </Field>
                   <div className="pt-3 border-t"><Field label="থিম কালার"><input type="color" value={editing.theme_color ?? "#16a34a"} onChange={(e) => set({ theme_color: e.target.value })} className="w-full h-10 border rounded-lg" /></Field></div>
                   <label className="flex items-center gap-2 pt-3 border-t"><input type="checkbox" checked={editing.is_published ?? false} onChange={(e) => set({ is_published: e.target.checked })} /><span className="font-semibold">পাবলিশ করুন</span></label>
-                  {(editing.slug === "seedcombo" || C.template === "all-product") && (
+                  {(editing.slug !== "nutrimix" && (editing.slug === "seedcombo" || C.template === "all-product")) && (
                     <div className="mt-3 rounded-xl border-2 border-emerald-200 bg-emerald-50/50 p-3 space-y-3">
                       {editing.slug !== "nutrimix" && (
                       <label className="flex items-start gap-3 cursor-pointer">
