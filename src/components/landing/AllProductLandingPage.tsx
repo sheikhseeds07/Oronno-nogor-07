@@ -698,7 +698,6 @@ function OfferSelectionPopup({
                       }`}>
                       <div className="relative overflow-hidden rounded-[14px] bg-all-product-soft ring-1 ring-black/[0.035]">
                         <img src={toImg(offer.image || "/placeholder.svg", { w: 520, q: 84 })} alt={offer.name} loading="lazy" className="aspect-[1.08/1] w-full object-cover transition-transform duration-300 group-hover:scale-[1.025]" />
-                        {active && <span className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-all-product-primary text-white shadow-lg ring-2 ring-white/90"><Check className="h-4 w-4" strokeWidth={3} /></span>}
                       </div>
                       <div className="px-0.5 pb-0.5 pt-1">
                         <div className="min-h-[30px] break-words text-[12.5px] font-black leading-[1.3] text-all-product-ink">{offer.name}</div>
@@ -731,7 +730,6 @@ function OfferSelectionPopup({
                       }`}>
                       <div className="relative overflow-hidden rounded-[12px] bg-all-product-soft">
                         <img src={toImg(offer.image || "/placeholder.svg", { w: 520, q: 82 })} alt={offer.name} loading="lazy" className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-[1.025]" />
-                        {active && <span className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-all-product-primary text-white shadow ring-2 ring-white/90"><Check className="h-3.5 w-3.5" strokeWidth={3} /></span>}
                       </div>
                       <div className="px-0.5 pb-0.5 pt-1">
                         <div className="min-h-[30px] break-words text-[12.5px] font-black leading-[1.3] text-all-product-ink">{offer.name}</div>
