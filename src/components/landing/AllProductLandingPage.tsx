@@ -427,7 +427,6 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
                     >
                       <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-all-product-soft ring-1 ring-black/[0.04] sm:h-14 sm:w-14">
                         <img src={toImg(offer.image || "/placeholder.svg", { w: 180, q: 82 })} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
-                        {active && <span className="absolute right-1 top-1 grid h-4.5 w-4.5 place-items-center rounded-full bg-all-product-primary text-white shadow-sm ring-1 ring-white/90"><Check className="h-2.5 w-2.5" strokeWidth={3.5} /></span>}
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[12px] font-black leading-5 text-all-product-ink sm:text-[12.5px]">{offer.name}</span>
@@ -471,7 +470,6 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
                         >
                           <div className="relative overflow-hidden rounded-lg bg-all-product-soft">
                             <img src={toImg(offer.image || "/placeholder.svg", { w: 420, q: 80 })} alt={offer.name} loading="lazy" className="aspect-square w-full object-cover" />
-                            {active && <span className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-all-product-primary text-all-product-primary-foreground shadow"><Check className="h-3.5 w-3.5" strokeWidth={3} /></span>}
                           </div>
                           <div className="px-0.5 pb-1 pt-1.5">
                             <div className="text-[12px] font-black leading-[1.35] text-all-product-ink break-words">{offer.name}</div>
