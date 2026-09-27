@@ -31,6 +31,13 @@ const MAX_CACHE_ENTRIES = 3000;
 const courierCache = new Map<string, CacheEntry>();
 const inFlight = new Map<string, Promise<CourierHistoryResult>>();
 
+// Deduplicate repeated persistent-cache reads during Admin list renders.
+// This does not change courier-history freshness; it only avoids repeated
+// database reads for the same phone within a short burst.
+const PERSISTENT_READ_TTL_MS = 30_000;
+const persistentReadCache = new Map<string, { expiresAt: number; hit: PersistentHit | null }>();
+const persistentReadInFlight = new Map<string, Promise<PersistentHit | null>>();
+
 function readCache(key: string): CourierHistoryResult | null {
   const hit = courierCache.get(key);
   if (!hit) return null;
@@ -70,6 +77,14 @@ function normalizeStats(value: unknown): CourierStat[] {
 }
 
 async function readPersistentCache(phone: string): Promise<PersistentHit | null> {
+  const cached = persistentReadCache.get(phone);
+  if (cached && cached.expiresAt > Date.now()) return cached.hit;
+  if (cached) persistentReadCache.delete(phone);
+
+  const inFlightRead = persistentReadInFlight.get(phone);
+  if (inFlightRead) return inFlightRead;
+
+  const request = (async (): Promise<PersistentHit | null> => {
   const admin = supabaseAdmin as any;
   const { data, error } = await admin
     .from("courier_history_cache")
@@ -87,6 +102,15 @@ async function readPersistentCache(phone: string): Promise<PersistentHit | null>
   const expiresAt = new Date(String(data.expires_at ?? "")).getTime();
   const fetchedAtMs = new Date(String(data.fetched_at ?? "")).getTime();
   return { result, fresh: Number.isFinite(expiresAt) && expiresAt > Date.now(), fetchedAtMs };
+  })();
+  persistentReadInFlight.set(phone, request);
+  try {
+    const hit = await request;
+    persistentReadCache.set(phone, { expiresAt: Date.now() + PERSISTENT_READ_TTL_MS, hit });
+    return hit;
+  } finally {
+    persistentReadInFlight.delete(phone);
+  }
 }
 
 export const fetchCourierHistory = createServerFn({ method: "POST" })
