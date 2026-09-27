@@ -22,7 +22,9 @@ async function getHomeDataFallback(): Promise<HomeData> {
 
 // Short-lived cache so an SSR render (and repeated client calls) reuse one
 // Supabase response instead of paying egress on every page view.
-const HOME_TTL_MS = 5 * 60_000;
+// Keep the SSR memory cache short-lived so product price/popular changes reach the home quickly.
+// Public catalog caching is still handled separately at the Cloudflare edge.
+const HOME_TTL_MS = 10_000;
 let homeCache: { data: HomeData; at: number } | null = null;
 
 export async function getHomeData(): Promise<HomeData> {
