@@ -116,6 +116,12 @@ function OrderPage() {
 
   if(isLoading)return <main className="min-h-screen grid place-items-center bg-[#f5faf7]"><div className="h-10 w-10 animate-spin rounded-full border-4 border-brand/20 border-t-brand"/></main>;
   if(!order)return <main className="min-h-screen grid place-items-center bg-[#f5faf7] px-4 text-center"><div><p className="text-lg font-bold">অর্ডার পাওয়া যায়নি</p><Link to="/shop" className="mt-4 inline-flex rounded-xl bg-brand px-5 py-3 font-bold text-white">শপে ফিরে যান</Link></div></main>;
+  <style>{\`
+    @keyframes orderFloat{0%,100%{transform:translateY(0) rotate(0deg);opacity:.45}50%{transform:translateY(-18px) rotate(8deg);opacity:.9}}
+    @keyframes orderGlow{0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,.18)}50%{box-shadow:0 0 0 14px rgba(16,185,129,0)}}
+    @keyframes orderShine{0%{transform:translateX(-120%)}55%,100%{transform:translateX(140%)}}
+    @keyframes orderPop{0%{transform:scale(.72);opacity:0}70%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
+  \`}</style>
   return <main className="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,#dcfce7_0%,#f7fbf8_34%,#f8faf9_100%)] px-3 py-5 sm:px-5 sm:py-10">
   <div className="pointer-events-none fixed inset-0 overflow-hidden"><div className="absolute -left-24 top-20 h-56 w-56 rounded-full bg-emerald-300/15 blur-3xl"/><div className="absolute -right-24 top-52 h-72 w-72 rounded-full bg-lime-300/10 blur-3xl"/></div>
   <div className="relative mx-auto w-full max-w-xl">
@@ -126,6 +132,15 @@ function OrderPage() {
         <h1 className="mt-1 text-[26px] font-black tracking-tight text-slate-900 sm:text-3xl">অর্ডার সফল হয়েছে! 🎉</h1>
         <p className="mx-auto mt-2 max-w-sm text-xs leading-5 text-slate-500">আপনার অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে। খুব শীঘ্রই আমাদের টিম আপনার সাথে যোগাযোগ করবে।</p>
         <div className="mx-auto mt-4 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold text-slate-600 shadow-sm ring-1 ring-slate-100">অর্ডার <span className="font-black text-emerald-700">#${order.id.slice(0,8).toUpperCase()}</span><span className="h-1 w-1 rounded-full bg-slate-300"/><span className="text-emerald-700">${statusBn[order.status]??order.status}</span></div>
+        <div className="relative mt-5 overflow-hidden rounded-[22px] border border-blue-100 bg-white/95 p-4 text-left shadow-[0_12px_35px_rgba(24,119,242,.12)] sm:p-5">
+          <div className="absolute inset-y-0 -left-1/2 w-1/3 skew-x-[-18deg] bg-gradient-to-r from-transparent via-white/70 to-transparent" style={{animation:"orderShine 4.5s ease-in-out infinite"}}/>
+          <div className="relative flex items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#1877F2] text-white shadow-md shadow-blue-500/20"><Facebook className="h-5 w-5" fill="currentColor"/></div>
+            <div className="min-w-0 flex-1"><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#1877F2]">STAY CONNECTED</p><h2 className="mt-0.5 text-base font-black text-slate-900">আমাদের ফেইসবুক পেইজ ফলো করুন</h2><p className="mt-0.5 text-[11px] leading-5 text-slate-500">নতুন অফার, কৃষি টিপস ও নতুন পণ্য সবার আগে পেতে।</p></div>
+          </div>
+          <a href={FACEBOOK_PAGE_URL} target="_blank" rel="noopener noreferrer" className="relative mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#1877F2] py-3 text-xs font-black text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:brightness-95 active:scale-[.98]"><Facebook className="h-4 w-4" fill="currentColor"/> এখনই ফেইসবুক পেইজ ফলো করুন <ArrowRight className="h-4 w-4"/></a>
+          <div className="relative mt-2 flex items-center justify-center gap-1.5 text-[9px] font-bold text-slate-400"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500"/> প্রতিদিন নতুন আপডেট</div>
+        </div>
       </div>
     </section>
 
@@ -141,10 +156,7 @@ function OrderPage() {
       <div className="flex items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700"><Download className="h-5 w-5"/></div><div className="min-w-0 flex-1"><p className="text-[10px] font-black uppercase tracking-[.16em] text-emerald-700">YOUR INVOICE</p><h2 className="mt-0.5 text-base font-black text-slate-900">ইনভয়েসটি সংরক্ষণ করুন</h2><p className="mt-1 text-[11px] leading-5 text-slate-500">অর্ডারের সম্পূর্ণ তথ্যসহ আপনার ইনভয়েস এখনই ডাউনলোড করে রাখতে পারেন।</p><button onClick={downloadInvoice} className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-xs font-black text-white shadow-lg shadow-emerald-600/20 transition hover:-translate-y-0.5 hover:bg-emerald-700 active:scale-[.99]"><Download className="h-4 w-4"/> ইনভয়েস ডাউনলোড / দেখুন</button></div></div>
     </section>
 
-    <section className="mt-3 grid gap-3 sm:grid-cols-2">
-      <section className="rounded-[24px] border border-blue-100 bg-white p-4 shadow-sm"><div className="flex items-start gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#1877F2]"><Facebook className="h-5 w-5" fill="currentColor"/></div><div><p className="text-sm font-black text-slate-800">পেইজে থাকুন</p><p className="mt-1 text-[11px] leading-5 text-slate-500">নতুন পণ্য, অফার ও গার্ডেনিং টিপস পেতে।</p></div></div><a href={FACEBOOK_PAGE_URL} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#1877F2] py-2.5 text-xs font-black text-white transition hover:brightness-95"><Facebook className="h-4 w-4" fill="currentColor"/> ফেইজ ফলো করুন <ArrowRight className="h-3.5 w-3.5"/></a></section>
-      <section className="rounded-[24px] border border-emerald-100 bg-white p-4 shadow-sm"><div className="flex items-start gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700"><User className="h-5 w-5"/></div><div><p className="text-sm font-black text-slate-800">অ্যাকাউন্ট তৈরি করুন</p><p className="mt-1 text-[11px] leading-5 text-slate-500">অর্ডার ট্র্যাকিং ও ভবিষ্যৎ কেনাকাটা আরও সহজ করুন।</p></div></div><Link to="/customer-login" className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 py-2.5 text-xs font-black text-emerald-800 transition hover:bg-emerald-100">ফ্রি অ্যাকাউন্ট তৈরি করুন <ArrowRight className="h-3.5 w-3.5"/></Link></section>
-    </section>
+    <section className="mt-3 rounded-[24px] border border-emerald-100 bg-white p-4 shadow-sm sm:p-5"><div className="flex items-start gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700"><User className="h-5 w-5"/></div><div><p className="text-sm font-black text-slate-800">অ্যাকাউন্ট তৈরি করুন</p><p className="mt-1 text-[11px] leading-5 text-slate-500">অর্ডার ট্র্যাকিং ও ভবিষ্যৎ কেনাকাটা আরও সহজ করুন।</p></div></div><Link to="/customer-login" className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 py-2.5 text-xs font-black text-emerald-800 transition hover:bg-emerald-100">ফ্রি অ্যাকাউন্ট তৈরি করুন <ArrowRight className="h-3.5 w-3.5"/></Link></section>
 
     <section className="mt-3 rounded-[24px] border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
       <div className="flex items-center gap-2 text-slate-800"><MapPin className="h-4 w-4 text-emerald-600"/><h2 className="text-sm font-black">ডেলিভারি তথ্য</h2></div>
