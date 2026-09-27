@@ -19,16 +19,46 @@ const LEGACY_SLUGS = new Set(["seeds-combo-24"]);
 // runs per request, so admin edits stay instantly live.
 const LANDING_CACHE_KEYS = ["landing", "landing-clean", "landing-all-product", "landing-professional", "landing-product-style", "landing-template"] as const;
 
+
+// Short server-side cache for anonymous landing-page SSR. A 10s TTL cuts repeated
+// identical reads during ad bursts while keeping admin edits visible quickly.
+const LANDING_SERVER_CACHE_TTL_MS = 10_000;
+type LandingServerCacheEntry = { expiresAt: number; page: unknown };
+const landingServerCache = new Map<string, LandingServerCacheEntry>();
+
+function getCachedLandingPage(slug: string): unknown | undefined {
+  const hit = landingServerCache.get(slug);
+  if (!hit) return undefined;
+  if (hit.expiresAt <= Date.now()) {
+    landingServerCache.delete(slug);
+    return undefined;
+  }
+  return hit.page;
+}
+
+function setCachedLandingPage(slug: string, page: unknown) {
+  landingServerCache.set(slug, { expiresAt: Date.now() + LANDING_SERVER_CACHE_TTL_MS, page });
+  if (landingServerCache.size > 200) {
+    const first = landingServerCache.keys().next().value;
+    if (typeof first === "string") landingServerCache.delete(first);
+  }
+}
+
 export const Route = createFileRoute("/landing/$slug")({
   loader: async ({ params, context }) => {
     const queryClient = (context as { queryClient?: import("@tanstack/react-query").QueryClient }).queryClient;
     if (!queryClient) return null;
     const hasSettings = Boolean(queryClient.getQueryData(["site-settings-public"]));
-    const [pageRes, settingsRes] = await Promise.all([
-      supabase.from("landing_pages").select("*, products(*)").eq("slug", params.slug).eq("is_published", true).maybeSingle(),
-      hasSettings ? Promise.resolve(null) : supabase.from("site_settings").select("settings").maybeSingle(),
-    ]);
-    const page = pageRes.data ?? null;
+    const cachedPage = getCachedLandingPage(params.slug);
+    const pagePromise = cachedPage !== undefined
+      ? Promise.resolve(cachedPage)
+      : supabase.from("landing_pages").select("*, products(*)").eq("slug", params.slug).eq("is_published", true).maybeSingle().then(({ data }) => {
+          const page = data ?? null;
+          setCachedLandingPage(params.slug, page);
+          return page;
+        });
+    const settingsPromise = hasSettings ? Promise.resolve(null) : supabase.from("site_settings").select("settings").maybeSingle();
+    const [page, settingsRes] = await Promise.all([pagePromise, settingsPromise]);
     for (const key of LANDING_CACHE_KEYS) queryClient.setQueryData([key, params.slug], page);
     if (settingsRes?.data) queryClient.setQueryData(["site-settings-public"], settingsRes.data);
     const row = page as { title?: string | null; hero_title?: string | null; hero_subtitle?: string | null; hero_image?: string | null; products?: { images?: string[] | null } | null } | null;
