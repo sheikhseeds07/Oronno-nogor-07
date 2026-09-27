@@ -46,12 +46,13 @@ const homeQueryOptions = queryOptions({
   queryFn: getHomeData,
   enabled: typeof window !== "undefined",
   placeholderData: getCachedHomeData,
-  staleTime: 10 * 60_000,
+  // Product price/popular status should refresh immediately after admin changes.
+  staleTime: 0,
   gcTime: 30 * 60_000,
   retry: 1,
   refetchOnMount: true,
-  refetchOnWindowFocus: false,
-  refetchOnReconnect: false,
+  refetchOnWindowFocus: true,
+  refetchOnReconnect: true,
 });
 
 function SectionTitle({ title, subtitle, action }: { title: string; subtitle?: string; action?: { label: string; to: string } }) {
