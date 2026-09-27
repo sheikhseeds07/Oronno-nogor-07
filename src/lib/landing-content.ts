@@ -66,6 +66,8 @@ export type LandingContent = {
   nutrimix_offer_price: number;
   nutrimix_offer_old_price?: number;
   nutrimix_offer_image: string;
+  nutrimix_popup_heading: string;
+  nutrimix_popup_description: string;
   /** Optional All Product template-only combo choices shown as a compact 2-column grid. */
   combo_offers: ComboOffer[];
 };
@@ -153,6 +155,8 @@ export const DEFAULT_CONTENT: LandingContent = {
   nutrimix_offer_price: 200,
   nutrimix_offer_old_price: 600,
   nutrimix_offer_image: "",
+  nutrimix_popup_heading: "বীজ কম্বোর সাথে “অনুখাদ্য” নিন 🌱",
+  nutrimix_popup_description: "২৪ প্রকার সবজির বীজের সাথে ৳২০০ যোগ করেই গাছের নিয়মিত পরিচর্যার জন্য 🎁“অনুখাদ্য” /NUTRIMIX - নিয়ে নিন। যা গাছে ব্যবহার করলে সব সমস্যা সমাধান হয়ে যাবে",
   combo_offers: [],
 };
 
