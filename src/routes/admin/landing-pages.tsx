@@ -297,16 +297,16 @@ function LandingPagesAdmin() {
                   </Field>
                   <div className="pt-3 border-t"><Field label="থিম কালার"><input type="color" value={editing.theme_color ?? "#16a34a"} onChange={(e) => set({ theme_color: e.target.value })} className="w-full h-10 border rounded-lg" /></Field></div>
                   <label className="flex items-center gap-2 pt-3 border-t"><input type="checkbox" checked={editing.is_published ?? false} onChange={(e) => set({ is_published: e.target.checked })} /><span className="font-semibold">পাবলিশ করুন</span></label>
-                  {editing.slug === "seedcombo" && (
+                  {(editing.slug === "seedcombo" || C.template === "all-product") && (
                     <div className="mt-3 rounded-xl border-2 border-emerald-200 bg-emerald-50/50 p-3 space-y-3">
                       <label className="flex items-start gap-3 cursor-pointer">
                         <input type="checkbox" className="mt-1 h-4 w-4 accent-emerald-600" checked={C.nutrimix_popup_enabled !== false} onChange={(e) => setC({ nutrimix_popup_enabled: e.target.checked })} />
                         <span>
                           <span className="block font-bold text-sm text-emerald-900">NUTRIMIX popup — ON / OFF</span>
-                          <span className="block text-[11px] leading-4 text-emerald-800/80 mt-0.5">ON করলে অর্ডার কনফার্ম বাটনে নিচের সেট করা প্রোডাক্টের অফার popup দেখাবে। OFF করলে popup-এর পুরো logic বন্ধ থাকবে এবং Seed Combo landing page আগের মতো সরাসরি অর্ডার নেবে।</span>
+                          <span className="block text-[11px] leading-4 text-emerald-800/80 mt-0.5">ON করলে অর্ডার কনফার্ম বাটনে নিচের সেট করা প্রোডাক্টের অফার popup দেখাবে। OFF করলে popup-এর পুরো logic বন্ধ থাকবে এবং এই landing page আগের মতো সরাসরি অর্ডার নেবে।</span>
                         </span>
                       </label>
-                      <div className="border-t border-emerald-200 pt-3">
+{editing.slug === "seedcombo" && (\n                      <div className="border-t border-emerald-200 pt-3">
                         <div className="font-bold text-sm text-slate-900">Popup Product</div>
                         <div className="text-[11px] text-slate-500 mb-3">এটি আলাদা popup product হিসেবে সংরক্ষণ হবে। Products table-এর কোনো existing product-এর সাথে এর কোনো সম্পর্ক থাকবে না।</div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -325,7 +325,7 @@ function LandingPagesAdmin() {
                             {C.nutrimix_offer_image && <img src={C.nutrimix_offer_image} alt="" className="mt-2 h-20 w-20 rounded-xl border object-cover" />}
                           </Field>
                         </div>
-                      </div>
+                      </div>\n                      )}
                     </div>
                   )}
                 </>
