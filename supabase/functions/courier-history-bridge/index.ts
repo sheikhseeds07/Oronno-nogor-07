@@ -18,6 +18,9 @@ const MAX_CACHE_ENTRIES = 3000;
 
 const historyCache = new Map<string, { expiresAt: number; result: HistoryResult }>();
 const inFlight = new Map<string, Promise<HistoryResult>>();
+const persistentReadCache = new Map<string, { expiresAt: number; hit: PersistentHit | null }>();
+const persistentReadInFlight = new Map<string, Promise<PersistentHit | null>>();
+const PERSISTENT_READ_TTL_MS = 30_000;
 const authzCache = new Map<string, { expiresAt: number; authorized: boolean }>();
 let configCache: { expiresAt: number; value: { configured: boolean; endpoint: string; apiKey: string; error: string | null } } | null = null;
 
@@ -144,11 +147,29 @@ function parseStats(payload: unknown): CourierStat[] {
 }
 
 async function readPersistent(admin: ReturnType<typeof createClient>, phone: string): Promise<PersistentHit | null> {
-  const { data, error } = await admin.from("courier_history_cache").select("configured,stats,error,expires_at").eq("phone", phone).maybeSingle();
-  if (error || !data) return null;
-  const result: HistoryResult = { configured: Boolean(data.configured), stats: Array.isArray(data.stats) ? data.stats as CourierStat[] : [], error: typeof data.error === "string" ? data.error : null, source: "cache" };
-  const expiresAt = new Date(String(data.expires_at ?? "")).getTime();
-  return { result, fresh: Number.isFinite(expiresAt) && expiresAt > Date.now() };
+  const cached = persistentReadCache.get(phone);
+  if (cached && cached.expiresAt > Date.now()) return cached.hit;
+  if (cached) persistentReadCache.delete(phone);
+
+  const existing = persistentReadInFlight.get(phone);
+  if (existing) return existing;
+
+  const request = (async (): Promise<PersistentHit | null> => {
+    const { data, error } = await admin.from("courier_history_cache").select("configured,stats,error,expires_at").eq("phone", phone).maybeSingle();
+    if (error || !data) return null;
+    const result: HistoryResult = { configured: Boolean(data.configured), stats: Array.isArray(data.stats) ? data.stats as CourierStat[] : [], error: typeof data.error === "string" ? data.error : null, source: "cache" };
+    const expiresAt = new Date(String(data.expires_at ?? "")).getTime();
+    return { result, fresh: Number.isFinite(expiresAt) && expiresAt > Date.now() };
+  })();
+
+  persistentReadInFlight.set(phone, request);
+  try {
+    const hit = await request;
+    persistentReadCache.set(phone, { expiresAt: Date.now() + PERSISTENT_READ_TTL_MS, hit });
+    return hit;
+  } finally {
+    persistentReadInFlight.delete(phone);
+  }
 }
 
 async function writePersistent(admin: ReturnType<typeof createClient>, phone: string, result: HistoryResult) {
