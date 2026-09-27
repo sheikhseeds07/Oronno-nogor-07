@@ -25,8 +25,8 @@ export type PublicSiteSettingsRow = { settings: PublicSiteSettings } | null;
 /**
  * Public settings are configuration, not long-lived content. In particular,
  * delivery charges must reflect the admin setting on the next checkout visit.
- * localStorage is kept only for fast first paint; it is immediately
- * revalidated against Supabase so old delivery charges cannot persist for hours.
+ * localStorage is kept only for fast first paint; public pages revalidate at
+ * a short interval instead of issuing a Supabase request on every mount/focus.
  */
 export const publicSiteSettingsQuery = {
   queryKey: ["site-settings-public"] as const,
@@ -41,9 +41,11 @@ export const publicSiteSettingsQuery = {
     writePublicSettingsCache(settings);
     return { settings };
   },
-  staleTime: 0,
+  // Settings are configuration. A 5-minute revalidation window cuts repeated
+  // reads while still making admin changes visible quickly.
+  staleTime: 5 * 60_000,
   gcTime: 12 * 60 * 60_000,
-  refetchOnMount: true,
-  refetchOnWindowFocus: true,
+  refetchOnMount: false,
+  refetchOnWindowFocus: false,
   refetchOnReconnect: true,
 };
