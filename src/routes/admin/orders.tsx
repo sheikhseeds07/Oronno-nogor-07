@@ -1797,9 +1797,10 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
   const digits = normalizePhone(phone);
   const enabled = digits.length >= 10;
   const clientCacheKey = useMemo(
-    () => `hoorin-courier-history-v1:${digits}:${orderCreatedAt ?? ""}`,
-    [digits, orderCreatedAt],
+    () => `hoorin-courier-history-v2:${digits}`,
+    [digits],
   );
+  const orderCreatedAtMs = orderCreatedAt ? new Date(orderCreatedAt).getTime() : 0;
 
   // Persist the last successful result in the browser. This lets a full
   // page refresh render the saved rate immediately, without waiting for
@@ -1811,16 +1812,19 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
       if (!raw) return null;
       const parsed = JSON.parse(raw);
       if (!parsed || !parsed.configured || parsed.error) return null;
+      const fetchedAt = Number(parsed._fetchedAt ?? 0);
+      if (fetchedAt && Date.now() - fetchedAt > 24 * 60 * 60 * 1000) return null;
+      if (orderCreatedAtMs && fetchedAt && orderCreatedAtMs > fetchedAt) return null;
       return parsed;
     } catch {
       return null;
     }
-  }, [clientCacheKey, enabled]);
+  }, [clientCacheKey, enabled, orderCreatedAtMs]);
 
   const cachedClientResult = readClientCache();
 
   const { data, isFetching } = useQuery({
-    queryKey: ["hoorin-courier-history", digits, orderCreatedAt ?? ""],
+    queryKey: ["hoorin-courier-history", digits],
     enabled: enabled && !cachedClientResult,
     queryFn: () => fn({ data: { phone: digits, orderCreatedAt } }),
     initialData: cachedClientResult ?? undefined,
@@ -1835,7 +1839,7 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
   useEffect(() => {
     if (!data?.configured || data.error || typeof window === "undefined") return;
     try {
-      window.localStorage.setItem(clientCacheKey, JSON.stringify(data));
+      window.localStorage.setItem(clientCacheKey, JSON.stringify({ ...data, _fetchedAt: Date.now() }));
     } catch {
       // Server-side persistent cache remains the fallback.
     }
