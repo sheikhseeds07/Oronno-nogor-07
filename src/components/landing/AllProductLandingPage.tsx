@@ -242,7 +242,9 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
         },
       });
       orderCreatedRef.current = true;
-      trackPurchase([], 0, order.id);
+      const purchaseItems = [{ id: current.product_id!, name: current.name, price: current.price, quantity: 1 }, ...(include && nutrimix ? [{ id: nutrimix.id, name: nutrimix.name, price: Number(nutrimix.sale_price ?? nutrimix.price), quantity: 1 }] : [])];
+      const purchaseTotal = purchaseItems.reduce((sum, item) => sum + item.price * item.quantity, 0) + shipping;
+      trackPurchase(purchaseItems, purchaseTotal, order.id);
       toast.success("অর্ডার সফল হয়েছে!");
       navigate({ to: "/order/$id", params: { id: order.id } });
     } catch (error) {
