@@ -98,6 +98,17 @@ const TABS: { key: Tab; label: string; icon: typeof Search }[] = [
 ];
 
 // Keys that must refresh whenever any order data changes anywhere.
+const ORDER_STATUS_COUNT_REFRESH_DELAY = 250;
+let orderStatusCountRefreshTimer: number | null = null;
+
+function scheduleOrderStatusCountRefresh(qc: ReturnType<typeof useQueryClient>) {
+  if (orderStatusCountRefreshTimer !== null) return;
+  orderStatusCountRefreshTimer = window.setTimeout(() => {
+    orderStatusCountRefreshTimer = null;
+    scheduleOrderStatusCountRefresh(qc);
+  }, ORDER_STATUS_COUNT_REFRESH_DELAY);
+}
+
 const ORDER_QUERY_KEYS = [
   "admin-orders",
   "admin-orders-incomplete",
@@ -139,7 +150,7 @@ function useLiveOrders() {
       // deleted, or its status actually changes. Customer/address/print/etc.
       // updates should not trigger a status-count request.
       if (statusChanged) {
-        qc.invalidateQueries({ queryKey: ["order-status-counts"], refetchType: "active" });
+        scheduleOrderStatusCountRefresh(qc);
       }
     };
 
@@ -266,7 +277,7 @@ function SearchPanel({ onOpen }: { onOpen: (id: string) => void }) {
         ? { ...row, status: next, updated_at: new Date().toISOString() }
         : row),
     );
-    qc.invalidateQueries({ queryKey: ["order-status-counts"], refetchType: "active" });
+    scheduleOrderStatusCountRefresh(qc);
   };
 
   return (
@@ -440,7 +451,7 @@ function IncompleteOrdersPanel() {
       await supabase.from("incomplete_events").insert({ phone: row.phone, event: "converted" });
       toast.success("অর্ডার তৈরি হয়েছে — Pending এ যোগ হয়েছে");
       qc.invalidateQueries({ queryKey: ["admin-orders"] });
-      qc.invalidateQueries({ queryKey: ["order-status-counts"] });
+      scheduleOrderStatusCountRefresh(qc);
       refetch();
     } catch (e: any) {
       toast.error(e?.message ?? "কনভার্ট ব্যর্থ");
@@ -839,7 +850,7 @@ function OrdersTable({
     }
 
     toast.success("আপডেট হয়েছে");
-    qc.invalidateQueries({ queryKey: ["order-status-counts"], refetchType: "active" });
+    scheduleOrderStatusCountRefresh(qc);
   };
 
 
@@ -1005,7 +1016,7 @@ function OrdersTable({
       return;
     }
     toast.success(`${ids.length} টি অর্ডার ${label} এ পাঠানো হয়েছে`);
-    qc.invalidateQueries({ queryKey: ["order-status-counts"] });
+    scheduleOrderStatusCountRefresh(qc);
     qc.invalidateQueries({ queryKey: ["admin-orders"] });
   };
 
@@ -1036,7 +1047,7 @@ function OrdersTable({
       return;
     }
     toast.success(`${ids.length} টি অর্ডার "${statusEn[status]}" এ পাঠানো হয়েছে`);
-    qc.invalidateQueries({ queryKey: ["order-status-counts"] });
+    scheduleOrderStatusCountRefresh(qc);
     qc.invalidateQueries({ queryKey: ["admin-orders"] });
   };
 
@@ -1051,7 +1062,7 @@ function OrdersTable({
     try {
       const res = await deleteOrdersFn({ data: { ids } });
       toast.success(`${res.deleted} টি অর্ডার ডিলিট হয়েছে`);
-      qc.invalidateQueries({ queryKey: ["order-status-counts"] });
+      scheduleOrderStatusCountRefresh(qc);
       qc.invalidateQueries({ queryKey: ["admin-orders"] });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "ব্যর্থ");
@@ -1119,7 +1130,7 @@ function OrdersTable({
       qc.invalidateQueries({ queryKey: ["admin-orders-incomplete"] });
       qc.invalidateQueries({ queryKey: ["incomplete-count"] });
       qc.invalidateQueries({ queryKey: ["admin-orders"] });
-      qc.invalidateQueries({ queryKey: ["order-status-counts"] });
+      scheduleOrderStatusCountRefresh(qc);
     } catch (e) { toast.error(e instanceof Error ? e.message : "ব্যর্থ"); }
   };
 
@@ -2365,7 +2376,7 @@ function OurRecordCard({ history }: { history: HistoryOrder[]; total?: number; s
     qc.invalidateQueries({ queryKey: ["customer-history"] });
     qc.invalidateQueries({ queryKey: ["new-order-history"] });
     qc.invalidateQueries({ queryKey: ["admin-orders"] });
-    qc.invalidateQueries({ queryKey: ["order-status-counts"] });
+    scheduleOrderStatusCountRefresh(qc);
   };
 
   return (
@@ -2627,7 +2638,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
       qc.setQueryData<DetailOrder | null>(["order-detail", detail.id], (old) =>
         old ? { ...old, status: nextStatus, updated_at: updatedAt } : old,
       );
-      qc.invalidateQueries({ queryKey: ["order-status-counts"], refetchType: "active" });
+      scheduleOrderStatusCountRefresh(qc);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "স্ট্যাটাস আপডেট ব্যর্থ");
     } finally {
@@ -2830,7 +2841,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
         }
         qc.invalidateQueries({ queryKey: ["admin-orders-incomplete"] });
         qc.invalidateQueries({ queryKey: ["incomplete-count"] });
-        qc.invalidateQueries({ queryKey: ["order-status-counts"] });
+        scheduleOrderStatusCountRefresh(qc);
         qc.invalidateQueries({ queryKey: ["admin-orders"] });
         if (confirm) onConfirmed?.();
         return;
