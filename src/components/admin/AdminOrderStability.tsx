@@ -258,23 +258,33 @@ export function AdminOrderStability() {
         const key = query.queryKey;
         const mode = String(key[1] ?? "");
         const filter = String(key[2] ?? "");
-        if (!Array.isArray(query.state.data)) continue;
+        const cached = query.state.data;
+        if (!cached) continue;
 
-        qc.setQueryData(key, (current: any[] | undefined) => {
+        // OrdersPage is { rows, total }, not a bare array. Patch the actual
+        // cache shape so Realtime can update the table without a refetch.
+        qc.setQueryData(key, (current: any) => {
           if (!current) return current;
+          const rows = Array.isArray(current) ? current : current.rows;
+          if (!Array.isArray(rows)) return current;
 
           if (isDelete || !status || !belongsToList(mode, filter, status)) {
-            return current.filter((row) => row?.id !== id);
+            const nextRows = rows.filter((row: any) => row?.id !== id);
+            if (Array.isArray(current)) return nextRows;
+            return nextRows.length === rows.length
+              ? current
+              : { ...current, rows: nextRows, total: Math.max(0, Number(current.total ?? rows.length) - 1) };
           }
 
-          const next = current.map((row) =>
+          const nextRows = rows.map((row: any) =>
             row?.id === id
               ? { ...row, status, updated_at: payload?.new?.updated_at ?? row.updated_at }
               : row,
           );
-          return mode === "list" && (filter === "pending" || filter === "rts")
-            ? sortInvoiceQueue(next)
-            : next;
+          const finalRows = mode === "list" && (filter === "pending" || filter === "rts")
+            ? sortInvoiceQueue(nextRows)
+            : nextRows;
+          return Array.isArray(current) ? finalRows : { ...current, rows: finalRows };
         });
       }
 
