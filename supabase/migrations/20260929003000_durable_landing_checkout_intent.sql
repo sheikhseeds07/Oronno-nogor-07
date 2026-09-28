@@ -231,7 +231,7 @@ begin
     perform cron.schedule(
       'finalize_expired_landing_checkout_intents',
       '* * * * *',
-      $$ select public.finalize_expired_landing_checkout_intents(); $$
+      $job$ select public.finalize_expired_landing_checkout_intents(); $job$
     );
   end if;
 end $$;
