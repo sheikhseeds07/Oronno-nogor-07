@@ -35,6 +35,8 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   const [nutrimixOpen, setNutrimixOpen] = useState(false);
   const [nutrimix, setNutrimix] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
+  const orderInFlightRef = useRef(false);
+  const orderCreatedRef = useRef(false);
   const [formInView, setFormInView] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", address: "" });
   // The route loader already fetched this row fresh on the server for this very
@@ -182,11 +184,13 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
 
   const placeWithNutrimix = async (include: boolean) => {
     setNutrimixOpen(false);
+    if (orderCreatedRef.current || orderInFlightRef.current) return;
     if (!include || !current || !nutrimix) {
       const ev = { preventDefault: () => {} } as React.FormEvent;
       await submit(ev, true);
       return;
     }
+    orderInFlightRef.current = true;
     setSubmitting(true);
     try {
       const nutrimixPrice = Number(nutrimix.sale_price ?? nutrimix.price);
@@ -206,10 +210,12 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
           ...getFbContext(),
         },
       });
+      orderCreatedRef.current = true;
       trackPurchase(items, orderTotal, order.id);
       toast.success("অর্ডার সফল হয়েছে!");
       navigate({ to: "/order/$id", params: { id: order.id } });
     } catch (error) {
+      orderInFlightRef.current = false;
       notifyOrderError(error);
       setSubmitting(false);
     }
@@ -217,6 +223,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
 
   const submit = async (event: React.FormEvent, skipNutrimixPopup = false) => {
     event.preventDefault();
+    if (orderCreatedRef.current || orderInFlightRef.current) return;
     if (!form.name || !form.address) return toast.error("নাম ও ঠিকানা পূরণ করুন");
     if (!isValidBdPhone(form.phone)) return toast.error(phoneSubmitError(form.phone));
     if (!current) return toast.error("একটি অফার নির্বাচন করুন");
@@ -224,15 +231,17 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
       openNutrimix();
       return;
     }
+    orderInFlightRef.current = true;
     setSubmitting(true);
     try {
       const items = [{ id: current.product_id || `offer-${selected}`, name: current.name, price: current.price, quantity: 1 }];
       trackInitiateCheckout(items, total);
       const order = await runPlaceOrder({ data: { customer_name: form.name, customer_phone: form.phone.replace(/[\s-]/g, ""), customer_address: form.address, delivery_fee: shipping, items, notes: null, ...getFbContext() } });
+      orderCreatedRef.current = true;
       trackPurchase(items, total, order.id);
       toast.success("অর্ডার সফল হয়েছে!");
       navigate({ to: "/order/$id", params: { id: order.id } });
-    } catch (error) { notifyOrderError(error); setSubmitting(false); }
+    } catch (error) { orderInFlightRef.current = false; notifyOrderError(error); setSubmitting(false); }
   };
 
   if (isLoading) return <div className="min-h-screen bg-all-product-surface" aria-hidden="true" />;
