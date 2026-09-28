@@ -663,7 +663,7 @@ function OrdersTable({
     const run = async () => {
       // Avoid syncing if tab is not active to prevent unexpected reloads when returning
       if (document.hidden) return;
-      try { await syncStatuses({}); if (alive) qc.invalidateQueries({ queryKey: ["admin-orders"] }); } catch { /* skip */ }
+      try { await syncStatuses({}); if (alive) qc.invalidateQueries({ queryKey: ["admin-orders"], refetchType: "active" }); } catch { /* skip */ }
     };
     run();
     const t = setInterval(run, 180_000); // Increased to 3 minutes
@@ -714,7 +714,9 @@ function OrdersTable({
   // Warm the next page in the background so paging feels instant.
   const total = orderResult?.total ?? 0;
   useEffect(() => {
-    if (isIncomplete || page * pageSize >= total) return;
+    // Prefetch only normal-sized pages. Prefetching 200/500-row pages doubles
+    // large payload/egress for a page the admin may never open.
+    if (isIncomplete || pageSize > 100 || page * pageSize >= total) return;
     const timer = setTimeout(() => {
       void qc.prefetchQuery({
         queryKey: ["admin-orders", mode, filter, page + 1, pageSize, debouncedSearch],
@@ -1993,7 +1995,11 @@ function OrdersTableRows({
             const inv = (o.invoice_no ?? o.id.slice(0, 8)).toUpperCase();
             const items = o.order_items ?? [];
             return (
-              <tr key={o.id} className="border-t hover:bg-muted/50 align-top">
+              <tr
+                key={o.id}
+                className="border-t hover:bg-muted/50 align-top"
+                style={{ contentVisibility: "auto", containIntrinsicSize: "0 132px" }}
+              >
                 {showCheckbox && (
                   <td className="p-3">
                     <input
@@ -3158,4 +3164,3 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
     </div>
   );
 }
-
