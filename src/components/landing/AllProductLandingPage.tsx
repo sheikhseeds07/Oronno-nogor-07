@@ -321,17 +321,16 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
     <main>
       <section className="relative overflow-hidden bg-all-product-hero text-all-product-hero-foreground">
         <div className="all-product-grain absolute inset-0" aria-hidden="true" />
-        <div className="relative mx-auto max-w-3xl px-4 pb-9 pt-5 sm:pb-11 sm:pt-7">
+        <div className="relative mx-auto max-w-3xl px-4 pb-6 pt-3 sm:pb-8 sm:pt-5">
           <div className="text-center">
             {isNutrimix ? (
               <div className="mx-auto max-w-2xl px-1 sm:px-0">
-                <div className="relative overflow-hidden rounded-[22px] border border-all-product-gold/25 bg-gradient-to-br from-white/[0.10] via-all-product-primary/[0.12] to-all-product-gold/[0.10] px-4 py-4 shadow-[0_18px_50px_-28px_rgba(0,0,0,.7)] backdrop-blur-sm sm:rounded-[26px] sm:px-7 sm:py-5">
+                <div className="relative overflow-hidden rounded-[22px] border border-all-product-gold/25 bg-gradient-to-br from-white/[0.10] via-all-product-primary/[0.12] to-all-product-gold/[0.10] px-4 py-3 shadow-[0_18px_50px_-28px_rgba(0,0,0,.7)] backdrop-blur-sm sm:rounded-[26px] sm:px-7 sm:py-4">
                   <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-all-product-gold/15 blur-2xl" />
                   <div className="pointer-events-none absolute -bottom-12 -left-8 h-28 w-28 rounded-full bg-all-product-primary/20 blur-2xl" />
                   <div className="relative">
-                    <span className="mb-2 inline-flex items-center rounded-full border border-all-product-gold/30 bg-all-product-gold/10 px-2.5 py-1 text-[9px] font-black tracking-[0.12em] text-all-product-gold sm:text-[10px]">NUTRIMIX • প্রিমিয়াম গার্ডেন কেয়ার</span>
-                    <h1 style={{ fontFamily: "'Noto Serif Bengali', 'Hind Siliguri', serif", textShadow: "0 2px 18px rgba(0,0,0,.28)" }} className="mx-auto max-w-2xl text-[26px] font-black leading-[1.28] tracking-[-0.02em] text-all-product-hero-foreground sm:text-4xl md:text-5xl">{page.hero_title || page.title}</h1>
-                    <div className="mx-auto mt-2.5 h-1 w-16 rounded-full bg-gradient-to-r from-all-product-gold/30 via-all-product-gold to-all-product-gold/30 sm:mt-3 sm:w-20" aria-hidden="true" />
+                    <h1 style={{ fontFamily: "'Noto Serif Bengali', 'Hind Siliguri', serif", textShadow: "0 2px 18px rgba(0,0,0,.28)" }} className="mx-auto max-w-2xl text-[26px] font-black leading-[1.28] tracking-[-0.02em] text-all-product-hero-foreground sm:text-4xl md:text-5xl">{(page.hero_title || page.title).split(/(নিউট্রিমিক্স|NUTRIMIX)/gi).map((part, index) => /^(নিউট্রিমিক্স|NUTRIMIX)$/i.test(part) ? <span key={index} className="text-all-product-gold">{part}</span> : <span key={index}>{part}</span>)}</h1>
+                    <div className="mx-auto mt-2 h-1 w-16 rounded-full bg-gradient-to-r from-all-product-gold/30 via-all-product-gold to-all-product-gold/30 sm:mt-2.5 sm:w-20" aria-hidden="true" />
                   </div>
                 </div>
               </div>
