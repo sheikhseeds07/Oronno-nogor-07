@@ -130,8 +130,17 @@ function useLiveOrders() {
     };
 
     const onOrderChange = (payload: any) => {
-      if (payload?.eventType === "INSERT") scheduleInsertRefresh();
-      qc.invalidateQueries({ queryKey: ["order-status-counts"], refetchType: "active" });
+      const eventType = payload?.eventType;
+      const statusChanged = eventType === "UPDATE"
+        ? payload?.old?.status !== payload?.new?.status
+        : true;
+      if (eventType === "INSERT") scheduleInsertRefresh();
+      // Status badges only need recalculation when an order is inserted,
+      // deleted, or its status actually changes. Customer/address/print/etc.
+      // updates should not trigger a status-count request.
+      if (statusChanged) {
+        qc.invalidateQueries({ queryKey: ["order-status-counts"], refetchType: "active" });
+      }
     };
 
     const onIncompleteChange = () => {
