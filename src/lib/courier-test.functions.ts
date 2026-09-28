@@ -183,6 +183,7 @@ export const syncSteadfastStatuses = createServerFn({ method: "POST" })
     const { data: orders } = await supabaseAdmin.from("orders").select("id,courier_consignment,status").eq("status", "shipped").not("courier_consignment", "is", null).limit(100);
     let updated = 0;
     const updatedIds: string[] = [];
+    const updatedIds: string[] = [];
     for (const o of orders ?? []) {
       if (!o.courier_consignment) continue;
       let delivery = "";
