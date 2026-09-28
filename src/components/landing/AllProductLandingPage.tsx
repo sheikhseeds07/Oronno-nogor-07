@@ -319,7 +319,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
     )}
 
     <main>
-      <section className="relative overflow-hidden bg-all-product-hero text-all-product-hero-foreground">
+      <section className="relative overflow-hidden bg-all-product-hero/90 text-all-product-hero-foreground">
         <div className="all-product-grain absolute inset-0" aria-hidden="true" />
         <div className="relative mx-auto max-w-3xl px-4 pb-4 pt-3 sm:pb-6 sm:pt-4">
           <div className="text-center">
@@ -337,11 +337,22 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
             ) : (
               <h1 style={{ fontFamily: "'Noto Serif Bengali', 'Hind Siliguri', serif" }} className="all-product-hero-title mx-auto max-w-3xl text-3xl font-black leading-[1.2] tracking-[-0.01em] sm:text-4xl md:text-5xl">{page.hero_title || page.title}</h1>
             )}
-            <div className="mx-auto mt-2.5 inline-flex items-center gap-2 rounded-full border border-all-product-gold/35 bg-all-product-primary/25 px-4 py-1.5 text-[12px] font-black text-all-product-hero-foreground shadow-[0_8px_24px_-16px_rgba(0,0,0,.55)] backdrop-blur-sm sm:mt-3 sm:px-5 sm:py-2 sm:text-sm">
-              <span className="text-all-product-gold" aria-hidden="true">🌱</span>
-              <span>২৪ প্রকার সবজির বীজ ফ্রী</span>
-              <span className="text-all-product-gold" aria-hidden="true">🌿</span>
+            <div className="nutrimix-free-seed-line mx-auto mt-2.5 inline-flex items-center justify-center whitespace-nowrap rounded-full border border-all-product-gold/45 bg-all-product-primary/20 px-4 py-1.5 text-[15px] font-black leading-none text-all-product-hero-foreground shadow-[0_10px_28px_-16px_rgba(0,0,0,.65)] backdrop-blur-sm sm:mt-3 sm:px-6 sm:py-2 sm:text-lg" aria-label="২৪ প্রকারের বীজ ও ডেলিভারি চার্জ ফ্রী">
+              <span className="text-all-product-gold">২৪ প্রকারের বীজ</span>
+              <span className="mx-1.5 text-all-product-gold/70">+</span>
+              <span>ডেলিভারি চার্জ</span>
+              <span className="ml-1.5 text-all-product-gold">ফ্রী</span>
             </div>
+            <style>{`
+              @keyframes nutrimixFreeSeedPulse {
+                0%, 100% { transform: scale(1); filter: brightness(1); box-shadow: 0 10px 28px -16px rgba(0,0,0,.65), 0 0 0 0 rgba(217,165,58,.28); }
+                50% { transform: scale(1.018); filter: brightness(1.08); box-shadow: 0 12px 32px -16px rgba(0,0,0,.62), 0 0 0 7px rgba(217,165,58,0); }
+              }
+              .nutrimix-free-seed-line { animation: nutrimixFreeSeedPulse 2.2s ease-in-out infinite; }
+              @media (prefers-reduced-motion: reduce) {
+                .nutrimix-free-seed-line { animation: none !important; }
+              }
+            `}</style>
             {page.hero_subtitle && <p className="all-product-hero-subtitle mx-auto mt-2 max-w-2xl text-sm font-medium leading-6 text-all-product-hero-muted sm:mt-2.5 sm:text-base">{page.hero_subtitle}</p>}
           </div>
 
