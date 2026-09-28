@@ -663,7 +663,30 @@ function OrdersTable({
     const run = async () => {
       // Avoid syncing if tab is not active to prevent unexpected reloads when returning
       if (document.hidden) return;
-      try { await syncStatuses({}); if (alive) qc.invalidateQueries({ queryKey: ["admin-orders"], refetchType: "active" }); } catch { /* skip */ }
+      try {
+        const result = await syncStatuses({});
+        if (!alive || !result || result.error || !result.updatedIds?.length) return;
+        const { data: changedRows, error } = await supabase
+          .from("orders")
+          .select("id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment,courier_display_name,printed_at,created_at,updated_at,shipped_at,created_by,assigned_to,originated_from_incomplete,originated_from_import,notes,order_items(id,product_name,quantity,price,product_id)")
+          .in("id", result.updatedIds);
+        if (error || !changedRows?.length) return;
+        const patched = await attachProductImages((changedRows ?? []) as unknown as OrderRow[]);
+        qc.setQueryData(
+          ["admin-orders", mode, filter, page, pageSize, debouncedSearch],
+          (current: { rows: OrderRow[]; total: number } | undefined) => {
+            if (!current) return current;
+            const byId = new Map(patched.map((row) => [row.id, row]));
+            const nextRows = current.rows
+              .map((row) => byId.get(row.id) ?? row)
+              .filter((row) => !(isShippedFilter && row.status !== "shipped"));
+            const removed = current.rows.length - nextRows.length;
+            return removed
+              ? { ...current, rows: nextRows, total: Math.max(0, current.total - removed) }
+              : { ...current, rows: nextRows };
+          },
+        );
+      } catch { /* skip */ }
     };
     run();
     const t = setInterval(run, 180_000); // Increased to 3 minutes
