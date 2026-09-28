@@ -151,7 +151,6 @@ function useLiveOrders() {
     const channel = supabase
       .channel("admin-orders-live-light")
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, onOrderChange)
-      .on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, () => {})
       .on("postgres_changes", { event: "*", schema: "public", table: "incomplete_orders" }, onIncompleteChange)
       .subscribe();
 
@@ -1585,71 +1584,38 @@ const normalizeProductName = (name: string) =>
 /** Resolve a thumbnail for every order item:
  *  1) by product_id, 2) by product name from the products table,
  *  3) by product name from landing page packages/addons (custom landing offers). */
-async function attachProductImages(orders: OrderRow[]): Promise<OrderRow[]> {
-  const allItems = orders.flatMap((o) => o.order_items ?? []);
-  const ids = Array.from(new Set(allItems.map((it) => it.product_id).filter((x): x is string => !!x)));
-  const idMap: Record<string, string> = {};
-  const nameMap: Record<string, string> = {};
+const PRODUCT_IMAGE_CACHE_TTL = 30_000;
+let productImageCache: { expiresAt: number; idMap: Record<string, string>; nameMap: Record<string, string>; comboImageMap: Record<string, string> } | null = null;
+let productImageCachePromise: Promise<typeof productImageCache> | null = null;
 
-  // Load the product catalog once. Imported orders often contain a slightly
-  // different product title (offer text, price, emoji, etc.), so exact-name
-  // matching alone can leave the thumbnail blank.
-  const { data: catalog } = await supabase.from("products").select("id,name,images");
-  for (const p of catalog ?? []) {
-    const img = ((p.images as string[] | null) ?? [])[0] ?? "";
-    if (p.id && img) idMap[p.id] = img;
-    const key = normalizeProductName(String(p.name ?? ""));
-    if (key && img && !nameMap[key]) nameMap[key] = img;
-  }
+async function loadProductImageCache() {
+  const now = Date.now();
+  if (productImageCache && productImageCache.expiresAt > now) return productImageCache;
+  if (productImageCachePromise) return productImageCachePromise;
 
-  const productCatalog = (catalog ?? [])
-    .map((p: any) => ({
-      name: normalizeProductName(String(p.name ?? "")),
-      image: (((p.images as string[] | null) ?? [])[0] ?? "") as string,
-    }))
-    .filter((p) => p.name && p.image);
+  productImageCachePromise = (async () => {
+    const [{ data: catalog }, { data: pages }] = await Promise.all([
+      supabase.from("products").select("id,name,images"),
+      supabase.from("landing_pages").select("hero_image,addons,planting_steps,products(name,images)").limit(200),
+    ]);
 
-  // Items still without a picture (no product_id, unmatched product, or
-  // product without an image).
-  const unresolved = allItems.filter((it) => !(it.product_id && idMap[it.product_id]) && !it.image);
+    const idMap: Record<string, string> = {};
+    const nameMap: Record<string, string> = {};
+    const comboImageMap: Record<string, string> = {};
 
-  // Match imported/legacy names robustly: exact -> containment -> shared
-  // meaningful tokens. This handles titles such as "২৪ প্রকার ... মাত্র ৳২২৯".
-  const bestCatalogImage = (raw: string) => {
-    const target = normalizeProductName(raw);
-    if (!target) return "";
-    if (nameMap[target]) return nameMap[target];
-
-    const targetTokens = new Set(target.split(/[^\p{L}\p{N}]+/u).filter((x) => x.length >= 2));
-    let best = "";
-    let bestScore = 0;
-    for (const p of productCatalog) {
-      if (!p.name || !p.image) continue;
-      let score = 0;
-      if (target.includes(p.name) || p.name.includes(target)) score += 8;
-      const shared = p.name.split(/[^\p{L}\p{N}]+/u).filter((x) => x.length >= 2)
-        .filter((x) => targetTokens.has(x)).length;
-      score += shared * 2;
-      if (shared >= 2 && score > bestScore) {
-        bestScore = score;
-        best = p.image;
-      }
+    for (const p of catalog ?? []) {
+      const img = ((p.images as string[] | null) ?? [])[0] ?? "";
+      if (p.id && img) idMap[p.id] = img;
+      const key = normalizeProductName(String(p.name ?? ""));
+      if (key && img && !nameMap[key]) nameMap[key] = img;
     }
-    return best;
-  };
 
-  for (const it of unresolved) {
-    const img = bestCatalogImage(it.product_name);
-    if (img) nameMap[normalizeProductName(it.product_name)] = img;
-  }
-
-  const stillMissing = unresolved.filter((it) => !nameMap[normalizeProductName(it.product_name)]);
-  if (stillMissing.length) {
-    // Landing pages keep package/addon/combo-offer images separately from products.
-    const { data: pages } = await supabase
-      .from("landing_pages")
-      .select("hero_image,addons,planting_steps,products(name,images)")
-      .limit(200);
+    const productCatalog = (catalog ?? [])
+      .map((p: any) => ({
+        name: normalizeProductName(String(p.name ?? "")),
+        image: (((p.images as string[] | null) ?? [])[0] ?? "") as string,
+      }))
+      .filter((p) => p.name && p.image);
 
     const landingCandidates: Array<{ name: string; image: string }> = [];
     for (const pg of (pages ?? []) as any[]) {
@@ -1667,8 +1633,6 @@ async function attachProductImages(orders: OrderRow[]): Promise<OrderRow[]> {
         });
       }
       const plantingSteps = pg?.planting_steps;
-      // Seed Combo NUTRIMIX popup is independent of products; its configured
-      // image is stored in the landing-page planting_steps content.
       const popup = plantingSteps;
       if (popup && typeof popup === "object" && popup.nutrimix_offer_image) {
         landingCandidates.push({
@@ -1680,56 +1644,93 @@ async function attachProductImages(orders: OrderRow[]): Promise<OrderRow[]> {
         ? (plantingSteps as any).combo_offers
         : [];
       for (const offer of comboOffers) {
+        const key = normalizeProductName(offer?.name ?? "");
+        const image = String(offer?.image ?? "").trim();
+        if (key && image) comboImageMap[key] = image;
         landingCandidates.push({
-          name: normalizeProductName(offer?.name ?? ""),
-          image: offer?.image || pg?.hero_image || "",
+          name: key,
+          image: image || pg?.hero_image || "",
         });
       }
     }
 
-    for (const it of stillMissing) {
-      const target = normalizeProductName(it.product_name);
-      const exact = landingCandidates.find((x) => x.name === target && x.image);
-      if (exact) {
-        nameMap[target] = exact.image;
-        continue;
-      }
+    const bestImage = (raw: string, candidates: Array<{ name: string; image: string }>) => {
+      const target = normalizeProductName(raw);
+      if (!target) return "";
+      const exactMap = candidates === productCatalog ? nameMap : null;
+      if (exactMap?.[target]) return exactMap[target];
+
       const targetTokens = new Set(target.split(/[^\p{L}\p{N}]+/u).filter((x) => x.length >= 2));
       let best = "";
       let bestScore = 0;
-      for (const c of landingCandidates) {
-        if (!c.name || !c.image) continue;
-        let score = target.includes(c.name) || c.name.includes(target) ? 8 : 0;
-        const shared = c.name.split(/[^\p{L}\p{N}]+/u).filter((x) => x.length >= 2)
+      for (const p of candidates) {
+        if (!p.name || !p.image) continue;
+        let score = target.includes(p.name) || p.name.includes(target) ? 8 : 0;
+        const shared = p.name.split(/[^\p{L}\p{N}]+/u).filter((x) => x.length >= 2)
           .filter((x) => targetTokens.has(x)).length;
         score += shared * 2;
         if (shared >= 2 && score > bestScore) {
           bestScore = score;
-          best = c.image;
+          best = p.image;
         }
       }
-      if (best) nameMap[target] = best;
-    }
-  }
+      return best;
+    };
 
-  // Combo Offer images are authoritative: an offer can point at a
-  // normal product but must keep its own configured thumbnail.
-  const comboImageMap: Record<string, string> = {};
-  const { data: comboPages } = await supabase
-    .from("landing_pages")
-    .select("planting_steps")
-    .limit(200);
-  for (const pg of (comboPages ?? []) as any[]) {
-    const steps = pg?.planting_steps;
-    const combos = steps && typeof steps === "object" && Array.isArray(steps.combo_offers)
-      ? steps.combo_offers
-      : [];
-    for (const combo of combos) {
-      const key = normalizeProductName(String(combo?.name ?? ""));
-      const image = String(combo?.image ?? "").trim();
-      if (key && image) comboImageMap[key] = image;
+    const expiresAt = Date.now() + PRODUCT_IMAGE_CACHE_TTL;
+    productImageCache = { expiresAt, idMap, nameMap, comboImageMap };
+
+    // Resolve known landing/custom names once so every page load only maps rows.
+    for (const candidate of landingCandidates) {
+      if (candidate.name && candidate.image && !nameMap[candidate.name]) nameMap[candidate.name] = candidate.image;
     }
-  }
+
+    return productImageCache;
+  })().finally(() => {
+    productImageCachePromise = null;
+  });
+
+  return productImageCachePromise;
+}
+
+/** Resolve order-item thumbnails using a short-lived shared catalog cache.
+ *  This preserves the existing matching priority while preventing every
+ *  20/50/100-row page from downloading the full products + landing-page
+ *  catalogs (and prevents duplicate concurrent catalog requests).
+ */
+async function attachProductImages(orders: OrderRow[]): Promise<OrderRow[]> {
+  if (!orders.length) return orders;
+  const allItems = orders.flatMap((o) => o.order_items ?? []);
+  if (!allItems.length) return orders;
+
+  const cache = await loadProductImageCache();
+  if (!cache) return orders;
+
+  const { idMap, nameMap, comboImageMap } = cache;
+
+  const bestCatalogImage = (raw: string) => {
+    const target = normalizeProductName(raw);
+    if (!target) return "";
+    if (nameMap[target]) return nameMap[target];
+
+    const targetTokens = new Set(target.split(/[^\p{L}\p{N}]+/u).filter((x) => x.length >= 2));
+    let best = "";
+    let bestScore = 0;
+    // nameMap contains exact known catalog/landing names. Only scan the
+    // relatively small cached map for fuzzy matching when exact lookup fails.
+    for (const [candidateName, image] of Object.entries(nameMap)) {
+      if (!candidateName || !image) continue;
+      let score = target.includes(candidateName) || candidateName.includes(target) ? 8 : 0;
+      const shared = candidateName.split(/[^\p{L}\p{N}]+/u).filter((x) => x.length >= 2)
+        .filter((x) => targetTokens.has(x)).length;
+      score += shared * 2;
+      if (shared >= 2 && score > bestScore) {
+        bestScore = score;
+        best = image;
+      }
+    }
+    return best;
+  };
 
   return orders.map((o) => ({
     ...o,
@@ -1742,6 +1743,7 @@ async function attachProductImages(orders: OrderRow[]): Promise<OrderRow[]> {
           it.image ||
           (it.product_id ? idMap[it.product_id] : "") ||
           nameMap[key] ||
+          bestCatalogImage(it.product_name) ||
           "",
       };
     }),
