@@ -117,9 +117,9 @@ function parseStats(payload: unknown): CourierStat[] {
 
     const row = value as JsonRecord;
     const inner = row.summary && typeof row.summary === "object" && !Array.isArray(row.summary) ? row.summary as JsonRecord : row;
-    const total = num(inner["Total Parcels"] ?? inner["Total Delivery"] ?? inner.total_parcel ?? inner.totalParcel ?? inner.total ?? inner["total_parcel_count"] ?? inner.Total_parcels ?? inner.total_parcels ?? inner.totalParcelCount);
-    const success = num(inner["Delivered Parcels"] ?? inner["Successful Delivery"] ?? inner.delivered_parcels ?? inner.success_parcel ?? inner.successParcel ?? inner.success ?? inner.delivered ?? inner["delivered_parcel"] ?? inner.total_delivered ?? inner.delivered_count);
-    const cancelled = num(inner["Canceled Parcels"] ?? inner["Canceled Delivery"] ?? inner["Cancelled Parcels"] ?? inner.cancelled_parcels ?? inner.canceled_parcels ?? inner.cancelled_parcel ?? inner.cancelledParcel ?? inner.cancel ?? inner.cancelled ?? inner["cancelled_parcel"] ?? inner.total_cancelled ?? inner.cancelled_count);
+    const total = num(inner["Total Parcels"] ?? inner["Total Delivery"] ?? inner.total_parcel ?? inner.totalParcel ?? inner.total ?? inner["total_parcel_count"] ?? inner.Total_parcels ?? inner.total_parcels ?? inner.totalParcelCount ?? inner.total_parcels ?? inner.totalParcels ?? inner.total_orders ?? inner.totalOrders ?? inner.parcel_count ?? inner.parcelCount ?? inner.order_count ?? inner.orderCount);
+    const success = num(inner["Delivered Parcels"] ?? inner["Successful Delivery"] ?? inner.delivered_parcels ?? inner.success_parcel ?? inner.successParcel ?? inner.success ?? inner.delivered ?? inner["delivered_parcel"] ?? inner.total_delivered ?? inner.delivered_count ?? inner.delivered_orders ?? inner.deliveredOrders ?? inner.successful_orders ?? inner.successfulOrders ?? inner.success_count ?? inner.successCount);
+    const cancelled = num(inner["Canceled Parcels"] ?? inner["Canceled Delivery"] ?? inner["Cancelled Parcels"] ?? inner.cancelled_parcels ?? inner.canceled_parcels ?? inner.cancelled_parcel ?? inner.cancelledParcel ?? inner.cancel ?? inner.cancelled ?? inner["cancelled_parcel"] ?? inner.total_cancelled ?? inner.cancelled_count ?? inner.cancelled_orders ?? inner.cancelledOrders ?? inner.canceled_orders ?? inner.canceledOrders ?? inner.cancel_count ?? inner.cancelCount);
     const hasCounts = COUNT_KEYS.some((k) => Object.prototype.hasOwnProperty.call(inner, k));
 
     const rawName = typeof inner.name === "string" && inner.name.trim() ? inner.name.trim() : key;
