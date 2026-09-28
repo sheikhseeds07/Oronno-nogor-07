@@ -171,10 +171,10 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   };
   const openNutrimix = async () => {
     if (C.nutrimix_popup_enabled === false || submitting || !current) return;
-    if (!current.product_id) {
-      toast.error("এই অফারের product ID পাওয়া যায়নি");
-      return;
-    }
+    // Legacy All Product offers may not have a database product_id.
+    // The order RPC already supports such items with a null product_id,
+    // so do not block checkout just because this optional field is missing.
+    const seedProductId = current.product_id || `landing-offer:${page.id}:${selected || "unknown"}`;
     if (!form.name || !form.address) {
       toast.error("নাম ও ঠিকানা পূরণ করুন");
       return;
@@ -197,7 +197,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
     }
     try {
       if (!landingCheckoutSessionRef.current) landingCheckoutSessionRef.current = crypto.randomUUID();
-      const seedItem = { id: current.product_id, name: current.name, price: current.price, quantity: 1 };
+      const seedItem = { id: seedProductId, name: current.name, price: current.price, quantity: 1 };
       const nutrimixItem = { id: p.id, name: p.name, price: p.price, quantity: 1 };
       if (!landingInitiateCheckoutRef.current) {
         landingInitiateCheckoutRef.current = true;
@@ -242,7 +242,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
         },
       });
       orderCreatedRef.current = true;
-      const purchaseItems = [{ id: current.product_id!, name: current.name, price: current.price, quantity: 1 }, ...(include && nutrimix ? [{ id: nutrimix.id, name: nutrimix.name, price: Number(nutrimix.sale_price ?? nutrimix.price), quantity: 1 }] : [])];
+      const purchaseItems = [{ id: current.product_id || `landing-offer:${page.id}:${selected || "unknown"}`, name: current.name, price: current.price, quantity: 1 }, ...(include && nutrimix ? [{ id: nutrimix.id, name: nutrimix.name, price: Number(nutrimix.sale_price ?? nutrimix.price), quantity: 1 }] : [])];
       const purchaseTotal = purchaseItems.reduce((sum, item) => sum + item.price * item.quantity, 0) + shipping;
       trackPurchase(purchaseItems, purchaseTotal, order.id);
       toast.success("অর্ডার সফল হয়েছে!");
