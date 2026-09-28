@@ -105,7 +105,7 @@ function scheduleOrderStatusCountRefresh(qc: ReturnType<typeof useQueryClient>) 
   if (orderStatusCountRefreshTimer !== null) return;
   orderStatusCountRefreshTimer = window.setTimeout(() => {
     orderStatusCountRefreshTimer = null;
-    scheduleOrderStatusCountRefresh(qc);
+    qc.invalidateQueries({ queryKey: ["order-status-counts"], refetchType: "active" });
   }, ORDER_STATUS_COUNT_REFRESH_DELAY);
 }
 
