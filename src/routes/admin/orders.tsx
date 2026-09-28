@@ -624,6 +624,11 @@ function OrdersTable({
   const deleteOrdersFn = useServerFn(deleteOrders);
   const syncStatuses = useServerFn(syncSteadfastStatuses);
   const fetchCounts = useServerFn(getOrderStatusCounts);
+  const courierCacheRef = useRef({ mode, filter, page, pageSize, debouncedSearch });
+
+  useEffect(() => {
+    courierCacheRef.current = { mode, filter, page, pageSize, debouncedSearch };
+  }, [mode, filter, page, pageSize, debouncedSearch]);
 
   // Status counts (for badges on filter buttons). Realtime subscription below
   // keeps this fresh — no polling needed.
@@ -672,14 +677,15 @@ function OrdersTable({
           .in("id", result.updatedIds);
         if (error || !changedRows?.length) return;
         const patched = await attachProductImages((changedRows ?? []) as unknown as OrderRow[]);
+        const activeKey = courierCacheRef.current;
         qc.setQueryData(
-          ["admin-orders", mode, filter, page, pageSize, debouncedSearch],
+          ["admin-orders", activeKey.mode, activeKey.filter, activeKey.page, activeKey.pageSize, activeKey.debouncedSearch],
           (current: { rows: OrderRow[]; total: number } | undefined) => {
             if (!current) return current;
             const byId = new Map(patched.map((row) => [row.id, row]));
             const nextRows = current.rows
               .map((row) => byId.get(row.id) ?? row)
-              .filter((row) => !(isShippedFilter && row.status !== "shipped"));
+              .filter((row) => !(activeKey.filter === "shipped" && row.status !== "shipped"));
             const removed = current.rows.length - nextRows.length;
             return removed
               ? { ...current, rows: nextRows, total: Math.max(0, current.total - removed) }
@@ -691,7 +697,7 @@ function OrdersTable({
     run();
     const t = setInterval(run, 180_000); // Increased to 3 minutes
     return () => { alive = false; clearInterval(t); };
-  }, [isShippedFilter, syncStatuses, qc, mode, filter, page, pageSize, debouncedSearch]);
+  }, [isShippedFilter, syncStatuses, qc]);
 
   // Realtime is handled centrally by useLiveOrders() and AdminOrderStability().
   // Do not poll the Processing queue: a 5-second full-page refetch created
