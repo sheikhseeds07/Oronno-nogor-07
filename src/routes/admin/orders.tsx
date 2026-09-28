@@ -252,7 +252,7 @@ function SearchPanel({ onOpen }: { onOpen: (id: string) => void }) {
     if (!next || next === current) return;
     if (next === "incomplete") { toast.error("ইনকমপ্লিট স্ট্যাটাসে ম্যানুয়ালি যাওয়া যাবে না"); return; }
     setSavingId(id);
-    if (next !== "web_pending") {
+    if (current === "pending" && next !== "web_pending") {
       try { await ensureInvoices({ data: { ids: [id] } }); } catch { /* invoice পরে সেট হবে */ }
     }
     const { error } = await supabase.from("orders").update({ status: next }).eq("id", id);
@@ -260,9 +260,14 @@ function SearchPanel({ onOpen }: { onOpen: (id: string) => void }) {
     if (error) { toast.error(error.message); return; }
     toast.success("স্ট্যাটাস আপডেট হয়েছে");
     setPending((p) => { const c = { ...p }; delete c[id]; return c; });
-    qc.invalidateQueries({ queryKey: ["admin-orders"] });
-    qc.invalidateQueries({ queryKey: ["order-status-counts"] });
-    refetch();
+
+    // Update the search result immediately; no second full search request.
+    qc.setQueryData<OrderRow[]>(["order-search", submitted], (rows) =>
+      (rows ?? []).map((row) => row.id === id
+        ? { ...row, status: next, updated_at: new Date().toISOString() }
+        : row),
+    );
+    qc.invalidateQueries({ queryKey: ["order-status-counts"], refetchType: "active" });
   };
 
   return (
@@ -2606,16 +2611,21 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
     if (nextStatus === "incomplete") { toast.error("ইনকমপ্লিট স্ট্যাটাসে ম্যানুয়ালি যাওয়া যাবে না"); return; }
     setStatusSaving(true);
     try {
-      if (nextStatus !== "web_pending") {
+      if (detail.status === "pending" && nextStatus !== "web_pending") {
         try { await ensureInvoicesFn({ data: { ids: [detail.id] } }); } catch { /* invoice পরে সেট হবে */ }
       }
       const { error } = await supabase.from("orders").update({ status: nextStatus }).eq("id", detail.id);
       if (error) throw error;
+      const updatedAt = new Date().toISOString();
       toast.success(`স্ট্যাটাস "${statusEn[nextStatus]}" করা হয়েছে`);
       setNextStatus("");
-      qc.invalidateQueries({ queryKey: ["order-detail", detail.id] });
-      qc.invalidateQueries({ queryKey: ["admin-orders"] });
-      qc.invalidateQueries({ queryKey: ["order-status-counts"] });
+
+      // Keep the open modal and cached order list responsive. Realtime will
+      // reconcile other Admin clients; no full order-list refetch is needed.
+      qc.setQueryData<DetailOrder | null>(["order-detail", detail.id], (old) =>
+        old ? { ...old, status: nextStatus, updated_at: updatedAt } : old,
+      );
+      qc.invalidateQueries({ queryKey: ["order-status-counts"], refetchType: "active" });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "স্ট্যাটাস আপডেট ব্যর্থ");
     } finally {
