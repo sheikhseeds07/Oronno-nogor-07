@@ -41,7 +41,7 @@ create or replace function public.create_landing_checkout_intent(
 returns uuid
 language plpgsql
 security definer
-set search_path=public
+set search_path=''
 as $$
 declare v_id uuid;
 begin
@@ -50,12 +50,7 @@ begin
   if coalesce(trim(p_customer_address),'')='' then raise exception 'Customer address is required'; end if;
   if jsonb_typeof(p_seed_items)<>'array' or jsonb_array_length(p_seed_items)<1 then raise exception 'At least one seed item is required'; end if;
   if coalesce(p_delivery_fee,0)<0 or p_delivery_fee>10000 then raise exception 'Invalid delivery fee'; end if;
-  if exists (
-    select 1 from public.customer_blocklist b
-    where b.is_active
-      and (lower(b.customer_name)=lower(trim(p_customer_name))
-           or (p_client_ip is not null and b.ip_address=p_client_ip))
-  ) then raise exception 'আপনাকে block করা হয়েছে'; end if;
+  if public.is_blocked_visitor(p_client_ip,p_customer_phone) then raise exception 'আপনাকে block করা হয়েছে'; end if;
 
   insert into public.landing_checkout_intents(
     checkout_session_id,customer_name,customer_phone,customer_address,notes,
@@ -88,20 +83,13 @@ create or replace function public.finalize_landing_checkout_intent(
 returns uuid
 language plpgsql
 security definer
-set search_path=public
+set search_path=''
 as $$
 declare
   v_intent public.landing_checkout_intents%rowtype;
   v_order_id uuid;
   v_item jsonb;
-  v_product_id uuid;
-  v_product_name text;
-  v_price numeric;
-  v_qty integer;
-  v_subtotal numeric := 0;
   v_items jsonb := '[]'::jsonb;
-  v_nutrimix jsonb;
-  v_nutrimix_price numeric;
 begin
   select * into v_intent
   from public.landing_checkout_intents
@@ -111,79 +99,37 @@ begin
   if not found then raise exception 'Checkout intent not found'; end if;
   if v_intent.final_order_id is not null then return v_intent.final_order_id; end if;
 
-  if exists (
-    select 1 from public.customer_blocklist b
-    where b.is_active
-      and (lower(b.customer_name)=lower(trim(v_intent.customer_name))
-           or (v_intent.client_ip is not null and b.ip_address=v_intent.client_ip))
-  ) then raise exception 'আপনাকে block করা হয়েছে'; end if;
-
-  if exists (
-    select 1 from public.order_rate_limit_events e
-    where (e.phone=v_intent.customer_phone or (v_intent.client_ip is not null and e.ip=v_intent.client_ip))
-      and e.created_at>now()-interval '10 minutes'
-  ) then raise exception 'Please wait before placing another order'; end if;
+  if public.is_blocked_visitor(v_intent.client_ip,v_intent.customer_phone) then
+    raise exception 'আপনাকে block করা হয়েছে';
+  end if;
 
   for v_item in select value from jsonb_array_elements(v_intent.seed_items) loop
-    begin
-      v_product_id := (v_item->>'id')::uuid;
-    exception when invalid_text_representation then
-      raise exception 'Invalid landing product';
-    end;
-    v_qty := greatest(1,least(1000,coalesce((v_item->>'quantity')::integer,1)));
-    select name,coalesce(sale_price,price)
-      into v_product_name,v_price
-      from public.products
-      where id=v_product_id and is_active=true;
-    if not found then raise exception 'Product not found'; end if;
-    v_subtotal := v_subtotal + v_price*v_qty;
     v_items := v_items || jsonb_build_array(jsonb_build_object(
-      'id',v_product_id::text,'name',v_product_name,'price',v_price,'quantity',v_qty
+      'id',coalesce(v_item->>'id',''),
+      'name',coalesce(v_item->>'name',''),
+      'price',greatest(0,coalesce((v_item->>'price')::numeric,0)),
+      'quantity',greatest(1,least(1000,coalesce((v_item->>'quantity')::integer,1)))
     ));
   end loop;
 
   if p_include_nutrimix and v_intent.nutrimix_item is not null then
-    v_nutrimix := v_intent.nutrimix_item;
-    v_nutrimix_price := greatest(0,coalesce((v_nutrimix->>'price')::numeric,0));
     v_items := v_items || jsonb_build_array(jsonb_build_object(
-      'id',coalesce(v_nutrimix->>'id','landing-popup-nutrimix'),
-      'name',coalesce(v_nutrimix->>'name','NUTRIMIX'),
-      'price',v_nutrimix_price,'quantity',1
+      'id',coalesce(v_intent.nutrimix_item->>'id','landing-popup-nutrimix'),
+      'name',coalesce(v_intent.nutrimix_item->>'name','NUTRIMIX'),
+      'price',greatest(0,coalesce((v_intent.nutrimix_item->>'price')::numeric,0)),
+      'quantity',1
     ));
-    v_subtotal := v_subtotal + v_nutrimix_price;
   end if;
 
-  insert into public.orders(
-    source,status,customer_name,customer_phone,customer_address,notes,
-    subtotal,delivery_fee,discount,total,payment_method,originated_from_incomplete,client_ip
-  )
-  values(
-    'web','web_pending',trim(v_intent.customer_name),v_intent.customer_phone,
-    trim(v_intent.customer_address),v_intent.notes,v_subtotal,v_intent.delivery_fee,
-    0,v_subtotal+v_intent.delivery_fee,'cod',false,v_intent.client_ip
-  )
-  returning id into v_order_id;
-
-  for v_item in select value from jsonb_array_elements(v_items) loop
-    begin
-      v_product_id := (v_item->>'id')::uuid;
-    exception when invalid_text_representation then
-      v_product_id := null;
-    end;
-    insert into public.order_items(
-      order_id,product_id,product_name,quantity,price,subtotal
-    )
-    values(
-      v_order_id,v_product_id,v_item->>'name',
-      greatest(1,least(1000,coalesce((v_item->>'quantity')::integer,1))),
-      coalesce((v_item->>'price')::numeric,0),
-      coalesce((v_item->>'price')::numeric,0)*
-      greatest(1,least(1000,coalesce((v_item->>'quantity')::integer,1)))
-    );
-  end loop;
-
-  insert into public.order_rate_limit_events(phone,ip)
-  values(v_intent.customer_phone,v_intent.client_ip);
+  v_order_id := public.place_public_order(
+    v_intent.customer_name,
+    v_intent.customer_phone,
+    v_intent.customer_address,
+    v_intent.delivery_fee,
+    v_items,
+    v_intent.notes,
+    v_intent.client_ip
+  );
 
   update public.landing_checkout_intents
     set state='finalized',final_order_id=v_order_id,finalized_at=now()
