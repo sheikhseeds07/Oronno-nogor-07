@@ -1884,7 +1884,7 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
       const raw = window.localStorage.getItem(clientCacheKey);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
-      if (!parsed || !parsed.configured || parsed.error) return null;
+      if (!parsed || !parsed.configured || parsed.error || !parsed.overall) return null;
       const fetchedAt = Number(parsed._fetchedAt ?? 0);
       if (fetchedAt && Date.now() - fetchedAt > 24 * 60 * 60 * 1000) return null;
       if (orderCreatedAtMs && fetchedAt && orderCreatedAtMs > fetchedAt) return null;
