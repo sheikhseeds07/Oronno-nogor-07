@@ -321,31 +321,31 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
     <main>
       <section className="relative overflow-hidden bg-all-product-hero text-all-product-hero-foreground">
         <div className="all-product-grain absolute inset-0" aria-hidden="true" />
-        <div className="relative mx-auto max-w-3xl px-4 pb-6 pt-4 sm:pb-8 sm:pt-6">
+        <div className="relative mx-auto max-w-3xl px-4 pb-4 pt-3 sm:pb-6 sm:pt-4">
           <div className="text-center">
             {isNutrimix ? (
               <div className="mx-auto max-w-2xl px-1 sm:px-0">
-                <div className="relative overflow-hidden rounded-[24px] border border-emerald-200/80 bg-white/65 px-4 py-3.5 shadow-[0_18px_55px_-30px_rgba(16,185,129,.35)] backdrop-blur-md sm:rounded-[28px] sm:px-7 sm:py-5">
-                  <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-amber-200/35 blur-2xl" />
-                  <div className="pointer-events-none absolute -bottom-12 -left-8 h-28 w-28 rounded-full bg-emerald-200/35 blur-2xl" />
+                <div className="relative overflow-hidden rounded-[22px] border border-all-product-gold/25 bg-gradient-to-br from-white/[0.10] via-all-product-primary/[0.12] to-all-product-gold/[0.10] px-4 py-3 shadow-[0_18px_50px_-28px_rgba(0,0,0,.7)] backdrop-blur-sm sm:rounded-[26px] sm:px-7 sm:py-4">
+                  <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-all-product-gold/15 blur-2xl" />
+                  <div className="pointer-events-none absolute -bottom-12 -left-8 h-28 w-28 rounded-full bg-all-product-primary/20 blur-2xl" />
                   <div className="relative">
-                    <h1 style={{ fontFamily: "'Noto Serif Bengali', 'Hind Siliguri', serif" }} className="mx-auto max-w-2xl text-[26px] font-black leading-[1.28] tracking-[-0.02em] text-emerald-950 sm:text-4xl md:text-5xl">{(page.hero_title || page.title).split(/(নিউট্রিমিক্স|NUTRIMIX)/gi).map((part, index) => /^(নিউট্রিমিক্স|NUTRIMIX)$/i.test(part) ? <span key={index} className="text-emerald-600">{part}</span> : <span key={index}>{part}</span>)}</h1>
-                    <div className="mx-auto mt-2 h-1 w-16 rounded-full bg-gradient-to-r from-emerald-200 via-amber-400 to-emerald-200 sm:mt-2.5 sm:w-20" aria-hidden="true" />
+                    <h1 style={{ fontFamily: "'Noto Serif Bengali', 'Hind Siliguri', serif", textShadow: "0 2px 18px rgba(0,0,0,.28)" }} className="mx-auto max-w-2xl text-[26px] font-black leading-[1.28] tracking-[-0.02em] text-all-product-hero-foreground sm:text-4xl md:text-5xl">{(page.hero_title || page.title).split(/(নিউট্রিমিক্স|NUTRIMIX)/gi).map((part, index) => /^(নিউট্রিমিক্স|NUTRIMIX)$/i.test(part) ? <span key={index} className="text-all-product-gold">{part}</span> : <span key={index}>{part}</span>)}</h1>
+                    <div className="mx-auto mt-2 h-1 w-16 rounded-full bg-gradient-to-r from-all-product-gold/30 via-all-product-gold to-all-product-gold/30 sm:mt-2.5 sm:w-20" aria-hidden="true" />
                   </div>
                 </div>
               </div>
             ) : (
               <h1 style={{ fontFamily: "'Noto Serif Bengali', 'Hind Siliguri', serif" }} className="all-product-hero-title mx-auto max-w-3xl text-3xl font-black leading-[1.2] tracking-[-0.01em] sm:text-4xl md:text-5xl">{page.hero_title || page.title}</h1>
             )}
-            <div className="mx-auto mt-3 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/85 px-4 py-1.5 text-[12px] font-black text-emerald-700 shadow-sm backdrop-blur-sm sm:mt-4 sm:px-5 sm:py-2 sm:text-sm">
-              <span aria-hidden="true">🌱</span>
+            <div className="mx-auto mt-2.5 inline-flex items-center gap-2 rounded-full border border-all-product-gold/35 bg-all-product-primary/25 px-4 py-1.5 text-[12px] font-black text-all-product-hero-foreground shadow-[0_8px_24px_-16px_rgba(0,0,0,.55)] backdrop-blur-sm sm:mt-3 sm:px-5 sm:py-2 sm:text-sm">
+              <span className="text-all-product-gold" aria-hidden="true">🌱</span>
               <span>২৪ প্রকার সবজির বীজ ফ্রী</span>
-              <span aria-hidden="true">🌿</span>
+              <span className="text-all-product-gold" aria-hidden="true">🌿</span>
             </div>
-            {page.hero_subtitle && <p className="all-product-hero-subtitle mx-auto mt-2.5 max-w-2xl text-sm font-medium leading-6 text-slate-600 sm:mt-3 sm:text-base">{page.hero_subtitle}</p>}
+            {page.hero_subtitle && <p className="all-product-hero-subtitle mx-auto mt-2 max-w-2xl text-sm font-medium leading-6 text-all-product-hero-muted sm:mt-2.5 sm:text-base">{page.hero_subtitle}</p>}
           </div>
 
-          <div className="mt-5 sm:mt-6">
+          <div className="mt-4 sm:mt-5">
             <div className="all-product-image-wrap mx-auto max-w-xl overflow-hidden rounded-2xl border-2 border-all-product-gold/45 bg-all-product-surface shadow-2xl">
               <div className="relative aspect-square overflow-hidden">
                 {heroImages.map((image, index) => (
