@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Check, ChevronDown, Leaf, MapPin, PackageCheck, Phone, ShieldCheck, ShoppingBag, Sparkles, Truck, User, Wallet, X } from "lucide-react";
 import { supabase } from "@/lib/personal-supabase/client";
-import { placeOrder } from "@/lib/place-order.functions";
+import { createLandingCheckoutIntent, finalizeLandingCheckoutIntent, placeOrder } from "@/lib/place-order.functions";
 import { useCheckoutAutofill } from "@/lib/useCheckoutAutofill";
 import { taka } from "@/lib/format";
 import { toast } from "sonner";
@@ -29,6 +29,8 @@ type Offer = { name: string; price: number; old?: number | null; image?: string;
 export function AllProductLandingPage({ slug }: { slug: string }) {
   const navigate = useNavigate();
   const runPlaceOrder = useServerFn(placeOrder);
+  const runCreateLandingIntent = useServerFn(createLandingCheckoutIntent);
+  const runFinalizeLandingIntent = useServerFn(finalizeLandingCheckoutIntent);
   const isNutrimix = slug === "nutrimix";
   const [selected, setSelected] = useState<string | null>(null);
   const [offerPopupOpen, setOfferPopupOpen] = useState(false);
@@ -37,6 +39,9 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   const [submitting, setSubmitting] = useState(false);
   const orderInFlightRef = useRef(false);
   const orderCreatedRef = useRef(false);
+  const landingIntentIdRef = useRef<string | null>(null);
+  const landingCheckoutSessionRef = useRef<string | null>(null);
+  const landingInitiateCheckoutRef = useRef(false);
   const [formInView, setFormInView] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", address: "" });
   // The route loader already fetched this row fresh on the server for this very
@@ -164,8 +169,20 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
     const top = Math.max(0, target.getBoundingClientRect().top + window.scrollY - headerHeight - 12);
     window.scrollTo({ top, behavior: "smooth" });
   };
-  const openNutrimix = () => {
+  const openNutrimix = async () => {
     if (C.nutrimix_popup_enabled === false || submitting || !current) return;
+    if (!current.product_id) {
+      toast.error("এই অফারের product ID পাওয়া যায়নি");
+      return;
+    }
+    if (!form.name || !form.address) {
+      toast.error("নাম ও ঠিকানা পূরণ করুন");
+      return;
+    }
+    if (!isValidBdPhone(form.phone)) {
+      toast.error(phoneSubmitError(form.phone));
+      return;
+    }
     const p = {
       id: "landing-popup-nutrimix",
       name: C.nutrimix_offer_name || "NUTRIMIX - গাছের খাদ্য",
@@ -178,40 +195,56 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
       toast.error("Popup Product-এর নাম ও দাম সেট করুন");
       return;
     }
-    setNutrimix(p);
-    setNutrimixOpen(true);
+    try {
+      if (!landingCheckoutSessionRef.current) landingCheckoutSessionRef.current = crypto.randomUUID();
+      const seedItem = { id: current.product_id, name: current.name, price: current.price, quantity: 1 };
+      const nutrimixItem = { id: p.id, name: p.name, price: p.price, quantity: 1 };
+      if (!landingInitiateCheckoutRef.current) {
+        landingInitiateCheckoutRef.current = true;
+        trackInitiateCheckout([seedItem], total);
+      }
+      const intent = await runCreateLandingIntent({
+        data: {
+          checkout_session_id: landingCheckoutSessionRef.current,
+          customer_name: form.name,
+          customer_phone: form.phone.replace(/[\s-]/g, ""),
+          customer_address: form.address,
+          delivery_fee: shipping,
+          seed_items: [seedItem],
+          nutrimix_item: nutrimixItem,
+          notes: null,
+        },
+      });
+      landingIntentIdRef.current = intent.id;
+      setNutrimix(p);
+      setNutrimixOpen(true);
+    } catch (error) {
+      landingInitiateCheckoutRef.current = false;
+      notifyOrderError(error);
+    }
   };
 
   const placeWithNutrimix = async (include: boolean) => {
     setNutrimixOpen(false);
     if (orderCreatedRef.current || orderInFlightRef.current) return;
-    if (!include || !current || !nutrimix) {
-      const ev = { preventDefault: () => {} } as React.FormEvent;
-      await submit(ev, true);
+    if (!landingIntentIdRef.current) {
+      await openNutrimix();
       return;
     }
     orderInFlightRef.current = true;
     setSubmitting(true);
     try {
-      const nutrimixPrice = Number(nutrimix.sale_price ?? nutrimix.price);
-      const items = [
-        { id: current.product_id || "offer-" + selected, name: current.name, price: current.price, quantity: 1 },
-        { id: nutrimix.id, name: nutrimix.name, price: nutrimixPrice, quantity: 1 },
-      ];
-      const orderTotal = current.price + nutrimixPrice + shipping;
-      const order = await runPlaceOrder({
+      const order = await runFinalizeLandingIntent({
         data: {
-          customer_name: form.name,
-          customer_phone: form.phone.replace(/[\\s-]/g, ""),
-          customer_address: form.address,
-          delivery_fee: shipping,
-          items,
-          notes: null,
+          intent_id: landingIntentIdRef.current,
+          include_nutrimix: Boolean(include),
           ...getFbContext(),
         },
       });
       orderCreatedRef.current = true;
-      trackPurchase(items, orderTotal, order.id);
+      const purchaseItems = [{ id: current.product_id!, name: current.name, price: current.price, quantity: 1 }, ...(include && nutrimix ? [{ id: nutrimix.id, name: nutrimix.name, price: Number(nutrimix.sale_price ?? nutrimix.price), quantity: 1 }] : [])];
+      const purchaseTotal = purchaseItems.reduce((sum, item) => sum + item.price * item.quantity, 0) + shipping;
+      trackPurchase(purchaseItems, purchaseTotal, order.id);
       toast.success("অর্ডার সফল হয়েছে!");
       navigate({ to: "/order/$id", params: { id: order.id } });
     } catch (error) {
@@ -228,7 +261,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
     if (!isValidBdPhone(form.phone)) return toast.error(phoneSubmitError(form.phone));
     if (!current) return toast.error("একটি অফার নির্বাচন করুন");
     if (!isNutrimix && !skipNutrimixPopup && C.nutrimix_popup_enabled !== false) {
-      openNutrimix();
+      await openNutrimix();
       return;
     }
     orderInFlightRef.current = true;

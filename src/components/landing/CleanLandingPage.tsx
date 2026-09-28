@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/personal-supabase/client";
-import { placeOrder } from "@/lib/place-order.functions";
+import { createLandingCheckoutIntent, finalizeLandingCheckoutIntent, placeOrder } from "@/lib/place-order.functions";
 import { useCheckoutAutofill } from "@/lib/useCheckoutAutofill";
 import { taka } from "@/lib/format";
 import { toast } from "sonner";
@@ -123,7 +123,7 @@ html{scroll-behavior:smooth}
 type Addon={product_id?:string;name:string;price:number;image?:string;old_price?:number;badge?:string;delivery_fee?:number|null};
 type SiteSettings={site_name?:string;tagline?:string;logo_url?:string};
 export function CleanLandingPage({slug}:{slug:string}){
- const navigate=useNavigate(); const runPlaceOrder=useServerFn(placeOrder); const [submitting,setSubmitting]=useState(false); const [nutrimixOpen,setNutrimixOpen]=useState(false); const [nutrimix,setNutrimix]=useState<any>(null); const orderInFlightRef=useRef(false); const orderCreatedRef=useRef(false); const [selectedPkg,setSelectedPkg]=useState(0); const [seedPulse,setSeedPulse]=useState<number|null>(null); const [form,setForm]=useState({name:"",phone:"",address:"",note:""}); const [formInView,setFormInView]=useState(false); const [phoneErr,setPhoneErr]=useState("");
+ const navigate=useNavigate(); const runPlaceOrder=useServerFn(placeOrder); const runCreateLandingIntent=useServerFn(createLandingCheckoutIntent); const runFinalizeLandingIntent=useServerFn(finalizeLandingCheckoutIntent); const [submitting,setSubmitting]=useState(false); const [nutrimixOpen,setNutrimixOpen]=useState(false); const [nutrimix,setNutrimix]=useState<any>(null); const orderInFlightRef=useRef(false); const orderCreatedRef=useRef(false); const landingIntentIdRef=useRef<string|null>(null); const landingCheckoutSessionRef=useRef<string|null>(null); const landingInitiateCheckoutRef=useRef(false); const [selectedPkg,setSelectedPkg]=useState(0); const [seedPulse,setSeedPulse]=useState<number|null>(null); const [form,setForm]=useState({name:"",phone:"",address:"",note:""}); const [formInView,setFormInView]=useState(false); const [phoneErr,setPhoneErr]=useState("");
  const orderSectionRef=useRef<HTMLElement|null>(null); const phoneRef=useRef<HTMLInputElement|null>(null);
  const {data:page,isLoading}=useQuery({queryKey:["landing-clean",slug],queryFn:async()=>(await supabase.from("landing_pages").select("*, products(*)").eq("slug",slug).eq("is_published",true).maybeSingle()).data});
  const {data:settingsRow}=useQuery({queryKey:["site-settings-public"],queryFn:async()=>(await supabase.from("site_settings").select("settings").maybeSingle()).data}); const settings=(settingsRow?.settings as SiteSettings)??{};
@@ -135,8 +135,39 @@ export function CleanLandingPage({slug}:{slug:string}){
  const scrollToOrder=()=>{const el=orderSectionRef.current;if(!el)return;const target=(el.querySelector(".lp-order-note") as HTMLElement|null)??el;const stickyHeader=document.querySelector<HTMLElement>(".sticky.top-0");const headerOffset=stickyHeader?.offsetHeight??0;const top=target.getBoundingClientRect().top+window.scrollY-headerOffset-12;window.scrollTo({top:Math.max(top,0),behavior:"smooth"})};
  const firedICRef=useRef(false); useEffect(()=>{const el=orderSectionRef.current;if(!el||typeof IntersectionObserver==="undefined")return;const obs=new IntersectionObserver(([entry])=>{const visible=entry.isIntersecting&&entry.intersectionRatio>0.15;setFormInView(visible);if(visible&&!firedICRef.current&&selected?.product_id){firedICRef.current=true;trackInitiateCheckout([{id:selected.product_id,name:selected.name,price:selected.price,quantity:1}],total)}},{threshold:[0,0.15,0.5,1]});obs.observe(el);return()=>obs.disconnect()},[selected?.product_id,selected?.name,selected?.price,total]);
  useCheckoutAutofill({form,setForm:updater=>setForm(f=>updater(f) as typeof f),items:selected?[{id:selected.product_id||`addon-${selectedPkg}`,name:selected.name,price:selected.price,quantity:1}]:[],subtotal,total,deliveryFee});
- const openNutrimix=async()=>{if(!((C.template as string)==="all-product"||landingBaseSlug(slug)==="seedcombo")||C.nutrimix_popup_enabled===false||submitting)return;const p={id:"landing-popup-nutrimix",name:C.nutrimix_offer_name||"NUTRIMIX - গাছের খাদ্য",price:Number(C.nutrimix_offer_price)||0,sale_price:Number(C.nutrimix_offer_price)||0,old_price:Number(C.nutrimix_offer_old_price)||0,images:C.nutrimix_offer_image?[C.nutrimix_offer_image]:[]};if(!p.name||p.price<=0){toast.error("Popup Product-এর নাম ও দাম সেট করুন");return;}setNutrimix(p);setNutrimixOpen(true)};
- const placeWithNutrimix=async(include:boolean)=>{setNutrimixOpen(false);if(orderCreatedRef.current||orderInFlightRef.current)return;if(!include){const ev={preventDefault:()=>{}} as React.FormEvent;await submit(ev);return} if(!form.name||!form.phone||!form.address||!selected){const ev={preventDefault:()=>{}} as React.FormEvent;await submit(ev);return} const pe=phoneSubmitError(form.phone);if(pe){const ev={preventDefault:()=>{}} as React.FormEvent;await submit(ev);return}orderInFlightRef.current=true;setSubmitting(true);try{const items=[{id:selected.product_id||`addon-${selectedPkg}`,name:selected.name,price:selected.price,quantity:1},{id:nutrimix.id,name:nutrimix.name,price:Number(nutrimix.sale_price??nutrimix.price),quantity:1}];const orderTotal=selected.price+Number(nutrimix.sale_price??nutrimix.price)+deliveryFee;const order=await runPlaceOrder({data:{customer_name:form.name,customer_phone:form.phone.replace(/[\\s-]/g,""),customer_address:form.address,delivery_fee:deliveryFee,items,notes:form.note||null,...getFbContext()}});trackPurchase(items,orderTotal,order.id);toast.success("অর্ডার সফল!");navigate({to:"/order/$id",params:{id:order.id}})}catch(err){notifyOrderError(err);setSubmitting(false)}};
+ const openNutrimix=async()=>{
+  if(!((C.template as string)==="all-product"||landingBaseSlug(slug)==="seedcombo")||C.nutrimix_popup_enabled===false||submitting)return;
+  if(!selected?.product_id){toast.error("এই অফারের product ID পাওয়া যায়নি");return;}
+  if(!form.name||!form.address){toast.error("সব তথ্য পূরণ করুন");return;}
+  const phoneValidationError=phoneSubmitError(form.phone);
+  if(phoneValidationError){setPhoneErr(phoneValidationError);toast.error(phoneValidationError);return;}
+  const p={id:"landing-popup-nutrimix",name:C.nutrimix_offer_name||"NUTRIMIX - গাছের খাদ্য",price:Number(C.nutrimix_offer_price)||0,sale_price:Number(C.nutrimix_offer_price)||0,old_price:Number(C.nutrimix_offer_old_price)||0,images:C.nutrimix_offer_image?[C.nutrimix_offer_image]:[]};
+  if(!p.name||p.price<=0){toast.error("Popup Product-এর নাম ও দাম সেট করুন");return;}
+  try{
+    if(!landingCheckoutSessionRef.current)landingCheckoutSessionRef.current=crypto.randomUUID();
+    const seedItem={id:selected.product_id,name:selected.name,price:selected.price,quantity:1};
+    const nutrimixItem={id:p.id,name:p.name,price:p.price,quantity:1};
+    if(!landingInitiateCheckoutRef.current){landingInitiateCheckoutRef.current=true;trackInitiateCheckout([seedItem],total);}
+    const intent=await runCreateLandingIntent({data:{checkout_session_id:landingCheckoutSessionRef.current,customer_name:form.name,customer_phone:form.phone.replace(/[\\s-]/g,""),customer_address:form.address,delivery_fee:deliveryFee,seed_items:[seedItem],nutrimix_item:nutrimixItem,notes:form.note||null}});
+    landingIntentIdRef.current=intent.id;
+    setNutrimix(p);setNutrimixOpen(true);
+  }catch(error){landingInitiateCheckoutRef.current=false;notifyOrderError(error)}
+ };
+ const placeWithNutrimix=async(include:boolean)=>{
+  setNutrimixOpen(false);
+  if(orderCreatedRef.current||orderInFlightRef.current)return;
+  if(!landingIntentIdRef.current){await openNutrimix();return}
+  orderInFlightRef.current=true;setSubmitting(true);
+  try{
+    const order=await runFinalizeLandingIntent({data:{intent_id:landingIntentIdRef.current,include_nutrimix:Boolean(include),...getFbContext()}});
+    orderCreatedRef.current=true;
+    const purchaseItems=[{id:selected!.product_id!,name:selected!.name,price:selected!.price,quantity:1},...(include&&nutrimix?[{id:nutrimix.id,name:nutrimix.name,price:Number(nutrimix.sale_price??nutrimix.price),quantity:1}]:[])];
+    const purchaseTotal=purchaseItems.reduce((sum,item)=>sum+item.price*item.quantity,0)+deliveryFee;
+    trackPurchase(purchaseItems,purchaseTotal,order.id);
+    toast.success("অর্ডার সফল!");
+    navigate({to:"/order/$id",params:{id:order.id}});
+  }catch(err){orderInFlightRef.current=false;notifyOrderError(err);setSubmitting(false)}
+ };
  const handleOrderSubmit=async(e:React.FormEvent)=>{if(((C.template as string)==="all-product"||landingBaseSlug(slug)==="seedcombo")&&C.nutrimix_popup_enabled!==false){e.preventDefault();await openNutrimix();return;}await submit(e)};
  const submit=async(e:React.FormEvent)=>{e.preventDefault();if(orderCreatedRef.current||orderInFlightRef.current)return;const phoneValidationError=phoneSubmitError(form.phone);if(phoneValidationError){setPhoneErr(phoneValidationError);toast.error(phoneValidationError);phoneRef.current?.focus();phoneRef.current?.scrollIntoView({behavior:"smooth",block:"center"});return}setPhoneErr("");if(!form.name||!form.phone||!form.address)return toast.error("সব তথ্য পূরণ করুন");if(!selected)return toast.error("প্যাকেজ নির্বাচন করুন");orderInFlightRef.current=true;setSubmitting(true);try{const itemId=selected.product_id||`addon-${selectedPkg}`;const items=[{id:itemId,name:selected.name,price:selected.price,quantity:1}];const fbCtx=getFbContext();const order=await runPlaceOrder({data:{customer_name:form.name,customer_phone:form.phone.replace(/[\s-]/g,""),customer_address:form.address,delivery_fee:deliveryFee,items,notes:form.note||null,...fbCtx}});orderCreatedRef.current=true;trackPurchase(items.map(i=>({id:String(i.id),name:i.name,price:i.price,quantity:1})),total,order.id);toast.success("অর্ডার সফল!");navigate({to:"/order/$id",params:{id:order.id}})}catch(err){orderInFlightRef.current=false;const msg=err instanceof Error?err.message:"অর্ডার করতে সমস্যা হয়েছে";if(msg.includes("Invalid Bangladesh mobile number")||msg.includes("01XXXXXXXXX")){setPhoneErr(PHONE_ERROR);phoneRef.current?.focus();phoneRef.current?.scrollIntoView({behavior:"smooth",block:"center"})}else{notifyOrderError(err)}setSubmitting(false)}};
  if(isLoading)return <div className="min-h-screen flex items-center justify-center"><BrandLoader/></div>; if(!page)return <div className="min-h-screen flex items-center justify-center text-muted-foreground">পেজ পাওয়া যায়নি</div>;
