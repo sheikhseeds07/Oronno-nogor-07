@@ -657,7 +657,9 @@ function OrdersTable({
       .select("id,invoice_no,status,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment,courier_display_name,printed_at,created_at,updated_at,shipped_at,created_by,assigned_to,originated_from_incomplete,originated_from_import,notes,order_items(id,product_name,quantity,price,product_id)", { count: "exact" })
       .in("status", list as Exclude<OrderStatus, "incomplete">[]);
     query = mode === "list"
-      ? query.order("shipped_at", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false })
+      ? (isShippedFilter
+          ? query.order("shipped_at", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false })
+          : query.order("invoice_no", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false }))
       : query.order("created_at", { ascending: false });
 
     const term = debouncedSearch.trim().replace(/[%,()]/g, " ").trim();
