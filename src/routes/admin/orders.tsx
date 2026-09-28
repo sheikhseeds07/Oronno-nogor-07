@@ -777,26 +777,56 @@ function OrdersTable({
 
   const updateStatus = async (id: string, status: OrderStatus) => {
     if (status === "incomplete") return;
-    if (status !== "web_pending") {
+
+    // Invoice allocation is only needed when an order is currently Pending.
+    // The invoice helper intentionally skips all other statuses, so avoid a
+    // needless server round-trip for RTS/Shipped/etc. transitions.
+    const current = qc.getQueriesData<OrdersPage | undefined>({ queryKey: ["admin-orders"] })
+      .map(([, data]) => data?.rows?.find((order) => order.id === id))
+      .find(Boolean);
+    const currentStatus = current?.status;
+
+    if (currentStatus === "pending" && status !== "web_pending") {
       try { await ensureInvoices({ data: { ids: [id] } }); } catch { /* invoice পরে সেট হবে */ }
     }
-    // Optimistic remove from current visible list
-    qc.setQueriesData<OrdersPage | undefined>({ queryKey: ["admin-orders"] }, (old) => {
+
+    // Optimistically patch cached pages. Filtered queues remove the order;
+    // an "all" queue keeps it and updates the status in-place.
+    qc.setQueriesData<OrdersPage | undefined>({ queryKey: ["admin-orders"] }, (old, queryKey) => {
       if (!old) return old;
-      const nextRows = old.rows.filter((order) => order.id !== id);
-      return nextRows.length === old.rows.length
-        ? old
-        : { ...old, rows: nextRows, total: Math.max(0, old.total - 1) };
+      const modeKey = String(queryKey?.[1] ?? "");
+      const filterKey = String(queryKey?.[2] ?? "");
+      const belongs = modeKey === "web"
+        ? (filterKey === "all" ? ["web_pending", "hold", "cancelled"].includes(status) : filterKey === status)
+        : modeKey === "list"
+          ? (filterKey === "all"
+              ? ["pending", "rts", "shipped", "delivered", "pending_return", "returned", "partial", "cancelled"].includes(status)
+              : filterKey === status)
+          : true;
+
+      if (!old.rows.some((order) => order.id === id)) return old;
+
+      if (!belongs) {
+        return { ...old, rows: old.rows.filter((order) => order.id !== id), total: Math.max(0, old.total - 1) };
+      }
+
+      return {
+        ...old,
+        rows: old.rows.map((order) => order.id === id
+          ? { ...order, status, updated_at: new Date().toISOString() }
+          : order),
+      };
     });
+
     const { error } = await supabase.from("orders").update({ status }).eq("id", id);
     if (error) {
       toast.error(error.message);
       qc.invalidateQueries({ queryKey: ["admin-orders"] });
       return;
     }
+
     toast.success("আপডেট হয়েছে");
-    qc.invalidateQueries({ queryKey: ["order-status-counts"] });
-    qc.invalidateQueries({ queryKey: ["admin-orders"] });
+    qc.invalidateQueries({ queryKey: ["order-status-counts"], refetchType: "active" });
   };
 
 
