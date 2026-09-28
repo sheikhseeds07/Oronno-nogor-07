@@ -11,9 +11,12 @@ export type CourierStat = {
   cancelled: number;
 };
 
+export type CourierOverall = CourierStat;
+
 type CourierHistoryResult = {
   configured: boolean;
   stats: CourierStat[];
+  overall?: CourierOverall;
   error: string | null;
   stale?: boolean;
   source?: string;
@@ -93,9 +96,12 @@ async function readPersistentCache(phone: string): Promise<PersistentHit | null>
     .maybeSingle();
   if (error || !data) return null;
 
+  const cachedStats = normalizeStats(data.stats);
+  const cachedOverall = cachedStats.find((row) => row.name.toLowerCase() === "overall");
   const result: CourierHistoryResult = {
     configured: Boolean(data.configured),
-    stats: normalizeStats(data.stats),
+    stats: cachedStats.filter((row) => row.name.toLowerCase() !== "overall"),
+    overall: cachedOverall,
     error: typeof data.error === "string" ? data.error : null,
     source: "cache",
   };
@@ -170,9 +176,19 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
       }
 
       const value = (result ?? {}) as Partial<CourierHistoryResult>;
+      const normalizedStats = normalizeStats(value.stats);
+      const normalizedOverall = value.overall && typeof value.overall === "object"
+        ? {
+            name: String((value.overall as any).name ?? "Overall"),
+            total: Number.isFinite(Number((value.overall as any).total)) ? Number((value.overall as any).total) : 0,
+            success: Number.isFinite(Number((value.overall as any).success)) ? Number((value.overall as any).success) : 0,
+            cancelled: Number.isFinite(Number((value.overall as any).cancelled)) ? Number((value.overall as any).cancelled) : 0,
+          }
+        : undefined;
       const normalized: CourierHistoryResult = {
         configured: Boolean(value.configured),
-        stats: normalizeStats(value.stats),
+        stats: normalizedStats.filter((row) => row.name.toLowerCase() !== "overall"),
+        overall: normalizedOverall,
         error: typeof value.error === "string" ? value.error : null,
         stale: value.stale === true,
         source: typeof value.source === "string" ? value.source : undefined,
