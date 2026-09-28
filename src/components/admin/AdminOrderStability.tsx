@@ -241,50 +241,96 @@ export function AdminOrderStability() {
   }, [location.pathname]);
 
   useEffect(() => {
-    const applyOrderChange = (payload: any) => {
-      const id = payload?.new?.id ?? payload?.old?.id;
-      if (!id) return;
+    // Batch bursts of Realtime UPDATE/DELETE events into one cache reconciliation.
+    const pending = new Map<string, any>();
+    let frame: number | null = null;
 
-      const isDelete = payload.eventType === "DELETE";
-      const status = payload?.new?.status as string | undefined;
-      const queries = qc.getQueryCache().findAll({ queryKey: ["admin-orders"] });
+    const flush = () => {
+      frame = null;
+      if (!pending.size) return;
+      const events = Array.from(pending.values());
+      pending.clear();
+
       const y = window.scrollY;
       if (!document.hidden) {
         savedScrollY.current = y;
         try { sessionStorage.setItem(SCROLL_STORAGE_KEY, String(y)); } catch { /* ignore */ }
       }
 
-      for (const query of queries) {
-        const key = query.queryKey;
-        const mode = String(key[1] ?? "");
-        const filter = String(key[2] ?? "");
-        const cached = query.state.data;
-        if (!cached) continue;
+      const orderEvents = events.filter((p) => p?.table === "orders");
+      const incompleteEvents = events.filter((p) => p?.table === "incomplete_orders");
 
-        // OrdersPage is { rows, total }, not a bare array. Patch the actual
-        // cache shape so Realtime can update the table without a refetch.
-        qc.setQueryData(key, (current: any) => {
-          if (!current) return current;
-          const rows = Array.isArray(current) ? current : current.rows;
-          if (!Array.isArray(rows)) return current;
+      if (orderEvents.length) {
+        const latestById = new Map<string, any>();
+        for (const payload of orderEvents) {
+          const id = payload?.new?.id ?? payload?.old?.id;
+          if (id) latestById.set(id, payload);
+        }
 
-          if (isDelete || !status || !belongsToList(mode, filter, status)) {
-            const nextRows = rows.filter((row: any) => row?.id !== id);
-            if (Array.isArray(current)) return nextRows;
-            return nextRows.length === rows.length
-              ? current
-              : { ...current, rows: nextRows, total: Math.max(0, Number(current.total ?? rows.length) - 1) };
+        const queries = qc.getQueryCache().findAll({ queryKey: ["admin-orders"] });
+        for (const [id, payload] of latestById) {
+          const isDelete = payload?.eventType === "DELETE";
+          const status = payload?.new?.status as string | undefined;
+
+          for (const query of queries) {
+            const key = query.queryKey;
+            const mode = String(key[1] ?? "");
+            const filter = String(key[2] ?? "");
+            qc.setQueryData(key, (current: any) => {
+              if (!current) return current;
+              const rows = Array.isArray(current) ? current : current.rows;
+              if (!Array.isArray(rows)) return current;
+
+              if (isDelete || !status || !belongsToList(mode, filter, status)) {
+                const nextRows = rows.filter((row: any) => row?.id !== id);
+                if (Array.isArray(current)) return nextRows;
+                return nextRows.length === rows.length
+                  ? current
+                  : { ...current, rows: nextRows, total: Math.max(0, Number(current.total ?? rows.length) - 1) };
+              }
+
+              const nextRows = rows.map((row: any) =>
+                row?.id === id
+                  ? { ...row, status, updated_at: payload?.new?.updated_at ?? row.updated_at }
+                  : row,
+              );
+              const finalRows = mode === "list" && (filter === "pending" || filter === "rts")
+                ? sortInvoiceQueue(nextRows)
+                : nextRows;
+              return Array.isArray(current) ? finalRows : { ...current, rows: finalRows };
+            });
           }
+        }
+      }
 
-          const nextRows = rows.map((row: any) =>
-            row?.id === id
-              ? { ...row, status, updated_at: payload?.new?.updated_at ?? row.updated_at }
-              : row,
-          );
-          const finalRows = mode === "list" && (filter === "pending" || filter === "rts")
-            ? sortInvoiceQueue(nextRows)
-            : nextRows;
-          return Array.isArray(current) ? finalRows : { ...current, rows: finalRows };
+      for (const payload of incompleteEvents) {
+        const rawId = payload?.new?.id ?? payload?.old?.id;
+        if (!rawId) continue;
+        const id = "inc:" + rawId;
+        qc.setQueryData(["admin-orders-incomplete"], (current: any[] | undefined) => {
+          if (!current) return current;
+          if (payload.eventType === "DELETE") return current.filter((row) => row?.id !== id);
+          const row = payload?.new;
+          if (!row) return current;
+          return current.map((existing) => {
+            if (existing?.id !== id) return existing;
+            return {
+              ...existing,
+              customer_name: row.customer_name || "—",
+              customer_phone: row.phone,
+              customer_address: row.customer_address ?? null,
+              district: row.delivery_zone ?? null,
+              created_at: row.updated_at ?? row.created_at ?? existing.created_at,
+              total: Number(row.total ?? 0),
+              order_items: (row.items ?? []).map((item: any, index: number) => ({
+                id: rawId + "-" + index,
+                product_name: item.name,
+                quantity: Number(item.quantity ?? 1),
+                price: Number(item.price ?? 0),
+                product_id: item.product_id ?? null,
+              })),
+            };
+          });
         });
       }
 
@@ -297,63 +343,25 @@ export function AdminOrderStability() {
       });
     };
 
-    const applyIncompleteChange = (payload: any) => {
-      const rawId = payload?.new?.id ?? payload?.old?.id;
-      if (!rawId) return;
-      const id = `inc:${rawId}`;
-      const y = window.scrollY;
-      if (!document.hidden) {
-        savedScrollY.current = y;
-        try { sessionStorage.setItem(SCROLL_STORAGE_KEY, String(y)); } catch { /* ignore */ }
-      }
-
-      qc.setQueryData(["admin-orders-incomplete"], (current: any[] | undefined) => {
-        if (!current) return current;
-        if (payload.eventType === "DELETE") {
-          return current.filter((row) => row?.id !== id);
-        }
-
-        const row = payload?.new;
-        if (!row) return current;
-        return current.map((existing) => {
-          if (existing?.id !== id) return existing;
-          return {
-            ...existing,
-            customer_name: row.customer_name || "—",
-            customer_phone: row.phone,
-            customer_address: row.customer_address ?? null,
-            district: row.delivery_zone ?? null,
-            created_at: row.updated_at ?? row.created_at ?? existing.created_at,
-            total: Number(row.total ?? 0),
-            order_items: (row.items ?? []).map((item: any, index: number) => ({
-              id: `${rawId}-${index}`,
-              product_name: item.name,
-              quantity: Number(item.quantity ?? 1),
-              price: Number(item.price ?? 0),
-              product_id: item.product_id ?? null,
-            })),
-          };
-        });
-      });
-
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          if (!document.hidden && location.pathname === "/admin/orders") {
-            window.scrollTo({ top: y, behavior: "auto" });
-          }
-        });
-      });
+    const queueChange = (payload: any) => {
+      const id = payload?.new?.id ?? payload?.old?.id;
+      if (!id) return;
+      const prefix = payload?.table === "incomplete_orders" ? "incomplete:" : "order:";
+      pending.set(prefix + id, payload);
+      if (frame === null) frame = requestAnimationFrame(flush);
     };
 
     const channel = supabase
       .channel("admin-orders-stable-cache")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders" }, applyOrderChange)
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "orders" }, applyOrderChange)
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "incomplete_orders" }, applyIncompleteChange)
-      .on("postgres_changes", { event: "DELETE", schema: "public", table: "incomplete_orders" }, applyIncompleteChange)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders" }, queueChange)
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "orders" }, queueChange)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "incomplete_orders" }, queueChange)
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "incomplete_orders" }, queueChange)
       .subscribe();
 
     return () => {
+      if (frame !== null) cancelAnimationFrame(frame);
+      pending.clear();
       supabase.removeChannel(channel);
     };
   }, [qc, location.pathname]);
