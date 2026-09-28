@@ -248,7 +248,7 @@ function SearchPanel({ onOpen }: { onOpen: (id: string) => void }) {
       const orQuery = `customer_phone.ilike.%${term}%,invoice_no.ilike.%${term}%,customer_name.ilike.%${term}%`;
       const { data } = await supabase
         .from("orders")
-        .select("*, order_items(id,product_name,quantity,price,product_id)")
+        .select("id,invoice_no,customer_name,customer_phone,total,status,created_at,order_items(id,product_name,quantity,price,product_id)")
         .or(orQuery)
         .order("created_at", { ascending: false });
       return await attachProductImages((data ?? []) as unknown as OrderRow[]);
