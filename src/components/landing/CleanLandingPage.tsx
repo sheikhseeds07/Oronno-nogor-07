@@ -161,8 +161,9 @@ export function CleanLandingPage({slug}:{slug:string}){
   try{
     const order=await runFinalizeLandingIntent({data:{intent_id:landingIntentIdRef.current,include_nutrimix:Boolean(include),...getFbContext()}});
     orderCreatedRef.current=true;
-    const purchaseTotal=include&&nutrimix?total+Number(nutrimix.sale_price??nutrimix.price):total;
-    trackPurchase([],purchaseTotal,order.id);
+    const purchaseItems=[{id:selected!.product_id!,name:selected!.name,price:selected!.price,quantity:1},...(include&&nutrimix?[{id:nutrimix.id,name:nutrimix.name,price:Number(nutrimix.sale_price??nutrimix.price),quantity:1}]:[])];
+    const purchaseTotal=purchaseItems.reduce((sum,item)=>sum+item.price*item.quantity,0)+deliveryFee;
+    trackPurchase(purchaseItems,purchaseTotal,order.id);
     toast.success("অর্ডার সফল!");
     navigate({to:"/order/$id",params:{id:order.id}});
   }catch(err){orderInFlightRef.current=false;notifyOrderError(err);setSubmitting(false)}
