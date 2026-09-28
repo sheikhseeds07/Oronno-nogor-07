@@ -157,7 +157,15 @@ async function readPersistent(admin: ReturnType<typeof createClient>, phone: str
   const request = (async (): Promise<PersistentHit | null> => {
     const { data, error } = await admin.from("courier_history_cache").select("configured,stats,error,expires_at").eq("phone", phone).maybeSingle();
     if (error || !data) return null;
-    const result: HistoryResult = { configured: Boolean(data.configured), stats: Array.isArray(data.stats) ? data.stats as CourierStat[] : [], error: typeof data.error === "string" ? data.error : null, source: "cache" };
+    const rawStats = Array.isArray(data.stats) ? data.stats as CourierStat[] : [];
+    const overall = rawStats.find((row) => String(row.name).toLowerCase() === "overall");
+    const result: HistoryResult = {
+      configured: Boolean(data.configured),
+      stats: rawStats.filter((row) => String(row.name).toLowerCase() !== "overall"),
+      overall,
+      error: typeof data.error === "string" ? data.error : null,
+      source: "cache",
+    };
     const expiresAt = new Date(String(data.expires_at ?? "")).getTime();
     return { result, fresh: Number.isFinite(expiresAt) && expiresAt > Date.now() };
   })();
@@ -175,7 +183,8 @@ async function readPersistent(admin: ReturnType<typeof createClient>, phone: str
 async function writePersistent(admin: ReturnType<typeof createClient>, phone: string, result: HistoryResult) {
   if (!result.configured || result.error || result.stats.length === 0) return;
   const now = Date.now();
-  await admin.from("courier_history_cache").upsert({ phone, configured: true, stats: result.stats, error: null, steadfast_source: "hoorin", fetched_at: new Date(now).toISOString(), expires_at: new Date(now + SUCCESS_CACHE_TTL_MS).toISOString() }, { onConflict: "phone" });
+  const persistedStats = result.overall ? [...result.stats, result.overall] : result.stats;
+  await admin.from("courier_history_cache").upsert({ phone, configured: true, stats: persistedStats, error: null, steadfast_source: "hoorin", fetched_at: new Date(now).toISOString(), expires_at: new Date(now + SUCCESS_CACHE_TTL_MS).toISOString() }, { onConflict: "phone" });
 }
 
 async function reserveProviderSlot(admin: ReturnType<typeof createClient>) {
