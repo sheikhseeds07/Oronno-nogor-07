@@ -325,14 +325,31 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
           <div className="text-center">
             {isNutrimix ? (
               <div className="mx-auto max-w-2xl px-1 sm:px-0">
-                <div className="relative overflow-hidden rounded-[22px] border border-all-product-gold/25 bg-gradient-to-br from-white/[0.10] via-all-product-primary/[0.12] to-all-product-gold/[0.10] px-4 py-3 shadow-[0_18px_50px_-28px_rgba(0,0,0,.7)] backdrop-blur-sm sm:rounded-[26px] sm:px-7 sm:py-4">
+                <div className="nutrimix-hero-headline relative overflow-hidden rounded-[22px] border border-all-product-gold/25 bg-gradient-to-br from-white/[0.10] via-all-product-primary/[0.12] to-all-product-gold/[0.10] px-4 py-3 shadow-[0_18px_50px_-28px_rgba(0,0,0,.7)] backdrop-blur-sm sm:rounded-[26px] sm:px-7 sm:py-4">
                   <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-all-product-gold/15 blur-2xl" />
                   <div className="pointer-events-none absolute -bottom-12 -left-8 h-28 w-28 rounded-full bg-all-product-primary/20 blur-2xl" />
+                  <div className="nutrimix-headline-shine pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 skew-x-[-18deg] bg-gradient-to-r from-transparent via-white/15 to-transparent" />
                   <div className="relative">
                     <h1 style={{ fontFamily: "'Noto Serif Bengali', 'Hind Siliguri', serif", textShadow: "0 2px 18px rgba(0,0,0,.28)" }} className="mx-auto max-w-2xl text-[26px] font-black leading-[1.28] tracking-[-0.02em] text-all-product-hero-foreground sm:text-4xl md:text-5xl">{(page.hero_title || page.title).split(/(নিউট্রিমিক্স|NUTRIMIX)/gi).map((part, index) => /^(নিউট্রিমিক্স|NUTRIMIX)$/i.test(part) ? <span key={index} className="text-all-product-gold">{part}</span> : <span key={index}>{part}</span>)}</h1>
                     <div className="mx-auto mt-2 h-1 w-16 rounded-full bg-gradient-to-r from-all-product-gold/30 via-all-product-gold to-all-product-gold/30 sm:mt-2.5 sm:w-20" aria-hidden="true" />
                   </div>
                 </div>
+                <style>{`
+                  @keyframes nutrimixHeadlineFloat {
+                    0%, 100% { transform: translateY(0); box-shadow: 0 18px 50px -28px rgba(0,0,0,.7), 0 0 0 0 rgba(217,165,58,.20); }
+                    50% { transform: translateY(-2px); box-shadow: 0 20px 52px -28px rgba(0,0,0,.68), 0 0 0 5px rgba(217,165,58,0); }
+                  }
+                  @keyframes nutrimixHeadlineShine {
+                    0%, 55% { transform: translateX(0); opacity: 0; }
+                    65% { opacity: 1; }
+                    85%, 100% { transform: translateX(430%); opacity: 0; }
+                  }
+                  .nutrimix-hero-headline { animation: nutrimixHeadlineFloat 3.2s ease-in-out infinite; }
+                  .nutrimix-headline-shine { animation: nutrimixHeadlineShine 4.8s ease-in-out infinite; }
+                  @media (prefers-reduced-motion: reduce) {
+                    .nutrimix-hero-headline, .nutrimix-headline-shine { animation: none !important; }
+                  }
+                `}</style>
               </div>
             ) : (
               <h1 style={{ fontFamily: "'Noto Serif Bengali', 'Hind Siliguri', serif" }} className="all-product-hero-title mx-auto max-w-3xl text-3xl font-black leading-[1.2] tracking-[-0.01em] sm:text-4xl md:text-5xl">{page.hero_title || page.title}</h1>
