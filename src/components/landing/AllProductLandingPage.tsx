@@ -319,12 +319,8 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
     )}
 
     <main>
-      <section className="relative overflow-hidden bg-gradient-to-b from-emerald-50 via-lime-50/70 to-white text-all-product-ink">
-        <div className="pointer-events-none absolute inset-0 opacity-70" aria-hidden="true">
-          <div className="absolute -left-20 -top-24 h-64 w-64 rounded-full bg-emerald-200/45 blur-3xl" />
-          <div className="absolute -right-16 top-8 h-72 w-72 rounded-full bg-amber-100/60 blur-3xl" />
-          <div className="absolute left-1/3 top-1/2 h-52 w-52 rounded-full bg-lime-100/55 blur-3xl" />
-        </div>
+      <section className="relative overflow-hidden bg-all-product-hero text-all-product-hero-foreground">
+        <div className="all-product-grain absolute inset-0" aria-hidden="true" />
         <div className="relative mx-auto max-w-3xl px-4 pb-6 pt-4 sm:pb-8 sm:pt-6">
           <div className="text-center">
             {isNutrimix ? (
