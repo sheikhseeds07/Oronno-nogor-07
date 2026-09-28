@@ -251,16 +251,16 @@ Deno.serve(async (req) => {
   if (phone.length < 6 || phone.length > 20) return json({ error: "Invalid phone" }, 400);
   const forceRefresh = body.forceRefresh === true;
   const memory = readMemory(phone);
-  if (!forceRefresh && memory && !memory.error && memory.stats.length > 0) return json(memory);
+  if (!forceRefresh && memory && !memory.error && memory.stats.length > 0 && memory.overall) return json(memory);
   const persistent = await readPersistent(admin, phone);
-  if (!forceRefresh && persistent?.fresh && !persistent.result.error && persistent.result.stats.length > 0) { writeMemory(phone, persistent.result); return json(persistent.result); }
+  if (!forceRefresh && persistent?.fresh && !persistent.result.error && persistent.result.stats.length > 0 && persistent.result.overall) { writeMemory(phone, persistent.result); return json(persistent.result); }
   const existing = inFlight.get(phone);
   if (existing) return json(await existing);
   const request = (async (): Promise<HistoryResult> => {
     const waitMs = await reserveProviderSlot(admin);
     if (waitMs > 0) await sleep(waitMs);
     const afterWait = await readPersistent(admin, phone);
-    if (!forceRefresh && afterWait?.fresh && !afterWait.result.error && afterWait.result.stats.length > 0) return afterWait.result;
+    if (!forceRefresh && afterWait?.fresh && !afterWait.result.error && afterWait.result.stats.length > 0 && afterWait.result.overall) return afterWait.result;
     const result = await fetchHoorin(admin, phone);
     if (!result.error && result.stats.length > 0) {
       const live = { ...result };
