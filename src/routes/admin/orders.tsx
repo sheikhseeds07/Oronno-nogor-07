@@ -691,7 +691,7 @@ function OrdersTable({
     run();
     const t = setInterval(run, 180_000); // Increased to 3 minutes
     return () => { alive = false; clearInterval(t); };
-  }, [isShippedFilter, syncStatuses, qc]);
+  }, [isShippedFilter, syncStatuses, qc, mode, filter, page, pageSize, debouncedSearch]);
 
   // Realtime is handled centrally by useLiveOrders() and AdminOrderStability().
   // Do not poll the Processing queue: a 5-second full-page refetch created
