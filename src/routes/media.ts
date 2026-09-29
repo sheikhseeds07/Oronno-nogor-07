@@ -135,6 +135,7 @@ function cacheableResponse(
   const etag = snapshot.headers.get("etag");
   const lastModified = snapshot.headers.get("last-modified");
   const cfResized = snapshot.headers.get("cf-resized");
+  const supabaseCacheStatus = snapshot.headers.get("cf-cache-status");
 
   if (contentType) headers.set("Content-Type", contentType);
   if (contentLength) headers.set("Content-Length", contentLength);
@@ -150,6 +151,7 @@ function cacheableResponse(
   // The output format is already baked into the canonical cache key, so do
   // not emit Vary: Accept. Cloudflare cache keys must not depend on a Vary
   // dimension that is not explicitly supported by the edge cache.
+  if (supabaseCacheStatus) headers.set("X-Oronno-Supabase-Cache", supabaseCacheStatus);
   if (cfResized) {
     headers.set("X-Oronno-Media-Optimized", "true");
     headers.set("X-Oronno-Cf-Resized", cfResized);
