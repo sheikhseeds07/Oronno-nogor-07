@@ -66,8 +66,8 @@ function createSupabaseClient(storageKey: string) {
   });
 }
 
-export const staffSupabase = createSupabaseClient('ss_staff_auth_v1');
-export const customerSupabase = createSupabaseClient('ss_customer_auth_v1');
+export const staffSupabase = createSupabaseClient('ss_staff_auth_frtzlibogmethppqmhtr_v1');
+export const customerSupabase = createSupabaseClient('ss_customer_auth_frtzlibogmethppqmhtr_v1');
 
 function getActiveClient() {
   if (typeof window === 'undefined') return staffSupabase;
