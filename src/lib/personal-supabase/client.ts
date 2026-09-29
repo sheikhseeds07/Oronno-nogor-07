@@ -6,8 +6,8 @@ import type { Database } from "./db.types";
 
 export type TypedSupabaseClient = SupabaseClient<Database>;
 
-export const LIVE_DATABASE_URL = "https://bvuhvzccziuniujeogng.supabase.co";
-export const LIVE_DATABASE_KEY = "sb_publishable_rapcUAgVGYdCuww7Q6GRNg__kFKVc17";
+export const LIVE_DATABASE_URL = "https://frtzlibogmethppqmhtr.supabase.co";
+export const LIVE_DATABASE_KEY = "sb_publishable_IwyqncvDdP4OF2UDNMlK9g_bn6Hu6n1";
 
 function liveFetch(input: RequestInfo | URL, init?: RequestInit) {
   const headers = new Headers(input instanceof Request ? input.headers : undefined);
