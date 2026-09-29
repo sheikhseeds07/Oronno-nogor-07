@@ -146,6 +146,18 @@ function parseStats(payload: unknown): CourierStat[] {
     .sort((a, b) => b.total - a.total);
 }
 
+function aggregateOverall(stats: CourierStat[]): CourierStat {
+  let total = 0;
+  let success = 0;
+  let cancelled = 0;
+  for (const row of stats) {
+    total += Number(row.total) || 0;
+    success += Number(row.success) || 0;
+    cancelled += Number(row.cancelled) || 0;
+  }
+  return { name: "Overall", total, success, cancelled };
+}
+
 async function readPersistent(admin: ReturnType<typeof createClient>, phone: string): Promise<PersistentHit | null> {
   const cached = persistentReadCache.get(phone);
   if (cached && cached.expiresAt > Date.now()) return cached.hit;
@@ -158,10 +170,13 @@ async function readPersistent(admin: ReturnType<typeof createClient>, phone: str
     const { data, error } = await admin.from("courier_history_cache").select("configured,stats,error,expires_at").eq("phone", phone).maybeSingle();
     if (error || !data) return null;
     const rawStats = Array.isArray(data.stats) ? data.stats as CourierStat[] : [];
-    const overall = rawStats.find((row) => String(row.name).toLowerCase() === "overall");
+    const courierStats = rawStats.filter((row) => String(row.name).toLowerCase() !== "overall");
+    const overall =
+      rawStats.find((row) => String(row.name).toLowerCase() === "overall") ??
+      aggregateOverall(courierStats);
     const result: HistoryResult = {
       configured: Boolean(data.configured),
-      stats: rawStats.filter((row) => String(row.name).toLowerCase() !== "overall"),
+      stats: courierStats,
       overall,
       error: typeof data.error === "string" ? data.error : null,
       source: "cache",
@@ -181,9 +196,11 @@ async function readPersistent(admin: ReturnType<typeof createClient>, phone: str
 }
 
 async function writePersistent(admin: ReturnType<typeof createClient>, phone: string, result: HistoryResult) {
-  if (!result.configured || result.error || result.stats.length === 0) return;
+  if (!result.configured || result.error) return;
   const now = Date.now();
-  const persistedStats = result.overall ? [...result.stats, result.overall] : result.stats;
+  const courierStats = result.stats.filter((row) => String(row.name).toLowerCase() !== "overall");
+  const overall = result.overall ?? aggregateOverall(courierStats);
+  const persistedStats = [...courierStats, overall];
   await admin.from("courier_history_cache").upsert({ phone, configured: true, stats: persistedStats, error: null, steadfast_source: "hoorin", fetched_at: new Date(now).toISOString(), expires_at: new Date(now + SUCCESS_CACHE_TTL_MS).toISOString() }, { onConflict: "phone" });
 }
 
@@ -222,7 +239,7 @@ async function fetchHoorin(admin: ReturnType<typeof createClient>, phone: string
       try { payload = JSON.parse(text); } catch { payload = null; }
       if (res.ok) {
         const stats = parseStats(payload);
-        const overall = parseOverall(payload);
+        const overall = parseOverall(payload) ?? aggregateOverall(stats);
         return { configured: true, stats, overall, error: null, source: "hoorin" };
       }
       lastError = `Hoorin HTTP ${res.status}`;
@@ -251,23 +268,25 @@ Deno.serve(async (req) => {
   if (phone.length < 6 || phone.length > 20) return json({ error: "Invalid phone" }, 400);
   const forceRefresh = body.forceRefresh === true;
   const memory = readMemory(phone);
-  if (!forceRefresh && memory && !memory.error && memory.stats.length > 0 && memory.overall) return json(memory);
+  if (!forceRefresh && memory && !memory.error && memory.overall) return json(memory);
   const persistent = await readPersistent(admin, phone);
-  if (!forceRefresh && persistent?.fresh && !persistent.result.error && persistent.result.stats.length > 0 && persistent.result.overall) { writeMemory(phone, persistent.result); return json(persistent.result); }
+  if (!forceRefresh && persistent?.fresh && !persistent.result.error && persistent.result.overall) { writeMemory(phone, persistent.result); return json(persistent.result); }
   const existing = inFlight.get(phone);
   if (existing) return json(await existing);
   const request = (async (): Promise<HistoryResult> => {
     const waitMs = await reserveProviderSlot(admin);
     if (waitMs > 0) await sleep(waitMs);
     const afterWait = await readPersistent(admin, phone);
-    if (!forceRefresh && afterWait?.fresh && !afterWait.result.error && afterWait.result.stats.length > 0 && afterWait.result.overall) return afterWait.result;
+    if (!forceRefresh && afterWait?.fresh && !afterWait.result.error && afterWait.result.overall) return afterWait.result;
     const result = await fetchHoorin(admin, phone);
-    if (!result.error && result.stats.length > 0) {
-      const live = { ...result };
+    if (!result.error) {
+      const live = {
+        ...result,
+        overall: result.overall ?? aggregateOverall(result.stats),
+      };
       await writePersistent(admin, phone, live);
       return live;
     }
-    if (!result.error && result.stats.length === 0) return { configured: true, stats: [], error: "Hoorin returned no courier history" };
     return result;
   })();
   inFlight.set(phone, request);

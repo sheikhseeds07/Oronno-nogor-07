@@ -1867,10 +1867,11 @@ function escapeHtml(s: string) {
 function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCreatedAt?: string | null }) {
   const fn = useServerFn(fetchCourierHistory);
   const cellRef = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(false);
   const digits = normalizePhone(phone);
   const enabled = digits.length >= 10;
   const clientCacheKey = useMemo(
-    () => `hoorin-courier-history-v3:${digits}`,
+    () => `hoorin-courier-history-v4:${digits}`,
     [digits],
   );
   const orderCreatedAtMs = orderCreatedAt ? new Date(orderCreatedAt).getTime() : 0;
@@ -1896,9 +1897,32 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
 
   const cachedClientResult = readClientCache();
 
+  // Courier lookups are relatively expensive (auth + cache + provider fallback).
+  // Only hydrate rows when they are near the viewport. A 50-row order page used
+  // to fan out dozens of server/Edge requests at once and made Admin feel slow.
+  useEffect(() => {
+    if (!enabled || cachedClientResult || inView) return;
+    const node = cellRef.current;
+    if (!node || typeof IntersectionObserver === "undefined") {
+      setInView(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          setInView(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "320px 0px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [cachedClientResult, enabled, inView]);
+
   const { data, isFetching } = useQuery({
     queryKey: ["hoorin-courier-history", digits],
-    enabled: enabled && !cachedClientResult,
+    enabled: enabled && inView && !cachedClientResult,
     queryFn: () => fn({ data: { phone: digits, orderCreatedAt } }),
     initialData: cachedClientResult ?? undefined,
     staleTime: Infinity,
@@ -1920,7 +1944,7 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
 
   let content: ReactNode = <span className="text-xs text-muted-foreground">—</span>;
   const displayData = data ?? cachedClientResult;
-  if (enabled && isFetching && !displayData) {
+  if (enabled && inView && isFetching && !displayData) {
     content = <span className="text-xs text-muted-foreground">লোড...</span>;
   } else if (displayData?.configured) {
     const total = displayData.overall?.total ?? displayData.stats.reduce((sum: number, stat: any) => sum + stat.total, 0);

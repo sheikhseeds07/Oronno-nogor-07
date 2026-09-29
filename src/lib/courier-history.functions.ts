@@ -79,6 +79,18 @@ function normalizeStats(value: unknown): CourierStat[] {
     }));
 }
 
+function aggregateOverall(stats: CourierStat[]): CourierOverall {
+  let total = 0;
+  let success = 0;
+  let cancelled = 0;
+  for (const row of stats) {
+    total += Number(row.total) || 0;
+    success += Number(row.success) || 0;
+    cancelled += Number(row.cancelled) || 0;
+  }
+  return { name: "Overall", total, success, cancelled };
+}
+
 async function readPersistentCache(phone: string): Promise<PersistentHit | null> {
   const cached = persistentReadCache.get(phone);
   if (cached && cached.expiresAt > Date.now()) return cached.hit;
@@ -97,10 +109,13 @@ async function readPersistentCache(phone: string): Promise<PersistentHit | null>
   if (error || !data) return null;
 
   const cachedStats = normalizeStats(data.stats);
-  const cachedOverall = cachedStats.find((row) => row.name.toLowerCase() === "overall");
+  const courierStats = cachedStats.filter((row) => row.name.toLowerCase() !== "overall");
+  const cachedOverall =
+    cachedStats.find((row) => row.name.toLowerCase() === "overall") ??
+    aggregateOverall(courierStats);
   const result: CourierHistoryResult = {
     configured: Boolean(data.configured),
-    stats: cachedStats.filter((row) => row.name.toLowerCase() !== "overall"),
+    stats: courierStats,
     overall: cachedOverall,
     error: typeof data.error === "string" ? data.error : null,
     source: "cache",
