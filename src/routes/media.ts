@@ -53,6 +53,47 @@ type DeliveryVariant = {
   id: string;
 };
 
+type R2ObjectLike = {
+  body: ReadableStream<Uint8Array>;
+  httpEtag?: string;
+  writeHttpMetadata?: (headers: Headers) => void;
+};
+
+type R2BucketLike = {
+  get: (key: string) => Promise<R2ObjectLike | null>;
+};
+
+function getR2Bucket(): R2BucketLike | undefined {
+  const env = (globalThis as typeof globalThis & {
+    __ORONNO_CF_ENV?: { MEDIA_BUCKET?: R2BucketLike };
+  }).__ORONNO_CF_ENV;
+  return env?.MEDIA_BUCKET;
+}
+
+async function pullR2(
+  asset: { bucket: string; objectPath: string },
+): Promise<OriginSnapshot | null> {
+  const bucket = getR2Bucket();
+  if (!bucket) return null;
+  try {
+    const object = await bucket.get(`${asset.bucket}/${asset.objectPath}`);
+    if (!object) return null;
+    const headers = new Headers();
+    object.writeHttpMetadata?.(headers);
+    if (object.httpEtag) headers.set("etag", object.httpEtag);
+    const body = await new Response(object.body).arrayBuffer();
+    return {
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      headers,
+      body,
+    };
+  } catch {
+    return null;
+  }
+}
+
 const inFlightOriginPulls = new Map<string, Promise<OriginSnapshot>>();
 
 function getCloudflareCache(): CloudflareCache | undefined {
@@ -279,7 +320,11 @@ export const Route = createFileRoute("/media")({
           }
         }
 
-        const origin = await pullOrigin(source, originCacheKey, request, true, variant);
+        // Prefer R2 when the object has already been migrated. If it is not
+        // there yet, transparently fall back to Supabase Storage. This makes
+        // migration safe and allows the bucket to be populated incrementally.
+        const r2Origin = await pullR2(asset);
+        const origin = r2Origin ?? await pullOrigin(source, originCacheKey, request, true, variant);
         if (!origin.ok) return noStoreResponse(origin.body.slice(0), origin.status, origin.statusText, origin.headers);
 
         const response = cacheableResponse(origin, origin.body.slice(0), "MISS", variant);
