@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { env as cfEnv } from "cloudflare:workers";
 import { resolveSupabaseUrl, resolveSupabasePublishableKey } from "@/integrations/supabase/public-env";
 
 const PUBLIC_TABLES = new Set([
@@ -70,7 +69,7 @@ export const Route = createFileRoute("/api/public/pg")({
         const accept = request.headers.get("Accept") || "application/json";
         const range = request.headers.get("Range") || "";
         const key = kvKey(path, method, body, accept, range);
-        const kv = cfEnv.SUPA_CACHE;
+        const kv = (globalThis as typeof globalThis & { __CF_ENV__?: { SUPA_CACHE?: { get(key: string, type?: "text"): Promise<string | null>; put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void> } } }).__CF_ENV__?.SUPA_CACHE;
 
         if (kv && isProductRead(path, method)) {
           try {

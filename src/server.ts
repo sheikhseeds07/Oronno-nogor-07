@@ -89,6 +89,9 @@ function isH3SwallowedErrorBody(body: string): boolean {
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    // Cloudflare bindings are request-scoped at the Worker entrypoint. Expose the
+    // deployment binding object to server routes without importing runtime-only modules.
+    (globalThis as typeof globalThis & { __CF_ENV__?: unknown }).__CF_ENV__ = env;
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
