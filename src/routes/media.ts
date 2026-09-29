@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-const ALLOWED_SUPABASE_HOST = "bvuhvzccziuniujeogng.supabase.co";
+const ALLOWED_SUPABASE_HOSTS = new Set(["bvuhvzccziuniujeogng.supabase.co", "frtzlibogmethppqmhtr.supabase.co"]);
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 // Egress budget guard: public catalog imagery never needs more than ~1024px on
 // phone-first traffic. Lower width/quality keeps Supabase Storage egress flat
@@ -71,7 +71,7 @@ function getSafeSource(request: Request): URL | null {
   try {
     const source = new URL(raw);
     if (source.protocol !== "https:") return null;
-    if (source.hostname !== ALLOWED_SUPABASE_HOST) return null;
+    if (!ALLOWED_SUPABASE_HOSTS.has(source.hostname)) return null;
     if (!getStorageAsset(source)) return null;
     return source;
   } catch {
