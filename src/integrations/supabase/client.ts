@@ -1,7 +1,9 @@
 import "@/lib/crypto-polyfill";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 import { publicReadProxyUrl, isPublicAnonRead } from "./public-read-proxy";
+
+type Client = SupabaseClient<Database>;
 
 function envValue(...names: string[]) {
   for (const name of names) {
@@ -23,7 +25,6 @@ function createSupabaseFetch(supabaseKey: string, supabaseUrl: string): typeof f
     if (init?.headers) new Headers(init.headers).forEach((value, key) => headers.set(key, value));
     if (isNewSupabaseApiKey(supabaseKey) && headers.get("Authorization") === `Bearer ${supabaseKey}`) headers.delete("Authorization");
     headers.set("apikey", supabaseKey);
-
     const method = (init?.method || (typeof Request !== "undefined" && input instanceof Request ? input.method : "GET")).toUpperCase();
     const rawUrl = typeof input === "string" ? input : input instanceof URL ? input.toString() : (input as Request).url;
     const auth = headers.get("Authorization");
@@ -47,10 +48,7 @@ function createSupabaseFetch(supabaseKey: string, supabaseUrl: string): typeof f
       const edge = (globalThis as { caches?: { default?: { match(r: Request): Promise<Response | undefined>; put(r: Request, res: Response): Promise<void> } } }).caches?.default;
       if (edge) {
         const keyReq = new Request(`${supabaseUrl}/__rpc-cache?u=${encodeURIComponent(rawUrl)}&b=${encodeURIComponent(bodyText)}`, { method: "GET" });
-        try {
-          const hit = await edge.match(keyReq);
-          if (hit) return hit;
-        } catch {}
+        try { const hit = await edge.match(keyReq); if (hit) return hit; } catch {}
         const fresh = await fetch(input, { ...init, headers });
         if (fresh.ok) {
           const text = await fresh.text();
@@ -63,21 +61,25 @@ function createSupabaseFetch(supabaseKey: string, supabaseUrl: string): typeof f
     }
 
     if (typeof window === "undefined" && isPublicAnonRead(rawUrl, supabaseUrl, method, hasUserToken)) {
-      try {
-        return await fetch(input, { ...init, headers, cf: { cacheEverything: true, cacheTtl: 300 } } as RequestInit);
-      } catch {}
+      try { return await fetch(input, { ...init, headers, cf: { cacheEverything: true, cacheTtl: 300 } } as RequestInit); } catch {}
     }
     return fetch(input, { ...init, headers });
   };
 }
 
-function createSupabaseClient(storageKey: string) {
-  const url = envValue("VITE_SUPABASE_URL", "SUPABASE_URL");
-  const key = envValue("VITE_SUPABASE_PUBLISHABLE_KEY", "SUPABASE_PUBLISHABLE_KEY", "VITE_SUPABASE_ANON_KEY", "SUPABASE_ANON_KEY");
-  if (!url || !key) throw new Error("Supabase URL/publishable key is not configured");
+const cache = new Map<string, Client>();
 
-  return createClient<Database>(url.replace(/\/$/, ""), key, {
-    global: { fetch: createSupabaseFetch(key, url.replace(/\/$/, "")) },
+function actualClient(storageKey: string): Client {
+  const existing = cache.get(storageKey);
+  if (existing) return existing;
+
+  const rawUrl = envValue("VITE_SUPABASE_URL", "SUPABASE_URL");
+  const key = envValue("VITE_SUPABASE_PUBLISHABLE_KEY", "SUPABASE_PUBLISHABLE_KEY", "VITE_SUPABASE_ANON_KEY", "SUPABASE_ANON_KEY");
+  if (!rawUrl || !key) throw new Error("Supabase URL/publishable key is not configured");
+  const url = rawUrl.replace(/\/$/, "");
+
+  const client = createClient<Database>(url, key, {
+    global: { fetch: createSupabaseFetch(key, url) },
     auth: {
       storage: typeof window !== "undefined" ? localStorage : undefined,
       storageKey,
@@ -85,20 +87,33 @@ function createSupabaseClient(storageKey: string) {
       autoRefreshToken: true,
     },
   });
+  cache.set(storageKey, client);
+  return client;
 }
 
-export const staffSupabase = createSupabaseClient("ss_staff_auth_v1");
-export const customerSupabase = createSupabaseClient("ss_customer_auth_v1");
+function lazyClient(storageKey: string): Client {
+  return new Proxy({} as Client, {
+    get(_target, property) {
+      const client = actualClient(storageKey);
+      const value = Reflect.get(client, property, client);
+      return typeof value === "function" ? value.bind(client) : value;
+    },
+  });
+}
 
-function getActiveClient() {
+export const staffSupabase = lazyClient("ss_staff_auth_v1");
+export const customerSupabase = lazyClient("ss_customer_auth_v1");
+
+function getActiveClient(): Client {
   if (typeof window === "undefined") return staffSupabase;
   const path = window.location.pathname;
-  const staffRoute = path === "/login" || path === "/admin" || path.startsWith("/admin/");
-  return staffRoute ? staffSupabase : customerSupabase;
+  return path === "/login" || path === "/admin" || path.startsWith("/admin/") ? staffSupabase : customerSupabase;
 }
 
-export const supabase = new Proxy({} as ReturnType<typeof createSupabaseClient>, {
-  get(_, prop, receiver) {
-    return Reflect.get(getActiveClient(), prop, receiver);
+export const supabase = new Proxy({} as Client, {
+  get(_target, property) {
+    const client = getActiveClient();
+    const value = Reflect.get(client, property, client);
+    return typeof value === "function" ? value.bind(client) : value;
   },
 });

@@ -13,28 +13,28 @@ function envValue(...names: string[]) {
   return undefined;
 }
 
-export const LIVE_DATABASE_URL = envValue("VITE_SUPABASE_URL", "SUPABASE_URL")?.replace(/\/$/, "") || "";
-export const LIVE_DATABASE_KEY = envValue(
-  "VITE_SUPABASE_PUBLISHABLE_KEY",
-  "SUPABASE_PUBLISHABLE_KEY",
-  "VITE_SUPABASE_ANON_KEY",
-  "SUPABASE_ANON_KEY",
-) || "";
-
-if (!LIVE_DATABASE_URL || !LIVE_DATABASE_KEY) {
-  throw new Error("Supabase URL/publishable key is not configured");
-}
-
-function liveFetch(input: RequestInfo | URL, init?: RequestInit) {
-  const headers = new Headers(input instanceof Request ? input.headers : undefined);
-  if (init?.headers) new Headers(init.headers).forEach((value, key) => headers.set(key, value));
-  if (headers.get("Authorization") === `Bearer ${LIVE_DATABASE_KEY}`) headers.delete("Authorization");
-  headers.set("apikey", LIVE_DATABASE_KEY);
-  return fetch(input, { ...init, headers });
+export function liveDatabaseConfig() {
+  const url = envValue("VITE_SUPABASE_URL", "SUPABASE_URL")?.replace(/\/$/, "");
+  const key = envValue(
+    "VITE_SUPABASE_PUBLISHABLE_KEY",
+    "SUPABASE_PUBLISHABLE_KEY",
+    "VITE_SUPABASE_ANON_KEY",
+    "SUPABASE_ANON_KEY",
+  );
+  if (!url || !key) throw new Error("Supabase URL/publishable key is not configured");
+  return { url, key };
 }
 
 function createLiveClient(storageKey: string): TypedSupabaseClient {
-  return createClient<Database>(LIVE_DATABASE_URL, LIVE_DATABASE_KEY, {
+  const { url, key } = liveDatabaseConfig();
+  const liveFetch: typeof fetch = (input, init) => {
+    const headers = new Headers(typeof Request !== "undefined" && input instanceof Request ? input.headers : undefined);
+    if (init?.headers) new Headers(init.headers).forEach((value, name) => headers.set(name, value));
+    if (headers.get("Authorization") === `Bearer ${key}`) headers.delete("Authorization");
+    headers.set("apikey", key);
+    return fetch(input, { ...init, headers });
+  };
+  return createClient<Database>(url, key, {
     global: { fetch: liveFetch },
     auth: {
       storage: typeof window !== "undefined" ? window.localStorage : undefined,
@@ -45,10 +45,29 @@ function createLiveClient(storageKey: string): TypedSupabaseClient {
   });
 }
 
-export const staffSupabase = createLiveClient("ss_staff_auth_v1");
-export const customerSupabase = createLiveClient("ss_customer_auth_v1");
+const clientCache = new Map<string, TypedSupabaseClient>();
+function actualClient(storageKey: string) {
+  const existing = clientCache.get(storageKey);
+  if (existing) return existing;
+  const client = createLiveClient(storageKey);
+  clientCache.set(storageKey, client);
+  return client;
+}
 
-function activeClient() {
+function lazyClient(storageKey: string): TypedSupabaseClient {
+  return new Proxy({} as TypedSupabaseClient, {
+    get(_target, property) {
+      const client = actualClient(storageKey);
+      const value = Reflect.get(client, property, client);
+      return typeof value === "function" ? value.bind(client) : value;
+    },
+  });
+}
+
+export const staffSupabase = lazyClient("ss_staff_auth_v1");
+export const customerSupabase = lazyClient("ss_customer_auth_v1");
+
+function activeClient(): TypedSupabaseClient {
   if (typeof window === "undefined") return staffSupabase;
   const path = window.location.pathname;
   return path === "/login" || path === "/admin" || path.startsWith("/admin/") ? staffSupabase : customerSupabase;
