@@ -111,7 +111,7 @@ function makeCacheKey(request: Request, source: URL, variant: DeliveryVariant): 
 
 function makeOriginCacheKey(source: URL, variant: DeliveryVariant): string {
   const asset = getStorageAsset(source);
-  return `https://${ALLOWED_SUPABASE_HOST}/storage/v1/object/${asset?.bucket ?? "unknown"}/${asset?.objectPath ?? source.pathname}?v=${variant.id}`;
+  return `https://${source.hostname}/storage/v1/object/${asset?.bucket ?? "unknown"}/${asset?.objectPath ?? source.pathname}?v=${variant.id}`;
 }
 
 function noStoreResponse(body: BodyInit | null, status: number, statusText = "", sourceHeaders?: Headers): Response {
