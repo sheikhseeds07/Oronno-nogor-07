@@ -8,14 +8,14 @@ const ONE_YEAR = 60 * 60 * 24 * 365;
 const MAX_IMAGE_DIMENSION = 1400;
 const WEBP_QUALITY = 0.76;
 const OPTIMIZABLE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-const SUPABASE_STORAGE_HOST = "bvuhvzccziuniujeogng.supabase.co";
+const SUPABASE_STORAGE_HOSTS = new Set(["bvuhvzccziuniujeogng.supabase.co", "frtzlibogmethppqmhtr.supabase.co"]);
 
 function throughMediaCache(url: string): string {
   try {
     const parsed = new URL(url);
     if (
       parsed.protocol === "https:" &&
-      parsed.hostname === SUPABASE_STORAGE_HOST &&
+      SUPABASE_STORAGE_HOSTS.has(parsed.hostname) &&
       parsed.pathname.startsWith("/storage/v1/")
     ) return `/media?src=${encodeURIComponent(url)}`;
   } catch {}
