@@ -150,23 +150,26 @@ export function CleanLandingPage({slug}:{slug:string}){
     if(!landingInitiateCheckoutRef.current){landingInitiateCheckoutRef.current=true;trackInitiateCheckout([seedItem],total);}
     const intent=await runCreateLandingIntent({data:{checkout_session_id:landingCheckoutSessionRef.current,customer_name:form.name,customer_phone:form.phone.replace(/[\\s-]/g,""),customer_address:form.address,delivery_fee:deliveryFee,seed_items:[seedItem],nutrimix_item:nutrimixItem,notes:form.note||null}});
     landingIntentIdRef.current=intent.id;
+    const created=await runFinalizeLandingIntent({data:{intent_id:intent.id,include_nutrimix:false,emit_purchase:false}});
+    if(!created?.id) throw new Error("Order create failed");
+    orderCreatedRef.current=true;
     setNutrimix(p);setNutrimixOpen(true);
   }catch(error){landingInitiateCheckoutRef.current=false;notifyOrderError(error)}
  };
  const placeWithNutrimix=async(include:boolean)=>{
   setNutrimixOpen(false);
-  if(orderCreatedRef.current||orderInFlightRef.current)return;
-  if(!landingIntentIdRef.current){await openNutrimix();return}
-  orderInFlightRef.current=true;setSubmitting(true);
+  if(orderInFlightRef.current)return;
+  if(!landingIntentIdRef.current)return;
+  orderInFlightRef.current=true;
+  setSubmitting(true);
   try{
-    const order=await runFinalizeLandingIntent({data:{intent_id:landingIntentIdRef.current,include_nutrimix:Boolean(include),...getFbContext()}});
-    orderCreatedRef.current=true;
-    const purchaseItems=[{id:selected!.product_id!,name:selected!.name,price:selected!.price,quantity:1},...(include&&nutrimix?[{id:nutrimix.id,name:nutrimix.name,price:Number(nutrimix.sale_price??nutrimix.price),quantity:1}]:[])];
-    const purchaseTotal=purchaseItems.reduce((sum,item)=>sum+item.price*item.quantity,0)+deliveryFee;
-    trackPurchase(purchaseItems,purchaseTotal,order.id);
-    toast.success("অর্ডার সফল!");
-    navigate({to:"/order/$id",params:{id:order.id}});
-  }catch(err){orderInFlightRef.current=false;notifyOrderError(err);setSubmitting(false)}
+   const order=await runFinalizeLandingIntent({data:{intent_id:landingIntentIdRef.current,include_nutrimix:include,emit_purchase:true,...getFbContext()}});
+   const purchaseItems=[{id:selected?.product_id||`addon-${selectedPkg}`,name:selected?.name||"Seed",price:selected?.price||0,quantity:1},...(include&&nutrimix?[{id:nutrimix.id,name:nutrimix.name,price:Number(nutrimix.sale_price??nutrimix.price),quantity:1}]:[])];
+   const purchaseTotal=purchaseItems.reduce((sum,item)=>sum+item.price*item.quantity,0)+deliveryFee;
+   trackPurchase(purchaseItems,purchaseTotal,order.id);
+   toast.success(include?"অর্ডার সফল হয়েছে! NUTRIMIX সহ":"অর্ডার সফল হয়েছে!");
+   navigate({to:"/order/$id",params:{id:order.id}});
+  }catch(error){orderInFlightRef.current=false;notifyOrderError(error);setSubmitting(false)}
  };
  const handleOrderSubmit=async(e:React.FormEvent)=>{if(((C.template as string)==="all-product"||landingBaseSlug(slug)==="seedcombo")&&C.nutrimix_popup_enabled!==false){e.preventDefault();await openNutrimix();return;}await submit(e)};
  const submit=async(e:React.FormEvent)=>{e.preventDefault();if(orderCreatedRef.current||orderInFlightRef.current)return;const phoneValidationError=phoneSubmitError(form.phone);if(phoneValidationError){setPhoneErr(phoneValidationError);toast.error(phoneValidationError);phoneRef.current?.focus();phoneRef.current?.scrollIntoView({behavior:"smooth",block:"center"});return}setPhoneErr("");if(!form.name||!form.phone||!form.address)return toast.error("সব তথ্য পূরণ করুন");if(!selected)return toast.error("প্যাকেজ নির্বাচন করুন");orderInFlightRef.current=true;setSubmitting(true);try{const itemId=selected.product_id||`addon-${selectedPkg}`;const items=[{id:itemId,name:selected.name,price:selected.price,quantity:1}];const fbCtx=getFbContext();const order=await runPlaceOrder({data:{customer_name:form.name,customer_phone:form.phone.replace(/[\s-]/g,""),customer_address:form.address,delivery_fee:deliveryFee,items,notes:form.note||null,...fbCtx}});orderCreatedRef.current=true;trackPurchase(items.map(i=>({id:String(i.id),name:i.name,price:i.price,quantity:1})),total,order.id);toast.success("অর্ডার সফল!");navigate({to:"/order/$id",params:{id:order.id}})}catch(err){orderInFlightRef.current=false;const msg=err instanceof Error?err.message:"অর্ডার করতে সমস্যা হয়েছে";if(msg.includes("Invalid Bangladesh mobile number")||msg.includes("01XXXXXXXXX")){setPhoneErr(PHONE_ERROR);phoneRef.current?.focus();phoneRef.current?.scrollIntoView({behavior:"smooth",block:"center"})}else{notifyOrderError(err)}setSubmitting(false)}};
