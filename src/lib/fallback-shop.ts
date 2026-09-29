@@ -43,7 +43,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/e84bafeb-67e4-45c2-b127-749798920e4e.jpg"
+      "/placeholder.svgs/e84bafeb-67e4-45c2-b127-749798920e4e.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -59,7 +59,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/08b4bddc-1266-4277-98f4-eceae7cbb9a8.jpg"
+      "/placeholder.svgs/08b4bddc-1266-4277-98f4-eceae7cbb9a8.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -75,7 +75,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/fd2d47e5-a301-40a8-bf35-01cfd80e908e.jpg"
+      "/placeholder.svgs/fd2d47e5-a301-40a8-bf35-01cfd80e908e.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -91,7 +91,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/b8a9de40-9537-476f-8605-93be6d1f76c4.jpg"
+      "/placeholder.svgs/b8a9de40-9537-476f-8605-93be6d1f76c4.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -107,7 +107,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/550192d3-b5e3-4ea0-ab99-8aa53808f1d7.jpg"
+      "/placeholder.svgs/550192d3-b5e3-4ea0-ab99-8aa53808f1d7.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -123,7 +123,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/5fa3bc9b-885d-4959-a381-055566f7ee5a.jpg"
+      "/placeholder.svgs/5fa3bc9b-885d-4959-a381-055566f7ee5a.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -139,7 +139,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/2d004764-83df-4c65-a05a-c6da1ad99f02.jpg"
+      "/placeholder.svgs/2d004764-83df-4c65-a05a-c6da1ad99f02.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -155,7 +155,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/b6fabc45-0a69-4e4d-abbc-c636e1b5b0e2.jpg"
+      "/placeholder.svgs/b6fabc45-0a69-4e4d-abbc-c636e1b5b0e2.jpg"
     ],
     "stock": 99,
     "category_slug": "fruits",
@@ -171,7 +171,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/01995bf2-f27c-4050-8396-a5a246cdf048.jpg"
+      "/placeholder.svgs/01995bf2-f27c-4050-8396-a5a246cdf048.jpg"
     ],
     "stock": 99,
     "category_slug": "fruits",
@@ -187,7 +187,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/d9255082-9bef-46d3-ba91-c172dac89eca.jpg"
+      "/placeholder.svgs/d9255082-9bef-46d3-ba91-c172dac89eca.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -203,7 +203,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/162e30fd-f985-4a78-88a0-29b5b99d7874.jpg"
+      "/placeholder.svgs/162e30fd-f985-4a78-88a0-29b5b99d7874.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -219,7 +219,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/983c85d2-d200-4ff5-a055-d44dc3445879.jpg"
+      "/placeholder.svgs/983c85d2-d200-4ff5-a055-d44dc3445879.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -235,7 +235,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/302cfe96-9932-46d7-8015-e957b44d11e0.jpg"
+      "/placeholder.svgs/302cfe96-9932-46d7-8015-e957b44d11e0.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -251,7 +251,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/38b87dcf-2d62-43a6-93cf-dbea4359f315.jpg"
+      "/placeholder.svgs/38b87dcf-2d62-43a6-93cf-dbea4359f315.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -267,7 +267,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/b9bbaca5-2637-47bb-aeef-bdbf5a362cd2.jpg"
+      "/placeholder.svgs/b9bbaca5-2637-47bb-aeef-bdbf5a362cd2.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -283,7 +283,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/c4e25d79-3836-45e5-95dc-273c43460a61.jpg"
+      "/placeholder.svgs/c4e25d79-3836-45e5-95dc-273c43460a61.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -299,7 +299,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/ea903758-32c2-4cf6-a357-36b9a0b26e89.jpg"
+      "/placeholder.svgs/ea903758-32c2-4cf6-a357-36b9a0b26e89.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -315,7 +315,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/01b8780a-773d-498f-b3a7-55459edb098c.jpg"
+      "/placeholder.svgs/01b8780a-773d-498f-b3a7-55459edb098c.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -331,7 +331,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/5eb41a2c-b1f1-4490-88a1-e099b713a44a.jpg"
+      "/placeholder.svgs/5eb41a2c-b1f1-4490-88a1-e099b713a44a.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -347,7 +347,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/1870587c-6919-4601-aeb0-629b8ffd0d60.jpg"
+      "/placeholder.svgs/1870587c-6919-4601-aeb0-629b8ffd0d60.jpg"
     ],
     "stock": 99,
     "category_slug": "tools",
@@ -363,7 +363,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/098b8eee-5542-48be-85c6-c930fb77ca4d.jpg"
+      "/placeholder.svgs/098b8eee-5542-48be-85c6-c930fb77ca4d.jpg"
     ],
     "stock": 99,
     "category_slug": "tools",
@@ -379,7 +379,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/7f62c8d8-0bf4-4d21-afcd-64e2b4354e1d.jpg"
+      "/placeholder.svgs/7f62c8d8-0bf4-4d21-afcd-64e2b4354e1d.jpg"
     ],
     "stock": 99,
     "category_slug": "tools",
@@ -395,7 +395,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/d4a7b6fa-6d59-4e3e-b091-f63bf8b805a2.jpg"
+      "/placeholder.svgs/d4a7b6fa-6d59-4e3e-b091-f63bf8b805a2.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -411,7 +411,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/789c4433-d57f-438f-8e1d-4212e384a6be.jpg"
+      "/placeholder.svgs/789c4433-d57f-438f-8e1d-4212e384a6be.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -427,7 +427,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/b17e388a-ed23-4f92-8792-03d869bc2338.jpg"
+      "/placeholder.svgs/b17e388a-ed23-4f92-8792-03d869bc2338.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -443,7 +443,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/f9a22f55-7738-4858-9b0d-017ee321b444.jpg"
+      "/placeholder.svgs/f9a22f55-7738-4858-9b0d-017ee321b444.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -459,7 +459,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/9594090d-361b-4bd2-8ae0-56517de51fdf.jpg"
+      "/placeholder.svgs/9594090d-361b-4bd2-8ae0-56517de51fdf.jpg"
     ],
     "stock": 99,
     "category_slug": "tools",
@@ -475,7 +475,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/e69891f6-10b6-4bc5-9310-8f070ff2c588.jpg"
+      "/placeholder.svgs/e69891f6-10b6-4bc5-9310-8f070ff2c588.jpg"
     ],
     "stock": 99,
     "category_slug": "tools",
@@ -491,7 +491,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/62c6a3c7-07da-47fc-a9f8-2fc76036386c.jpg"
+      "/placeholder.svgs/62c6a3c7-07da-47fc-a9f8-2fc76036386c.jpg"
     ],
     "stock": 99,
     "category_slug": "fruits",
@@ -507,7 +507,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/cdf21dc6-7dbd-49f1-9996-6a37f76f33ac.jpg"
+      "/placeholder.svgs/cdf21dc6-7dbd-49f1-9996-6a37f76f33ac.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -523,7 +523,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/295b424e-b0a2-44f5-bf1f-1743459c10d2.jpg"
+      "/placeholder.svgs/295b424e-b0a2-44f5-bf1f-1743459c10d2.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -539,7 +539,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/2b3944c2-3d1d-4ffe-b1c8-f1eb82b9051f.jpg"
+      "/placeholder.svgs/2b3944c2-3d1d-4ffe-b1c8-f1eb82b9051f.jpg"
     ],
     "stock": 99,
     "category_slug": "fruits",
@@ -555,7 +555,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/dc3f7317-9624-493c-b27d-2aa04110e7ba.jpg"
+      "/placeholder.svgs/dc3f7317-9624-493c-b27d-2aa04110e7ba.jpg"
     ],
     "stock": 99,
     "category_slug": "tools",
@@ -571,7 +571,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/b4c55374-b281-4b86-a55c-4bd0e1547c8f.jpg"
+      "/placeholder.svgs/b4c55374-b281-4b86-a55c-4bd0e1547c8f.jpg"
     ],
     "stock": 99,
     "category_slug": "fruits",
@@ -587,7 +587,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/00224bd0-3ba2-40b4-bb06-077a14a3ef21.jpg"
+      "/placeholder.svgs/00224bd0-3ba2-40b4-bb06-077a14a3ef21.jpg"
     ],
     "stock": 99,
     "category_slug": "fruits",
@@ -603,7 +603,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/48ca7939-1aec-472b-852e-ba28c85c80b8.jpg"
+      "/placeholder.svgs/48ca7939-1aec-472b-852e-ba28c85c80b8.jpg"
     ],
     "stock": 99,
     "category_slug": "fruits",
@@ -619,7 +619,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/1dca3979-0fb1-4d22-b3a6-eb7d6eaad20f.jpg"
+      "/placeholder.svgs/1dca3979-0fb1-4d22-b3a6-eb7d6eaad20f.jpg"
     ],
     "stock": 99,
     "category_slug": "tools",
@@ -635,7 +635,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/1af723c6-927c-4a66-82d6-692f145025fb.jpg"
+      "/placeholder.svgs/1af723c6-927c-4a66-82d6-692f145025fb.jpg"
     ],
     "stock": 99,
     "category_slug": "combo",
@@ -651,7 +651,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/76d0f848-5c71-4972-8cb5-d34a9becaf41.jpg"
+      "/placeholder.svgs/76d0f848-5c71-4972-8cb5-d34a9becaf41.jpg"
     ],
     "stock": 99,
     "category_slug": "flowers",
@@ -667,7 +667,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/06e0d633-0cee-4ad7-9fdb-b82bd0d1cf64.jpg"
+      "/placeholder.svgs/06e0d633-0cee-4ad7-9fdb-b82bd0d1cf64.jpg"
     ],
     "stock": 99,
     "category_slug": "flowers",
@@ -683,7 +683,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/d6c80148-e875-4061-bfbe-32372b7b8a39.jpg"
+      "/placeholder.svgs/d6c80148-e875-4061-bfbe-32372b7b8a39.jpg"
     ],
     "stock": 99,
     "category_slug": "flowers",
@@ -699,7 +699,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/bd5ad753-da60-4bd9-9e72-2ff28dba82df.jpg"
+      "/placeholder.svgs/bd5ad753-da60-4bd9-9e72-2ff28dba82df.jpg"
     ],
     "stock": 99,
     "category_slug": "flowers",
@@ -715,7 +715,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/7e12545b-8097-4509-ad8a-64f2d0fd2c35.jpg"
+      "/placeholder.svgs/7e12545b-8097-4509-ad8a-64f2d0fd2c35.jpg"
     ],
     "stock": 99,
     "category_slug": "flowers",
@@ -731,7 +731,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/21f04c5d-0ffe-4501-aa28-565c16924591.jpg"
+      "/placeholder.svgs/21f04c5d-0ffe-4501-aa28-565c16924591.jpg"
     ],
     "stock": 99,
     "category_slug": "flowers",
@@ -747,7 +747,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/db06fe89-4b8f-471a-83a3-45c15ab8a014.jpg"
+      "/placeholder.svgs/db06fe89-4b8f-471a-83a3-45c15ab8a014.jpg"
     ],
     "stock": 99,
     "category_slug": "flowers",
@@ -763,7 +763,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/0278a210-0295-4a7f-ac98-e354ac49ebe5.jpg"
+      "/placeholder.svgs/0278a210-0295-4a7f-ac98-e354ac49ebe5.jpg"
     ],
     "stock": 99,
     "category_slug": "flowers",
@@ -779,7 +779,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/9b654074-b1d4-4b9d-b611-ac8f495cbecb.jpg"
+      "/placeholder.svgs/9b654074-b1d4-4b9d-b611-ac8f495cbecb.jpg"
     ],
     "stock": 99,
     "category_slug": "flowers",
@@ -795,7 +795,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/6bf3df26-6b6c-4e61-a253-df1806d4de41.jpg"
+      "/placeholder.svgs/6bf3df26-6b6c-4e61-a253-df1806d4de41.jpg"
     ],
     "stock": 99,
     "category_slug": "flowers",
@@ -811,7 +811,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/39f34707-a12c-41b1-a327-a5fdfb06e6b5.jpg"
+      "/placeholder.svgs/39f34707-a12c-41b1-a327-a5fdfb06e6b5.jpg"
     ],
     "stock": 99,
     "category_slug": "flowers",
@@ -827,7 +827,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/34173124-f7e7-4323-927e-cb87e974d85e.jpg"
+      "/placeholder.svgs/34173124-f7e7-4323-927e-cb87e974d85e.jpg"
     ],
     "stock": 99,
     "category_slug": "flowers",
@@ -843,7 +843,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/26d28fee-278e-4a69-934d-00fc5d992abe.jpg"
+      "/placeholder.svgs/26d28fee-278e-4a69-934d-00fc5d992abe.jpg"
     ],
     "stock": 99,
     "category_slug": "flowers",
@@ -859,7 +859,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/5bdd38e4-2cb0-40fa-ac6b-2f2add731296.jpg"
+      "/placeholder.svgs/5bdd38e4-2cb0-40fa-ac6b-2f2add731296.jpg"
     ],
     "stock": 99,
     "category_slug": "flowers",
@@ -875,7 +875,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/0af07f3f-38e8-45c2-a22c-f923f92f5962.jpg"
+      "/placeholder.svgs/0af07f3f-38e8-45c2-a22c-f923f92f5962.jpg"
     ],
     "stock": 99,
     "category_slug": "flowers",
@@ -891,7 +891,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/45f10e1d-0741-435d-8fb6-f2f695b349d5.jpg"
+      "/placeholder.svgs/45f10e1d-0741-435d-8fb6-f2f695b349d5.jpg"
     ],
     "stock": 99,
     "category_slug": "flowers",
@@ -907,7 +907,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/869f57f3-57a8-4a8c-a36e-ae3c26a0190e.jpg"
+      "/placeholder.svgs/869f57f3-57a8-4a8c-a36e-ae3c26a0190e.jpg"
     ],
     "stock": 99,
     "category_slug": "flowers",
@@ -923,7 +923,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/a218055a-5892-454e-bac3-494fda22c719.jpg"
+      "/placeholder.svgs/a218055a-5892-454e-bac3-494fda22c719.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -939,7 +939,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/88dee9ef-30f7-450c-8f36-def6a31d5232.jpg"
+      "/placeholder.svgs/88dee9ef-30f7-450c-8f36-def6a31d5232.jpg"
     ],
     "stock": 99,
     "category_slug": "flowers",
@@ -955,7 +955,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/1faeced2-f46a-42cb-bbbb-5259095f95ae.jpg"
+      "/placeholder.svgs/1faeced2-f46a-42cb-bbbb-5259095f95ae.jpg"
     ],
     "stock": 99,
     "category_slug": "flowers",
@@ -971,7 +971,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/f72c2de8-7777-4e70-84ff-8ccbf6e36c25.jpg"
+      "/placeholder.svgs/f72c2de8-7777-4e70-84ff-8ccbf6e36c25.jpg"
     ],
     "stock": 99,
     "category_slug": "flowers",
@@ -987,7 +987,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/8be52dee-a9ff-46c5-adc7-6ff90469e095.jpg"
+      "/placeholder.svgs/8be52dee-a9ff-46c5-adc7-6ff90469e095.jpg"
     ],
     "stock": 99,
     "category_slug": "flowers",
@@ -1003,7 +1003,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/701c7d6c-3dc5-4007-a20c-b0ecb5224b01.jpg"
+      "/placeholder.svgs/701c7d6c-3dc5-4007-a20c-b0ecb5224b01.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -1019,7 +1019,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/0bebaf24-6ffc-4e7d-a309-a08d823cc652.jpg"
+      "/placeholder.svgs/0bebaf24-6ffc-4e7d-a309-a08d823cc652.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -1035,7 +1035,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/15ab33b4-df3f-4b2c-8e4d-e08bd005f205.jpg"
+      "/placeholder.svgs/15ab33b4-df3f-4b2c-8e4d-e08bd005f205.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -1051,7 +1051,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/d72339e6-2588-4a74-b09a-cb0b1603cdb4.jpg"
+      "/placeholder.svgs/d72339e6-2588-4a74-b09a-cb0b1603cdb4.jpg"
     ],
     "stock": 99,
     "category_slug": "tools",
@@ -1067,7 +1067,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/2fc261a4-5ff1-4f2e-92ff-232955702300.jpg"
+      "/placeholder.svgs/2fc261a4-5ff1-4f2e-92ff-232955702300.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -1083,7 +1083,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/d4863538-8b1b-463a-bf9a-ce03421818ec.jpg"
+      "/placeholder.svgs/d4863538-8b1b-463a-bf9a-ce03421818ec.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -1099,7 +1099,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/9452db30-c196-4194-98bc-88444a86662c.png"
+      "/placeholder.svgs/9452db30-c196-4194-98bc-88444a86662c.png"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -1115,7 +1115,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/ea8ff6f5-7940-426c-ab45-94894a9259ee.jpg"
+      "/placeholder.svgs/ea8ff6f5-7940-426c-ab45-94894a9259ee.jpg"
     ],
     "stock": 99,
     "category_slug": "tools",
@@ -1131,7 +1131,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/a2283abf-0696-4c37-ae88-172f849bf04c.jpg"
+      "/placeholder.svgs/a2283abf-0696-4c37-ae88-172f849bf04c.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -1147,7 +1147,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/6b273c85-76bb-4862-8035-31a057597aa6.jpg"
+      "/placeholder.svgs/6b273c85-76bb-4862-8035-31a057597aa6.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -1163,7 +1163,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/de87f41d-7f3a-4e93-9a8e-e5ce858966f1.jpg"
+      "/placeholder.svgs/de87f41d-7f3a-4e93-9a8e-e5ce858966f1.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -1179,7 +1179,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/57ccd6d1-83a3-453b-9626-ee606edfbd6b.jpg"
+      "/placeholder.svgs/57ccd6d1-83a3-453b-9626-ee606edfbd6b.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -1195,7 +1195,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/081a5727-dc54-475a-b7ec-3d81e0f8dee4.jpg"
+      "/placeholder.svgs/081a5727-dc54-475a-b7ec-3d81e0f8dee4.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -1211,7 +1211,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/f33c0821-6a9d-4988-b6d3-e12b151bb705.jpg"
+      "/placeholder.svgs/f33c0821-6a9d-4988-b6d3-e12b151bb705.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -1227,7 +1227,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/549b3abe-dabf-4401-ada3-49f29be4be98.jpg"
+      "/placeholder.svgs/549b3abe-dabf-4401-ada3-49f29be4be98.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -1243,7 +1243,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/bf14c73e-b216-464e-a0a4-eb75c74ebbd0.jpg"
+      "/placeholder.svgs/bf14c73e-b216-464e-a0a4-eb75c74ebbd0.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -1259,7 +1259,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/921ab11f-1069-4098-af5f-376cc5054b73.jpg"
+      "/placeholder.svgs/921ab11f-1069-4098-af5f-376cc5054b73.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -1275,7 +1275,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/3fc26811-7cee-41dc-a5d6-768c3ea888f1.jpg"
+      "/placeholder.svgs/3fc26811-7cee-41dc-a5d6-768c3ea888f1.jpg"
     ],
     "stock": 99,
     "category_slug": "fruits",
@@ -1291,7 +1291,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/d6462d49-c463-458f-bedf-cb2c69ed7aa7.jpg"
+      "/placeholder.svgs/d6462d49-c463-458f-bedf-cb2c69ed7aa7.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -1307,7 +1307,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/8518b58e-6735-4181-aa5b-20cc5668a367.jpg"
+      "/placeholder.svgs/8518b58e-6735-4181-aa5b-20cc5668a367.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -1323,7 +1323,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/73774899-7ab1-489d-9503-412de274d163.jpg"
+      "/placeholder.svgs/73774899-7ab1-489d-9503-412de274d163.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -1339,7 +1339,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/d2eb03d0-8b73-4e75-880b-877a1b3c35d2.jpg"
+      "/placeholder.svgs/d2eb03d0-8b73-4e75-880b-877a1b3c35d2.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -1355,7 +1355,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/1097542a-0269-48df-a143-01679c7844d5.jpg"
+      "/placeholder.svgs/1097542a-0269-48df-a143-01679c7844d5.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -1371,7 +1371,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/0dc521df-d9a0-4b11-8e76-ee537f499d37.jpg"
+      "/placeholder.svgs/0dc521df-d9a0-4b11-8e76-ee537f499d37.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -1387,7 +1387,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/00c17369-c7f9-4d57-bbc0-ec66ea830ad5.jpg"
+      "/placeholder.svgs/00c17369-c7f9-4d57-bbc0-ec66ea830ad5.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -1403,7 +1403,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/45d55f0d-4c15-4961-97a6-c686c5d8a14a.jpg"
+      "/placeholder.svgs/45d55f0d-4c15-4961-97a6-c686c5d8a14a.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -1419,7 +1419,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/13ebfabf-0c40-4896-a153-ac322380b53d.jpg"
+      "/placeholder.svgs/13ebfabf-0c40-4896-a153-ac322380b53d.jpg"
     ],
     "stock": 99,
     "category_slug": "vegetables",
@@ -1435,7 +1435,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/b3476ddf-bba3-415d-a9a0-1d687139b7e6.jpg"
+      "/placeholder.svgs/b3476ddf-bba3-415d-a9a0-1d687139b7e6.jpg"
     ],
     "stock": 99,
     "category_slug": "fruits",
@@ -1451,7 +1451,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/1ff2a2e9-bd0f-4e26-9fca-a0fbd56941ba.jpg"
+      "/placeholder.svgs/1ff2a2e9-bd0f-4e26-9fca-a0fbd56941ba.jpg"
     ],
     "stock": 99,
     "category_slug": "flowers",
@@ -1467,7 +1467,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/22b53bca-9cfc-43fb-830f-9f6695a2e681.jpg"
+      "/placeholder.svgs/22b53bca-9cfc-43fb-830f-9f6695a2e681.jpg"
     ],
     "stock": 99,
     "category_slug": "flowers",
@@ -1483,7 +1483,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/4011b01c-7f0d-492b-8b51-e44451634b98.jpg"
+      "/placeholder.svgs/4011b01c-7f0d-492b-8b51-e44451634b98.jpg"
     ],
     "stock": 99,
     "category_slug": "tools",
@@ -1499,7 +1499,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/ed2fdaa6-6683-48f6-8dc7-63e36eee23ac.jpg"
+      "/placeholder.svgs/ed2fdaa6-6683-48f6-8dc7-63e36eee23ac.jpg"
     ],
     "stock": 99,
     "category_slug": "flowers",
@@ -1515,7 +1515,7 @@ export const fallbackProducts: ShopProduct[] = [
     "price": 199.0,
     "sale_price": null,
     "images": [
-      "https://yqhtenonavuzxzemaiyk.supabase.co/storage/v1/object/public/product-images/dd6f850b-4d73-4cbe-acf6-147555025b31.jpg"
+      "/placeholder.svgs/dd6f850b-4d73-4cbe-acf6-147555025b31.jpg"
     ],
     "stock": 99,
     "category_slug": "flowers",
