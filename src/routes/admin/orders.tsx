@@ -1870,7 +1870,7 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
   const digits = normalizePhone(phone);
   const enabled = digits.length >= 10;
   const clientCacheKey = useMemo(
-    () => `hoorin-courier-history-v2:${digits}`,
+    () => `hoorin-courier-history-v3:${digits}`,
     [digits],
   );
   const orderCreatedAtMs = orderCreatedAt ? new Date(orderCreatedAt).getTime() : 0;
