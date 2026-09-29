@@ -4,8 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { publicReadProxyUrl, isPublicAnonRead } from './public-read-proxy';
 
-const PUBLIC_SUPABASE_URL = 'https://bvuhvzccziuniujeogng.supabase.co';
-const PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_rapcUAgVGYdCuww7Q6GRNg__kFKVc17';
+const PUBLIC_SUPABASE_URL = 'https://frtzlibogmethppqmhtr.supabase.co';
+const PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_IwyqncvDdP4OF2UDNMlK9g_bn6Hu6n1';
 
 function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith('sb_publishable_') || value.startsWith('sb_secret_');
