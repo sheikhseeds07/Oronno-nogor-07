@@ -98,6 +98,7 @@ export const ProductCard = memo(function ProductCard({ p }: { p: Product }) {
   const price = p.sale_price ?? p.price;
   const discount = p.sale_price ? Math.round(((p.price - p.sale_price) / p.price) * 100) : 0;
   const img = p.images?.[0] || "/placeholder.svg";
+  const [imageSrc, setImageSrc] = useState(() => toImg(img, { w: 500, q: 78 }));
 
   const addItem = () => {
     if (p.stock <= 0) return;
@@ -112,7 +113,18 @@ export const ProductCard = memo(function ProductCard({ p }: { p: Product }) {
     <>
       <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border/70 bg-white shadow-[0_5px_18px_-14px_rgba(20,83,45,.5)] transition-all duration-300 hover:-translate-y-0.5 hover:border-brand/25 hover:shadow-[0_12px_28px_-16px_rgba(20,83,45,.42)]">
         <button ref={imageRef} onClick={() => setOpen(true)} className="relative block aspect-square w-full overflow-hidden bg-muted text-left" aria-label={`${p.name} বিস্তারিত দেখুন`}>
-          <img src={toImg(img, { w: 500, q: 78 })} srcSet={imgSrcSet(img, [200, 400, 600])} sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 220px" alt={p.name} width={500} height={500} loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-500 ease-out group-hover:scale-[1.045]" />
+          <img
+            src={imageSrc}
+            srcSet={imageSrc === "/placeholder.svg" ? undefined : imgSrcSet(img, [200, 400, 600])}
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 220px"
+            alt=""
+            width={500}
+            height={500}
+            loading="lazy"
+            decoding="async"
+            onError={() => setImageSrc("/placeholder.svg")}
+            className="h-full w-full object-cover transition duration-500 ease-out group-hover:scale-[1.045]"
+          />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-black/10 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
           {discount > 0 && <span className="absolute left-1.5 top-1.5 inline-flex items-center gap-0.5 rounded-lg bg-destructive px-2 py-1 text-[10px] font-extrabold text-white shadow-sm sm:left-2 sm:top-2 sm:text-xs"><Sparkles className="h-3 w-3" /> -{discount}%</span>}
           {p.stock > 0 && p.stock <= 5 && <span className="absolute bottom-1.5 right-1.5 rounded-full bg-white/92 px-2 py-0.5 text-[9px] font-bold text-brand-dark shadow-sm backdrop-blur">শেষ {bnDigits(p.stock)} টি</span>}
