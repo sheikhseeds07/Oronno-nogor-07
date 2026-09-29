@@ -1,12 +1,13 @@
-// Browser-side rewrite: anonymous catalog reads go through the same-origin
-// Cloudflare-cached proxy (/api/public/pg) instead of hitting Supabase REST on
-// every page view. Logged-in staff traffic and every write stay untouched.
+// Browser-side rewrite: anonymous public reads go through the same-origin
+// Cloudflare-cached proxy instead of hitting Supabase REST on every page view.
+// Logged-in staff traffic and every write stay untouched.
 
 const PUBLIC_TABLES = new Set([
   "products",
   "categories",
   "banners",
   "site_settings",
+  "landing_pages",
   "reviews",
   "product_reviews",
   "blog_posts",
@@ -15,7 +16,6 @@ const PUBLIC_TABLES = new Set([
 ]);
 
 const PUBLIC_RPCS = new Set(["get_home_data_v1"]);
-
 const MAX_PROXY_URL_LENGTH = 1800;
 
 function pathIsPublic(pathname: string, method: string): boolean {
@@ -25,8 +25,6 @@ function pathIsPublic(pathname: string, method: string): boolean {
   return method === "GET" && PUBLIC_TABLES.has(head);
 }
 
-// Server-side (SSR / server function) equivalent: the same anonymous reads are
-// pulled through the Cloudflare edge cache instead of Supabase on every render.
 export function isPublicAnonRead(
   rawUrl: string,
   supabaseUrl: string,

@@ -1,29 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { resolveSupabaseUrl, resolveSupabasePublishableKey } from "@/integrations/supabase/public-env";
 
-// Edge-cached read proxy for anonymous public catalog data.
-//
-// Every visitor used to hit Supabase REST directly, so one product page view or
-// one landing page view cost real Supabase egress. Anonymous reads are identical
-// for everyone, so they are pulled once per TTL by the Cloudflare edge and then
-// served from cache. Supabase egress becomes a function of time, not traffic.
-
 const PUBLIC_TABLES = new Set([
   "products",
   "categories",
   "banners",
   "site_settings",
+  "landing_pages",
   "reviews",
   "product_reviews",
   "blog_posts",
   "faqs",
   "testimonials",
 ]);
-
 const PUBLIC_RPCS = new Set(["get_home_data_v1"]);
 
-// Home RPC contains frequently edited product price/popular fields.
-// Keep it cached briefly for egress protection without making admin changes stale for minutes.
+const PRODUCT_KV_TTL_SECONDS = 3600;
 const HOME_RPC_TTL_SECONDS = 10;
 const EDGE_TTL_SECONDS = 300;
 const STALE_SECONDS = 1800;
@@ -47,11 +39,19 @@ function isAllowed(path: string): boolean {
   return PUBLIC_TABLES.has(head);
 }
 
+function isProductRead(path: string, method: string): boolean {
+  return method === "GET" && path.startsWith("/rest/v1/products");
+}
+
 function noStore(body: string, status: number): Response {
   return new Response(body, {
     status,
     headers: { "Content-Type": "text/plain", "Cache-Control": "private, no-store" },
   });
+}
+
+function kvKey(path: string, method: string, body: string | null, accept: string, range: string) {
+  return ["supa:v1", method, path, body || "", accept, range].join("|");
 }
 
 export const Route = createFileRoute("/api/public/pg")({
@@ -68,6 +68,26 @@ export const Route = createFileRoute("/api/public/pg")({
 
         const accept = request.headers.get("Accept") || "application/json";
         const range = request.headers.get("Range") || "";
+        const key = kvKey(path, method, body, accept, range);
+        const kv = (globalThis as typeof globalThis & { __CF_ENV__?: { SUPA_CACHE?: { get(key: string, type?: "text"): Promise<string | null>; put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void> } } }).__CF_ENV__?.SUPA_CACHE;
+
+        if (kv && isProductRead(path, method)) {
+          try {
+            const hit = await kv.get(key, "text");
+            if (hit !== null) {
+              return new Response(hit, {
+                status: 200,
+                headers: {
+                  "Content-Type": "application/json",
+                  "Cache-Control": "public, max-age=60, s-maxage=3600",
+                  "X-Oronno-Pg-Cache": "KV-HIT",
+                },
+              });
+            }
+          } catch {
+            // KV failure falls back to edge cache/origin.
+          }
+        }
 
         const cacheKeyUrl = new URL(url.origin + "/api/public/pg");
         cacheKeyUrl.searchParams.set("path", path);
@@ -82,14 +102,14 @@ export const Route = createFileRoute("/api/public/pg")({
           const hit = await cache.match(cacheKey);
           if (hit) {
             const headers = new Headers(hit.headers);
-            headers.set("X-Oronno-Pg-Cache", "HIT");
+            headers.set("X-Oronno-Pg-Cache", "EDGE-HIT");
             return new Response(hit.body, { status: hit.status, headers });
           }
         }
 
         const supabaseUrl = resolveSupabaseUrl();
-        const key = resolveSupabasePublishableKey();
-        const headers = new Headers({ apikey: key, Accept: accept });
+        const supabaseKey = resolveSupabasePublishableKey();
+        const headers = new Headers({ apikey: supabaseKey, Accept: accept });
         if (range) headers.set("Range", range);
         if (method === "POST") headers.set("Content-Type", "application/json");
 
@@ -103,8 +123,18 @@ export const Route = createFileRoute("/api/public/pg")({
         const payload = await origin.text();
         if (!origin.ok) return noStore(payload, origin.status);
 
+        if (kv && isProductRead(path, method)) {
+          try {
+            await kv.put(key, payload, { expirationTtl: PRODUCT_KV_TTL_SECONDS });
+          } catch {
+            // KV write failure must not break catalog reads.
+          }
+        }
+
         const edgeTtl = path.includes("/rpc/get_home_data_v1") ? HOME_RPC_TTL_SECONDS : EDGE_TTL_SECONDS;
-        const policy = `public, max-age=${path.includes("/rpc/get_home_data_v1") ? 0 : BROWSER_TTL_SECONDS}, s-maxage=${edgeTtl}, stale-while-revalidate=${path.includes("/rpc/get_home_data_v1") ? 0 : STALE_SECONDS}`;
+        const browserTtl = path.includes("/rpc/get_home_data_v1") ? 0 : BROWSER_TTL_SECONDS;
+        const stale = path.includes("/rpc/get_home_data_v1") ? 0 : STALE_SECONDS;
+        const policy = `public, max-age=${browserTtl}, s-maxage=${edgeTtl}, stale-while-revalidate=${stale}`;
         const make = (state: string) => {
           const out = new Headers({
             "Content-Type": origin.headers.get("content-type") || "application/json",
@@ -120,12 +150,10 @@ export const Route = createFileRoute("/api/public/pg")({
 
         if (cache) {
           try {
-            await cache.put(cacheKey, make("HIT"));
-          } catch {
-            // cache failures must never break reads
-          }
+            await cache.put(cacheKey, make("EDGE-HIT"));
+          } catch {}
         }
-        return make("MISS");
+        return make(kv && isProductRead(path, method) ? "KV-MISS" : "EDGE-MISS");
       },
     },
   },
