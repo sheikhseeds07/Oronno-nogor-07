@@ -1,9 +1,9 @@
-// Supabase Storage → same-domain Cloudflare cache proxy.
-// Keep original database URLs/uploads unchanged. Public pages request one
-// canonical asset per image through /media, avoiding Supabase transform/srcset
-// variants that can multiply Cached Egress.
-
-const SUPABASE_STORAGE_HOSTS = new Set(["bvuhvzccziuniujeogng.supabase.co", "frtzlibogmethppqmhtr.supabase.co"]);
+const R2_PUBLIC_BASE = "https://images.sheikhseeds.com";
+const SUPABASE_STORAGE_HOSTS = new Set([
+  "bvuhvzccziuniujeogng.supabase.co",
+  "frtzlibogmethppqmhtr.supabase.co",
+  "yqhtenonavuzxzemaiyk.supabase.co",
+]);
 
 function unwrapMediaCache(url: string): string {
   try {
@@ -16,52 +16,44 @@ function unwrapMediaCache(url: string): string {
   return url;
 }
 
-function throughMediaCache(url: string): string {
-  const source = unwrapMediaCache(url);
+function legacySupabaseToR2(url: string): string | null {
   try {
-    const parsed = new URL(source);
-    if (
-      parsed.protocol === "https:" &&
-      SUPABASE_STORAGE_HOSTS.has(parsed.hostname) &&
-      parsed.pathname.startsWith("/storage/v1/")
-    ) {
-      return `/media?src=${encodeURIComponent(source)}`;
-    }
-  } catch {}
-  return url;
+    const parsed = new URL(url);
+    if (!SUPABASE_STORAGE_HOSTS.has(parsed.hostname)) return null;
+    const match = parsed.pathname.match(/^\/storage\/v1\/object\/(?:public|sign|authenticated)\/([^/]+)\/(.+)$/);
+    if (!match) return null;
+    const bucket = match[1];
+    const objectPath = match[2]
+      .split("/")
+      .map((part) => encodeURIComponent(decodeURIComponent(part)))
+      .join("/");
+    return `${R2_PUBLIC_BASE}/${encodeURIComponent(bucket)}/${objectPath}`;
+  } catch {
+    return null;
+  }
 }
 
 export function toImg(url: string | null | undefined, _opts: { w?: number; h?: number; q?: number } = {}): string {
   if (!url) return "";
-  if (url.startsWith("data:") || url.startsWith("blob:")) return url;
-  return throughMediaCache(url);
+  if (url.startsWith("data:") || url.startsWith("blob:") || url.startsWith("/placeholder")) return url;
+  const source = unwrapMediaCache(url);
+  return legacySupabaseToR2(source) || source;
 }
 
 export function imgSrcSet(url: string | null | undefined, widths: number[], _q = 75): string {
   if (!url || widths.length === 0) return "";
+  const source = toImg(url);
   const largest = Math.max(...widths);
-  return `${toImg(url)} ${largest}w`;
+  return source ? `${source} ${largest}w` : "";
 }
 
-// Normal loads stay on the fast cached /media path. After a real image error,
-// retry once through /media, then fall back to the original Storage object.
 export function imgFallback(e: { currentTarget: HTMLImageElement }, original: string | null | undefined) {
   const el = e.currentTarget;
-  if (!original) return;
-  const attempt = Number(el.dataset["imgRetry"] || "0");
-  if (attempt >= 2) return;
-  el.dataset["imgRetry"] = String(attempt + 1);
+  if (el.dataset["imgRetry"] === "1") return;
+  el.dataset["imgRetry"] = "1";
   el.removeAttribute("srcset");
-  const source = unwrapMediaCache(original);
-  const cached = throughMediaCache(source);
-  // Restored rows may already contain /media?src=... URLs. If the proxy path
-  // itself fails, the second retry must use the underlying signed/public
-  // Supabase URL rather than retrying the exact same /media URL again.
-  const retryUrl = attempt === 0 ? cached : source;
-  window.setTimeout(() => {
-    if (el.dataset["imgLoaded"] === "1") return;
-    el.src = retryUrl;
-  }, attempt === 0 ? 80 : 250);
+  const r2 = original ? toImg(original) : "";
+  el.src = r2 && el.src !== new URL(r2, window.location.origin).href ? r2 : "/placeholder.svg";
 }
 
 export function markImgLoaded(e: { currentTarget: HTMLImageElement }) {
