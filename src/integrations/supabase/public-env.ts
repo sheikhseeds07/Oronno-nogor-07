@@ -2,8 +2,8 @@
 // Hosts (Cloudflare/Vercel) often inject only the VITE_* variables, or nothing
 // at all, so we accept every common alias and finally fall back to the live
 // project ("Ek seed"). Publishable keys are safe to ship in code.
-export const LIVE_SUPABASE_URL = 'https://bvuhvzccziuniujeogng.supabase.co';
-export const LIVE_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_rapcUAgVGYdCuww7Q6GRNg__kFKVc17';
+export const LIVE_SUPABASE_URL = 'https://frtzlibogmethppqmhtr.supabase.co';
+export const LIVE_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_IwyqncvDdP4OF2UDNMlK9g_bn6Hu6n1';
 
 function readEnv(name: string): string | undefined {
   const fromProcess = typeof process !== 'undefined' ? process.env?.[name] : undefined;
