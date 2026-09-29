@@ -1,6 +1,6 @@
-// The shop's production data remains in its original project after this app was
-// moved to a new workspace. Keep this wrapper independent from workspace-injected
-// VITE_* values so a move cannot silently point the storefront at an empty DB.
+// The shop's production data now lives in the restored Supabase project.
+// Keep this wrapper independent from workspace-injected VITE_* values so a stale
+// deployment variable cannot silently point the storefront at a different DB.
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./db.types";
 
@@ -29,8 +29,8 @@ function createLiveClient(storageKey: string): TypedSupabaseClient {
   });
 }
 
-export const staffSupabase = createLiveClient("ss_staff_auth_v1");
-export const customerSupabase = createLiveClient("ss_customer_auth_v1");
+export const staffSupabase = createLiveClient("ss_staff_auth_frtzlibogmethppqmhtr_v1");
+export const customerSupabase = createLiveClient("ss_customer_auth_frtzlibogmethppqmhtr_v1");
 
 function activeClient() {
   if (typeof window === "undefined") return staffSupabase;
