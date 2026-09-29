@@ -216,8 +216,17 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
         },
       });
       landingIntentIdRef.current = intent.id;
+
+      // Place Order means the seed-only web order is created immediately.
+      // The NUTRIMIX popup is only an optional 2-minute upgrade window.
+      const created = await runFinalizeLandingIntent({
+        data: { intent_id: intent.id, include_nutrimix: false, emit_purchase: false },
+      });
+      orderCreatedRef.current = true;
       setNutrimix(p);
       setNutrimixOpen(true);
+      landingIntentIdRef.current = intent.id;
+      if (!created?.id) throw new Error("Order create failed");
     } catch (error) {
       landingInitiateCheckoutRef.current = false;
       notifyOrderError(error);
@@ -226,11 +235,8 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
 
   const placeWithNutrimix = async (include: boolean) => {
     setNutrimixOpen(false);
-    if (orderCreatedRef.current || orderInFlightRef.current) return;
-    if (!landingIntentIdRef.current) {
-      await openNutrimix();
-      return;
-    }
+    if (orderInFlightRef.current) return;
+    if (!landingIntentIdRef.current) return;
     orderInFlightRef.current = true;
     setSubmitting(true);
     try {
@@ -238,10 +244,10 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
         data: {
           intent_id: landingIntentIdRef.current,
           include_nutrimix: Boolean(include),
+          emit_purchase: true,
           ...getFbContext(),
         },
       });
-      orderCreatedRef.current = true;
       const purchaseItems = [{ id: current.product_id || `landing-offer:${page.id}:${selected || "unknown"}`, name: current.name, price: current.price, quantity: 1 }, ...(include && nutrimix ? [{ id: nutrimix.id, name: nutrimix.name, price: Number(nutrimix.sale_price ?? nutrimix.price), quantity: 1 }] : [])];
       const purchaseTotal = purchaseItems.reduce((sum, item) => sum + item.price * item.quantity, 0) + shipping;
       trackPurchase(purchaseItems, purchaseTotal, order.id);
