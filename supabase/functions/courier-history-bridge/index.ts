@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
 type CourierStat = { name: string; total: number; success: number; cancelled: number };
 type JsonRecord = Record<string, unknown>;
