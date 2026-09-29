@@ -2,6 +2,8 @@ name: Migrate Supabase Storage to R2
 
 on:
   workflow_dispatch:
+  repository_dispatch:
+    types: [run-r2-migration]
 
 concurrency:
   group: supabase-storage-to-r2
