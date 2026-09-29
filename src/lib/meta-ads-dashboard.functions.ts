@@ -98,10 +98,36 @@ export const getMetaAdsDashboard = createServerFn({ method: "POST" })
     const auth = `access_token=${encodeURIComponent(token)}`;
     const timeRange = encodeURIComponent(JSON.stringify({ since, until }));
 
-    const [accountJson, insightsJson] = await Promise.all([
-      graphJson(`${base}?fields=name,account_id,spend_cap,amount_spent,currency,account_status&${auth}`),
-      graphJson(`${base}/insights?fields=spend,actions,cost_per_action_type&time_range=${timeRange}&level=account&${auth}`),
-    ]);
+    let accountJson: any;
+    let insightsJson: any;
+    try {
+      [accountJson, insightsJson] = await Promise.all([
+        graphJson(`${base}?fields=name,account_id,spend_cap,amount_spent,currency,account_status&${auth}`),
+        graphJson(`${base}/insights?fields=spend,actions,cost_per_action_type&time_range=${timeRange}&level=account&${auth}`),
+      ]);
+    } catch (liveError) {
+      // Migration-safe fallback: the restored DB already contains successful
+      // Meta dashboard snapshots. Do not show "not connected" just because a
+      // live Graph request or an old Edge Function is temporarily unavailable.
+      const key = `meta_dashboard|${accountId}|${since}|${until}`;
+      const { data: cached } = await db
+        .from("meta_ads_cache")
+        .select("payload,fetched_at")
+        .eq("cache_key", key)
+        .maybeSingle();
+
+      if (cached?.payload?.connected) {
+        return {
+          ...cached.payload,
+          connected: true,
+          cached: true,
+          fetchedAt: cached.payload.fetchedAt || cached.fetched_at,
+          liveError: liveError instanceof Error ? liveError.message : "Meta live request unavailable",
+        };
+      }
+
+      throw liveError;
+    }
 
     const insight = insightsJson?.data?.[0] ?? {};
     const actions = Array.isArray(insight.actions) ? insight.actions : [];
