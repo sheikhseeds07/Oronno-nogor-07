@@ -161,12 +161,123 @@ Deno.serve(async (req) => {
     }
   }
 
+
+  let updatedOtherRows = 0;
+
+  async function migrateScalarField(table: string, field: string) {
+    const { data: rows, error } = await admin.from(table).select(`id,${field}`).not(field, "is", null);
+    if (error) {
+      failures.push({ key: `${table}.${field}`, error: error.message });
+      return;
+    }
+    for (const row of rows ?? []) {
+      const value = String((row as Record<string, unknown>)[field] ?? "");
+      if (!value) continue;
+      const result = await copyOne(value);
+      const next = result.url ?? value;
+      if (next !== value) {
+        const { error: updateError } = await admin.from(table).update({ [field]: next }).eq("id", (row as Record<string, unknown>).id);
+        if (updateError) failures.push({ key: `${table}:${String((row as Record<string, unknown>).id)}:${field}`, error: updateError.message });
+        else updatedOtherRows++;
+      }
+    }
+  }
+
+  async function migrateArrayField(table: string, field: string) {
+    const { data: rows, error } = await admin.from(table).select(`id,${field}`).not(field, "is", null);
+    if (error) {
+      failures.push({ key: `${table}.${field}`, error: error.message });
+      return;
+    }
+    for (const row of rows ?? []) {
+      const raw = (row as Record<string, unknown>)[field];
+      const values = Array.isArray(raw) ? raw.map(String) : [];
+      let changed = false;
+      const nextValues: string[] = [];
+      for (const value of values) {
+        const result = await copyOne(value);
+        const next = result.url ?? value;
+        nextValues.push(next);
+        if (next !== value) changed = true;
+      }
+      if (changed) {
+        const { error: updateError } = await admin.from(table).update({ [field]: nextValues }).eq("id", (row as Record<string, unknown>).id);
+        if (updateError) failures.push({ key: `${table}:${String((row as Record<string, unknown>).id)}:${field}`, error: updateError.message });
+        else updatedOtherRows++;
+      }
+    }
+  }
+
+  await migrateScalarField("banners", "image_url");
+  await migrateScalarField("landing_pages", "hero_image");
+  await migrateArrayField("landing_pages", "gallery_images");
+  await migrateScalarField("profiles", "avatar_url");
+  await migrateScalarField("customer_profiles", "avatar_url");
+  await migrateScalarField("customer_profiles", "cover_url");
+  await migrateArrayField("product_reviews", "image_urls");
+  await migrateScalarField("product_reviews", "author_avatar");
+  await migrateScalarField("product_questions", "author_avatar");
+
+  async function migrateJsonField(table: string, field: string) {
+    async function walk(value: unknown): Promise<{ value: unknown; changed: boolean }> {
+      if (typeof value === "string") {
+        const result = await copyOne(value);
+        const next = result.url ?? value;
+        return { value: next, changed: next !== value };
+      }
+      if (Array.isArray(value)) {
+        let changed = false;
+        const next: unknown[] = [];
+        for (const item of value) {
+          const r = await walk(item);
+          next.push(r.value);
+          if (r.changed) changed = true;
+        }
+        return { value: next, changed };
+      }
+      if (value && typeof value === "object") {
+        let changed = false;
+        const next: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+          const r = await walk(v);
+          next[k] = r.value;
+          if (r.changed) changed = true;
+        }
+        return { value: next, changed };
+      }
+      return { value, changed: false };
+    }
+
+    const { data: rows, error } = await admin.from(table).select(`id,${field}`).not(field, "is", null);
+    if (error) {
+      failures.push({ key: `${table}.${field}`, error: error.message });
+      return;
+    }
+    for (const row of rows ?? []) {
+      const original = (row as Record<string, unknown>)[field];
+      const migrated = await walk(original);
+      if (!migrated.changed) continue;
+      const { error: updateError } = await admin.from(table)
+        .update({ [field]: migrated.value })
+        .eq("id", (row as Record<string, unknown>).id);
+      if (updateError) failures.push({ key: `${table}:${String((row as Record<string, unknown>).id)}:${field}`, error: updateError.message });
+      else updatedOtherRows++;
+    }
+  }
+
+  for (const field of ["features","reviews","faq","addons","badges","seeds_list","planting_steps","why_choose_us"]) {
+    await migrateJsonField("landing_pages", field);
+  }
+  await migrateJsonField("site_settings", "settings");
+  await migrateJsonField("integrations", "config");
+
   return json({
     ok: failures.length === 0,
     copied_files: copiedFiles,
     reused_files: reusedFiles,
     updated_products: updatedProducts,
     updated_categories: updatedCategories,
+    updated_other_rows: updatedOtherRows,
     failed: failures.length,
     failures: failures.slice(0, 20),
   }, failures.length ? 207 : 200);
