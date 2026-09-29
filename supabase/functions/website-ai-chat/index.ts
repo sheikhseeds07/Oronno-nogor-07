@@ -9,8 +9,8 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const DEFAULT_MODEL = "gemini-flash-latest";
-const MODEL_FALLBACKS = [DEFAULT_MODEL, "gemini-3.5-flash", "gemini-flash-lite-latest"];
+const DEFAULT_MODEL = "gemini-3.5-flash-lite";
+const MODEL_FALLBACKS = [DEFAULT_MODEL, "gemini-3.8-flash", "gemini-3.5-flash"];
 const RETIRED = /^gemini-(1\.5|2\.0|2\.5)/;
 let cachedConfig: { apiKey: string; model: string; expiresAt: number } | null = null;
 
@@ -44,7 +44,7 @@ async function loadConfig() {
     // Fall back to edge secrets when the table is unavailable.
   }
   if (!model || RETIRED.test(model)) model = DEFAULT_MODEL;
-  cachedConfig = { apiKey, model, expiresAt: Date.now() + 60_000 };
+  cachedConfig = { apiKey, model, expiresAt: Date.now() + 5 * 60_000 };
   return cachedConfig;
 }
 
@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
           ...(payload.systemInstruction ? { systemInstruction: payload.systemInstruction } : {}),
           contents,
           ...(payload.tools ? { tools: payload.tools } : {}),
-          generationConfig: payload.generationConfig ?? { temperature: 0.45, maxOutputTokens: 600 },
+          generationConfig: payload.generationConfig ?? { maxOutputTokens: 320 },
         }),
       },
     );

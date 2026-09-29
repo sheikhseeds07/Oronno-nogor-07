@@ -1,17 +1,26 @@
 import { createFileRoute, useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { supabase } from "@/lib/personal-supabase/client";
-import { LegacyLandingPage } from "@/components/landing/LegacyLandingPage";
-import { CleanLandingPage } from "@/components/landing/CleanLandingPage";
-import { ProfessionalLandingPage } from "@/components/landing/ProfessionalLandingPage";
-import { ProductStyleLandingPage } from "@/components/landing/ProductStyleLandingPage";
-import { AllProductLandingPage } from "@/components/landing/AllProductLandingPage";
 import { mergeContent } from "@/lib/landing-content";
 import { landingBaseSlug } from "@/lib/landing-slug";
 import { toImg } from "@/lib/img";
 
 const LEGACY_SLUGS = new Set(["seeds-combo-24"]);
+
+const LazyLegacyLandingPage = lazy(() => import("@/components/landing/LegacyLandingPage").then((m) => ({ default: m.LegacyLandingPage })));
+const LazyCleanLandingPage = lazy(() => import("@/components/landing/CleanLandingPage").then((m) => ({ default: m.CleanLandingPage })));
+const LazyProfessionalLandingPage = lazy(() => import("@/components/landing/ProfessionalLandingPage").then((m) => ({ default: m.ProfessionalLandingPage })));
+const LazyProductStyleLandingPage = lazy(() => import("@/components/landing/ProductStyleLandingPage").then((m) => ({ default: m.ProductStyleLandingPage })));
+const LazyAllProductLandingPage = lazy(() => import("@/components/landing/AllProductLandingPage").then((m) => ({ default: m.AllProductLandingPage })));
+
+function LandingRouteFallback() {
+  return <div className="min-h-screen bg-[#f7f9f6]" aria-hidden="true" />;
+}
+
+function LandingTemplateBoundary({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<LandingRouteFallback />}>{children}</Suspense>;
+}
 
 // Every landing template reads the same row (`*, products(*)`). Fetch it once on
 // the server during SSR and seed every template cache key, so the visitor gets
@@ -22,7 +31,7 @@ const LANDING_CACHE_KEYS = ["landing", "landing-clean", "landing-all-product", "
 
 // Short server-side cache for anonymous landing-page SSR. A 10s TTL cuts repeated
 // identical reads during ad bursts while keeping admin edits visible quickly.
-const LANDING_SERVER_CACHE_TTL_MS = 10_000;
+const LANDING_SERVER_CACHE_TTL_MS = 60_000;
 type LandingServerCacheEntry = { expiresAt: number; page: unknown };
 const landingServerCache = new Map<string, LandingServerCacheEntry>();
 
@@ -182,20 +191,20 @@ function LandingPage() {
   const compact = COMPACT_SLUGS.has(behaviorSlug);
   // The route loader already seeded this key with server-fresh data, so no extra
   // browser round-trip is needed before the template renders.
-  const { data, isLoading } = useQuery({ enabled: !isLegacySlug && !isSeedCombo, staleTime:10_000, gcTime:60_000, queryKey:["landing-template",slug], queryFn:async() => (await supabase.from("landing_pages").select("planting_steps").eq("slug",slug).maybeSingle()).data ?? null });
+  const { data, isLoading } = useQuery({ enabled: !isLegacySlug && !isSeedCombo, staleTime:60_000, gcTime:5*60_000, queryKey:["landing-template",slug], queryFn:async() => (await supabase.from("landing_pages").select("planting_steps").eq("slug",slug).maybeSingle()).data ?? null });
   const popupBehaviorEnabled = isSeedCombo || behaviorSlug === "seeds-combo-24";
   const resolvedTemplate = mergeContent(data?.planting_steps).template as string;
   const karalaStyle = isKaralaStyle(slug) || resolvedTemplate === "all-product";
   const hideHeader = karalaStyle || compact;
   const hideReviews = isSeedCombo || karalaStyle || compact;
-  if (isLegacySlug) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} compact={compact} /><LegacyLandingPage slug={slug} /></>;
-  if (isSeedCombo) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader compact={compact} /><CleanLandingPage slug={slug} /></>;
+  if (isLegacySlug) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} compact={compact} /><LandingTemplateBoundary><LazyLegacyLandingPage slug={slug} /></LandingTemplateBoundary></>;
+  if (isSeedCombo) return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader compact={compact} /><LandingTemplateBoundary><LazyCleanLandingPage slug={slug} /></LandingTemplateBoundary></>;
   const template = resolvedTemplate;
-  if (template === "all-product") return <><LandingPopupBehavior enabled={false} hideHeader hideFooter /><AllProductLandingPage slug={slug} /></>;
-  if (template === "product") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} hideFooter={karalaStyle} compact={compact} /><ProductStyleLandingPage slug={slug} karala={karalaStyle} /></>;
-  if (template === "premium") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><ProfessionalLandingPage slug={slug} variant="premium" /></>;
-  if (template === "modern") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><ProfessionalLandingPage slug={slug} variant="modern" /></>;
+  if (template === "all-product") return <><LandingPopupBehavior enabled={false} hideHeader hideFooter /><LandingTemplateBoundary><LazyAllProductLandingPage slug={slug} /></LandingTemplateBoundary></>;
+  if (template === "product") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} hideFooter={karalaStyle} compact={compact} /><LandingTemplateBoundary><LazyProductStyleLandingPage slug={slug} karala={karalaStyle} /></LandingTemplateBoundary></>;
+  if (template === "premium") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><LandingTemplateBoundary><LazyProfessionalLandingPage slug={slug} variant="premium" /></LandingTemplateBoundary></>;
+  if (template === "modern") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><LandingTemplateBoundary><LazyProfessionalLandingPage slug={slug} variant="modern" /></LandingTemplateBoundary></>;
   if (isLoading && !data) return <div className="min-h-screen bg-[#f7f9f6]" aria-hidden="true" />;
-  if (template === "all") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><LegacyLandingPage slug={slug} /></>;
-  return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><CleanLandingPage slug={slug} /></>;
+  if (template === "all") return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><LandingTemplateBoundary><LazyLegacyLandingPage slug={slug} /></LandingTemplateBoundary></>;
+  return <><LandingPopupBehavior enabled={popupBehaviorEnabled} hideReviews={hideReviews} hideHeader={hideHeader} compact={compact} /><LandingTemplateBoundary><LazyCleanLandingPage slug={slug} /></LandingTemplateBoundary></>;
 }

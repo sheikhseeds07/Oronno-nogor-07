@@ -47,11 +47,11 @@ const homeQueryOptions = queryOptions({
   enabled: typeof window !== "undefined",
   placeholderData: getCachedHomeData,
   // Product price/popular status should refresh immediately after admin changes.
-  staleTime: 0,
+  staleTime: 60_000,
   gcTime: 30 * 60_000,
   retry: 1,
-  refetchOnMount: true,
-  refetchOnWindowFocus: true,
+  refetchOnMount: false,
+  refetchOnWindowFocus: false,
   refetchOnReconnect: true,
 });
 
@@ -174,7 +174,7 @@ function Home() {
                   <Link key={`${category.id}-${index}`} to="/category/$slug" params={{ slug: category.slug }} className="group w-[104px] shrink-0 rounded-xl border border-border/60 bg-card p-1.5 text-center shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-md sm:w-[132px] sm:rounded-2xl sm:p-2">
                     <div className="mb-1.5 aspect-square overflow-hidden rounded-lg bg-brand-light/30 ring-1 ring-black/5 sm:mb-2 sm:rounded-xl">
                       {category.image_url ? (
-                        <img src={toImg(category.image_url, { w: 264, q: 75 })} srcSet={imgSrcSet(category.image_url, [132, 198, 264])} sizes="(max-width: 640px) 104px, 132px" alt={category.name} width={132} height={132} loading="eager" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        <img src={toImg(category.image_url, { w: 264, q: 75 })} srcSet={imgSrcSet(category.image_url, [132, 198, 264])} sizes="(max-width: 640px) 104px, 132px" alt={category.name} width={132} height={132} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-2xl sm:text-3xl">🌱</div>
                       )}

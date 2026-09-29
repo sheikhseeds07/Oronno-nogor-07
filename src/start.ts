@@ -5,6 +5,7 @@ import { attachSupabaseAuth } from "@/lib/personal-supabase/auth-attacher";
 
 const NO_STORE = "private, no-store";
 const PUBLIC_CACHE = "public, max-age=60, s-maxage=300, stale-while-revalidate=600";
+const LANDING_CACHE = "public, max-age=15, s-maxage=60, stale-while-revalidate=300, stale-if-error=86400";
 
 const errorMiddleware = createMiddleware().server(async ({ next }) => {
   try {
@@ -56,14 +57,14 @@ const dynamicCacheMiddleware = createMiddleware().server(async ({ request, next 
       pathname.startsWith("/product/") ||
       pathname.startsWith("/category/"));
 
-  // Landing pages are edited from the admin and must reflect database changes
-  // immediately. Keep the other public pages on the existing edge cache policy.
+  // Landing pages get a short edge TTL: ad traffic is served from Cloudflare,
+  // while admin edits still propagate within about a minute.
   const isLandingPage = method === "GET" && pathname.startsWith("/landing/");
 
-  if (isLandingPage) {
-    result.response.headers.set("Cache-Control", NO_STORE);
-    result.response.headers.set("CDN-Cache-Control", NO_STORE);
-    result.response.headers.set("Cloudflare-CDN-Cache-Control", NO_STORE);
+  if (isLandingPage && !hasAuth && !hasSessionCookie) {
+    result.response.headers.set("Cache-Control", LANDING_CACHE);
+    result.response.headers.set("CDN-Cache-Control", LANDING_CACHE);
+    result.response.headers.set("Cloudflare-CDN-Cache-Control", LANDING_CACHE);
   } else if (isPublicPage && !hasAuth && !hasSessionCookie) {
     result.response.headers.set("Cache-Control", PUBLIC_CACHE);
     result.response.headers.set("CDN-Cache-Control", PUBLIC_CACHE);

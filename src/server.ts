@@ -25,9 +25,6 @@ function isPublicCacheablePage(request: Request): boolean {
   const path = url.pathname;
   if (
     path.startsWith("/admin") ||
-    // Landing pages are edited from the admin panel and must go live instantly,
-    // so they are never cached at the edge.
-    path.startsWith("/landing/") ||
     path.startsWith("/api/") ||
     path === "/checkout" ||
     path === "/cart" ||
@@ -54,10 +51,21 @@ function addPublicEdgeCacheHeaders(request: Request, response: Response): Respon
   if (!contentType.includes("text/html")) return response;
 
   const headers = new Headers(response.headers);
-  // Public SSR pages can tolerate a short freshness window. Cloudflare can
-  // serve stale content while revalidating, keeping repeat visits off origin.
-  headers.set("Cache-Control", "public, max-age=60, stale-while-revalidate=300, stale-if-error=86400");
-  headers.set("Cloudflare-CDN-Cache-Control", "max-age=300, stale-while-revalidate=3600, stale-if-error=86400");
+  // Landing pages receive ad bursts, so cache them briefly at the edge instead
+  // of re-rendering and re-reading Postgres on every click.
+  const isLanding = new URL(request.url).pathname.startsWith("/landing/");
+  headers.set(
+    "Cache-Control",
+    isLanding
+      ? "public, max-age=15, stale-while-revalidate=120, stale-if-error=86400"
+      : "public, max-age=60, stale-while-revalidate=300, stale-if-error=86400",
+  );
+  headers.set(
+    "Cloudflare-CDN-Cache-Control",
+    isLanding
+      ? "max-age=60, stale-while-revalidate=300, stale-if-error=86400"
+      : "max-age=300, stale-while-revalidate=3600, stale-if-error=86400",
+  );
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 

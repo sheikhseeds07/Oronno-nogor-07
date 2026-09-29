@@ -1,16 +1,17 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { TopBar } from "./TopBar";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
 import { VisitTracker } from "./VisitTracker";
 import { SeoFromSettings } from "./SeoFromSettings";
-import { CustomerBottomNav } from "./CustomerBottomNav";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/personal-supabase/client";
 import { taka } from "@/lib/format";
 import { format } from "date-fns";
 import { CheckCircle2, Clock3, MapPin, Package, Phone, Truck, X } from "lucide-react";
 import { BrandLoader } from "./BrandLoader";
+
+const CustomerBottomNav = lazy(() => import("./CustomerBottomNav").then((m) => ({ default: m.CustomerBottomNav })));
 
 const statusBn: Record<string, string> = { pending: "অপেক্ষমাণ", confirmed: "কনফার্মড", processing: "প্রস্তুত হচ্ছে", shipped: "ডেলিভারিতে", delivered: "ডেলিভারি সম্পন্ন", cancelled: "বাতিল", web_pending: "অপেক্ষমাণ", rts: "RTS", pending_return: "রিটার্ন প্রসেস", returned: "রিটার্ন সম্পন্ন", partial: "আংশিক ডেলিভারি", hold: "হোল্ড" };
 const steps = ["pending", "confirmed", "processing", "shipped", "delivered"];
@@ -85,7 +86,7 @@ export function SiteLayout({ children }: Props) {
       {!isCleanShell && <Footer />}
       <VisitTracker />
       <SeoFromSettings />
-      {!isOdcLanding && !isKaralaLanding && <CustomerBottomNav hidden={isCart || isCheckout} />}
+      {!isOdcLanding && !isKaralaLanding && <Suspense fallback={null}><CustomerBottomNav hidden={isCart || isCheckout} /></Suspense>}
 
       {isProfile && selectedOrderId && <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm animate-in fade-in duration-200 sm:items-center sm:p-4" onMouseDown={e => { if (e.target === e.currentTarget) setSelectedOrderId(null); }}>
         <div className="relative max-h-[92vh] w-full max-w-2xl overflow-hidden rounded-t-[28px] border border-white/20 bg-background shadow-[0_30px_100px_rgba(0,0,0,.35)] animate-in slide-in-from-bottom-8 duration-300 sm:rounded-[28px] sm:slide-in-from-bottom-3">
