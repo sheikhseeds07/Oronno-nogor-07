@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 import { getDeliveryInfo, normalizeDeliveryRules, type DeliveryRule } from "@/lib/delivery-rules";
-import { resolveSupabasePublishableKey, resolveSupabaseUrl } from "@/integrations/supabase/public-env";
+import { LIVE_SUPABASE_PUBLISHABLE_KEY, LIVE_SUPABASE_URL } from "@/integrations/supabase/public-env";
 import { getRequestIP } from "@tanstack/react-start/server";
 
 const DEFAULT_MODEL = "gemini-flash-latest";
@@ -24,15 +24,17 @@ async function getConfig() {
 }
 
 function aiEndpoint() {
-  const url = resolveSupabaseUrl().replace(/\/$/, "");
-  return `${url}/functions/v1/website-ai-chat`;
+  // Website AI is configured in the canonical production Supabase project.
+  // Do not use host-level SUPABASE_URL overrides here: stale Cloudflare env
+  // values can point this chat at a paused/old project and surface 530 errors.
+  return `${LIVE_SUPABASE_URL.replace(/\/$/, "")}/functions/v1/website-ai-chat`;
 }
 
 async function callGemini(body: Record<string, unknown>) {
-  const key = resolveSupabasePublishableKey();
+  const key = LIVE_SUPABASE_PUBLISHABLE_KEY;
   const response = await fetch(aiEndpoint(), {
     method: "POST",
-    headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` },
+    headers: { "Content-Type": "application/json", apikey: key },
     body: JSON.stringify(body),
   });
   const json: any = await response.json().catch(() => null);
