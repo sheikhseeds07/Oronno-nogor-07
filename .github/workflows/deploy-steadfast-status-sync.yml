@@ -1,0 +1,22 @@
+name: Deploy Steadfast status sync
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/steadfast-status-sync/**"
+      - ".github/workflows/deploy-steadfast-status-sync.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Deploy Steadfast status sync
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SHEIKH }}
+        run: supabase functions deploy steadfast-status-sync --project-ref bvuhvzccziuniujeogng
