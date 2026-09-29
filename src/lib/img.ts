@@ -5,15 +5,27 @@
 
 const SUPABASE_STORAGE_HOSTS = new Set(["bvuhvzccziuniujeogng.supabase.co", "frtzlibogmethppqmhtr.supabase.co"]);
 
-function throughMediaCache(url: string): string {
+function unwrapMediaCache(url: string): string {
   try {
-    const parsed = new URL(url);
+    const parsed = new URL(url, "https://sheikhseeds.com");
+    if (parsed.pathname === "/media") {
+      const src = parsed.searchParams.get("src");
+      if (src) return src;
+    }
+  } catch {}
+  return url;
+}
+
+function throughMediaCache(url: string): string {
+  const source = unwrapMediaCache(url);
+  try {
+    const parsed = new URL(source);
     if (
       parsed.protocol === "https:" &&
       SUPABASE_STORAGE_HOSTS.has(parsed.hostname) &&
       parsed.pathname.startsWith("/storage/v1/")
     ) {
-      return `/media?src=${encodeURIComponent(url)}`;
+      return `/media?src=${encodeURIComponent(source)}`;
     }
   } catch {}
   return url;
@@ -40,8 +52,12 @@ export function imgFallback(e: { currentTarget: HTMLImageElement }, original: st
   if (attempt >= 2) return;
   el.dataset["imgRetry"] = String(attempt + 1);
   el.removeAttribute("srcset");
-  const cached = throughMediaCache(original);
-  const retryUrl = attempt === 0 ? cached : original;
+  const source = unwrapMediaCache(original);
+  const cached = throughMediaCache(source);
+  // Restored rows may already contain /media?src=... URLs. If the proxy path
+  // itself fails, the second retry must use the underlying signed/public
+  // Supabase URL rather than retrying the exact same /media URL again.
+  const retryUrl = attempt === 0 ? cached : source;
   window.setTimeout(() => {
     if (el.dataset["imgLoaded"] === "1") return;
     el.src = retryUrl;
