@@ -12,6 +12,12 @@
     "binding": "ASSETS",
     "run_worker_first": ["/admin/*", "/api/*", "/media"]
   },
+  "r2_buckets": [
+    {
+      "binding": "MEDIA_BUCKET",
+      "bucket_name": "oronnonogor-media"
+    }
+  ],
   "observability": {
     "enabled": true
   }
