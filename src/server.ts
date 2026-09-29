@@ -97,6 +97,9 @@ function isH3SwallowedErrorBody(body: string): boolean {
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    // Make Cloudflare bindings available to TanStack Start route handlers.
+    // The Worker runtime supplies R2 bindings on the env object.
+    (globalThis as typeof globalThis & { __ORONNO_CF_ENV?: unknown }).__ORONNO_CF_ENV = env;
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
