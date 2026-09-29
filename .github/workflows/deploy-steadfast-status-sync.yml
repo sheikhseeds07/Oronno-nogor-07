@@ -19,4 +19,4 @@ jobs:
       - name: Deploy Steadfast status sync
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SHEIKH }}
-        run: supabase functions deploy steadfast-status-sync --project-ref bvuhvzccziuniujeogng
+        run: supabase functions deploy steadfast-status-sync --project-ref frtzlibogmethppqmhtr
