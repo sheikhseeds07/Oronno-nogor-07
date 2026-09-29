@@ -194,17 +194,29 @@ async function pullOrigin(
         : undefined } as RequestInit),
     };
 
-    let origin = await fetch(source.toString(), requestInit);
-
-    // Cloudflare image transformation can occasionally fail under bursty
-    // traffic even when the underlying Supabase object is healthy. Do one
-    // plain-origin retry for transient edge/origin errors so one bad transform
-    // response cannot make a different seed image disappear on each refresh.
-    if (publicAsset && [408, 429, 500, 502, 503, 504].includes(origin.status)) {
-      origin = await fetch(source.toString(), {
+    const plainOriginFetch = () =>
+      fetch(source.toString(), {
         method: "GET",
         headers: { Accept: request.headers.get("Accept") || "image/*,*/*;q=0.8" },
       });
+
+    let origin: Response;
+    try {
+      origin = await fetch(source.toString(), requestInit);
+    } catch (error) {
+      // Image Resizing is optional on Cloudflare. If the transform layer is
+      // unavailable on this zone/plan, fetch the signed Storage object directly
+      // and let the same-domain cache absorb subsequent traffic.
+      if (!publicAsset) throw error;
+      origin = await plainOriginFetch();
+    }
+
+    // Never let an image-transform/Cf feature error hide a healthy Supabase
+    // object. Retry the original signed URL for *any* non-success response.
+    // The successful bytes are still cached below, so this does not turn every
+    // storefront view into Supabase egress.
+    if (publicAsset && !origin.ok) {
+      origin = await plainOriginFetch();
     }
 
     return {
