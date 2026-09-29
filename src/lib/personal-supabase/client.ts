@@ -1,13 +1,29 @@
-// The shop's production data remains in its original project after this app was
-// moved to a new workspace. Keep this wrapper independent from workspace-injected
-// VITE_* values so a move cannot silently point the storefront at an empty DB.
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./db.types";
 
 export type TypedSupabaseClient = SupabaseClient<Database>;
 
-export const LIVE_DATABASE_URL = "https://bvuhvzccziuniujeogng.supabase.co";
-export const LIVE_DATABASE_KEY = "sb_publishable_rapcUAgVGYdCuww7Q6GRNg__kFKVc17";
+function envValue(...names: string[]) {
+  for (const name of names) {
+    const meta = (import.meta as unknown as { env?: Record<string, string> }).env?.[name];
+    const proc = typeof process !== "undefined" ? process.env?.[name] : undefined;
+    if (meta) return meta;
+    if (proc) return proc;
+  }
+  return undefined;
+}
+
+export const LIVE_DATABASE_URL = envValue("VITE_SUPABASE_URL", "SUPABASE_URL")?.replace(/\/$/, "") || "";
+export const LIVE_DATABASE_KEY = envValue(
+  "VITE_SUPABASE_PUBLISHABLE_KEY",
+  "SUPABASE_PUBLISHABLE_KEY",
+  "VITE_SUPABASE_ANON_KEY",
+  "SUPABASE_ANON_KEY",
+) || "";
+
+if (!LIVE_DATABASE_URL || !LIVE_DATABASE_KEY) {
+  throw new Error("Supabase URL/publishable key is not configured");
+}
 
 function liveFetch(input: RequestInfo | URL, init?: RequestInit) {
   const headers = new Headers(input instanceof Request ? input.headers : undefined);
@@ -35,9 +51,7 @@ export const customerSupabase = createLiveClient("ss_customer_auth_v1");
 function activeClient() {
   if (typeof window === "undefined") return staffSupabase;
   const path = window.location.pathname;
-  return path === "/login" || path === "/admin" || path.startsWith("/admin/")
-    ? staffSupabase
-    : customerSupabase;
+  return path === "/login" || path === "/admin" || path.startsWith("/admin/") ? staffSupabase : customerSupabase;
 }
 
 export const supabase = new Proxy({} as TypedSupabaseClient, {

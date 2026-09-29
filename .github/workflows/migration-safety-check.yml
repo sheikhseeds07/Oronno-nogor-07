@@ -1,0 +1,24 @@
+name: Migration safety check
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-cutover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.15
+      - run: bun install --frozen-lockfile
+      - name: Compare old and new Supabase counts
+        env:
+          OLD_SUPABASE_URL: ${{ secrets.OLD_SUPABASE_URL }}
+          OLD_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.OLD_SUPABASE_SERVICE_ROLE_KEY }}
+          NEW_SUPABASE_URL: ${{ secrets.NEW_SUPABASE_URL }}
+          NEW_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.NEW_SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/verify-migration.mjs
