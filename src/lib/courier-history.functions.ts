@@ -153,7 +153,7 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
       // A newly-created order may use a phone number whose courier history was cached earlier.
       // Refresh once for that new order, then subsequent page refreshes reuse the saved result.
       const needsFirstLoadForOrder = Boolean(orderCreatedAtMs && (!beforeInvoke || !Number.isFinite(beforeInvoke.fetchedAtMs) || beforeInvoke.fetchedAtMs < orderCreatedAtMs));
-      if (beforeInvoke?.result.configured && !beforeInvoke.result.error && !needsFirstLoadForOrder) {
+      if (beforeInvoke?.fresh && beforeInvoke.result.configured && !beforeInvoke.result.error && !needsFirstLoadForOrder) {
         return beforeInvoke.result;
       }
 
