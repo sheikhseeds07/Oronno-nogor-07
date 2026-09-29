@@ -19,7 +19,7 @@ jobs:
       - name: Apply migration
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SHEIKH }}
-          PROJECT_REF: bvuhvzccziuniujeogng
+          PROJECT_REF: frtzlibogmethppqmhtr
         run: |
           python3 - <<'PYCODE'
           import json, os, urllib.request
