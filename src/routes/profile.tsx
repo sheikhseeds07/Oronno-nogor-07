@@ -5,7 +5,7 @@ import { Camera, ImagePlus, Loader2, Pencil, Save, X, ShoppingBag, Star, Message
 import { BrandLoader } from "@/components/layout/BrandLoader";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { useAuth } from "@/lib/auth";
-import { supabase } from "@/lib/personal-supabase/client";
+import { supabase } from "@/lib/personal-supabase/client";\nimport { uploadToBucket, safeFileName } from "@/lib/storage-upload";
 import { taka } from "@/lib/format";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -94,11 +94,13 @@ function Profile() {
     if (!file.type.startsWith("image/")) return toast.error("শুধু ছবি আপলোড করুন");
     if (file.size > 5 * 1024 * 1024) return toast.error("ছবির সাইজ সর্বোচ্চ ৫MB হতে পারবে");
     const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    const path = `${user.id}/${kind}-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("customer-profiles").upload(path, file, { upsert: true, contentType: file.type });
-    if (error) return toast.error(error.message);
-    const { data } = supabase.storage.from("customer-profiles").getPublicUrl(path);
-    if (kind === "avatar") setAvatar(data.publicUrl); else setCover(data.publicUrl);
+    const path = `${user.id}/${kind}-${safeFileName(file.name || `profile.${ext}`)}`;
+    try {
+      const publicUrl = await uploadToBucket("customer-profiles", path, file, { upsert: true });
+      if (kind === "avatar") setAvatar(publicUrl); else setCover(publicUrl);
+    } catch (error) {
+      return toast.error(error instanceof Error ? error.message : "ছবি আপলোড হয়নি");
+    }
   };
 
   const saveProfile = async () => {
