@@ -1,0 +1,31 @@
+name: Migrate Supabase Storage to R2
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: supabase-storage-to-r2
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Migrate all Supabase media buckets to R2
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN_R2 }}
+          CLOUDFLARE_ACCOUNT_ID: a91d9451c87479d4d01d2d2add2530f5
+          SUPABASE_URL: https://frtzlibogmethppqmhtr.supabase.co
+        run: node scripts/migrate-supabase-storage-to-r2.mjs
