@@ -23,6 +23,7 @@ const LandingIntentInputSchema = z.object({
 const LandingFinalizeInputSchema = z.object({
   intent_id: z.string().uuid(),
   include_nutrimix: z.boolean().default(false),
+  emit_purchase: z.boolean().default(true),
   fbp: z.string().max(200).optional().nullable(),
   fbc: z.string().max(500).optional().nullable(),
   source_url: z.string().max(2000).optional().nullable(),
@@ -82,7 +83,7 @@ export const finalizeLandingCheckoutIntent = createServerFn({ method: "POST" }).
   }
   if (!orderId || typeof orderId !== "string") throw new Error("Order create failed");
 
-  try {
+  if (data.emit_purchase) try {
     const [{ data: order }, { data: rows }] = await Promise.all([
       supabaseAdmin.from("orders").select("customer_phone,customer_name,total,client_ip").eq("id", orderId).maybeSingle(),
       supabaseAdmin.from("order_items").select("product_id,quantity,price").eq("order_id", orderId),
