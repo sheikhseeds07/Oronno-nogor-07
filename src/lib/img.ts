@@ -3,14 +3,14 @@
 // canonical asset per image through /media, avoiding Supabase transform/srcset
 // variants that can multiply Cached Egress.
 
-const SUPABASE_STORAGE_HOST = "bvuhvzccziuniujeogng.supabase.co";
+const SUPABASE_STORAGE_HOSTS = new Set(["bvuhvzccziuniujeogng.supabase.co", "frtzlibogmethppqmhtr.supabase.co"]);
 
 function throughMediaCache(url: string): string {
   try {
     const parsed = new URL(url);
     if (
       parsed.protocol === "https:" &&
-      parsed.hostname === SUPABASE_STORAGE_HOST &&
+      SUPABASE_STORAGE_HOSTS.has(parsed.hostname) &&
       parsed.pathname.startsWith("/storage/v1/")
     ) {
       return `/media?src=${encodeURIComponent(url)}`;
