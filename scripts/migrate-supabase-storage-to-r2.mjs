@@ -40,7 +40,7 @@ async function listObjects(offset) {
 }
 
 async function downloadObject(bucket, name) {
-  const url = `${SUPABASE_URL}/storage/v1/object/${encodeURIComponent(bucket)}/${name.split("/").map(encodeURIComponent).join("/")}`;
+  const bucketUrl = `${SUPABASE_URL}/storage/v1/object/${bucket === "community-media" || bucket === "customer-profiles" || bucket === "review-images" ? "public" : "authenticated"}/${encodeURIComponent(bucket)}`;\n  const url = `${bucketUrl}/${name.split("/").map(encodeURIComponent).join("/")}`;
   const res = await fetch(url, {
     headers: {
       apikey: SUPABASE_SERVICE_ROLE_KEY,
