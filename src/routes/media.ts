@@ -290,10 +290,12 @@ export const Route = createFileRoute("/media")({
         const publicAsset = PUBLIC_MEDIA_BUCKETS.has(asset.bucket);
         const variant = getVariant(request);
 
-        // Non-public/user-specific Storage assets remain functional but never
-        // become publicly cacheable through /media.
+        // Private/user-specific assets are also migrated to R2 when present.
+        // They remain no-store at the HTTP layer, so moving their origin does
+        // not change their existing privacy/cache semantics.
         if (!publicAsset) {
-          const origin = await pullOrigin(source, "", request, false, variant);
+          const r2Origin = await pullR2(asset);
+          const origin = r2Origin ?? await pullOrigin(source, "", request, false, variant);
           return noStoreResponse(origin.body.slice(0), origin.status, origin.statusText, origin.headers);
         }
 
