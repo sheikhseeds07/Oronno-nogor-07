@@ -19,7 +19,7 @@ select cron.schedule(
   '*/2 * * * *',
   $$
     select net.http_post(
-      url := 'https://bvuhvzccziuniujeogng.supabase.co/functions/v1/steadfast-status-sync',
+      url := 'https://frtzlibogmethppqmhtr.supabase.co/functions/v1/steadfast-status-sync',
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
         'x-courier-sync-secret', (select secret from public.system_job_secrets where name = 'steadfast_status_sync')
