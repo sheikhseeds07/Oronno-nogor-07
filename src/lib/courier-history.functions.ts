@@ -20,6 +20,7 @@ type CourierHistoryResult = {
   error: string | null;
   stale?: boolean;
   source?: string;
+  steadfast?: SteadfastScore;
 };
 
 type CacheEntry = { expiresAt: number; result: CourierHistoryResult };
@@ -128,42 +129,49 @@ function aggregateOverall(stats: CourierStat[]): CourierOverall {
 }
 
 
-// Hoorin (and Steadfast's public fraud_check) stopped returning Steadfast parcel
-// counts on 27 Sep 2026. Fill the Steadfast row from our own orders, whose
-// statuses are synced live from Steadfast — real delivered/cancelled counts.
-const localSteadfastCache = new Map<string, { expiresAt: number; stat: CourierStat | null }>();
-async function localSteadfastStat(phone: string): Promise<CourierStat | null> {
-  const last10 = phone.slice(-10);
-  if (last10.length < 10) return null;
-  const hit = localSteadfastCache.get(last10);
-  if (hit && hit.expiresAt > Date.now()) return hit.stat;
+// Hoorin first. Since 27 Sep 2026 Steadfast no longer exposes parcel counts
+// (Hoorin returns 0 for Steadfast). When that happens, ask Steadfast's own
+// fraud_check/score API for the customer's network-wide delivery ratio.
+export type SteadfastScore = { deliveryRatio: number; cancellationRatio: number; volumeBand: string | null };
+const steadfastScoreCache = new Map<string, { expiresAt: number; score: SteadfastScore | null }>();
+async function steadfastScore(phone: string): Promise<SteadfastScore | null> {
+  const p = phone.slice(-11);
+  if (p.length < 11) return null;
+  const hit = steadfastScoreCache.get(p);
+  if (hit && hit.expiresAt > Date.now()) return hit.score;
   const admin = supabaseAdmin as any;
-  const { data, error } = await admin
-    .from("orders")
-    .select("status")
-    .like("customer_phone", `%${last10}`)
-    .not("courier_consignment", "is", null)
-    .limit(500);
-  if (error) return null;
-  let success = 0, cancelled = 0;
-  for (const row of (data ?? []) as { status: string }[]) {
-    if (row.status === "delivered" || row.status === "partial") success++;
-    else if (row.status === "cancelled" || row.status === "returned" || row.status === "rts") cancelled++;
+  const { data } = await admin.from("integrations").select("config,is_active")
+    .in("name", ["all_api_steadfast", "all_api_steadfast_2"]);
+  let score: SteadfastScore | null = null;
+  for (const row of (data ?? []) as { config: Record<string, unknown>; is_active: boolean }[]) {
+    const ak = String(row.config?.api_key ?? "").trim();
+    const sk = String(row.config?.secret_key ?? "").trim();
+    if (!row.is_active || !ak || !sk) continue;
+    try {
+      const res = await fetch(`https://portal.packzy.com/api/v1/fraud_check/score/${p}`, {
+        headers: { "Api-Key": ak, "Secret-Key": sk, Accept: "application/json" },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) continue;
+      const j = (await res.json()) as Record<string, unknown>;
+      const band = typeof j.volume_band === "string" ? j.volume_band : null;
+      if (band && band !== "none" && Number.isFinite(Number(j.delivery_ratio))) {
+        score = { deliveryRatio: Number(j.delivery_ratio), cancellationRatio: num(j.cancellation_ratio), volumeBand: band };
+      }
+      break;
+    } catch { /* try next account */ }
   }
-  const stat = success + cancelled > 0 ? { name: "Steadfast", total: success + cancelled, success, cancelled } : null;
-  localSteadfastCache.set(last10, { expiresAt: Date.now() + 5 * 60_000, stat });
-  if (localSteadfastCache.size > 3000) localSteadfastCache.delete(localSteadfastCache.keys().next().value as string);
-  return stat;
+  steadfastScoreCache.set(p, { expiresAt: Date.now() + (score ? 6 * 60 * 60_000 : 30 * 60_000), score });
+  if (steadfastScoreCache.size > 3000) steadfastScoreCache.delete(steadfastScoreCache.keys().next().value as string);
+  return score;
 }
 
-async function withLocalSteadfast(phone: string, result: CourierHistoryResult): Promise<CourierHistoryResult> {
-  if (!result.configured) return result;
+async function withSteadfast(phone: string, result: CourierHistoryResult): Promise<CourierHistoryResult> {
+  if (!result.configured || result.steadfast) return result;
   const existing = result.stats.find((s) => s.name.toLowerCase() === "steadfast");
   if (existing && existing.total > 0) return result;
-  const local = await localSteadfastStat(phone).catch(() => null);
-  if (!local) return result;
-  const stats = [...result.stats.filter((s) => s.name.toLowerCase() !== "steadfast"), local].sort((a, b) => b.total - a.total);
-  return { ...result, stats, overall: aggregateOverall(stats) };
+  const score = await steadfastScore(phone).catch(() => null);
+  return score ? { ...result, steadfast: score } : result;
 }
 
 async function readPersistentCache(phone: string): Promise<PersistentHit | null> {
@@ -228,9 +236,9 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
       if (persistent?.result.configured && !persistent.result.error) {
         const cached = persistent.fresh ? persistent.result : { ...persistent.result, stale: true };
         writeCache(cacheKey, cached);
-        return withLocalSteadfast(phone, cached);
+        return withSteadfast(phone, cached);
       }
-      if (memoryCached) return withLocalSteadfast(phone, memoryCached);
+      if (memoryCached) return withSteadfast(phone, memoryCached);
       return { configured: false, stats: [], error: null };
     }
 
@@ -301,7 +309,7 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
       }
 
       return normalized;
-    })().then((r) => withLocalSteadfast(phone, r));
+    })().then((r) => withSteadfast(phone, r));
 
     inFlight.set(cacheKey, request);
     try {
