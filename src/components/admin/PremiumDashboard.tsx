@@ -185,8 +185,8 @@ function MonthlyBonusCard() {
   const { data, isLoading } = useQuery({
     queryKey: ["employee-monthly-bonus"],
     queryFn: () => fetchBonus(),
-    staleTime: 60000,
-    refetchOnWindowFocus: true,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
     refetchInterval: false,
   });
   if (data?.visible === false) return null;
