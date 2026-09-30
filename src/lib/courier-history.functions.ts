@@ -171,25 +171,50 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
         return beforeInvoke.result;
       }
 
-      let result: unknown = null;
-      let error: { message?: string } | null = null;
-      for (let attempt = 0; attempt < 2; attempt += 1) {
-        const res = await context.supabase.functions.invoke("courier-history-bridge", {
-          body: { phone, forceRefresh: false },
-        });
-        result = res.data;
-        error = res.error as { message?: string } | null;
-        if (!error) break;
-        if (attempt === 0) await new Promise((r) => setTimeout(r, 400));
-      }
-
-      if (error) {
+      let value: Partial<CourierHistoryResult> = {};
+      try {
+        const admin = supabaseAdmin as any;
+        const { data: integration, error: integrationError } = await admin
+          .from("integrations")
+          .select("config,is_active")
+          .eq("name", "all_api_hoorin")
+          .maybeSingle();
+        if (integrationError) throw new Error(integrationError.message);
+        const cfg = (integration?.config ?? {}) as Record<string, unknown>;
+        const apiKey = String(cfg.api_key ?? "").trim();
+        if (!integration?.is_active || !apiKey) {
+          return { configured: false, stats: [], error: null };
+        }
+        const endpoint = "https://plugin.hoorin.com/courier/api/v1/search";
+        const response = await fetch(
+          `${endpoint}?apiKey=${encodeURIComponent(apiKey)}&searchTerm=${encodeURIComponent(phone)}&view=full&cache=off`,
+          { method: "GET", headers: { Accept: "application/json", "Cache-Control": "no-cache" } },
+        );
+        const text = await response.text();
+        let payload: any = null;
+        try { payload = JSON.parse(text); } catch { payload = null; }
+        if (!response.ok) throw new Error(`Hoorin HTTP ${response.status}`);
+        const rows = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : Array.isArray(payload?.couriers) ? payload.couriers : [];
+        const stats = rows.map((row: any) => ({
+          name: String(row?.name ?? row?.courier ?? row?.courier_name ?? "Courier"),
+          total: Number(row?.total ?? row?.total_parcel ?? row?.total_parcels ?? row?.["Total Parcels"] ?? 0) || 0,
+          success: Number(row?.success ?? row?.delivered ?? row?.delivered_parcels ?? row?.["Delivered Parcels"] ?? 0) || 0,
+          cancelled: Number(row?.cancelled ?? row?.cancel ?? row?.cancelled_parcels ?? row?.["Canceled Parcels"] ?? 0) || 0,
+        })).filter((row: CourierStat) => row.total || row.success || row.cancelled);
+        const overall = payload?.overall && typeof payload.overall === "object"
+          ? {
+              name: "Overall",
+              total: Number(payload.overall.total ?? payload.overall.total_parcels ?? 0) || 0,
+              success: Number(payload.overall.success ?? payload.overall.delivered ?? payload.overall.delivered_parcels ?? 0) || 0,
+              cancelled: Number(payload.overall.cancelled ?? payload.overall.cancelled_parcels ?? 0) || 0,
+            }
+          : aggregateOverall(stats);
+        value = { configured: true, stats, overall, error: null, source: "hoorin" };
+      } catch (directError) {
         const stale = beforeInvoke ?? persistent;
         if (stale?.result.configured && !stale.result.error) return { ...stale.result, stale: true };
-        return { configured: true, stats: [], error: error?.message || "Courier history request failed" };
+        return { configured: true, stats: [], error: directError instanceof Error ? directError.message : "Courier history request failed" };
       }
-
-      const value = (result ?? {}) as Partial<CourierHistoryResult>;
       const normalizedStats = normalizeStats(value.stats);
       const normalizedOverall = value.overall && typeof value.overall === "object"
         ? {
