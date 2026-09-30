@@ -17,7 +17,7 @@ const CustomerSelect = "id,phone,full_name,avatar_url,address,district,thana,cre
 
 export const listCustomersAdmin = createServerFn({ method: "GET" }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
   await assertAdmin(context.supabase, context.userId);
-  const { data, error } = await context.supabase.from("customer_profiles").select(CustomerSelect).order("created_at", { ascending: false });
+  const { data, error } = await context.supabase.from("customer_profiles").select(CustomerSelect).order("created_at", { ascending: false }).limit(200);
   if (error) throw new Error(error.message);
   return data ?? [];
 });
