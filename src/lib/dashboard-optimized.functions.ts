@@ -512,6 +512,7 @@ export const getEmployeeMonthlyBonusProgress = createServerFn({ method: "POST" }
       confirmed: Number(row.confirmed ?? 0),
       delivered: Number(row.delivered ?? 0),
       cancelled: Number(row.cancelled ?? 0),
+      pending: Number(row.pending ?? 0),
       target: Number(row.target ?? 300),
     };
   });
