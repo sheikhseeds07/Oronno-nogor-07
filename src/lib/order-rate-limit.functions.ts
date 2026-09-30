@@ -1,13 +1,16 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
+import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
+import { assertPermission } from "@/lib/_admin-guard.server";
 
 const SettingsSchema = z.object({
   phone_repeat_minutes: z.number().int().min(0).max(10080).default(0),
   ip_repeat_minutes: z.number().int().min(0).max(10080).default(0),
 });
 
-export const getOrderRateLimitSettings = createServerFn({ method: "GET" }).handler(async () => {
+export const getOrderRateLimitSettings = createServerFn({ method: "GET" }).middleware([requireSupabaseAuth]).handler(async ({ context }) => {
+  await assertPermission(context.userId, "order_rate_limit");
   const { data, error } = await supabaseAdmin.from("site_settings").select("settings").maybeSingle();
   if (error) throw new Error(error.message);
   const settings = (data?.settings ?? {}) as Record<string, unknown>;
@@ -18,8 +21,10 @@ export const getOrderRateLimitSettings = createServerFn({ method: "GET" }).handl
 });
 
 export const saveOrderRateLimitSettings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input) => SettingsSchema.parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    await assertPermission(context.userId, "order_rate_limit");
     const { data: row, error: readError } = await supabaseAdmin.from("site_settings").select("id,settings").maybeSingle();
     if (readError) throw new Error(readError.message);
     const current = ((row?.settings ?? {}) as Record<string, unknown>);
