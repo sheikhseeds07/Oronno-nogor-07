@@ -15,7 +15,7 @@ export const Route = createFileRoute("/category/$slug")({
     if (!queryClient || queryClient.getQueryData(["cat", params.slug])) return null;
     const columns = "id,name,slug,image_url,parent_id,display_order";
     const [listRes, catRes] = await Promise.all([
-      (supabase.from("categories") as any).select(columns).is("parent_id", null).eq("is_hidden_from_home", false).order("display_order").order("created_at"),
+      (supabase.from("categories") as any).select(columns).is("parent_id", null).eq("is_hidden_from_home", false).order("display_order").order("created_at").limit(100),
       (supabase.from("categories") as any).select(columns).eq("slug", params.slug).maybeSingle(),
     ]);
     queryClient.setQueryData(["cat-list"], listRes.data ?? []);
