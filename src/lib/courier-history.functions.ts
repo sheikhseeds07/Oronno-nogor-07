@@ -127,6 +127,45 @@ function aggregateOverall(stats: CourierStat[]): CourierOverall {
   return { name: "Overall", total, success, cancelled };
 }
 
+
+// Hoorin (and Steadfast's public fraud_check) stopped returning Steadfast parcel
+// counts on 27 Sep 2026. Fill the Steadfast row from our own orders, whose
+// statuses are synced live from Steadfast — real delivered/cancelled counts.
+const localSteadfastCache = new Map<string, { expiresAt: number; stat: CourierStat | null }>();
+async function localSteadfastStat(phone: string): Promise<CourierStat | null> {
+  const last10 = phone.slice(-10);
+  if (last10.length < 10) return null;
+  const hit = localSteadfastCache.get(last10);
+  if (hit && hit.expiresAt > Date.now()) return hit.stat;
+  const admin = supabaseAdmin as any;
+  const { data, error } = await admin
+    .from("orders")
+    .select("status")
+    .like("customer_phone", `%${last10}`)
+    .not("courier_consignment", "is", null)
+    .limit(500);
+  if (error) return null;
+  let success = 0, cancelled = 0;
+  for (const row of (data ?? []) as { status: string }[]) {
+    if (row.status === "delivered" || row.status === "partial") success++;
+    else if (row.status === "cancelled" || row.status === "returned" || row.status === "rts") cancelled++;
+  }
+  const stat = success + cancelled > 0 ? { name: "Steadfast", total: success + cancelled, success, cancelled } : null;
+  localSteadfastCache.set(last10, { expiresAt: Date.now() + 5 * 60_000, stat });
+  if (localSteadfastCache.size > 3000) localSteadfastCache.delete(localSteadfastCache.keys().next().value as string);
+  return stat;
+}
+
+async function withLocalSteadfast(phone: string, result: CourierHistoryResult): Promise<CourierHistoryResult> {
+  if (!result.configured) return result;
+  const existing = result.stats.find((s) => s.name.toLowerCase() === "steadfast");
+  if (existing && existing.total > 0) return result;
+  const local = await localSteadfastStat(phone).catch(() => null);
+  if (!local) return result;
+  const stats = [...result.stats.filter((s) => s.name.toLowerCase() !== "steadfast"), local].sort((a, b) => b.total - a.total);
+  return { ...result, stats, overall: aggregateOverall(stats) };
+}
+
 async function readPersistentCache(phone: string): Promise<PersistentHit | null> {
   const cached = persistentReadCache.get(phone);
   if (cached && cached.expiresAt > Date.now()) return cached.hit;
@@ -189,9 +228,9 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
       if (persistent?.result.configured && !persistent.result.error) {
         const cached = persistent.fresh ? persistent.result : { ...persistent.result, stale: true };
         writeCache(cacheKey, cached);
-        return cached;
+        return withLocalSteadfast(phone, cached);
       }
-      if (memoryCached) return memoryCached;
+      if (memoryCached) return withLocalSteadfast(phone, memoryCached);
       return { configured: false, stats: [], error: null };
     }
 
@@ -262,7 +301,7 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
       }
 
       return normalized;
-    })();
+    })().then((r) => withLocalSteadfast(phone, r));
 
     inFlight.set(cacheKey, request);
     try {
