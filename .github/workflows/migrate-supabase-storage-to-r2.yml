@@ -16,20 +16,27 @@ concurrency:
 jobs:
   migrate:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 360
     permissions:
       contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Verify AWS CLI
         run: aws --version
 
-      - name: Discover R2 buckets
+      - name: Migrate all Supabase media buckets to R2
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_API_TOKEN_R2 }}
-          AWS_DEFAULT_REGION: auto
-        run: |
-          aws s3api list-buckets             --endpoint-url https://a91d9451c87479d4d01d2d2add2530f5.r2.cloudflarestorage.com             --region auto             --query 'Buckets[].Name'             --output json
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CLOUDFLARE_R2_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          CLOUDFLARE_API_TOKEN_R2: ${{ secrets.CLOUDFLARE_API_TOKEN_R2 }}
+          CLOUDFLARE_ACCOUNT_ID: a91d9451c87479d4d01d2d2add2530f5
+          R2_BUCKET: sheikhseeds
+          SUPABASE_URL: https://frtzlibogmethppqmhtr.supabase.co
+        run: node scripts/migrate-supabase-storage-to-r2.mjs
