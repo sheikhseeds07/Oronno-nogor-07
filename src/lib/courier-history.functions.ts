@@ -29,7 +29,7 @@ type PersistentHit = { result: CourierHistoryResult; fresh: boolean; fetchedAtMs
 const SUCCESS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const FAILURE_CACHE_TTL_MS = 15 * 1000;
 const STALE_CACHE_TTL_MS = 30 * 60 * 1000;
-const CACHE_VERSION = "courier-history-v12-live-courier-history";
+const CACHE_VERSION = "courier-history-v13-real-steadfast-ratios";
 const MAX_CACHE_ENTRIES = 3000;
 
 const courierCache = new Map<string, CacheEntry>();
@@ -170,20 +170,26 @@ async function withSteadfast(phone: string, result: CourierHistoryResult): Promi
   if (!result.configured || result.steadfast) return result;
   const existing = result.stats.find((s) => s.name.toLowerCase() === "steadfast");
   if (existing && existing.total > 0) return result;
+  // Older cached results may still contain estimated Steadfast rows. Drop them
+  // and recompute Overall so only real courier counts remain.
+  const estimated = result.stats.filter((s) => s.name.includes("আনুমানিক"));
+  let cleaned = result;
+  if (estimated.length) {
+    const stats = result.stats.filter((s) => !s.name.includes("আনুমানিক"));
+    const o = result.overall;
+    const overall = o
+      ? {
+          name: o.name,
+          total: Math.max(0, o.total - estimated.reduce((a, x) => a + x.total, 0)),
+          success: Math.max(0, o.success - estimated.reduce((a, x) => a + x.success, 0)),
+          cancelled: Math.max(0, o.cancelled - estimated.reduce((a, x) => a + x.cancelled, 0)),
+        }
+      : undefined;
+    cleaned = { ...result, stats, overall };
+  }
+  // Steadfast exposes only real ratios now — show them as-is, no estimated counts.
   const score = await steadfastScore(phone).catch(() => null);
-  if (!score) return result;
-  // Steadfast gives only ratios now. Owner-approved estimate: fixed total of
-  // 10, split by the real ratios, so it can join Overall (e.g. 50% -> 5 success).
-  const total = 10;
-  const success = Math.round((total * score.deliveryRatio) / 100);
-  const cancelled = Math.min(total - success, Math.round((total * score.cancellationRatio) / 100));
-  const est: CourierStat = { name: "Steadfast (আনুমানিক)", total, success, cancelled };
-  const stats = [...result.stats.filter((s) => !s.name.toLowerCase().startsWith("steadfast")), est];
-  const o = result.overall;
-  const overall = o
-    ? { ...o, total: o.total + total, success: o.success + success, cancelled: o.cancelled + cancelled }
-    : { name: "Overall", total: stats.reduce((a, x) => a + x.total, 0), success: stats.reduce((a, x) => a + x.success, 0), cancelled: stats.reduce((a, x) => a + x.cancelled, 0) };
-  return { ...result, stats, overall, steadfast: score };
+  return score ? { ...cleaned, steadfast: score } : cleaned;
 }
 
 async function readPersistentCache(phone: string): Promise<PersistentHit | null> {
