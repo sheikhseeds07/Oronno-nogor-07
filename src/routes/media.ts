@@ -63,6 +63,11 @@ type R2ObjectLike = {
 
 type R2BucketLike = {
   get: (key: string) => Promise<R2ObjectLike | null>;
+  put: (
+    key: string,
+    value: ArrayBuffer,
+    options?: { httpMetadata?: { contentType?: string; cacheControl?: string } },
+  ) => Promise<unknown>;
 };
 
 function getR2Bucket(): R2BucketLike | undefined {
@@ -72,13 +77,11 @@ function getR2Bucket(): R2BucketLike | undefined {
   return env?.MEDIA_BUCKET;
 }
 
-async function pullR2(
-  asset: { bucket: string; objectPath: string },
-): Promise<OriginSnapshot | null> {
+async function pullR2Key(key: string): Promise<OriginSnapshot | null> {
   const bucket = getR2Bucket();
   if (!bucket) return null;
   try {
-    const object = await bucket.get(`${asset.bucket}/${asset.objectPath}`);
+    const object = await bucket.get(key);
     if (!object) return null;
     const headers = new Headers();
     object.writeHttpMetadata?.(headers);
@@ -93,6 +96,47 @@ async function pullR2(
     };
   } catch {
     return null;
+  }
+}
+
+async function pullR2(
+  asset: { bucket: string; objectPath: string },
+): Promise<OriginSnapshot | null> {
+  return pullR2Key(`${asset.bucket}/${asset.objectPath}`);
+}
+
+function r2VariantKey(
+  asset: { bucket: string; objectPath: string },
+  variant: DeliveryVariant,
+): string {
+  return `_variants/${variant.id}/${asset.bucket}/${asset.objectPath}`;
+}
+
+async function pullR2Variant(
+  asset: { bucket: string; objectPath: string },
+  variant: DeliveryVariant,
+): Promise<OriginSnapshot | null> {
+  return pullR2Key(r2VariantKey(asset, variant));
+}
+
+async function persistR2Variant(
+  asset: { bucket: string; objectPath: string },
+  variant: DeliveryVariant,
+  snapshot: OriginSnapshot,
+): Promise<void> {
+  const bucket = getR2Bucket();
+  if (!bucket || !snapshot.ok || snapshot.body.byteLength === 0) return;
+
+  const contentType = snapshot.headers.get("content-type") || undefined;
+  try {
+    await bucket.put(r2VariantKey(asset, variant), snapshot.body.slice(0), {
+      httpMetadata: {
+        ...(contentType ? { contentType } : {}),
+        cacheControl: `public, max-age=${ONE_YEAR_SECONDS}, immutable`,
+      },
+    });
+  } catch {
+    // R2 persistence is an optimization. A failed write must never break media.
   }
 }
 
@@ -344,13 +388,20 @@ export const Route = createFileRoute("/media")({
           }
         }
 
-        // Prefer R2 when the object has already been migrated. If it is not
-        // there yet, transparently fall back to Supabase Storage. This makes
-        // migration safe and allows the bucket to be populated incrementally.
-        const r2Origin = await pullR2(asset);
-        if (!r2Origin && !source) return noStoreResponse("R2 object not found", 404);
-        const origin = r2Origin ?? await pullOrigin(source!, originCacheKey, request, true, variant);
+        // Prefer an optimized R2 variant, then a fully migrated original.
+        // If neither exists, fetch Supabase once and write the optimized bytes
+        // through to R2 using the Worker's native binding. This removes the
+        // dependency on external R2 S3 credentials and makes future cache
+        // misses independent of Supabase Storage.
+        const r2Variant = await pullR2Variant(asset, variant);
+        const r2Origin = r2Variant ? null : await pullR2(asset);
+        if (!r2Variant && !r2Origin && !source) return noStoreResponse("R2 object not found", 404);
+
+        const fromSupabase = !r2Variant && !r2Origin;
+        const origin = r2Variant ?? r2Origin ?? await pullOrigin(source!, originCacheKey, request, true, variant);
         if (!origin.ok) return noStoreResponse(origin.body.slice(0), origin.status, origin.statusText, origin.headers);
+
+        if (fromSupabase) await persistR2Variant(asset, variant, origin);
 
         const response = cacheableResponse(origin, origin.body.slice(0), "MISS", variant);
         if (cache) {
