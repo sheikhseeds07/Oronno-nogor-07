@@ -79,6 +79,42 @@ function normalizeStats(value: unknown): CourierStat[] {
     }));
 }
 
+const COURIER_KEY_RE = /^(steadfast|steadfastcourier|redx|redex|redxbd|pathao|pathaocourier|carrybee|paperfly|ecourier|sundarban|sundarbancourier)$/;
+const SKIP_KEY_RE = /^(data|summary|summaries|courierdata|couriers|courier|root|total|totals|overall|meta|result|response|payload|info|status|message|report|reports|details)$/;
+const num = (v: unknown) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+function parseHoorinStats(payload: unknown): CourierStat[] {
+  if (!payload || typeof payload !== "object") return [];
+  const found = new Map<string, CourierStat>();
+  const visit = (key: string, value: unknown, depth: number) => {
+    if (!value || typeof value !== "object" || depth > 7) return;
+    if (Array.isArray(value)) {
+      for (const entry of value) if (entry && typeof entry === "object") {
+        const row = entry as Record<string, unknown>;
+        visit(typeof row.name === "string" ? row.name : typeof row.courier === "string" ? row.courier : key, row, depth + 1);
+      }
+      return;
+    }
+    const row = value as Record<string, unknown>;
+    const inner = row.summary && typeof row.summary === "object" && !Array.isArray(row.summary) ? row.summary as Record<string, unknown> : row;
+    const total = num(inner["Total Parcels"] ?? inner["Total Delivery"] ?? inner.total_parcel ?? inner.totalParcel ?? inner.total ?? inner.total_parcels ?? inner.totalParcels ?? inner.total_orders ?? inner.totalOrders ?? inner.parcel_count ?? inner.parcelCount ?? inner.order_count ?? inner.orderCount);
+    const success = num(inner["Delivered Parcels"] ?? inner["Successful Delivery"] ?? inner.delivered_parcels ?? inner.success_parcel ?? inner.successParcel ?? inner.success ?? inner.delivered ?? inner.delivered_parcel ?? inner.total_delivered ?? inner.delivered_count ?? inner.delivered_orders ?? inner.deliveredOrders ?? inner.successful_orders ?? inner.successfulOrders ?? inner.success_count ?? inner.successCount);
+    const cancelled = num(inner["Canceled Parcels"] ?? inner["Canceled Delivery"] ?? inner["Cancelled Parcels"] ?? inner.cancelled_parcels ?? inner.canceled_parcels ?? inner.cancelled_parcel ?? inner.cancelledParcel ?? inner.cancel ?? inner.cancelled ?? inner.total_cancelled ?? inner.cancelled_count ?? inner.cancelled_orders ?? inner.cancelledOrders ?? inner.canceled_orders ?? inner.canceledOrders ?? inner.cancel_count ?? inner.cancelCount);
+    const rawName = typeof inner.name === "string" && inner.name.trim() ? inner.name.trim() : key;
+    const normalized = rawName.replace(/[\s_-]/g, "").toLowerCase();
+    const hasCounts = Object.keys(inner).some(k => ["Total Parcels","Total Delivery","total_parcel","totalParcel","total","Delivered Parcels","Successful Delivery","delivered","delivered_parcels","success","Canceled Parcels","Cancelled Parcels","cancelled","cancelled_parcels"].includes(k));
+    if ((COURIER_KEY_RE.test(normalized) || hasCounts) && !SKIP_KEY_RE.test(normalized) && (total || success || cancelled || COURIER_KEY_RE.test(normalized))) {
+      const names: Record<string,string> = {steadfast:"Steadfast",steadfastcourier:"Steadfast",redx:"RedX",redex:"RedX",redxbd:"RedX",pathao:"Pathao",pathaocourier:"Pathao",carrybee:"Carrybee",paperfly:"Paperfly",ecourier:"eCourier",sundarban:"Sundarban",sundarbancourier:"Sundarban"};
+      const name = names[normalized] ?? rawName;
+      const id = name.toLowerCase();
+      const prev = found.get(id);
+      if (!prev || total > prev.total || (total === prev.total && success > prev.success)) found.set(id,{name,total,success,cancelled});
+    }
+    for (const [k,v] of Object.entries(row)) if (v && typeof v === "object") visit(k,v,depth+1);
+  };
+  visit("root", payload, 0);
+  return Array.from(found.values()).filter(s => s.total || s.success || s.cancelled).sort((a,b)=>b.total-a.total);
+}
+
 function aggregateOverall(stats: CourierStat[]): CourierOverall {
   let total = 0;
   let success = 0;
@@ -194,21 +230,8 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
         let payload: any = null;
         try { payload = JSON.parse(text); } catch { payload = null; }
         if (!response.ok) throw new Error(`Hoorin HTTP ${response.status}`);
-        const rows = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : Array.isArray(payload?.couriers) ? payload.couriers : [];
-        const stats = rows.map((row: any) => ({
-          name: String(row?.name ?? row?.courier ?? row?.courier_name ?? "Courier"),
-          total: Number(row?.total ?? row?.total_parcel ?? row?.total_parcels ?? row?.["Total Parcels"] ?? 0) || 0,
-          success: Number(row?.success ?? row?.delivered ?? row?.delivered_parcels ?? row?.["Delivered Parcels"] ?? 0) || 0,
-          cancelled: Number(row?.cancelled ?? row?.cancel ?? row?.cancelled_parcels ?? row?.["Canceled Parcels"] ?? 0) || 0,
-        })).filter((row: CourierStat) => row.total || row.success || row.cancelled);
-        const overall = payload?.overall && typeof payload.overall === "object"
-          ? {
-              name: "Overall",
-              total: Number(payload.overall.total ?? payload.overall.total_parcels ?? 0) || 0,
-              success: Number(payload.overall.success ?? payload.overall.delivered ?? payload.overall.delivered_parcels ?? 0) || 0,
-              cancelled: Number(payload.overall.cancelled ?? payload.overall.cancelled_parcels ?? 0) || 0,
-            }
-          : aggregateOverall(stats);
+        const stats = parseHoorinStats(payload);
+        const overall = aggregateOverall(stats);
         value = { configured: true, stats, overall, error: null, source: "hoorin" };
       } catch (directError) {
         const stale = beforeInvoke ?? persistent;
