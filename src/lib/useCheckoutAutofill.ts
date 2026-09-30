@@ -75,7 +75,7 @@ export function useCheckoutAutofill(params: {
           items: params.items,
         },
       }).catch(() => {});
-    }, 1_200);
+    }, 10_000);
     return () => window.clearTimeout(timer);
   }, [phoneValid, phone, form.name, form.address, form.note, params.zone, params.deliveryFee, params.subtotal, params.total, itemsKey, saveIncomplete]);
 
