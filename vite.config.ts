@@ -14,7 +14,12 @@ export default defineConfig({
   },
   vite: {
     // cloudflare:workers is provided by the Workers runtime, not npm.
-    // Keep it external so server-only modules can import the live binding env.
+    // Keep it external in both SSR resolution and Vite 8/Rolldown output.
     ssr: { external: ["cloudflare:workers"] },
+    build: {
+      rolldownOptions: {
+        external: ["cloudflare:workers"],
+      },
+    },
   },
 });
