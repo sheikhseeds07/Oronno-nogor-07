@@ -20,7 +20,7 @@ const historyCache = new Map<string, { expiresAt: number; result: HistoryResult 
 const inFlight = new Map<string, Promise<HistoryResult>>();
 const persistentReadCache = new Map<string, { expiresAt: number; hit: PersistentHit | null }>();
 const persistentReadInFlight = new Map<string, Promise<PersistentHit | null>>();
-const PERSISTENT_READ_TTL_MS = 30_000;
+const PERSISTENT_READ_TTL_MS = 5 * 60_000;
 const authzCache = new Map<string, { expiresAt: number; authorized: boolean }>();
 let configCache: { expiresAt: number; value: { configured: boolean; endpoint: string; apiKey: string; error: string | null } } | null = null;
 
