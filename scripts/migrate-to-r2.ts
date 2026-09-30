@@ -459,7 +459,7 @@ console.log(`[MODE] ${DRY_RUN ? "DRY RUN (no uploads, no DB writes)" : "LIVE MIG
 console.log(`[R2] bucket=${R2_BUCKET_NAME} public_url=${R2_PUBLIC_URL || "<blank; /media?asset=...>"}`);
 
 if (!DRY_RUN) await mkdir(TMP, { recursive: true });
-assertBucketExists();
+if (!DRY_RUN) assertBucketExists();
 
 const local = await migrateLocalAssets();
 const storage = await migrateSupabaseStorage();
