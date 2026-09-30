@@ -47,7 +47,7 @@ const shopCategoriesOptions = () => queryOptions({
 
 const shopProductsOptions = (q?: string, cat?: string) => queryOptions({
   queryKey: ["shop-products", q, cat],
-  staleTime: 2 * 60_000,
+  staleTime: 5 * 60_000,
   queryFn: async () => {
     let categoryIds: string[] | null = null;
     if (cat) {
