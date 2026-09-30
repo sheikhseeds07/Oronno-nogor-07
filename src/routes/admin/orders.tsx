@@ -1903,21 +1903,28 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
       const ring = rate >= 80 ? "border-emerald-500 text-emerald-700" : rate >= 50 ? "border-amber-500 text-amber-700" : "border-rose-500 text-rose-700";
       const rows = displayData.stats?.length ? displayData.stats : (displayData.overall?.total ? [displayData.overall] : []);
       content = (
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-3">
           {rows.map((stat: any, index: number) => {
             const t = Number(stat.total) || 0;
             const s = Number(stat.success) || 0;
             const x = Number(stat.cancelled) || 0;
             if (!t) return null;
             const pct = Math.round((s / t) * 100);
-            const tone = pct >= 80 ? "border-emerald-200 bg-emerald-50 text-emerald-700" : pct >= 50 ? "border-amber-200 bg-amber-50 text-amber-700" : "border-rose-200 bg-rose-50 text-rose-700";
+            const ring = pct >= 80 ? "border-emerald-500 text-emerald-700" : pct >= 50 ? "border-amber-500 text-amber-700" : "border-rose-500 text-rose-700";
             return (
-              <div key={`${stat.name}-${index}`} className={`min-w-[88px] rounded-lg border px-2 py-1.5 ${tone}`}>
-                <div className="text-[10px] font-extrabold leading-tight">{stat.name}</div>
-                <div className="mt-0.5 text-[12px] font-black">{pct}%</div>
-                <div className="text-[9px] leading-tight opacity-80">{s}/{t} • C:{x}</div>
+              <div key={`${stat.name}-${index}`} className="flex items-center gap-2">
+                <div className={`w-9 h-9 rounded-full border-[3px] ${ring} flex items-center justify-center text-[10px] font-bold`}>{pct}%</div>
+                <div className="text-[11px] leading-tight">
+                  <div className="font-bold text-slate-700">{stat.name}</div>
+                  <div className="text-emerald-700">Success: <b>{pct}%</b></div>
+                  <div className="text-muted-foreground">Order: <b>{s}/{t}</b></div>
+                  <div className="text-rose-600">Cancel: <b>{x}</b></div>
+                </div>
               </div>
             );
+          })}
+        </div>
+      );
           })}
         </div>
       );
