@@ -586,7 +586,7 @@ function OrdersTable({
   const { data: counts } = useQuery({
     queryKey: ["order-status-counts", mode, statuses.join(",")],
     queryFn: () => fetchCounts({ data: { statuses: statuses as string[] } }),
-    staleTime: 30_000,
+    staleTime: 5 * 60_000,
   });
 
   const isIncomplete = filter === "incomplete";
@@ -604,7 +604,7 @@ function OrdersTable({
         .select("id", { count: "exact", head: true });
       return count ?? 0;
     },
-    staleTime: 30_000,
+    staleTime: 5 * 60_000,
   });
 
 
@@ -685,7 +685,7 @@ function OrdersTable({
   const { data: orderResult, isFetching, isError, error: ordersError } = useQuery({
     queryKey: ["admin-orders", mode, filter, page, pageSize, debouncedSearch],
     enabled: !isIncomplete,
-    staleTime: 15_000,
+    staleTime: 5 * 60_000,
     placeholderData: keepPreviousData,
     queryFn: () => fetchOrdersPage(page),
   });
@@ -700,7 +700,7 @@ function OrdersTable({
     const timer = setTimeout(() => {
       void qc.prefetchQuery({
         queryKey: ["admin-orders", mode, filter, page + 1, pageSize, debouncedSearch],
-        staleTime: 15_000,
+        staleTime: 5 * 60_000,
         queryFn: () => fetchOrdersPage(page + 1),
       });
     }, 300);
@@ -716,7 +716,7 @@ function OrdersTable({
       if (error) throw new Error(error.message);
       return data ?? [];
     },
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
   });
   const creatorMap = useMemo(() => new Map((creatorProfiles ?? []).map((p) => [p.id, p.full_name || "Unknown user"])), [creatorProfiles]);
 
@@ -725,7 +725,7 @@ function OrdersTable({
   const { data: incompleteRows, isFetching: incompleteFetching } = useQuery({
     queryKey: ["admin-orders-incomplete"],
     enabled: isIncomplete,
-    staleTime: 15_000,
+    staleTime: 5 * 60_000,
     placeholderData: keepPreviousData,
 
 
@@ -2168,7 +2168,7 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
     queryFn: () => courierHistoryFn({ data: { phone: phoneDigits } }),
     staleTime: 0,
     refetchOnMount: "always",
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
     retry: 2,
     retryDelay: (attempt) => 600 * (attempt + 1),
   });
@@ -2187,7 +2187,7 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
       if (debouncedSearch) q = q.ilike("name", `%${debouncedSearch}%`);
       return (await q).data ?? [];
     },
-    staleTime: 30_000,
+    staleTime: 5 * 60_000,
     placeholderData: (prev) => prev,
   });
 
@@ -2684,7 +2684,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
   const { data: history } = useQuery({
     queryKey: ["customer-history", lookupPhoneDigits],
     enabled: lookupPhoneDigits.length >= 10,
-    staleTime: 30_000,
+    staleTime: 5 * 60_000,
     retry: 2,
     retryDelay: (attempt) => 500 * (attempt + 1),
     placeholderData: (prev) => prev,
@@ -2736,7 +2736,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
       if (debouncedSearch) q = q.ilike("name", `%${debouncedSearch}%`);
       return (await q).data ?? [];
     },
-    staleTime: 30_000,
+    staleTime: 5 * 60_000,
     placeholderData: (prev) => prev,
   });
 
