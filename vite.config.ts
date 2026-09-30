@@ -12,4 +12,9 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  vite: {
+    // cloudflare:workers is provided by the Workers runtime, not npm.
+    // Keep it external so server-only modules can import the live binding env.
+    ssr: { external: ["cloudflare:workers"] },
+  },
 });
