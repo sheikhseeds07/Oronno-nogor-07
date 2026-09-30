@@ -7,6 +7,7 @@ const PUBLIC_TABLES = new Set([
   "categories",
   "banners",
   "site_settings",
+  "landing_pages",
   "reviews",
   "product_reviews",
   "blog_posts",
