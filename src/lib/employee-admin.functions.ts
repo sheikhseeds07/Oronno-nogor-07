@@ -99,13 +99,13 @@ export const listEmployeesFull = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const db = context.supabase;
     await assertHrm(db, context.userId);
-    const { data: emps, error: empError } = await db.from("employees").select("*").order("created_at", { ascending: false });
+    const { data: emps, error: empError } = await db.from("employees").select("*").order("created_at", { ascending: false }).limit(200);
     if (empError) throw new Error(empError.message);
     const ids = (emps ?? []).map((e: any) => e.user_id).filter(Boolean) as string[];
     const [{ data: perms, error: permError }, { data: roles, error: roleError }] = ids.length
       ? await Promise.all([
-          db.from("employee_permissions").select("*").in("user_id", ids),
-          db.from("user_roles").select("*").in("user_id", ids),
+          db.from("employee_permissions").select("*").in("user_id", ids).limit(500),
+          db.from("user_roles").select("*").in("user_id", ids).limit(500),
         ])
       : [{ data: [], error: null }, { data: [], error: null }];
     if (permError) throw new Error(permError.message);

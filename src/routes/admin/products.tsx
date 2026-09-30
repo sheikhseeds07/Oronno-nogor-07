@@ -31,7 +31,7 @@ function Products() {
   const { data: products } = useQuery({
     queryKey: ["admin-products", search],
     queryFn: async () => {
-      let q = supabase.from("products").select("*, categories(name)").order("created_at", { ascending: false });
+      let q = supabase.from("products").select("*, categories(name)").order("created_at", { ascending: false }).limit(200);
       if (search) q = q.ilike("name", `%${search}%`);
       return ((await q).data ?? []) as Product[];
     },

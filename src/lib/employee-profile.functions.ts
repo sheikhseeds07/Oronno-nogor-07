@@ -17,6 +17,6 @@ export const getEmployeeProfile = createServerFn({ method: "POST" }).middleware(
     supabaseAdmin.from("employees").select("*").eq("user_id", targetId).maybeSingle(),
   ]);
   let total = 0, delivered = 0, cancelled = 0;
-  try { const { data: orders } = await supabaseAdmin.from("orders").select("id,status,created_at").or(`assigned_to.eq.${targetId},created_by.eq.${targetId}`).gte("created_at", since.toISOString()); const ords = orders ?? []; total = ords.length; delivered = ords.filter((o) => o.status === "delivered").length; cancelled = ords.filter((o) => ["cancelled", "returned"].includes(o.status as string)).length; } catch {}
+  try { const { data: orders } = await supabaseAdmin.from("orders").select("id,status,created_at").or(`assigned_to.eq.${targetId},created_by.eq.${targetId}`).gte("created_at", since.toISOString()).limit(1000); const ords = orders ?? []; total = ords.length; delivered = ords.filter((o) => o.status === "delivered").length; cancelled = ords.filter((o) => ["cancelled", "returned"].includes(o.status as string)).length; } catch {}
   return { profile, employee: emp as any, stats: { totalOrders: total, delivered, cancelled, score: Math.max(0, Math.min(100, delivered * 10 + (total - delivered - cancelled) * 2 - cancelled * 3)) } };
 });

@@ -105,12 +105,13 @@ function LandingPagesAdmin() {
       ((await supabase
         .from("products")
         .select("id,name,price,sale_price,images,is_active")
-        .order("name")).data ?? []) as Product[],
+        .order("name")
+        .limit(200)).data ?? []) as Product[],
   });
   const { data: categories } = useQuery({
     queryKey: ["lp-categories"],
     queryFn: async () =>
-      ((await supabase.from("categories").select("id,name").order("display_order")).data ?? []) as { id: string; name: string }[],
+      ((await supabase.from("categories").select("id,name").order("display_order").limit(100)).data ?? []) as { id: string; name: string }[],
   });
 
   const set = (patch: Partial<LP>) => editing && setEditing({ ...editing, ...patch });
