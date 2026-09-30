@@ -300,6 +300,10 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
         product={nutrimix}
         seedName={current?.name || page.title}
         seedPrice={Number(current?.price || 0)}
+        popupHeading={page.planting_steps?.nutrimix_popup_heading}
+        popupDescription={page.planting_steps?.nutrimix_popup_description}
+        popupAcceptText={page.planting_steps?.nutrimix_popup_accept_text}
+        popupDeclineText={page.planting_steps?.nutrimix_popup_decline_text}
         seedDeliveryFee={Number(current?.delivery_fee ?? delivery)}
         onChoice={placeWithNutrimix}
         onClose={() => placeWithNutrimix(false)}
