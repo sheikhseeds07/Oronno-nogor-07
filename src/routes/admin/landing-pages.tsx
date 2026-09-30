@@ -98,7 +98,7 @@ function LandingPagesAdmin() {
   const { data } = useQuery({
     queryKey: ["admin-landing"],
     queryFn: async () =>
-      (await supabase.from("landing_pages").select("*").order("created_at", { ascending: false })).data ?? [],
+      (await supabase.from("landing_pages").select("*").order("created_at", { ascending: false }).limit(100)).data ?? [],
   });
   const { data: products, refetch: refetchProducts } = useQuery({    queryKey: ["lp-products"],
     queryFn: async () =>

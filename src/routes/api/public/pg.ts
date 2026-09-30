@@ -25,10 +25,10 @@ const PUBLIC_RPCS = new Set(["get_home_data_v1"]);
 
 // Home RPC contains frequently edited product price/popular fields.
 // Keep it cached briefly for egress protection without making admin changes stale for minutes.
-const HOME_RPC_TTL_SECONDS = 10;
-const EDGE_TTL_SECONDS = 300;
-const STALE_SECONDS = 1800;
-const BROWSER_TTL_SECONDS = 60;
+const HOME_RPC_TTL_SECONDS = 3600;
+const EDGE_TTL_SECONDS = 3600;
+const STALE_SECONDS = 86400;
+const BROWSER_TTL_SECONDS = 300;
 
 type CloudflareCache = {
   match(request: Request): Promise<Response | undefined>;

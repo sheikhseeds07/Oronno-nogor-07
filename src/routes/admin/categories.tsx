@@ -43,7 +43,7 @@ function Categories() {
       const { data, error } = await (supabase.from("categories") as any)
         .select("*")
         .order("display_order")
-        .order("created_at");
+        .order("created_at").limit(100);
       if (error) throw error;
       return (data ?? []) as CategoryRow[];
     },

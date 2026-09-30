@@ -13,13 +13,13 @@ export const getRouter = () => {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 5 * 60_000,
-        gcTime: 10 * 60_000,
+        staleTime: 60 * 60_000,
+        gcTime: 2 * 60 * 60_000,
         retry: (failureCount, error) => failureCount < 2 && isRetryableQueryError(error),
         retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 4000),
-        refetchOnWindowFocus: true,
-        refetchOnReconnect: true,
-        refetchOnMount: true,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
+        refetchOnMount: false,
       },
     },
   });
@@ -28,7 +28,7 @@ export const getRouter = () => {
   // on navigation/focus instead of issuing a fresh request just because the route mounted.
   // Realtime/explicit invalidation remains responsible for data that must update immediately.
   queryClient.setQueryDefaults(["admin"], {
-    staleTime: 60_000,
+    staleTime: 60 * 60_000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     refetchOnMount: false,

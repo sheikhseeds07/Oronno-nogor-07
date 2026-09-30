@@ -21,7 +21,7 @@ function Banners() {
 
   const { data } = useQuery<Banner[]>({
     queryKey: ["admin-banners"],
-    queryFn: async () => (await supabase.from("banners").select("*").order("display_order")).data ?? [],
+    queryFn: async () => (await supabase.from("banners").select("*").order("display_order").limit(100)).data ?? [],
   });
 
   const upload = async (file: File) => {

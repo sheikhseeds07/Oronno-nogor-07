@@ -3,17 +3,42 @@
 // deployment variable cannot silently point the storefront at a different DB.
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./db.types";
+import { publicReadProxyUrl, isPublicAnonRead } from "@/integrations/supabase/public-read-proxy";
 
 export type TypedSupabaseClient = SupabaseClient<Database>;
 
 export const LIVE_DATABASE_URL = "https://frtzlibogmethppqmhtr.supabase.co";
 export const LIVE_DATABASE_KEY = "sb_publishable_IwyqncvDdP4OF2UDNMlK9g_bn6Hu6n1";
 
-function liveFetch(input: RequestInfo | URL, init?: RequestInit) {
+async function liveFetch(input: RequestInfo | URL, init?: RequestInit) {
   const headers = new Headers(input instanceof Request ? input.headers : undefined);
   if (init?.headers) new Headers(init.headers).forEach((value, key) => headers.set(key, value));
   if (headers.get("Authorization") === `Bearer ${LIVE_DATABASE_KEY}`) headers.delete("Authorization");
   headers.set("apikey", LIVE_DATABASE_KEY);
+
+  const method = (init?.method || (input instanceof Request ? input.method : "GET")).toUpperCase();
+  const rawUrl = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+  const auth = headers.get("Authorization");
+  const hasUserToken = Boolean(auth && auth !== `Bearer ${LIVE_DATABASE_KEY}`);
+  const bodyText = typeof init?.body === "string" ? init.body : undefined;
+
+  const proxied = publicReadProxyUrl(rawUrl, LIVE_DATABASE_URL, method, bodyText, hasUserToken);
+  if (proxied) {
+    const proxyHeaders = new Headers();
+    const accept = headers.get("Accept");
+    if (accept) proxyHeaders.set("Accept", accept);
+    const range = headers.get("Range");
+    if (range) proxyHeaders.set("Range", range);
+    const cached = await fetch(proxied, { method: "GET", headers: proxyHeaders });
+    if (cached.ok) return cached;
+  }
+
+  if (typeof window === "undefined" && isPublicAnonRead(rawUrl, LIVE_DATABASE_URL, method, hasUserToken)) {
+    try {
+      return await fetch(input, { ...init, headers, cf: { cacheEverything: true, cacheTtl: 3600 } } as RequestInit);
+    } catch {}
+  }
+
   return fetch(input, { ...init, headers });
 }
 

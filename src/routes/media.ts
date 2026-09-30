@@ -262,82 +262,6 @@ function cacheableResponse(
   return new Response(body, { status: snapshot.status, statusText: snapshot.statusText, headers });
 }
 
-async function pullOrigin(
-  source: URL,
-  originCacheKey: string,
-  request: Request,
-  publicAsset: boolean,
-  variant: DeliveryVariant,
-): Promise<OriginSnapshot> {
-  const taskKey = `${source.toString()}|${variant.id}`;
-  const existing = inFlightOriginPulls.get(taskKey);
-  if (existing) return existing;
-
-  const task = (async (): Promise<OriginSnapshot> => {
-    const imageOptions: Record<string, unknown> = {
-      fit: "scale-down",
-      width: variant.width,
-      quality: variant.quality,
-      // Strip EXIF/ICC payloads; they add bytes with no visual benefit.
-      metadata: "none",
-    };
-    if (variant.format === "webp") imageOptions.format = "webp";
-
-    const requestInit: RequestInit = {
-      method: "GET",
-      headers: { Accept: request.headers.get("Accept") || "image/*,*/*;q=0.8" },
-      ...({ cf: publicAsset
-        ? ({
-            cacheEverything: true,
-            cacheTtl: ONE_YEAR_SECONDS,
-            cacheKey: originCacheKey,
-            image: imageOptions,
-          } as any)
-        : undefined } as RequestInit),
-    };
-
-    const plainOriginFetch = () =>
-      fetch(source.toString(), {
-        method: "GET",
-        headers: { Accept: request.headers.get("Accept") || "image/*,*/*;q=0.8" },
-      });
-
-    let origin: Response;
-    try {
-      origin = await fetch(source.toString(), requestInit);
-    } catch (error) {
-      // Image Resizing is optional on Cloudflare. If the transform layer is
-      // unavailable on this zone/plan, fetch the signed Storage object directly
-      // and let the same-domain cache absorb subsequent traffic.
-      if (!publicAsset) throw error;
-      origin = await plainOriginFetch();
-    }
-
-    // Never let an image-transform/Cf feature error hide a healthy Supabase
-    // object. Retry the original signed URL for *any* non-success response.
-    // The successful bytes are still cached below, so this does not turn every
-    // storefront view into Supabase egress.
-    if (publicAsset && !origin.ok) {
-      origin = await plainOriginFetch();
-    }
-
-    return {
-      ok: origin.ok,
-      status: origin.status,
-      statusText: origin.statusText,
-      headers: new Headers(origin.headers),
-      body: await origin.arrayBuffer(),
-    };
-  })();
-
-  inFlightOriginPulls.set(taskKey, task);
-  try {
-    return await task;
-  } finally {
-    if (inFlightOriginPulls.get(taskKey) === task) inFlightOriginPulls.delete(taskKey);
-  }
-}
-
 export const Route = createFileRoute("/media")({
   server: {
     handlers: {
@@ -358,16 +282,13 @@ export const Route = createFileRoute("/media")({
         if (!publicAsset) {
           const r2Origin = await pullR2(asset);
           if (r2Origin) return noStoreResponse(r2Origin.body.slice(0), r2Origin.status, r2Origin.statusText, r2Origin.headers);
-          if (!source) return noStoreResponse("R2 object not found", 404);
-          const origin = await pullOrigin(source, "", request, false, variant);
-          return noStoreResponse(origin.body.slice(0), origin.status, origin.statusText, origin.headers);
+          return noStoreResponse("R2 object not found", 404);
         }
 
         // Conditional requests: if the browser already has the bytes, answer 304
         // and send no body at all.
         const cache = getCloudflareCache();
         const cacheKey = makeCacheKey(request, asset, variant);
-        const originCacheKey = source ? makeOriginCacheKey(source, variant) : "";
         const ifNoneMatch = request.headers.get("If-None-Match");
 
         if (cache) {
@@ -393,13 +314,10 @@ export const Route = createFileRoute("/media")({
         // misses independent of Supabase Storage.
         const r2Variant = await pullR2Variant(asset, variant);
         const r2Origin = r2Variant ? null : await pullR2(asset);
-        if (!r2Variant && !r2Origin && !source) return noStoreResponse("R2 object not found", 404);
+        if (!r2Variant && !r2Origin) return noStoreResponse("R2 object not found", 404);
 
-        const fromSupabase = !r2Variant && !r2Origin;
-        const origin = r2Variant ?? r2Origin ?? await pullOrigin(source!, originCacheKey, request, true, variant);
+        const origin = r2Variant ?? r2Origin!;
         if (!origin.ok) return noStoreResponse(origin.body.slice(0), origin.status, origin.statusText, origin.headers);
-
-        if (fromSupabase) await persistR2Variant(asset, variant, origin);
 
         const response = cacheableResponse(origin, origin.body.slice(0), "MISS", variant);
         if (cache) {

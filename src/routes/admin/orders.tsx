@@ -118,59 +118,8 @@ const ORDER_QUERY_KEYS = [
   "order-detail",
 ] as const;
 
-/** Lightweight realtime bridge.
- * AdminOrderStability patches UPDATE/DELETE events directly into the visible
- * order cache. We therefore must NOT refetch the whole order page on every
- * status/field change. Only INSERTs invalidate the active list so a genuinely
- * new order appears; status badges are refreshed cheaply on any order change.
- */
-function useLiveOrders() {
-  const qc = useQueryClient();
-  useEffect(() => {
-    let timer: number | null = null;
-    let pendingInsert = false;
-
-    const scheduleInsertRefresh = () => {
-      if (pendingInsert) return;
-      pendingInsert = true;
-      timer = window.setTimeout(() => {
-        pendingInsert = false;
-        timer = null;
-        qc.invalidateQueries({ queryKey: ["admin-orders"], refetchType: "active" });
-      }, 250);
-    };
-
-    const onOrderChange = (payload: any) => {
-      const eventType = payload?.eventType;
-      const statusChanged = eventType === "UPDATE"
-        ? payload?.old?.status !== payload?.new?.status
-        : true;
-      if (eventType === "INSERT") scheduleInsertRefresh();
-      // Status badges only need recalculation when an order is inserted,
-      // deleted, or its status actually changes. Customer/address/print/etc.
-      // updates should not trigger a status-count request.
-      if (statusChanged) {
-        scheduleOrderStatusCountRefresh(qc);
-      }
-    };
-
-    const onIncompleteChange = () => {
-      qc.invalidateQueries({ queryKey: ["admin-orders-incomplete"], refetchType: "active" });
-      qc.invalidateQueries({ queryKey: ["incomplete-count"], refetchType: "active" });
-    };
-
-    const channel = supabase
-      .channel("admin-orders-live-light")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, onOrderChange)
-      .on("postgres_changes", { event: "*", schema: "public", table: "incomplete_orders" }, onIncompleteChange)
-      .subscribe();
-
-    return () => {
-      if (timer !== null) window.clearTimeout(timer);
-      supabase.removeChannel(channel);
-    };
-  }, [qc]);
-}
+/** Realtime is intentionally disabled to keep Supabase egress flat. */
+function useLiveOrders() {}
 
 function Orders() {
   useLiveOrders();
@@ -250,7 +199,8 @@ function SearchPanel({ onOpen }: { onOpen: (id: string) => void }) {
         .from("orders")
         .select("id,invoice_no,customer_name,customer_phone,total,status,created_at,order_items(id,product_name,quantity,price,product_id)")
         .or(orQuery)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(100);
       return await attachProductImages((data ?? []) as unknown as OrderRow[]);
     },
   });

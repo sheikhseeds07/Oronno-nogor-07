@@ -39,7 +39,7 @@ function Products() {
 
   const { data: categories } = useQuery({
     queryKey: ["admin-cats"],
-    queryFn: async () => (await supabase.from("categories").select("*").order("display_order")).data ?? [],
+    queryFn: async () => (await supabase.from("categories").select("*").order("display_order").limit(100)).data ?? [],
   });
 
   const togglePopular = async (product: Product) => {
