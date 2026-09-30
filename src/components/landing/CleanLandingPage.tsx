@@ -150,9 +150,6 @@ export function CleanLandingPage({slug}:{slug:string}){
     if(!landingInitiateCheckoutRef.current){landingInitiateCheckoutRef.current=true;trackInitiateCheckout([seedItem],total);}
     const intent=await runCreateLandingIntent({data:{checkout_session_id:landingCheckoutSessionRef.current,customer_name:form.name,customer_phone:form.phone.replace(/[\\s-]/g,""),customer_address:form.address,delivery_fee:deliveryFee,seed_items:[seedItem],nutrimix_item:nutrimixItem,notes:form.note||null}});
     landingIntentIdRef.current=intent.id;
-    const created=await runFinalizeLandingIntent({data:{intent_id:intent.id,include_nutrimix:false,emit_purchase:false}});
-    if(!created?.id) throw new Error("Order create failed");
-    orderCreatedRef.current=true;
     setNutrimix(p);setNutrimixOpen(true);
   }catch(error){landingInitiateCheckoutRef.current=false;notifyOrderError(error)}
  };
