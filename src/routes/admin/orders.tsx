@@ -1752,10 +1752,10 @@ async function attachProductImages(orders: OrderRow[]): Promise<OrderRow[]> {
       return {
         ...it,
         image: toR2MediaUrl(
-          comboImageMap[key] ||
           (it.product_id ? idMap[it.product_id] : "") ||
           nameMap[key] ||
           bestCatalogImage(it.product_name) ||
+          comboImageMap[key] ||
           it.image ||
           "",
         ),
