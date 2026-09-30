@@ -57,15 +57,20 @@ const homeQueryOptions = queryOptions({
 
 function AnimatedStat({ value, suffix = "", label, icon: Icon }: { value: number; suffix?: string; label: string; icon: typeof Sprout }) {
   const [count, setCount] = useState(0);
-  const [started, setStarted] = useState(false);
+  const statRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    if (started) return;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (!entry.isIntersecting) return;
-      setStarted(true);
+    const node = statRef.current;
+    if (!node) return;
+
+    let raf = 0;
+    let started = false;
+    const duration = 1500;
+
+    const animate = () => {
+      if (started) return;
+      started = true;
       const startTime = performance.now();
-      const duration = 1500;
-      let raf = 0;
       const tick = (now: number) => {
         const progress = Math.min(1, (now - startTime) / duration);
         const eased = 1 - Math.pow(1 - progress, 3);
@@ -73,15 +78,35 @@ function AnimatedStat({ value, suffix = "", label, icon: Icon }: { value: number
         if (progress < 1) raf = requestAnimationFrame(tick);
       };
       raf = requestAnimationFrame(tick);
-      observer.disconnect();
+    };
+
+    if (typeof IntersectionObserver === "undefined") {
+      animate();
       return () => cancelAnimationFrame(raf);
-    }, { threshold: 0.35 });
-    const node = document.getElementById(`home-stat-${label}`);
-    if (node) observer.observe(node);
-    return () => observer.disconnect();
-  }, [label, started, value]);
+    }
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        animate();
+        observer.disconnect();
+      }
+    }, { threshold: 0.05 });
+
+    observer.observe(node);
+
+    // Safety fallback: never leave the stat at ০ if the observer is unavailable
+    // or the section is already visible during hydration.
+    const fallback = window.setTimeout(() => animate(), 900);
+
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(fallback);
+      cancelAnimationFrame(raf);
+    };
+  }, [value]);
+
   return (
-    <div id={`home-stat-${label}`} className="group relative overflow-hidden px-2 py-2.5 sm:px-4 sm:py-3.5">
+    <div ref={statRef} className="group relative overflow-hidden px-2 py-2.5 sm:px-4 sm:py-3.5">
       <div className="absolute inset-0 bg-gradient-to-b from-brand/5 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
       <div className="relative mx-auto mb-1.5 flex h-8 w-8 items-center justify-center rounded-full bg-brand-light/80 text-brand-dark ring-1 ring-brand/15 transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 group-hover:bg-brand group-hover:text-primary-foreground sm:h-9 sm:w-9">
         <Icon className="h-4 w-4" />
@@ -91,7 +116,6 @@ function AnimatedStat({ value, suffix = "", label, icon: Icon }: { value: number
     </div>
   );
 }
-
 function SectionTitle({ title, subtitle, action }: { title: string; subtitle?: string; action?: { label: string; to: string } }) {
   return (
     <div className="mb-3.5 flex items-end justify-between gap-3 sm:mb-5">
