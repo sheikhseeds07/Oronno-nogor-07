@@ -8,7 +8,7 @@ const MemberId = z.object({ userId: z.string().uuid() });
 const Members = z.object({ members: z.array(z.object({ user_id: z.string().uuid(), name: z.string().min(1), enabled: z.boolean(), position: z.number().int().min(0) })).max(100) });
 
 async function assertAdmin(userId: string) {
-  const { data } = await supabaseAdmin.from("user_roles").select("role");
+  const { data } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", userId);
   if (!(data ?? []).some(r => r.role === "admin" || r.role === "super_admin")) throw new Error("Admin only");
 }
 
