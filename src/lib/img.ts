@@ -16,7 +16,7 @@ function unwrapMediaCache(url: string): string {
   return url;
 }
 
-function throughMediaCache(url: string): string {
+function getStorageAssetPath(source: string): string | null {\n  try {\n    const parsed = new URL(source);\n    const match = parsed.pathname.match(/^\\/storage\\/v1\\/object\\/(?:public|sign)\\/([^/]+)\\/(.+)$/);\n    return SUPABASE_STORAGE_HOSTS.has(parsed.hostname) && match ? match[1] + "/" + match[2] : null;\n  } catch { return null; }\n}\n\nfunction throughMediaCache(url: string): string {
   const source = unwrapMediaCache(url);
   try {
     const parsed = new URL(source);
@@ -25,7 +25,7 @@ function throughMediaCache(url: string): string {
       SUPABASE_STORAGE_HOSTS.has(parsed.hostname) &&
       parsed.pathname.startsWith("/storage/v1/")
     ) {
-      return `/media?src=${encodeURIComponent(source)}`;
+      const asset = getStorageAssetPath(source); return asset ? `/media?asset=${encodeURIComponent(asset)}` : url;
     }
   } catch {}
   return url;
