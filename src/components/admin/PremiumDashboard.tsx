@@ -216,6 +216,7 @@ function MonthlyBonusCard() {
         </div>
 
         <div className="mt-2.5 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+          <div className="rounded-xl border border-emerald-100 bg-white/90 px-2 py-2 text-center"><div className="text-base font-black text-emerald-700">{isLoading ? "—" : enDigits(confirmed)}</div><div className="text-[7px] font-bold text-slate-400">INCOMPLETE CONFIRM</div></div>
           <div className="rounded-xl border border-blue-100 bg-white/90 px-2 py-2 text-center"><div className="text-base font-black text-blue-700">{isLoading ? "—" : enDigits(delivered)}</div><div className="text-[7px] font-bold text-slate-400">DELIVERED</div></div>
           <div className="rounded-xl border border-rose-100 bg-white/90 px-2 py-2 text-center"><div className="text-base font-black text-rose-600">{isLoading ? "—" : enDigits(cancelled)}</div><div className="text-[7px] font-bold text-slate-400">CANCELLED</div></div>
           <div className="rounded-xl border border-amber-100 bg-white/90 px-2 py-2 text-center"><div className="text-base font-black text-amber-700">{isLoading ? "—" : enDigits(pending)}</div><div className="text-[7px] font-bold text-slate-400">PENDING</div></div>
