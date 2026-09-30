@@ -44,7 +44,7 @@ export function SiteBlockGate() {
 
   // Re-check on every page change so a block applies to the whole site, not just one page.
   const { data } = useQuery({
-    queryKey: ["site-block-gate", deviceId, customerId, pathname],
+    // Block status is security state, but it does not need a request on every\n    // route change or window focus. Reuse the same result across navigation.\n    queryKey: ["site-block-gate", deviceId, customerId],
     enabled: ready && !isAdminArea,
     staleTime: 10_000,
     refetchOnWindowFocus: true,
