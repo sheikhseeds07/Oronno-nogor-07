@@ -172,11 +172,9 @@ async function withSteadfast(phone: string, result: CourierHistoryResult): Promi
   if (existing && existing.total > 0) return result;
   const score = await steadfastScore(phone).catch(() => null);
   if (!score) return result;
-  // Steadfast gives only ratios now. Owner-approved estimate: fixed base count
-  // per volume band, split by the real ratios, so it can join Overall.
-  const BASE: Record<string, number> = { low: 5, medium: 15, high: 30, very_high: 50 };
-  const total = BASE[score.volumeBand ?? ""] ?? 0;
-  if (!total) return { ...result, steadfast: score };
+  // Steadfast gives only ratios now. Owner-approved estimate: fixed total of
+  // 10, split by the real ratios, so it can join Overall (e.g. 50% -> 5 success).
+  const total = 10;
   const success = Math.round((total * score.deliveryRatio) / 100);
   const cancelled = Math.min(total - success, Math.round((total * score.cancellationRatio) / 100));
   const est: CourierStat = { name: "Steadfast (আনুমানিক)", total, success, cancelled };
