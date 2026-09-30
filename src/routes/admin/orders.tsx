@@ -1573,6 +1573,27 @@ function OrderItemsThumbs({ items }: { items: OrderItemRow[] }) {
 const normalizeProductName = (name: string) =>
   (name ?? "").toString().toLowerCase().replace(/\s+/g, " ").trim();
 
+/** Always deliver order thumbnails through the site's Cloudflare R2-backed media route.
+ * Existing records may still contain legacy Supabase Storage URLs; those are converted
+ * to the corresponding R2 asset key so the browser never loads the Supabase URL directly.
+ */
+function toR2MediaUrl(raw: string): string {
+  const value = String(raw ?? "").trim();
+  if (!value) return "";
+  try {
+    const outer = new URL(value, typeof window !== "undefined" ? window.location.origin : "https://oronnonogor.com");
+    const asset = outer.searchParams.get("asset");
+    if (asset) return `/media?asset=${encodeURIComponent(asset)}`;
+    const nested = outer.searchParams.get("src");
+    if (nested) return toR2MediaUrl(nested);
+    const match = outer.pathname.match(/^\\/storage\\/v1\\/object\\/(?:public|sign)\\/([^/]+)\\/(.+)$/);
+    if (match) return `/media?asset=${encodeURIComponent(match[1] + "/" + match[2])}`;
+  } catch {
+    // Keep non-URL values unchanged below.
+  }
+  return value;
+}
+
 /** Resolve a thumbnail for every order item:
  *  1) by product_id, 2) by product name from the products table,
  *  3) by product name from landing page packages/addons (custom landing offers). */
@@ -1730,13 +1751,14 @@ async function attachProductImages(orders: OrderRow[]): Promise<OrderRow[]> {
       const key = normalizeProductName(it.product_name);
       return {
         ...it,
-        image:
+        image: toR2MediaUrl(
           comboImageMap[key] ||
-          it.image ||
           (it.product_id ? idMap[it.product_id] : "") ||
           nameMap[key] ||
           bestCatalogImage(it.product_name) ||
+          it.image ||
           "",
+        ),
       };
     }),
   }));
