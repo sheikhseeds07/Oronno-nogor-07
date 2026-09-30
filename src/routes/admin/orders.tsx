@@ -1921,10 +1921,9 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
     const success = displayData.overall?.success ?? displayData.stats.reduce((sum: number, stat: any) => sum + stat.success, 0);
     const cancelled = displayData.overall?.cancelled ?? displayData.stats.reduce((sum: number, stat: any) => sum + stat.cancelled, 0);
     const sf = displayData.steadfast as { deliveryRatio: number; cancellationRatio: number; volumeBand: string | null } | undefined;
-    const bandBn: Record<string, string> = { low: "কম", medium: "মাঝারি", high: "বেশি" };
     const sfLine = sf ? (
       <div className="text-sky-700" title="Steadfast থেকে সরাসরি (পুরো Steadfast-এর হিসাব)">
-        Steadfast: <b>{sf.deliveryRatio}%</b> সফল · <b>{sf.cancellationRatio}%</b> বাতিল{sf.volumeBand ? ` · পরিমাণ: ${bandBn[sf.volumeBand] ?? sf.volumeBand}` : ""}
+        Steadfast: <b>{sf.deliveryRatio}%</b> সফল · <b>{sf.cancellationRatio}%</b> বাতিল
       </div>
     ) : null;
     if (!total && sf) {
@@ -2384,13 +2383,11 @@ function CourierCard({ name, total, success, cancelled, highlight, clickable }: 
 function SteadfastRateCard({ sf }: { sf?: { deliveryRatio: number; cancellationRatio: number; volumeBand: string | null } | null }) {
   if (!sf) return null;
   const rate = Math.round(sf.deliveryRatio);
-  const band: Record<string, string> = { low: "কম", medium: "মাঝারি", high: "বেশি", very_high: "খুব বেশি" };
   return (
     <div className="min-w-[150px] rounded-lg border p-2.5 text-xs space-y-1 bg-white">
       <div className="font-bold text-sm text-foreground">Steadfast</div>
       <div className="text-emerald-600 font-semibold">Success Rate: {rate}%</div>
       <div className="text-rose-600">Cancelled: <span className="font-semibold">{Math.round(sf.cancellationRatio)}%</span></div>
-      <div className="text-muted-foreground">পরিমাণ: <span className="font-semibold text-foreground">{sf.volumeBand ? (band[sf.volumeBand] ?? sf.volumeBand) : "—"}</span></div>
       <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-1">
         <div className="h-full bg-emerald-500" style={{ width: `${rate}%` }} />
       </div>
