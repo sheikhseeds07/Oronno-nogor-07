@@ -265,7 +265,7 @@ function Home() {
           @keyframes trustShimmer { 0% { transform: translateX(-120%); } 100% { transform: translateX(320%); } }
         `}</style>
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,hsl(var(--brand)/.09),transparent_28%),radial-gradient(circle_at_85%_80%,hsl(var(--brand)/.07),transparent_30%)]" />
-        <div className="container relative mx-auto px-3 sm:px-4">
+        <div className="container relative mx-auto px-2.5 sm:px-4">
           <div className="mx-auto max-w-6xl overflow-hidden rounded-[1.5rem] border border-brand/15 bg-card/95 shadow-[0_14px_44px_hsl(var(--brand)/.10)] backdrop-blur sm:rounded-[2rem]">
             <div className="relative overflow-hidden px-3.5 pb-3.5 pt-4 sm:px-7 sm:pb-5 sm:pt-6">
               <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-brand/10 blur-3xl" />
