@@ -258,7 +258,7 @@ function Home() {
         )}
       </section>
 
-      <section className="relative overflow-hidden py-7 sm:py-11">
+      <section className="relative overflow-hidden py-5 sm:py-8">
         <style>{`
           @keyframes trustFloat { 0%,100% { transform: translate3d(0,0,0) rotate(0deg); } 50% { transform: translate3d(0,-7px,0) rotate(1deg); } }
           @keyframes trustPulse { 0%,100% { box-shadow: 0 0 0 0 hsl(var(--brand) / .10); } 50% { box-shadow: 0 0 0 9px hsl(var(--brand) / 0); } }
@@ -266,26 +266,26 @@ function Home() {
         `}</style>
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,hsl(var(--brand)/.09),transparent_28%),radial-gradient(circle_at_85%_80%,hsl(var(--brand)/.07),transparent_30%)]" />
         <div className="container relative mx-auto px-3 sm:px-4">
-          <div className="mx-auto max-w-6xl overflow-hidden rounded-[1.75rem] border border-brand/15 bg-card/95 shadow-[0_18px_60px_hsl(var(--brand)/.10)] backdrop-blur sm:rounded-[2.25rem]">
-            <div className="relative overflow-hidden px-4 pb-4 pt-5 sm:px-8 sm:pb-6 sm:pt-7">
+          <div className="mx-auto max-w-6xl overflow-hidden rounded-[1.5rem] border border-brand/15 bg-card/95 shadow-[0_14px_44px_hsl(var(--brand)/.10)] backdrop-blur sm:rounded-[2rem]">
+            <div className="relative overflow-hidden px-3.5 pb-3.5 pt-4 sm:px-7 sm:pb-5 sm:pt-6">
               <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-brand/10 blur-3xl" />
               <div className="pointer-events-none absolute -bottom-24 -left-20 h-56 w-56 rounded-full bg-brand/10 blur-3xl" />
               <div className="relative mx-auto max-w-2xl text-center">
                 <div className="inline-flex items-center gap-1.5 rounded-full border border-brand/15 bg-brand-light/60 px-3 py-1 text-[10px] font-extrabold tracking-wide text-brand-dark shadow-sm sm:text-[11px]">
                   <ShieldCheck className="h-3.5 w-3.5" />অরন্নো নগর — আপনার আস্থার ঠিকানা
                 </div>
-                <h2 className="mt-2.5 text-xl font-black tracking-tight text-brand-dark sm:text-3xl">ভালো বীজে শুরু, ভালো ফলনে আস্থা</h2>
-                <p className="mx-auto mt-1.5 max-w-xl text-[11px] leading-relaxed text-muted-foreground sm:text-sm">অরিজিনাল পণ্য, নিরাপদ ডেলিভারি এবং বাগান করার প্রতিটি ধাপে প্রয়োজনীয় সহযোগিতা — সব একসাথে।</p>
+                <h2 className="mt-2 text-lg font-black tracking-tight text-brand-dark sm:text-3xl">ভালো বীজে শুরু, ভালো ফলনে আস্থা</h2>
+                <p className="mx-auto mt-1 max-w-xl text-[10px] leading-relaxed text-muted-foreground sm:text-sm">অরিজিনাল পণ্য, নিরাপদ ডেলিভারি এবং বাগান করার প্রতিটি ধাপে প্রয়োজনীয় সহযোগিতা — সব একসাথে।</p>
               </div>
-              <div className="relative mt-5 grid grid-cols-2 gap-2.5 sm:mt-7 sm:grid-cols-4 sm:gap-3">
+              <div className="relative mt-3.5 grid grid-cols-2 gap-2 sm:mt-4 sm:grid-cols-4 sm:gap-2.5">
                 {[
                   { icon: Wallet, t: "হাতে পেয়ে মূল্য পরিশোধ", s: "পণ্য হাতে দেখে তারপর ক্যাশ অন ডেলিভারি।" },
                   { icon: Headphones, t: "ফ্রি পরামর্শ", s: "বপন ও পরিচর্যায় কৃষিবিদের দিকনির্দেশনা।" },
                   { icon: Truck, t: "নিরাপদ ডেলিভারি", s: "যত্নসহ প্যাকেজিংয়ে সারাদেশে পৌঁছে দিই।" },
                   { icon: BadgeCheck, t: "মানের প্রতি অঙ্গীকার", s: "বাছাইকৃত বীজ ও পণ্যে নির্ভরযোগ্যতার চেষ্টা।" },
                 ].map(({ icon: Icon, t, s }, i) => (
-                  <div key={t} className="group relative overflow-hidden rounded-2xl border border-border/60 bg-background/75 p-3.5 shadow-sm transition-all duration-500 hover:-translate-y-1.5 hover:border-brand/30 hover:shadow-[0_14px_30px_hsl(var(--brand)/.12)] sm:p-4" style={{ animation: "trustFloat 5s ease-in-out infinite", animationDelay: `${i * 180}ms` }}>
-                    <div className="relative mb-2.5 flex h-10 w-10 items-center justify-center rounded-xl bg-brand-light/75 text-brand-dark ring-1 ring-brand/10 transition-all duration-500 group-hover:scale-110 group-hover:bg-brand group-hover:text-primary-foreground sm:h-11 sm:w-11">
+                  <div key={t} className="group relative overflow-hidden rounded-xl border border-border/60 bg-background/75 p-2.5 shadow-sm transition-all duration-500 hover:-translate-y-1.5 hover:border-brand/30 hover:shadow-[0_14px_30px_hsl(var(--brand)/.12)] sm:p-3.5" style={{ animation: "trustFloat 5s ease-in-out infinite", animationDelay: `${i * 180}ms` }}>
+                    <div className="relative mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-brand-light/75 text-brand-dark ring-1 ring-brand/10 transition-all duration-500 group-hover:scale-110 group-hover:bg-brand group-hover:text-primary-foreground sm:h-10 sm:w-10">
                       <Icon className="h-5 w-5" />
                     </div>
                     <div className="text-[12px] font-extrabold leading-tight text-foreground sm:text-sm">{t}</div>
@@ -294,15 +294,15 @@ function Home() {
                   </div>
                 ))}
               </div>
-              <div className="relative mt-3.5 overflow-hidden rounded-2xl border border-brand/15 bg-gradient-to-r from-brand-light/45 via-card to-brand-light/30 shadow-inner sm:mt-5">
+              <div className="relative mt-2.5 overflow-hidden rounded-xl border border-brand/15 bg-gradient-to-r from-brand-light/45 via-card to-brand-light/30 shadow-inner sm:mt-5">
                 <div className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/2 bg-gradient-to-r from-transparent via-white/30 to-transparent" style={{ animation: "trustShimmer 4.5s ease-in-out infinite" }} />
                 <div className="grid grid-cols-3 divide-x divide-border/60">
-                  <AnimatedStat value={20000} suffix="+" label="সন্তুষ্ট বাগানি" icon={Sprout} />
+                  <AnimatedStat value={100000} suffix="+" label="সন্তুষ্ট বাগানি" icon={Sprout} />
                   <AnimatedStat value={500} suffix="+" label="বীজ ও পণ্য" icon={Leaf} />
                   <AnimatedStat value={64} label="জেলায় ডেলিভারি" icon={MapPin} />
                 </div>
               </div>
-              <div className="relative mt-3 flex items-center justify-center gap-2 text-[9.5px] font-semibold text-muted-foreground sm:text-[11px]">
+              <div className="relative mt-2 flex items-center justify-center gap-2 text-[9px] font-semibold text-muted-foreground sm:text-[11px]">
                 <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand-light text-brand-dark" style={{ animation: "trustPulse 2.4s ease-in-out infinite" }}><ShieldCheck className="h-3 w-3" /></span>
                 বিশ্বস্ত সেবা • সহজ অর্ডার • সারাদেশে ডেলিভারি
               </div>
