@@ -1901,14 +1901,24 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
     if (total) {
       const rate = Math.round((success / total) * 100);
       const ring = rate >= 80 ? "border-emerald-500 text-emerald-700" : rate >= 50 ? "border-amber-500 text-amber-700" : "border-rose-500 text-rose-700";
+      const rows = displayData.stats?.length ? displayData.stats : (displayData.overall?.total ? [displayData.overall] : []);
       content = (
-        <div className="flex items-center gap-2">
-          <div className={`w-9 h-9 rounded-full border-[3px] ${ring} flex items-center justify-center text-[10px] font-bold`}>{rate}%</div>
-          <div className="text-[11px] leading-tight">
-            <div className="text-emerald-700">Success: <b>{rate}%</b></div>
-            <div className="text-muted-foreground">Order: <b>{success}/{total}</b></div>
-            <div className="text-rose-600">Cancel: <b>{cancelled}</b></div>
-          </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {rows.map((stat: any, index: number) => {
+            const t = Number(stat.total) || 0;
+            const s = Number(stat.success) || 0;
+            const x = Number(stat.cancelled) || 0;
+            if (!t) return null;
+            const pct = Math.round((s / t) * 100);
+            const tone = pct >= 80 ? "border-emerald-200 bg-emerald-50 text-emerald-700" : pct >= 50 ? "border-amber-200 bg-amber-50 text-amber-700" : "border-rose-200 bg-rose-50 text-rose-700";
+            return (
+              <div key={`${stat.name}-${index}`} className={`min-w-[88px] rounded-lg border px-2 py-1.5 ${tone}`}>
+                <div className="text-[10px] font-extrabold leading-tight">{stat.name}</div>
+                <div className="mt-0.5 text-[12px] font-black">{pct}%</div>
+                <div className="text-[9px] leading-tight opacity-80">{s}/{t} • C:{x}</div>
+              </div>
+            );
+          })}
         </div>
       );
     } else {
