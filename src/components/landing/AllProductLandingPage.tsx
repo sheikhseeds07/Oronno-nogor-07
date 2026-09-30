@@ -217,16 +217,12 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
       });
       landingIntentIdRef.current = intent.id;
 
-      // Place Order means the seed-only web order is created immediately.
-      // The NUTRIMIX popup is only an optional 2-minute upgrade window.
-      const created = await runFinalizeLandingIntent({
-        data: { intent_id: intent.id, include_nutrimix: false, emit_purchase: false },
-      });
-      orderCreatedRef.current = true;
+      // Keep the durable checkout intent pending while the NUTRIMIX offer is shown.
+      // Final order creation happens after the customer's choice, so any repeat-order
+      // block is surfaced after the NUTRIMIX popup rather than before it.
       setNutrimix(p);
       setNutrimixOpen(true);
       landingIntentIdRef.current = intent.id;
-      if (!created?.id) throw new Error("Order create failed");
     } catch (error) {
       landingInitiateCheckoutRef.current = false;
       notifyOrderError(error);
