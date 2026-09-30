@@ -171,7 +171,21 @@ async function withSteadfast(phone: string, result: CourierHistoryResult): Promi
   const existing = result.stats.find((s) => s.name.toLowerCase() === "steadfast");
   if (existing && existing.total > 0) return result;
   const score = await steadfastScore(phone).catch(() => null);
-  return score ? { ...result, steadfast: score } : result;
+  if (!score) return result;
+  // Steadfast gives only ratios now. Owner-approved estimate: fixed base count
+  // per volume band, split by the real ratios, so it can join Overall.
+  const BASE: Record<string, number> = { low: 5, medium: 15, high: 30, very_high: 50 };
+  const total = BASE[score.volumeBand ?? ""] ?? 0;
+  if (!total) return { ...result, steadfast: score };
+  const success = Math.round((total * score.deliveryRatio) / 100);
+  const cancelled = Math.min(total - success, Math.round((total * score.cancellationRatio) / 100));
+  const est: CourierStat = { name: "Steadfast (আনুমানিক)", total, success, cancelled };
+  const stats = [...result.stats.filter((s) => !s.name.toLowerCase().startsWith("steadfast")), est];
+  const o = result.overall;
+  const overall = o
+    ? { ...o, total: o.total + total, success: o.success + success, cancelled: o.cancelled + cancelled }
+    : { name: "Overall", total: stats.reduce((a, x) => a + x.total, 0), success: stats.reduce((a, x) => a + x.success, 0), cancelled: stats.reduce((a, x) => a + x.cancelled, 0) };
+  return { ...result, stats, overall, steadfast: score };
 }
 
 async function readPersistentCache(phone: string): Promise<PersistentHit | null> {
