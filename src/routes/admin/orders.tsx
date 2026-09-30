@@ -1925,9 +1925,6 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
           })}
         </div>
       );
-          })}
-        </div>
-      );
     } else {
       content = <span className="text-xs text-muted-foreground">কোনো রেকর্ড নেই</span>;
     }
