@@ -10,6 +10,23 @@ async function assertStaff(db: SupabaseClient<Database>, userId: string) {
   if (!data?.length) throw new Error("Unauthorized");
 }
 
+const bdDay = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dhaka" }).format(new Date(iso));
+
+// Supabase/PostgREST caps unbounded selects (commonly at 1000 rows). Reports
+// compute totals over a date range, so silently truncating rows would under-report
+// revenue/order counts. Page through with .range() until a short page is returned.
+async function fetchAllRows<T>(build: (from: number, to: number) => any, pageSize = 1000): Promise<T[]> {
+  const all: T[] = [];
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await build(offset, offset + pageSize - 1);
+    if (error) throw new Error(error.message);
+    const rows = (data ?? []) as T[];
+    all.push(...rows);
+    if (rows.length < pageSize) break;
+  }
+  return all;
+}
+
 const RangeSchema = z.object({ from: z.string().datetime().optional(), to: z.string().datetime().optional(), statuses: z.array(z.string().max(40)).max(20).optional() });
 
 export const getOrderStatusCounts = createServerFn({ method: "POST" })
@@ -50,9 +67,9 @@ export const getSalesReport = createServerFn({ method: "POST" })
     await assertStaff(db, context.userId);
     const from = data.from ?? new Date(Date.now() - 7 * 86400000).toISOString();
     const to = data.to ?? new Date().toISOString();
-    const { data: rows, error } = await db.from("orders").select("id,status,total,created_at").gte("created_at", from).lte("created_at", to).limit(10000);
-    if (error) throw new Error(error.message);
-    const list = rows ?? [];
+    const list = await fetchAllRows<{ id: string; status: string; total: number; created_at: string }>((rf, rt) =>
+      db.from("orders").select("id,status,total,created_at").gte("created_at", from).lte("created_at", to).range(rf, rt)
+    );
     const totalOrders = list.length;
     let revenue = 0;
     let deliveredRevenue = 0;
@@ -63,7 +80,7 @@ export const getSalesReport = createServerFn({ method: "POST" })
       revenue += t;
       if (o.status === "delivered") deliveredRevenue += t;
       statusCounts[o.status as string] = (statusCounts[o.status as string] ?? 0) + 1;
-      const d = (o.created_at ?? "").slice(0, 10);
+      const d = o.created_at ? bdDay(o.created_at) : "";
       if (!daily[d]) daily[d] = { date: d, orders: 0, revenue: 0 };
       daily[d].orders += 1;
       daily[d].revenue += t;
@@ -79,16 +96,14 @@ export const getEmployeeReport = createServerFn({ method: "POST" })
     await assertStaff(db, context.userId);
     const from = data.from ?? new Date(Date.now() - 30 * 86400000).toISOString();
     const to = data.to ?? new Date().toISOString();
-    const [{ data: orders, error: ordersError }, { data: emps, error: empsError }, { data: profiles, error: profilesError }] = await Promise.all([
-      db.from("orders").select("id,status,total,created_at").gte("created_at", from).lte("created_at", to).limit(20000),
-      db.from("employees").select("user_id,name,email"),
-      db.from("profiles").select("id,full_name"),
-    ]);
-    const firstError = ordersError ?? empsError ?? profilesError;
-    if (firstError) throw new Error(firstError.message);
+    const orders = await fetchAllRows<{ id: string; status: string; total: number; created_at: string }>((rf, rt) =>
+      db.from("orders").select("id,status,total,created_at").gte("created_at", from).lte("created_at", to).range(rf, rt)
+    );
+    const { data: emps, error: empsError } = await db.from("employees").select("user_id,name,email");
+    if (empsError) throw new Error(empsError.message);
     type Row = { userId: string; name: string; total: number; confirmed: number; delivered: number; cancelled: number; revenue: number; deliveredRevenue: number };
     const map = new Map<string, Row>();
-    for (const o of orders ?? []) {
+    for (const o of orders) {
       const uid = "unassigned";
       if (!uid) continue;
       let r = map.get(uid);
@@ -110,18 +125,24 @@ export const getFunnelReport = createServerFn({ method: "POST" })
     const db = context.supabase;
     const from = data.from ?? new Date(Date.now() - 7 * 86400000).toISOString();
     const to = data.to ?? new Date().toISOString();
-    const [evRes, webRes, cancelRes] = await Promise.all([
-      db.from("incomplete_events").select("event,created_at").gte("created_at", from).lte("created_at", to),
-      db.from("orders").select("status,created_at,updated_at").eq("source", "web").or(`and(created_at.gte.${from},created_at.lte.${to}),and(updated_at.gte.${from},updated_at.lte.${to})`),
-      db.from("order_cancellation_history").select("source,cancelled_at").gte("cancelled_at", from).lte("cancelled_at", to),
+    const [evData, webData, cancelData] = await Promise.all([
+      fetchAllRows<{ event: string; created_at: string }>((rf, rt) =>
+        db.from("incomplete_events").select("event,created_at").gte("created_at", from).lte("created_at", to).range(rf, rt)
+      ),
+      fetchAllRows<{ status: string; created_at: string; updated_at: string }>((rf, rt) =>
+        db.from("orders").select("status,created_at,updated_at").eq("source", "web").or(`and(created_at.gte.${from},created_at.lte.${to}),and(updated_at.gte.${from},updated_at.lte.${to})`).range(rf, rt)
+      ),
+      fetchAllRows<{ source: string; cancelled_at: string }>((rf, rt) =>
+        db.from("order_cancellation_history").select("source,cancelled_at").gte("cancelled_at", from).lte("cancelled_at", to).range(rf, rt)
+      ),
     ]);
-    const dayKey = (iso: string) => iso.slice(0, 10);
+    const dayKey = (iso: string) => bdDay(iso);
     const map = new Map<string, { date: string; totalIncomplete: number; cancelled: number; converted: number; totalWeb: number; webCancelled: number; webProcessed: number }>();
     const ensure = (d: string) => { let r = map.get(d); if (!r) { r = { date: d, totalIncomplete: 0, cancelled: 0, converted: 0, totalWeb: 0, webCancelled: 0, webProcessed: 0 }; map.set(d, r); } return r; };
-    for (const e of evRes.data ?? []) { const r = ensure(dayKey(e.created_at as string)); if (e.event === "created") r.totalIncomplete += 1; else if (e.event === "cancelled") r.cancelled += 1; else if (e.event === "converted") r.converted += 1; }
-    for (const c of cancelRes.data ?? []) { const r = ensure(dayKey(c.cancelled_at as string)); if (c.source === "incomplete") r.cancelled += 1; else r.webCancelled += 1; }
+    for (const e of evData) { const r = ensure(dayKey(e.created_at as string)); if (e.event === "created") r.totalIncomplete += 1; else if (e.event === "cancelled") r.cancelled += 1; else if (e.event === "converted") r.converted += 1; }
+    for (const c of cancelData) { const r = ensure(dayKey(c.cancelled_at as string)); if (c.source === "incomplete") r.cancelled += 1; else r.webCancelled += 1; }
     const processingWebStatuses = new Set(["web_pending", "rts", "shipped", "delivered", "pending_return", "returned", "partial"]);
-    for (const o of webRes.data ?? []) {
+    for (const o of webData) {
       const createdDay = dayKey(o.created_at as string);
       const createdInRange = (o.created_at as string) >= from && (o.created_at as string) <= to;
       if (createdInRange) ensure(createdDay).totalWeb += 1;
