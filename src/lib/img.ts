@@ -16,7 +16,15 @@ function unwrapMediaCache(url: string): string {
   return url;
 }
 
-function getStorageAssetPath(source: string): string | null {\n  try {\n    const parsed = new URL(source);\n    const match = parsed.pathname.match(/^\\/storage\\/v1\\/object\\/(?:public|sign)\\/([^/]+)\\/(.+)$/);\n    return SUPABASE_STORAGE_HOSTS.has(parsed.hostname) && match ? match[1] + "/" + match[2] : null;\n  } catch { return null; }\n}\n\nfunction throughMediaCache(url: string): string {
+function getStorageAssetPath(source: string): string | null {
+  try {
+    const parsed = new URL(source);
+    const match = parsed.pathname.match(/^\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+)$/);
+    return SUPABASE_STORAGE_HOSTS.has(parsed.hostname) && match ? match[1] + "/" + match[2] : null;
+  } catch { return null; }
+}
+
+function throughMediaCache(url: string): string {
   const source = unwrapMediaCache(url);
   try {
     const parsed = new URL(source);
