@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { ProductCard, type Product } from "@/components/shop/ProductCard";
 import { Truck, Headphones, ArrowRight, Sparkles, Sprout, Wallet, ShieldCheck, MapPin, BadgeCheck, Leaf } from "lucide-react";
