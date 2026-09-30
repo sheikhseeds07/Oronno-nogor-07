@@ -459,7 +459,7 @@ export const getEmployeeLiveProcessingCounts = createServerFn({ method: "POST" }
     const db = supabaseAdmin as any;
     const [employeesR, processingR] = await Promise.all([
       db.from("employees").select("user_id,name").eq("is_active", true),
-      db.from("orders").select("assigned_to").eq("status", "web_pending").eq("originated_from_import", false).not("assigned_to", "is", null),
+      db.from("orders").select("assigned_to").eq("status", "web_pending").not("assigned_to", "is", null),
     ]);
     if (employeesR.error) throw new Error(employeesR.error.message);
     if (processingR.error) throw new Error(processingR.error.message);
