@@ -32,7 +32,7 @@ const LANDING_CACHE_KEYS = ["landing", "landing-clean", "landing-all-product", "
 
 // Short server-side cache for anonymous landing-page SSR. A 10s TTL cuts repeated
 // identical reads during ad bursts while keeping admin edits visible quickly.
-const LANDING_SERVER_CACHE_TTL_MS = 60_000;
+const LANDING_SERVER_CACHE_TTL_MS = 5 * 60_000;
 type LandingServerCacheEntry = { expiresAt: number; page: unknown };
 const landingServerCache = new Map<string, LandingServerCacheEntry>();
 
