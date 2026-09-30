@@ -39,7 +39,7 @@ const shopCategoriesOptions = () => queryOptions({
   queryKey: ["shop-categories"],
   staleTime: 10 * 60_000,
   queryFn: async () => {
-    const { data, error } = await (supabase.from("categories") as any).select("id,name,slug,parent_id").is("parent_id", null).eq("is_hidden_from_home", false).order("display_order").order("created_at");
+    const { data, error } = await (supabase.from("categories") as any).select("id,name,slug,parent_id").is("parent_id", null).eq("is_hidden_from_home", false).order("display_order").order("created_at").limit(100);
     if (error) throw error;
     return (data ?? []) as ShopCategory[];
   },
