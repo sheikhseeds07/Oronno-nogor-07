@@ -1,26 +1,12 @@
 import { supabase } from "@/lib/personal-supabase/client";
 
-// Images are stored in the private site-assets bucket and served through the
-// same-domain /media cache. Uploads are aggressively optimized client-side so
-// even very large originals become compact WebP files before Storage receives them.
-const TEN_YEARS = 60 * 60 * 24 * 365 * 10;
-const ONE_YEAR = 60 * 60 * 24 * 365;
+// All new website media is uploaded straight to Cloudflare R2.
+// Images are still compressed client-side before the upload so storage and
+// delivery stay small. Supabase Storage remains only as a temporary migration
+// source for legacy objects.
 const MAX_IMAGE_DIMENSION = 1400;
 const WEBP_QUALITY = 0.76;
 const OPTIMIZABLE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-const SUPABASE_STORAGE_HOSTS = new Set(["bvuhvzccziuniujeogng.supabase.co", "frtzlibogmethppqmhtr.supabase.co"]);
-
-function throughMediaCache(url: string): string {
-  try {
-    const parsed = new URL(url);
-    if (
-      parsed.protocol === "https:" &&
-      SUPABASE_STORAGE_HOSTS.has(parsed.hostname) &&
-      parsed.pathname.startsWith("/storage/v1/")
-    ) return `/media?src=${encodeURIComponent(url)}`;
-  } catch {}
-  return url;
-}
 
 type PreparedUpload = { path: string; file: File };
 
@@ -51,8 +37,6 @@ async function optimizeImageUpload(path: string, file: File): Promise<PreparedUp
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", WEBP_QUALITY));
     if (!blob) return { path, file };
 
-    // Always prefer the optimized WebP when it is smaller. Large uploads are
-    // resized to 1400px max and compressed at a visually high quality.
     if (blob.size < file.size) {
       return {
         path: replaceExtension(path, "webp"),
@@ -77,16 +61,27 @@ export async function uploadToBucket(
   opts?: { upsert?: boolean },
 ): Promise<string> {
   const prepared = await optimizeImageUpload(path, file);
-  const { error } = await supabase.storage.from(bucket).upload(prepared.path, prepared.file, {
-    upsert: opts?.upsert ?? false,
-    contentType: prepared.file.type || undefined,
-    cacheControl: String(ONE_YEAR),
-  });
-  if (error) throw new Error(error.message);
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error("আপলোড করতে লগইন করুন");
 
-  const { data, error: signErr } = await supabase.storage.from(bucket).createSignedUrl(prepared.path, TEN_YEARS);
-  if (signErr || !data?.signedUrl) throw new Error(signErr?.message || "URL তৈরি হয়নি");
-  return throughMediaCache(data.signedUrl);
+  const form = new FormData();
+  form.set("bucket", bucket);
+  form.set("path", prepared.path);
+  form.set("upsert", String(opts?.upsert ?? false));
+  form.set("file", prepared.file, prepared.file.name);
+
+  const response = await fetch("/api/media/upload", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+
+  const payload = await response.json().catch(() => ({})) as { url?: string; error?: string };
+  if (!response.ok || !payload.url) {
+    throw new Error(payload.error || "R2 upload failed");
+  }
+  return payload.url;
 }
 
 export function safeFileName(name: string) {
