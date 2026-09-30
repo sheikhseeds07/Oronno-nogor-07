@@ -7,7 +7,7 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const R2_ACCESS_KEY_ID = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
 const R2_SECRET_ACCESS_KEY = process.env.CLOUDFLARE_API_TOKEN_R2;
 const CF_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID || "a91d9451c87479d4d01d2d2add2530f5";
-const R2_BUCKET = "oronnonogor-media";
+const R2_BUCKET = process.env.R2_BUCKET || "sheikhseeds";
 const R2_ENDPOINT = `https://${CF_ACCOUNT_ID}.r2.cloudflarestorage.com`;
 const PAGE_SIZE = 1000;
 const TMP = path.resolve(".r2-migration-tmp");
@@ -101,6 +101,40 @@ async function downloadObject(bucket, name) {
       contentType: res.headers.get("content-type") || "application/octet-stream",
     };
   }
+
+  // Some migrated Storage rows return 400 from authenticated/public download
+  // even though the object is healthy. Ask Storage for a short-lived signed URL
+  // and fetch the object through that canonical route before declaring it missing.
+  const signRes = await fetch(
+    `${SUPABASE_URL}/storage/v1/object/sign/${encodeURIComponent(bucket)}/${encoded}`,
+    {
+      method: "POST",
+      headers: { ...authHeaders, "content-type": "application/json" },
+      body: JSON.stringify({ expiresIn: 3600 }),
+    },
+  );
+  if (signRes.ok) {
+    const signed = await signRes.json().catch(() => ({}));
+    const signedPath = signed?.signedURL || signed?.signedUrl;
+    if (signedPath) {
+      const signedUrl = String(signedPath).startsWith("http")
+        ? String(signedPath)
+        : String(signedPath).startsWith("/storage/v1/")
+          ? `${SUPABASE_URL}${signedPath}`
+          : `${SUPABASE_URL}/storage/v1${signedPath}`;
+      const signedGet = await fetch(signedUrl);
+      lastStatus = signedGet.status;
+      if (signedGet.ok) {
+        return {
+          bytes: Buffer.from(await signedGet.arrayBuffer()),
+          contentType: signedGet.headers.get("content-type") || "application/octet-stream",
+        };
+      }
+    }
+  } else {
+    lastStatus = signRes.status;
+  }
+
   throw new Error(`Download failed for ${bucket}/${name}: ${lastStatus}`);
 }
 
