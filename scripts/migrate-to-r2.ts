@@ -2,6 +2,8 @@ import { execFileSync } from "node:child_process";
 import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+const DRY_RUN = process.argv.includes("--dry-run");
+
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://frtzlibogmethppqmhtr.supabase.co";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -29,9 +31,11 @@ const R2_ENDPOINT = `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
 const TMP = path.resolve(".r2-migration-tmp");
 const PAGE_SIZE = 1000;
 
-if (!SUPABASE_SERVICE_ROLE_KEY) throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");
-if (!R2_ACCESS_KEY_ID) throw new Error("Missing R2_ACCESS_KEY_ID / CLOUDFLARE_R2_ACCESS_KEY_ID");
-if (!R2_SECRET_ACCESS_KEY) throw new Error("Missing R2_SECRET_ACCESS_KEY / CLOUDFLARE_API_TOKEN_R2");
+if (!DRY_RUN) {
+  if (!SUPABASE_SERVICE_ROLE_KEY) throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");
+  if (!R2_ACCESS_KEY_ID) throw new Error("Missing R2_ACCESS_KEY_ID / CLOUDFLARE_R2_ACCESS_KEY_ID");
+  if (!R2_SECRET_ACCESS_KEY) throw new Error("Missing R2_SECRET_ACCESS_KEY / CLOUDFLARE_API_TOKEN_R2");
+}
 
 if (R2_PUBLIC_URL) {
   const publicHost = new URL(R2_PUBLIC_URL).hostname.toLowerCase();
@@ -43,16 +47,10 @@ if (R2_PUBLIC_URL) {
 }
 
 const storageBuckets = [
-  "banners",
-  "category-images",
-  "community-media",
-  "customer-profiles",
   "product-images",
-  "review-images",
-  "site-assets",
+  "category-images",
+  "banners",
   "landing-images",
-  "blog-images",
-  "public-assets",
 ];
 
 const localRoots = [
@@ -67,10 +65,12 @@ const mediaExt = new Set([
 
 const migratedKeys = new Set<string>();
 const failures: Array<{ key: string; message: string }> = [];
-const authHeaders = {
-  apikey: SUPABASE_SERVICE_ROLE_KEY,
-  Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-};
+const authHeaders: Record<string, string> = SUPABASE_SERVICE_ROLE_KEY
+  ? {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+    }
+  : {};
 
 function awsEnv() {
   return {
@@ -82,6 +82,10 @@ function awsEnv() {
 }
 
 function assertBucketExists() {
+  if (DRY_RUN && (!R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY)) {
+    console.log("[DRY-RUN] R2 credential check skipped; no upload will be attempted.");
+    return;
+  }
   try {
     execFileSync(
       "aws",
@@ -369,6 +373,13 @@ async function rewriteDatabaseReferences() {
 async function migrateSupabaseStorage() {
   let scanned = 0;
   let uploaded = 0;
+  let wouldUpload = 0;
+
+  if (DRY_RUN && !SUPABASE_SERVICE_ROLE_KEY) {
+    console.log("[DRY-RUN] Supabase object listing skipped because SUPABASE_SERVICE_ROLE_KEY is not set.");
+    return { scanned, uploaded, wouldUpload };
+  }
+
   for (const bucket of storageBuckets) {
     let objects: Array<{ bucket: string; name: string }> = [];
     try {
@@ -382,6 +393,13 @@ async function migrateSupabaseStorage() {
     for (const row of objects) {
       scanned++;
       const key = `${row.bucket}/${row.name}`;
+
+      if (DRY_RUN) {
+        wouldUpload++;
+        console.log(`[DRY-RUN] Supabase ${row.bucket}/${row.name} -> r2://${R2_BUCKET_NAME}/${key}`);
+        continue;
+      }
+
       const safeName = Buffer.from(key).toString("base64url");
       const localFile = path.join(TMP, safeName);
 
@@ -400,12 +418,13 @@ async function migrateSupabaseStorage() {
       }
     }
   }
-  return { scanned, uploaded };
+  return { scanned, uploaded, wouldUpload };
 }
 
 async function migrateLocalAssets() {
   let scanned = 0;
   let uploaded = 0;
+  let wouldUpload = 0;
   for (const config of localRoots) {
     const files = await walk(config.root);
     for (const file of files) {
@@ -415,6 +434,14 @@ async function migrateLocalAssets() {
       try {
         const info = await stat(file);
         if (!info.size) continue;
+
+        if (DRY_RUN) {
+          wouldUpload++;
+          const source = path.relative(process.cwd(), file).split(path.sep).join("/");
+          console.log(`[DRY-RUN] ${source} -> r2://${R2_BUCKET_NAME}/${key}`);
+          continue;
+        }
+
         uploadFile(file, key, extensionContentType(file));
         migratedKeys.add(key);
         uploaded++;
@@ -425,25 +452,32 @@ async function migrateLocalAssets() {
       }
     }
   }
-  return { scanned, uploaded };
+  return { scanned, uploaded, wouldUpload };
 }
 
-await mkdir(TMP, { recursive: true });
+console.log(`[MODE] ${DRY_RUN ? "DRY RUN (no uploads, no DB writes)" : "LIVE MIGRATION"}`);
+console.log(`[R2] bucket=${R2_BUCKET_NAME} public_url=${R2_PUBLIC_URL || "<blank; /media?asset=...>"}`);
+
+if (!DRY_RUN) await mkdir(TMP, { recursive: true });
 assertBucketExists();
 
 const local = await migrateLocalAssets();
 const storage = await migrateSupabaseStorage();
-const changedRows = await rewriteDatabaseReferences();
+const changedRows = DRY_RUN ? 0 : await rewriteDatabaseReferences();
 
-await rm(TMP, { recursive: true, force: true });
+if (!DRY_RUN) await rm(TMP, { recursive: true, force: true });
 
 console.log(JSON.stringify({
+  dry_run: DRY_RUN,
   bucket: R2_BUCKET_NAME,
   endpoint: R2_ENDPOINT,
   public_url_mode: R2_PUBLIC_URL || "/media?asset=<key>",
+  supabase_buckets: storageBuckets,
   local_assets_scanned: local.scanned,
+  local_assets_would_upload: local.wouldUpload,
   local_assets_uploaded: local.uploaded,
   supabase_objects_scanned: storage.scanned,
+  supabase_objects_would_upload: storage.wouldUpload,
   supabase_objects_uploaded: storage.uploaded,
   db_rows_rewritten: changedRows,
   failures,
