@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 // Server-only webhook payload handling: persist messages and comments for staff.
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 import { type FbPageConfig, fetchProfileName } from "@/lib/fb-page.server";
@@ -141,7 +142,7 @@ export async function handleFbWebhookPayload(cfg: FbPageConfig, payload: Record<
       try {
         await handleMessagingEvent(cfg, event);
       } catch (err) {
-        console.error("[fb-inbox] messaging event failed", err);
+        logger.error("[fb-inbox] messaging event failed", err);
       }
     }
     for (const change of Array.isArray(entry.changes) ? entry.changes : []) {
@@ -149,7 +150,7 @@ export async function handleFbWebhookPayload(cfg: FbPageConfig, payload: Record<
       try {
         await handleFeedChange(cfg, change.value ?? {});
       } catch (err) {
-        console.error("[fb-inbox] feed change failed", err);
+        logger.error("[fb-inbox] feed change failed", err);
       }
     }
   }

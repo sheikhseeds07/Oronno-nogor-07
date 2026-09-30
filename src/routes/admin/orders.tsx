@@ -1,3 +1,4 @@
+import { INCOMPLETE_ORDERS_COLUMNS, ORDERS_COLUMNS, ORDER_ITEMS_COLUMNS } from "@/lib/read-columns";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
@@ -352,7 +353,7 @@ function IncompleteOrdersPanel() {
       if (error) throw new Error(error.message);
       return (data ?? []) as unknown as IncompleteRow[];
     },
-    refetchInterval: 120_000,
+    refetchInterval: false,
   });
 
   const handleDelete = async (id: string, phone: string) => {
@@ -645,7 +646,7 @@ function OrdersTable({
       } catch { /* skip */ }
     };
     run();
-    const t = setInterval(run, 180_000); // Increased to 3 minutes
+    const t = setInterval(run, 900_000); // Courier status refresh capped at 15 minutes
     return () => { alive = false; clearInterval(t); };
   }, [isShippedFilter, syncStatuses, qc]);
 
@@ -731,7 +732,7 @@ function OrdersTable({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("incomplete_orders")
-        .select("*")
+        .select(INCOMPLETE_ORDERS_COLUMNS)
         .order("updated_at", { ascending: false })
         .limit(500);
       if (error) throw new Error(error.message);
@@ -772,7 +773,7 @@ function OrdersTable({
     queryKey: ["order-locks", orderIdsKey],
     enabled: orderIds.length > 0,
     queryFn: () => fetchLocks({ data: { order_ids: orderIds } }),
-    refetchInterval: 45_000,
+    refetchInterval: false,
   });
   const lockMap = useMemo(() => {
     const m = new Map<string, { user_id: string; user_name: string }>();
@@ -2589,7 +2590,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
     enabled: lockState === "ok",
     queryFn: async () => {
       if (isDraft && incId) {
-        const { data } = await supabase.from("incomplete_orders").select("*").eq("id", incId).maybeSingle();
+        const { data } = await supabase.from("incomplete_orders").select(INCOMPLETE_ORDERS_COLUMNS).eq("id", incId).maybeSingle();
         if (!data) return null;
         const r = data as any;
         const its = (r.items ?? []) as Array<{ name: string; price: number; quantity: number; product_id?: string | null }>;
@@ -2620,7 +2621,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
         };
         return draft;
       }
-      const { data } = await supabase.from("orders").select("*, order_items(*)").eq("id", id).maybeSingle();
+      const { data } = await supabase.from("orders").select(`${ORDERS_COLUMNS}, order_items(${ORDER_ITEMS_COLUMNS})`).eq("id", id).maybeSingle();
       return (data as unknown as DetailOrder | null) ?? null;
     },
   });

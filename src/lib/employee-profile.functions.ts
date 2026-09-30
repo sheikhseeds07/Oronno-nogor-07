@@ -1,3 +1,4 @@
+import { EMPLOYEES_COLUMNS, PROFILES_COLUMNS } from "@/lib/read-columns";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
@@ -13,8 +14,8 @@ export const getEmployeeProfile = createServerFn({ method: "POST" }).middleware(
   if (targetId !== context.userId && !(await isAdminUser(context.userId))) throw new Error("Unauthorized");
   const since = new Date(); since.setDate(since.getDate() - 30);
   const [{ data: profile }, { data: emp }] = await Promise.all([
-    supabaseAdmin.from("profiles").select("*").eq("id", targetId).maybeSingle(),
-    supabaseAdmin.from("employees").select("*").eq("user_id", targetId).maybeSingle(),
+    supabaseAdmin.from("profiles").select(PROFILES_COLUMNS).eq("id", targetId).maybeSingle(),
+    supabaseAdmin.from("employees").select(EMPLOYEES_COLUMNS).eq("user_id", targetId).maybeSingle(),
   ]);
   let total = 0, delivered = 0, cancelled = 0;
   try { const { data: orders } = await supabaseAdmin.from("orders").select("id,status,created_at").or(`assigned_to.eq.${targetId},created_by.eq.${targetId}`).gte("created_at", since.toISOString()).limit(1000); const ords = orders ?? []; total = ords.length; delivered = ords.filter((o) => o.status === "delivered").length; cancelled = ords.filter((o) => ["cancelled", "returned"].includes(o.status as string)).length; } catch {}

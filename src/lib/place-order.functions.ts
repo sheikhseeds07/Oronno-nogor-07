@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader, getRequestIP } from "@tanstack/react-start/server";
 import { z } from "zod";
@@ -46,7 +47,7 @@ export const saveIncompleteCheckout = createServerFn({ method: "POST" }).inputVa
     const { data: existing } = await supabaseAdmin.from("incomplete_orders").select("id").eq("phone", data.customer_phone).order("updated_at", { ascending: false }).limit(1).maybeSingle();
     return existing?.id ?? null;
   }
-  console.error("[saveIncompleteCheckout] snapshot failed:", error.message);
+  logger.error("[saveIncompleteCheckout] snapshot failed:", error.message);
   return null;
 });
 
@@ -106,7 +107,7 @@ export const finalizeLandingCheckoutIntent = createServerFn({ method: "POST" }).
       } as never);
     }
   } catch (e) {
-    console.error("[finalizeLandingCheckoutIntent] CAPI dispatch failed:", e);
+    logger.error("[finalizeLandingCheckoutIntent] CAPI dispatch failed:", e);
   }
 
   return { id: orderId };
@@ -146,7 +147,7 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   try {
     const userAgent = getRequestHeader("user-agent") ?? null;
     await sendPurchaseEvent({ orderId, value: total, currency: "BDT", phone: customerPhone, name: data.customer_name, city: data.district ?? data.thana ?? null, country: "bd", contents: data.items.map((i) => ({ id: i.id, quantity: i.quantity, price: i.price })), clientIp, userAgent, fbp: data.fbp ?? null, fbc: data.fbc ?? null, eventSourceUrl: data.source_url ?? null } as never);
-  } catch (e) { console.error("[placeOrder] CAPI dispatch failed:", e); }
+  } catch (e) { logger.error("[placeOrder] CAPI dispatch failed:", e); }
 
   return { id: orderId };
 });

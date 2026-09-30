@@ -2,8 +2,7 @@ import { supabase } from "@/lib/personal-supabase/client";
 
 // All new website media is uploaded straight to Cloudflare R2.
 // Images are still compressed client-side before the upload so storage and
-// delivery stay small. Supabase Storage remains only as a temporary migration
-// source for legacy objects.
+// delivery stay small. There is no Supabase Storage fallback.
 const MAX_IMAGE_DIMENSION = 1400;
 const WEBP_QUALITY = 0.76;
 const OPTIMIZABLE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);

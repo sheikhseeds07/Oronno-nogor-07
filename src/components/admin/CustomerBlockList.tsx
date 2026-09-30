@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ban, CheckCircle2, Loader2, Search, ShieldAlert, Unlock, X } from "lucide-react";
@@ -66,7 +67,7 @@ export function BlockCustomerButton({ name, phone, orderId }: { name: string; ph
         setIp(row?.client_ip ?? null);
         setOrderPhone(normalizeBdPhone(row?.customer_phone || "") || null);
       } catch (error) {
-        console.error("[BlockCustomerButton] failed to load customer info", error);
+        logger.error("[BlockCustomerButton] failed to load customer info", error);
         setIp(null);
         toast.error("Customer তথ্য লোড করা যায়নি");
       } finally {
@@ -92,7 +93,7 @@ export function BlockCustomerButton({ name, phone, orderId }: { name: string; ph
       toast.success(row?.is_active === false ? "Customer আবার block করা হয়েছে" : `Block করা হয়েছে: ${name}`);
       await qc.invalidateQueries({ queryKey: ["customer-blocklist"] });
     } catch (error: any) {
-      console.error("[BlockCustomerButton] block failed", error);
+      logger.error("[BlockCustomerButton] block failed", error);
       toast.error(error?.message || "Customer block করা যায়নি");
     } finally {
       setBusy(false);

@@ -1,3 +1,4 @@
+import { PRODUCTS_COLUMNS } from "@/lib/read-columns";
 import { createFileRoute, useParams, Link, useNavigate } from "@tanstack/react-router";
 import { BrandLoader } from "@/components/layout/BrandLoader";
 import { ProductCard, type Product } from "@/components/shop/ProductCard";
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/product/$slug")({
   loader: async ({ params, context }) => {
     const queryClient = (context as { queryClient?: import("@tanstack/react-query").QueryClient }).queryClient;
     if (!queryClient || queryClient.getQueryData(["product", params.slug])) return null;
-    const { data } = await supabase.from("products").select("*, categories(name,slug)").eq("slug", params.slug).maybeSingle();
+    const { data } = await supabase.from("products").select(`${PRODUCTS_COLUMNS}, categories(name,slug)`).eq("slug", params.slug).maybeSingle();
     if (data) queryClient.setQueryData(["product", params.slug], data);
     return null;
   },
@@ -37,7 +38,7 @@ function ProductPage() {
   const { data: p, isLoading } = useQuery({
     queryKey: ["product", slug],
     queryFn: async () => {
-      const { data } = await supabase.from("products").select("*, categories(name,slug)").eq("slug", slug).maybeSingle();
+      const { data } = await supabase.from("products").select(`${PRODUCTS_COLUMNS}, categories(name,slug)`).eq("slug", slug).maybeSingle();
       if (data) return data;
       const { fallbackProducts } = await import("@/lib/fallback-shop");
       return (fallbackProducts.find((item) => item.slug === slug) ?? null) as unknown as typeof data;

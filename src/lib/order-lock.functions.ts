@@ -1,3 +1,4 @@
+import { ORDER_LOCKS_COLUMNS } from "@/lib/read-columns";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
@@ -53,7 +54,7 @@ export const acquireOrderLock = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { order_id, takeover } = data;
     const { data: existing } = await supabaseAdmin
-      .from("order_locks").select("*").eq("order_id", order_id).maybeSingle();
+      .from("order_locks").select(ORDER_LOCKS_COLUMNS).eq("order_id", order_id).maybeSingle();
 
     const now = Date.now();
     const stale = existing && now - new Date(existing.heartbeat_at).getTime() > STALE_MS;

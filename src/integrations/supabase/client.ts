@@ -29,10 +29,9 @@ function createSupabaseFetch(supabaseKey: string, supabaseUrl: string): typeof f
       if (accept) proxyHeaders.set('Accept', accept);
       const range = headers.get('Range');
       if (range) proxyHeaders.set('Range', range);
-      try {
-        const cached = await fetch(proxied, { method: 'GET', headers: proxyHeaders });
-        if (cached.ok) return cached;
-      } catch {}
+      {
+        return await fetch(proxied, { method: 'GET', headers: proxyHeaders, signal: init?.signal ?? (input instanceof Request ? input.signal : undefined) });
+      }
     }
     if (typeof window === 'undefined' && method === 'POST' && !hasUserToken && bodyText !== undefined && bodyText.length <= 500 && isPublicAnonRead(rawUrl, supabaseUrl, method, hasUserToken)) {
       const edge = (globalThis as { caches?: { default?: { match(r: Request): Promise<Response | undefined>; put(r: Request, res: Response): Promise<void> } } }).caches?.default;
@@ -50,7 +49,7 @@ function createSupabaseFetch(supabaseKey: string, supabaseUrl: string): typeof f
       }
     }
     if (typeof window === 'undefined' && isPublicAnonRead(rawUrl, supabaseUrl, method, hasUserToken)) {
-      try { return await fetch(input, { ...init, headers, cf: { cacheEverything: true, cacheTtl: 300 } } as RequestInit); } catch {}
+      return fetch(input, { ...init, headers, cf: { cacheEverything: true, cacheTtl: 300 } } as RequestInit);
     }
     return fetch(input, { ...init, headers });
   };

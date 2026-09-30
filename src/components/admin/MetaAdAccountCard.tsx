@@ -1,3 +1,4 @@
+import { INTEGRATIONS_COLUMNS } from "@/lib/read-columns";
 import { useEffect, useState } from "react";
 import { CheckCircle2, Eye, EyeOff, Facebook, Loader2, Save, TestTube2, XCircle } from "lucide-react";
 import { supabase } from "@/lib/personal-supabase/client";
@@ -19,7 +20,7 @@ export function MetaAdAccountCard() {
   const [showSecret, setShowSecret] = useState(false);
   const [showToken, setShowToken] = useState(false);
 
-  useEffect(() => { (async () => { const { data } = await supabase.from("integrations").select("*").eq("name", NAME).maybeSingle(); if (data) { setActive(!!data.is_active); setCfg({ ...empty, ...((data.config as Partial<Config>) || {}) }); } setLoading(false); })(); }, []);
+  useEffect(() => { const controller = new AbortController(); (async () => { const { data } = await supabase.from("integrations").select(INTEGRATIONS_COLUMNS).eq("name", NAME).abortSignal(controller.signal).maybeSingle(); if (controller.signal.aborted) return; if (data) { setActive(!!data.is_active); setCfg({ ...empty, ...((data.config as Partial<Config>) || {}) }); } setLoading(false); })(); return () => controller.abort(); }, []);
 
   const save = async () => { setSaving(true); const payload = { ...cfg, dollar_rate: Number(cfg.dollar_rate) || 0, courier_cost_per_order: Number(cfg.courier_cost_per_order) || 0, return_rate: Number(cfg.return_rate) || 0 }; const { error } = await supabase.from("integrations").upsert({ name: NAME, is_active: active, config: payload, updated_at: new Date().toISOString() }, { onConflict: "name" }); setSaving(false); if (error) toast.error(error.message); else toast.success("Meta Ad Account saved"); };
 

@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { createFileRoute } from "@tanstack/react-router";
 import { getRequestHeader, getRequestIP } from "@tanstack/react-start/server";
 import { z } from "zod";
@@ -63,7 +64,7 @@ export const Route = createFileRoute("/api/public/fb-capi")({
           return Response.json({ ok: result.ok, revision: CAPI_REVISION }, { status: result.ok ? 200 : 503 });
         } catch (error) {
           if (error instanceof z.ZodError) return Response.json( { ok: false, error: "Invalid event", revision: CAPI_REVISION }, { status: 400 });
-          console.error("[FB CAPI mirror] failed:", error);
+          logger.error("[FB CAPI mirror] failed:", error);
           return Response.json({ ok: false, error: "Server event delivery failed", revision: CAPI_REVISION }, { status: 503 });
         }
       },

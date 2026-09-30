@@ -1,3 +1,4 @@
+import { allowRequest } from "@/lib/rate-limit";
 import { createFileRoute } from "@tanstack/react-router";
 import { resolveSupabaseUrl, resolveSupabasePublishableKey } from "@/integrations/supabase/public-env";
 
@@ -60,12 +61,22 @@ export const Route = createFileRoute("/api/public/pg")({
     handlers: {
       GET: async ({ request }) => {
         const url = new URL(request.url);
-        const path = url.searchParams.get("path") || "";
+        let path = url.searchParams.get("path") || "";
+        if (path.length > 1800) return noStore("Query too long", 414);
         if (!isAllowed(path)) return noStore("Not allowed", 400);
 
         const method = (url.searchParams.get("m") || "GET").toUpperCase();
         const body = url.searchParams.get("b");
-        if (method !== "GET" && method !== "POST") return noStore("Not allowed", 400);
+        const rpc = path.split("?")[0] === "/rest/v1/rpc/get_home_data_v1";
+        if (method !== (rpc ? "POST" : "GET")) return noStore("Method not allowed", 405);
+        if (body && body.length > 500) return noStore("Body too large", 413);
+        if (!rpc) {
+          const target = new URL(path, "https://placeholder.invalid");
+          const limit = Number(target.searchParams.get("limit") ?? 100);
+          if (!Number.isInteger(limit) || limit < 1 || limit > 100) return noStore("Limit must be 1..100", 400);
+          target.searchParams.set("limit", String(limit));
+          path = target.pathname + target.search;
+        }
 
         const accept = request.headers.get("Accept") || "application/json";
         const range = request.headers.get("Range") || "";
@@ -88,6 +99,13 @@ export const Route = createFileRoute("/api/public/pg")({
           }
         }
 
+        // Rate-limit cache misses; cached responses do not consume the budget.
+        const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
+        if (!allowRequest(`catalog:${ip}`, 60, 60_000)) {
+          const response = noStore("Too many requests", 429);
+          response.headers.set("Retry-After", "60");
+          return response;
+        }
         const supabaseUrl = resolveSupabaseUrl();
         const key = resolveSupabasePublishableKey();
         const headers = new Headers({ apikey: key, Accept: accept });
@@ -98,6 +116,7 @@ export const Route = createFileRoute("/api/public/pg")({
           method,
           headers,
           body: method === "POST" ? (body ?? "{}") : undefined,
+          signal: AbortSignal.timeout(10_000),
           ...({ cf: { cacheEverything: true, cacheTtl: path.includes("/rpc/get_home_data_v1") ? HOME_RPC_TTL_SECONDS : EDGE_TTL_SECONDS } } as RequestInit),
         });
 

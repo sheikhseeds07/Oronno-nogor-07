@@ -1,3 +1,4 @@
+import { LANDING_PAGES_COLUMNS } from "@/lib/read-columns";
 import { useEffect, useMemo, useState, useRef, type ReactElement, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -46,7 +47,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   const [form, setForm] = useState({ name: "", phone: "", address: "" });
   // The route loader already fetched this row fresh on the server for this very
   // request, so hydration must not spend the visitor's bandwidth re-fetching it.
-  const { data: page, isLoading } = useQuery({ queryKey: ["landing-all-product", slug], staleTime: 30_000, queryFn: async () => (await supabase.from("landing_pages").select("*, products(id,name,price,sale_price,images)").eq("slug", slug).eq("is_published", true).maybeSingle()).data as Page | null });
+  const { data: page, isLoading } = useQuery({ queryKey: ["landing-all-product", slug], staleTime: 30_000, queryFn: async () => (await supabase.from("landing_pages").select(`${LANDING_PAGES_COLUMNS}, products(id,name,price,sale_price,images)`).eq("slug", slug).eq("is_published", true).maybeSingle()).data as Page | null });
   const { data: settingsRow } = useQuery({ queryKey: ["site-settings-public"], staleTime: 300_000, queryFn: async () => (await supabase.from("site_settings").select("settings").maybeSingle()).data });
   const settings = (settingsRow?.settings as { site_name?: string; tagline?: string; logo_url?: string }) ?? {};
   const product = page?.products ?? null;

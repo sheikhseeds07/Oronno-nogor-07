@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { createFileRoute } from "@tanstack/react-router";
 import { getRequestIP } from "@tanstack/react-start/server";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
@@ -34,7 +35,7 @@ export const Route = createFileRoute("/api/public/incomplete")({
           if (error) throw error;
           return Response.json({ ok: true, id: data });
         } catch (error) {
-          console.error("[incomplete] save failed", error);
+          logger.error("[incomplete] save failed", error);
           return Response.json({ ok: false }, { status: 500 });
         }
       },
