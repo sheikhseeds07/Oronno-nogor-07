@@ -37,7 +37,7 @@ const inFlight = new Map<string, Promise<CourierHistoryResult>>();
 // Deduplicate repeated persistent-cache reads during Admin list renders.
 // This does not change courier-history freshness; it only avoids repeated
 // database reads for the same phone within a short burst.
-const PERSISTENT_READ_TTL_MS = 30_000;
+const PERSISTENT_READ_TTL_MS = 5 * 60_000;
 const persistentReadCache = new Map<string, { expiresAt: number; hit: PersistentHit | null }>();
 const persistentReadInFlight = new Map<string, Promise<PersistentHit | null>>();
 
@@ -146,7 +146,6 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
 
     const phone = data.phone.replace(/\D/g, "");
     const cacheKey = `${CACHE_VERSION}:${phone}`;
-    const orderCreatedAtMs = data.orderCreatedAt ? new Date(data.orderCreatedAt).getTime() : 0;
     const memoryCached = readCache(cacheKey);
     const persistent = await readPersistentCache(phone);
 
@@ -165,10 +164,10 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
 
     const request = (async (): Promise<CourierHistoryResult> => {
       const beforeInvoke = persistent ?? await readPersistentCache(phone);
-      // A newly-created order may use a phone number whose courier history was cached earlier.
-      // Refresh once for that new order, then subsequent page refreshes reuse the saved result.
-      const needsFirstLoadForOrder = Boolean(orderCreatedAtMs && (!beforeInvoke || !Number.isFinite(beforeInvoke.fetchedAtMs) || beforeInvoke.fetchedAtMs < orderCreatedAtMs));
-      if (beforeInvoke?.fresh && beforeInvoke.result.configured && !beforeInvoke.result.error && !needsFirstLoadForOrder) {
+      // Courier success history changes when the courier provider updates its
+      // records, not when a new local shop order is created. Reuse the persisted
+      // 24-hour result instead of forcing another Edge/provider round-trip.
+      if (beforeInvoke?.fresh && beforeInvoke.result.configured && !beforeInvoke.result.error) {
         return beforeInvoke.result;
       }
 
@@ -176,7 +175,7 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
       let error: { message?: string } | null = null;
       for (let attempt = 0; attempt < 2; attempt += 1) {
         const res = await context.supabase.functions.invoke("courier-history-bridge", {
-          body: { phone, forceRefresh: needsFirstLoadForOrder },
+          body: { phone, forceRefresh: false },
         });
         result = res.data;
         error = res.error as { message?: string } | null;
