@@ -13,7 +13,7 @@ type QueuedEvent = {
 const QUEUE_KEY = "oronno_fb_event_queue_v1";
 const PIXEL_CACHE_KEY = "oronno_fb_pixel_id_v1";
 const SENT_KEY = "oronno_fb_sent_ids_v1";
-const MAX_QUEUE = 50;
+const MAX_QUEUE = 500;
 const MAX_SENT_IDS = 200;
 const DUPLICATE_WINDOW_MS = 750;
 let memoryQueue: QueuedEvent[] = [];
@@ -117,7 +117,16 @@ function mirrorToCapi(item: QueuedEvent) {
 }
 
 function sendBrowser(item: QueuedEvent, fbq: Fbq) {
-  try { fbq("track", item.event, item.params ?? {}, { eventID: item.eventID }); } catch { /* ignore */ }
+  try {
+    fbq("track", item.event, item.params ?? {}, { eventID: item.eventID });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function queueHasEventId(id: string) {
+  return readQueue().some((item) => item.eventID === id);
 }
 
 function enqueue(item: QueuedEvent) {
@@ -128,9 +137,13 @@ export function flushFbqQueue() {
   const fbq = getFbq();
   if (!fbq) return;
   const queue = readQueue();
-  writeQueue([]);
-  // Server copies were already sent when these events happened.
-  queue.forEach((item) => sendBrowser(item, fbq));
+  const remaining: QueuedEvent[] = [];
+  // Keep failed browser deliveries in the durable queue instead of dropping them.
+  queue.forEach((item) => {
+    if (sendBrowser(item, fbq)) markSent(item.eventID);
+    else remaining.push(item);
+  });
+  writeQueue(remaining);
 }
 
 export function fbqTrack(event: string, params?: Record<string, unknown>, eventID?: string) {
@@ -179,12 +192,16 @@ export function trackLead(params?: Record<string, unknown>) { return fbqTrack("L
  */
 export function trackPurchase(items: PixelItem[], value: number, eventID?: string) {
   const id = eventID ?? uuid();
-  if (alreadySent(id)) return id;
+  if (alreadySent(id) || queueHasEventId(id)) return id;
   inFlight.add(id);
-  markSent(id);
   const params = { content_ids: items.map((i) => i.id), content_type: "product", contents: toContentItems(items), num_items: items.reduce((s, i) => s + (i.quantity ?? 1), 0), value: Number(value.toFixed(2)), currency: "BDT" };
   const item = { event: "Purchase", params, eventID: id };
   const fbq = getFbq();
-  if (fbq) sendBrowser(item, fbq); else enqueue(item);
+  if (fbq) {
+    if (sendBrowser(item, fbq)) markSent(id);
+    else enqueue(item);
+  } else {
+    enqueue(item);
+  }
   return id;
 }
