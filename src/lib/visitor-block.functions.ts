@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestIP } from "@tanstack/react-start/server";
 import { z } from "zod";
@@ -65,7 +66,7 @@ export const getSiteBlockStatus = createServerFn({ method: "POST" })
         }
       }
     } catch (err) {
-      console.error("[getSiteBlockStatus] check failed:", (err as Error).message);
+      logger.error("[getSiteBlockStatus] check failed:", (err as Error).message);
     }
 
     return { blocked: false };

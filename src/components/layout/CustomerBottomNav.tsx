@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -176,7 +177,7 @@ export function CustomerBottomNav({ hidden = false }: { hidden?: boolean }) {
       const result = await sendWebsiteAiChat({ data: { incoming: text, history, attachments: payload } });
       setChatMessages((previous) => [...previous, { role: "assistant", text: result.text, products: result.products, orderId: result.orderId, invoiceNo: result.invoiceNo }]);
     } catch (error) {
-      console.error("Website AI chat failed", error);
+      logger.error("Website AI chat failed", error);
       setChatMessages((previous) => [...previous, { role: "assistant", text: error instanceof Error ? error.message : "দুঃখিত, এই মুহূর্তে উত্তর দিতে পারছি না। একটু পরে আবার চেষ্টা করুন।" }]);
     } finally { setChatSending(false); }
   };

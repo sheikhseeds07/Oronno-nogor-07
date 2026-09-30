@@ -1,3 +1,4 @@
+import { LANDING_PAGES_COLUMNS, PRODUCTS_COLUMNS } from "@/lib/read-columns";
 import { useNavigate } from "@tanstack/react-router";
 import { landingBaseSlug } from "@/lib/landing-slug";
 import { useQuery } from "@tanstack/react-query";
@@ -141,7 +142,7 @@ type SiteSettings={site_name?:string;tagline?:string;logo_url?:string};
 export function CleanLandingPage({slug}:{slug:string}){
  const navigate=useNavigate(); const runPlaceOrder=useServerFn(placeOrder); const runCreateLandingIntent=useServerFn(createLandingCheckoutIntent); const runFinalizeLandingIntent=useServerFn(finalizeLandingCheckoutIntent); const [submitting,setSubmitting]=useState(false); const [nutrimixOpen,setNutrimixOpen]=useState(false); const [nutrimix,setNutrimix]=useState<any>(null); const orderInFlightRef=useRef(false); const orderCreatedRef=useRef(false); const landingIntentIdRef=useRef<string|null>(null); const landingCheckoutSessionRef=useRef<string|null>(null); const landingInitiateCheckoutRef=useRef(false); const [selectedPkg,setSelectedPkg]=useState(0); const [seedPulse,setSeedPulse]=useState<number|null>(null); const [form,setForm]=useState({name:"",phone:"",address:"",note:""}); const [formInView,setFormInView]=useState(false); const [phoneErr,setPhoneErr]=useState("");
  const orderSectionRef=useRef<HTMLElement|null>(null); const phoneRef=useRef<HTMLInputElement|null>(null);
- const {data:page,isLoading}=useQuery({queryKey:["landing-clean",slug],queryFn:async()=>(await supabase.from("landing_pages").select("*, products(*)").eq("slug",slug).eq("is_published",true).maybeSingle()).data});
+ const {data:page,isLoading}=useQuery({queryKey:["landing-clean",slug],queryFn:async()=>(await supabase.from("landing_pages").select(`${LANDING_PAGES_COLUMNS}, products(${PRODUCTS_COLUMNS})`).eq("slug",slug).eq("is_published",true).maybeSingle()).data});
  const {data:settingsRow}=useQuery({queryKey:["site-settings-public"],queryFn:async()=>(await supabase.from("site_settings").select("settings").maybeSingle()).data}); const settings=(settingsRow?.settings as SiteSettings)??{};
  const asArr=<T,>(v:unknown):T[]=>Array.isArray(v)?v as T[]:[]; const product=(page?.products??null) as {id:string;name:string;price:number;sale_price:number|null;images:string[]|null}|null; const addons=asArr<Addon>(page?.addons);
  const heroImage=page?.hero_image||product?.images?.[0]||"/placeholder.svg"; const price=(page?.sale_price??product?.sale_price??page?.regular_price??product?.price??0) as number; const regular=(page?.regular_price??product?.price??null) as number|null; const themeColor=(page?.theme_color as string)||"#16a34a";

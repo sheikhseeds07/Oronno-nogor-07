@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { createMiddleware } from "@tanstack/react-start";
 import { supabase } from "./client";
 
@@ -10,7 +11,7 @@ export const attachSupabaseAuth = createMiddleware({ type: "function" }).client(
     const token = data.session?.access_token;
     return next({ headers: token ? { Authorization: `Bearer ${token}` } : {} });
   } catch (error) {
-    console.warn("[Supabase auth] session unavailable; continuing without auth header", error);
+    logger.warn("[Supabase auth] session unavailable; continuing without auth header", error);
     return next({ headers: {} });
   }
 });

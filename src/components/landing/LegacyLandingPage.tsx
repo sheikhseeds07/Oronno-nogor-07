@@ -1,3 +1,4 @@
+import { LANDING_PAGES_COLUMNS, PRODUCTS_COLUMNS } from "@/lib/read-columns";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -48,7 +49,7 @@ export function LegacyLandingPage({ slug }: { slug: string }) {
 
   const { data: page, isLoading } = useQuery({
     queryKey: ["landing", slug],
-    queryFn: async () => (await supabase.from("landing_pages").select("*, products(*)").eq("slug", slug).eq("is_published", true).maybeSingle()).data,
+    queryFn: async () => (await supabase.from("landing_pages").select(`${LANDING_PAGES_COLUMNS}, products(${PRODUCTS_COLUMNS})`).eq("slug", slug).eq("is_published", true).maybeSingle()).data,
   });
 
   const { data: settingsRow } = useQuery({

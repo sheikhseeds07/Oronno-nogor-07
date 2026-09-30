@@ -1,3 +1,4 @@
+import { allowRequest } from "@/lib/rate-limit";
 import { createFileRoute } from "@tanstack/react-router";
 import { getCloudflareR2Bucket } from "@/lib/cloudflare-r2.server";
 import { createClient } from "@supabase/supabase-js";
@@ -78,6 +79,7 @@ export const Route = createFileRoute("/api/media/upload")({
         const auth = await authenticatedClient(request);
         if (!auth) return json({ error: "Unauthorized" }, 401);
 
+        if (!allowRequest(`upload:${auth.userId}`, 30, 60_000)) return json({ error: "Too many uploads" }, 429);
         const form = await request.formData().catch(() => null);
         if (!form) return json({ error: "Invalid form data" }, 400);
 

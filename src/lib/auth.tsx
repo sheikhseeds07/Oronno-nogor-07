@@ -1,3 +1,4 @@
+import { EMPLOYEE_PERMISSIONS_COLUMNS } from "@/lib/read-columns";
 import { useEffect, useState } from "react";
 import { staffSupabase, customerSupabase } from "@/lib/personal-supabase/client";
 import type { Session } from "@supabase/supabase-js";
@@ -105,7 +106,7 @@ async function loadStaff(s: Session | null, force = false) {
       permissions = ALL_TRUE;
     } else if (role) {
       const { data: p } = await withRetry(async () => {
-        const result = await staffSupabase.from("employee_permissions").select("*").eq("user_id", s.user.id).maybeSingle();
+        const result = await staffSupabase.from("employee_permissions").select(EMPLOYEE_PERMISSIONS_COLUMNS).eq("user_id", s.user.id).maybeSingle();
         if (result.error) throw result.error;
         return result;
       });

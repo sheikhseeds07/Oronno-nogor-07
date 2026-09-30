@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { createFileRoute, useParams, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -45,7 +46,7 @@ async function shareInvoiceFile(blob: Blob, filename: string) {
     return true;
   } catch (error: any) {
     if (error?.name === "AbortError") return true;
-    console.warn("Invoice share failed", error);
+    logger.warn("Invoice share failed", error);
     return false;
   }
 }
@@ -60,7 +61,7 @@ async function saveBlobToDevice(blob: Blob, filename: string) {
         return "shared" as const;
       } catch (error: any) {
         if (error?.name === "AbortError") return "cancelled" as const;
-        console.warn("Facebook Android invoice share failed", error);
+        logger.warn("Facebook Android invoice share failed", error);
       }
     }
   }
@@ -90,7 +91,7 @@ function OrderPage() {
       setInvoiceBlob(blob); setInvoiceFilename(filename); setInvoicePreviewUrl(URL.createObjectURL(blob));
       toast.success("ইনভয়েস প্রস্তুত — নিচের বাটন থেকে মোবাইলে সেভ করুন",{id:"invoice",duration:3500});
     } catch(e:any) {
-      console.error("Invoice preparation failed",e); toast.error("ইনভয়েস প্রস্তুত করা যায়নি। আবার চেষ্টা করুন।",{id:"invoice",duration:3500});
+      logger.error("Invoice preparation failed",e); toast.error("ইনভয়েস প্রস্তুত করা যায়নি। আবার চেষ্টা করুন।",{id:"invoice",duration:3500});
     }
   };
 
@@ -103,7 +104,7 @@ function OrderPage() {
       toast.success(isAndroid() ? "ইনভয়েস ডাউনলোড শুরু হয়েছে — Downloads/Files-এ পাবেন" : "ইনভয়েস ডাউনলোড শুরু হয়েছে", { duration: 3500 });
     } catch(e:any) {
       if(e?.name === "AbortError") { toast.dismiss("invoice"); return; }
-      console.error("Invoice save failed",e); toast.error("ইনভয়েস সেভ করা যায়নি। আবার চেষ্টা করুন।",{duration:3500});
+      logger.error("Invoice save failed",e); toast.error("ইনভয়েস সেভ করা যায়নি। আবার চেষ্টা করুন।",{duration:3500});
     }
   };
 

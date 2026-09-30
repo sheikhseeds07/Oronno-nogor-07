@@ -29,14 +29,11 @@ async function liveFetch(input: RequestInfo | URL, init?: RequestInit) {
     if (accept) proxyHeaders.set("Accept", accept);
     const range = headers.get("Range");
     if (range) proxyHeaders.set("Range", range);
-    const cached = await fetch(proxied, { method: "GET", headers: proxyHeaders });
-    if (cached.ok) return cached;
+    return fetch(proxied, { method: "GET", headers: proxyHeaders, signal: init?.signal ?? (input instanceof Request ? input.signal : undefined) });
   }
 
   if (typeof window === "undefined" && isPublicAnonRead(rawUrl, LIVE_DATABASE_URL, method, hasUserToken)) {
-    try {
-      return await fetch(input, { ...init, headers, cf: { cacheEverything: true, cacheTtl: 3600 } } as RequestInit);
-    } catch {}
+    return fetch(input, { ...init, headers, cf: { cacheEverything: true, cacheTtl: 3600 } } as RequestInit);
   }
 
   return fetch(input, { ...init, headers });

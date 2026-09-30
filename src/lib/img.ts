@@ -3,7 +3,7 @@
 // canonical asset per image through /media, avoiding Supabase transform/srcset
 // variants that can multiply Cached Egress.
 
-const SUPABASE_STORAGE_HOSTS = new Set(["bvuhvzccziuniujeogng.supabase.co", "frtzlibogmethppqmhtr.supabase.co"]);
+const SUPABASE_STORAGE_HOSTS = new Set(["bvuhvzccziuniujeogng.supabase.co", "frtzlibogmethppqmhtr.supabase.co", "yqhtenonavuzxzemaiyk.supabase.co"]);
 
 function unwrapMediaCache(url: string): string {
   try {
@@ -51,25 +51,13 @@ export function imgSrcSet(url: string | null | undefined, widths: number[], _q =
   return `${toImg(url)} ${largest}w`;
 }
 
-// Normal loads stay on the fast cached /media path. After a real image error,
-// retry once through /media, then fall back to the original Storage object.
-export function imgFallback(e: { currentTarget: HTMLImageElement }, original: string | null | undefined) {
+// Never retry an origin or a failed R2 URL. Inline placeholder requires no network.
+export function imgFallback(e: { currentTarget: HTMLImageElement }, _original: string | null | undefined) {
   const el = e.currentTarget;
-  if (!original) return;
-  const attempt = Number(el.dataset["imgRetry"] || "0");
-  if (attempt >= 2) return;
-  el.dataset["imgRetry"] = String(attempt + 1);
+  if (el.dataset["imgFailed"] === "1") return;
+  el.dataset["imgFailed"] = "1";
   el.removeAttribute("srcset");
-  const source = unwrapMediaCache(original);
-  const cached = throughMediaCache(source);
-  // Restored rows may already contain /media?src=... URLs. If the proxy path
-  // itself fails, the second retry must use the underlying signed/public
-  // Supabase URL rather than retrying the exact same /media URL again.
-  const retryUrl = attempt === 0 ? cached : source;
-  window.setTimeout(() => {
-    if (el.dataset["imgLoaded"] === "1") return;
-    el.src = retryUrl;
-  }, attempt === 0 ? 80 : 250);
+  el.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Crect width='400' height='400' fill='%23f1f5f9'/%3E%3C/svg%3E";
 }
 
 export function markImgLoaded(e: { currentTarget: HTMLImageElement }) {

@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 // Server-only Facebook Page (Messenger + Comments) helpers.
 // Config lives in the admin-only `integrations` row named `facebook_page`.
 import { createHmac, timingSafeEqual } from "crypto";
@@ -81,7 +82,7 @@ export async function ensureFacebookAppDomain(appId: string, appSecret: string):
   );
   const currentText = await currentResponse.text();
   if (!currentResponse.ok) {
-    console.warn(`[fb] app_domains read skipped [${currentResponse.status}]: ${currentText.slice(0, 180)}`);
+    logger.warn(`[fb] app_domains read skipped [${currentResponse.status}]: ${currentText.slice(0, 180)}`);
     return false;
   }
 
@@ -100,12 +101,12 @@ export async function ensureFacebookAppDomain(appId: string, appSecret: string):
   });
   const updateText = await updateResponse.text();
   if (!updateResponse.ok) {
-    console.warn(`[fb] app_domains auto-add failed: add ${domain} manually. ${updateText.slice(0, 140)}`);
+    logger.warn(`[fb] app_domains auto-add failed: add ${domain} manually. ${updateText.slice(0, 140)}`);
     return false;
   }
   return true;
   } catch (err) {
-    console.warn("[fb] ensureFacebookAppDomain skipped:", err);
+    logger.warn("[fb] ensureFacebookAppDomain skipped:", err);
     return false;
   }
 }
@@ -198,7 +199,7 @@ export async function refreshFbPageAccessToken(pageId: string): Promise<string |
     );
     const text = await response.text();
     if (!response.ok) {
-      console.warn(`[fb] automatic Page token refresh failed [${response.status}]`);
+      logger.warn(`[fb] automatic Page token refresh failed [${response.status}]`);
       return null;
     }
     const nextToken = (JSON.parse(text) as { access_token?: string }).access_token;
@@ -248,7 +249,7 @@ export async function keepFbTokenFresh(): Promise<void> {
     if (!dueDaily && !nearExpiry) return;
     await refreshFbPageAccessToken(pageId);
   } catch (err) {
-    console.warn("[fb] keepFbTokenFresh skipped:", err);
+    logger.warn("[fb] keepFbTokenFresh skipped:", err);
   }
 }
 
@@ -275,7 +276,7 @@ async function graph(path: string, token: string, body: unknown, pageId?: string
       const refreshed = await refreshFbPageAccessToken(pageId);
       if (refreshed) return graph(path, refreshed, body, pageId, true);
     }
-    console.error(`[fb-page] ${path} failed [${res.status}]: ${text}`);
+    logger.error(`[fb-page] ${path} failed [${res.status}]: ${text}`);
     throw new Error(`Facebook API ${res.status}: ${text}`);
   }
   return text ? (JSON.parse(text) as Record<string, unknown>) : {};

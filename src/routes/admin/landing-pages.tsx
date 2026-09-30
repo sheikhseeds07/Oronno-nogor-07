@@ -1,3 +1,4 @@
+import { LANDING_PAGES_COLUMNS } from "@/lib/read-columns";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -98,7 +99,7 @@ function LandingPagesAdmin() {
   const { data } = useQuery({
     queryKey: ["admin-landing"],
     queryFn: async () =>
-      (await supabase.from("landing_pages").select("*").order("created_at", { ascending: false }).limit(100)).data ?? [],
+      (await supabase.from("landing_pages").select(LANDING_PAGES_COLUMNS).order("created_at", { ascending: false }).limit(100)).data ?? [],
   });
   const { data: products, refetch: refetchProducts } = useQuery({    queryKey: ["lp-products"],
     queryFn: async () =>
@@ -176,7 +177,7 @@ function LandingPagesAdmin() {
     const { data: created, error } = await supabase
       .from("landing_pages")
       .insert(payload)
-      .select("*")
+      .select(LANDING_PAGES_COLUMNS)
       .single();
     if (error) return toast.error(`ডুপ্লিকেট তৈরি হয়নি: ${error.message}`);
     toast.success("ল্যান্ডিং পেজ ডুপ্লিকেট হয়েছে — এখন এডিট করুন");

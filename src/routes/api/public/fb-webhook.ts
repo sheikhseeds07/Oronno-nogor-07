@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 // Facebook Messenger + Page comment webhook.
 // Public route: Meta calls it. Security = verify_token (GET) + X-Hub-Signature-256 (POST).
 import { createFileRoute } from "@tanstack/react-router";
@@ -35,7 +36,7 @@ export const Route = createFileRoute("/api/public/fb-webhook")({
         try {
           await handleFbWebhookPayload(cfg, JSON.parse(raw));
         } catch (err) {
-          console.error("[fb-webhook] handler failed", err);
+          logger.error("[fb-webhook] handler failed", err);
           return new Response("Processing failed", { status: 500 });
         }
         return new Response("EVENT_RECEIVED", { status: 200 });

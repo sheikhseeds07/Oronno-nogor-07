@@ -1,3 +1,4 @@
+import { CATEGORIES_COLUMNS } from "@/lib/read-columns";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -41,7 +42,7 @@ function Categories() {
     queryKey: ["admin-cats-page"],
     queryFn: async () => {
       const { data, error } = await (supabase.from("categories") as any)
-        .select("*")
+        .select(CATEGORIES_COLUMNS)
         .order("display_order")
         .order("created_at").limit(100);
       if (error) throw error;

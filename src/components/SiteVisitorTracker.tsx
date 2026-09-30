@@ -49,6 +49,7 @@ export function SiteVisitorTracker() {
     })();
 
     let active = true;
+    const controller = new AbortController();
     const landingSlug = path.startsWith("/landing/") ? path.split("/")[2] : null;
     const lookupKey = `${VISITOR_LOOKUP_KEY_PREFIX}${path}`;
 
@@ -64,7 +65,7 @@ export function SiteVisitorTracker() {
       let landingPageId: string | null = null;
       let productId: string | null = null;
       if (landingSlug) {
-        const { data } = await supabase.from("landing_pages").select("id,product_id").eq("slug", landingSlug).maybeSingle();
+        const { data } = await supabase.from("landing_pages").select("id,product_id").eq("slug", landingSlug).abortSignal(controller.signal).maybeSingle();
         landingPageId = data?.id ?? null;
         productId = data?.product_id ?? null;
       }
@@ -93,7 +94,7 @@ export function SiteVisitorTracker() {
     const idle = (window as unknown as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
     if (typeof idle === "function") idle(startTracking, { timeout: 4000 });
     else idleTimer = window.setTimeout(startTracking, 2000);
-    return () => { active = false; if (idleTimer) window.clearTimeout(idleTimer); };
+    return () => { active = false; controller.abort(); if (idleTimer) window.clearTimeout(idleTimer); };
   }, [location.pathname]);
 
   return null;

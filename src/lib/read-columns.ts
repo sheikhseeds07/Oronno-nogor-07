@@ -1,0 +1,16 @@
+// Explicit projections verified against the production schema on 2026-09-30.
+// Full editor/permission models intentionally retain all fields they can edit.
+export const BANNERS_COLUMNS = "id,title,image_url,link_url,display_order,is_active,created_at" as const;
+export const CATEGORIES_COLUMNS = "id,name,slug,image_url,display_order,created_at,is_hidden_from_home,parent_id" as const;
+export const EMPLOYEE_PERMISSIONS_COLUMNS = "user_id,orders,web_orders,new_order,products,categories,customers,delivery,marketing,reports,settings,hrm,updated_at,landing_pages,all_api,messages,dashboard,dashboard_live_visitors,dashboard_web_orders,dashboard_incomplete_orders,dashboard_stock_alert,dashboard_confirmed_sell,dashboard_meta_ads,dashboard_time_filter,order_import,deleted_orders,order_division,order_rate_limit,courier,customer_management,customer_feedback,landing_template,landing_seeds,meta_ad_account,integrations,hrm_attendance,profile,offers,banners,coupons,employees,dashboard_top_selling,dashboard_employee_performance,dashboard_stock_control,dashboard_hourly_orders,dash_visitors,dash_web_orders,dash_incomplete,dash_confirmed_sales,dash_stock_alerts,dash_ads,dash_top_selling,dash_employee_perf,dash_stock_control,dash_hourly" as const;
+export const EMPLOYEES_COLUMNS = "id,name,phone,email,position,is_active,created_at,user_id,join_date,salary,monthly_target,monthly_bonus,leave_balance,achievements,admin_notes" as const;
+export const INCOMPLETE_ORDERS_COLUMNS = "id,phone,ip,customer_name,customer_address,delivery_zone,delivery_fee,subtotal,total,note,items,created_at,updated_at" as const;
+export const INTEGRATIONS_COLUMNS = "id,name,config,is_active,updated_at" as const;
+export const LANDING_PAGES_COLUMNS = "id,slug,title,product_id,hero_title,hero_subtitle,hero_image,cta_text,is_published,created_at,description,video_url,gallery_images,regular_price,sale_price,delivery_inside,delivery_outside,features,reviews,faq,addons,badges,theme_color,show_reviews,show_faq,show_features,seeds_list,guarantee_text,planting_steps,top_bar_text,why_choose_us,main_delivery_fee" as const;
+export const ORDER_ITEMS_COLUMNS = "id,order_id,product_id,product_name,quantity,price,subtotal" as const;
+export const ORDER_LOCKS_COLUMNS = "order_id,user_id,user_name,locked_at,heartbeat_at" as const;
+export const ORDERS_COLUMNS = "id,invoice_no,source,status,customer_name,customer_phone,customer_address,thana,district,notes,subtotal,delivery_fee,discount,total,coupon_code,payment_method,courier_status,courier_consignment,assigned_to,created_by,created_at,updated_at,printed_at,originated_from_incomplete,courier_display_name,confirmed_at,confirmed_by,client_ip,courier_synced_at,originated_from_import,shipped_at" as const;
+export const PRODUCTS_COLUMNS = "id,name,slug,sku,description,short_description,price,sale_price,stock,category_id,images,is_active,is_featured,created_at,updated_at,cost,is_popular,is_offer,is_archived,sort_order" as const;
+export const PROFILES_COLUMNS = "id,full_name,phone,address,avatar_url,created_at,updated_at" as const;
+export const SITE_SETTINGS_COLUMNS = "id,settings,updated_at" as const;
+export const USER_ROLES_COLUMNS = "id,user_id,role,created_at" as const;

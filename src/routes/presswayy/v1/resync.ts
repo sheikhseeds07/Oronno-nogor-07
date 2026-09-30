@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { createFileRoute } from "@tanstack/react-router";
 import { presswayyInboundVerify, resyncPresswayy } from "@/lib/presswayy.functions";
 
@@ -11,7 +12,7 @@ export const Route = createFileRoute("/presswayy/v1/resync")({
           const result = await resyncPresswayy();
           return Response.json(result, { status: 202 });
         } catch (error) {
-          console.error("[presswayy/resync]", error);
+          logger.error("[presswayy/resync]", error);
           return Response.json({ error: error instanceof Error ? error.message : "Resync failed" }, { status: 500 });
         }
       },

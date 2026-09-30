@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getCloudflareR2Bucket } from "@/lib/cloudflare-r2.server";
-import { LIVE_DATABASE_URL } from "@/lib/personal-supabase/client";
 
 const ALLOWED_SUPABASE_HOSTS = new Set(["bvuhvzccziuniujeogng.supabase.co", "frtzlibogmethppqmhtr.supabase.co"]);
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
@@ -62,7 +61,7 @@ export const Route = createFileRoute("/media")({
     const directAsset = getDirectAsset(request); const source = directAsset ? null : getSafeSource(request); if (!directAsset && !source) return noStoreResponse("Invalid media source", 400);
     const asset = directAsset ?? (source ? getStorageAsset(source) : null); if (!asset) return noStoreResponse("Invalid storage asset", 400);
     const publicAsset = PUBLIC_MEDIA_BUCKETS.has(asset.bucket); const variant = getVariant(request);
-    if (!publicAsset) { const r2Origin = await pullR2(asset); if (r2Origin) return noStoreResponse(r2Origin.body.slice(0), r2Origin.status, r2Origin.statusText, r2Origin.headers); return noStoreResponse("R2 object not found", 404); }
+    if (!publicAsset) return noStoreResponse("Media bucket not allowed", 403);
     const cache = getCloudflareCache(); const cacheKey = makeCacheKey(request, asset, variant); const ifNoneMatch = request.headers.get("If-None-Match");
     if (cache) { const hit = await cache.match(cacheKey); if (hit) { const hitEtag = hit.headers.get("ETag"); if (ifNoneMatch && hitEtag && ifNoneMatch.includes(hitEtag)) { const headers = new Headers(hit.headers); headers.delete("Content-Length"); headers.set("X-Oronno-Media-Cache", "HIT-304"); return new Response(null, { status: 304, headers }); } const headers = new Headers(hit.headers); headers.set("X-Oronno-Media-Cache", "HIT"); return new Response(hit.body, { status: hit.status, statusText: hit.statusText, headers }); } }
     const r2Variant = await pullR2Variant(asset, variant); const r2Origin = r2Variant ? null : await pullR2(asset);
@@ -72,12 +71,7 @@ export const Route = createFileRoute("/media")({
     } else if (r2Origin) {
       origin = r2Origin;
     } else {
-      const sourceUrl = LIVE_DATABASE_URL + "/storage/v1/object/public/" + encodeURIComponent(asset.bucket) + "/" + asset.objectPath;
-      const legacy = await fetch(sourceUrl);
-      if (!legacy.ok) return noStoreResponse(await legacy.arrayBuffer(), legacy.status, legacy.statusText, legacy.headers);
-      const body = await legacy.arrayBuffer(); const bucket = getR2Bucket();
-      if (bucket) { try { await bucket.put(asset.bucket + "/" + asset.objectPath, body.slice(0), { httpMetadata: { contentType: legacy.headers.get("content-type") || "application/octet-stream", cacheControl: "public, max-age=" + ONE_YEAR_SECONDS + ", immutable" } }); } catch {} }
-      origin = { ok: true, status: 200, statusText: "OK", headers: legacy.headers, body };
+      return noStoreResponse("R2 object not found", 404);
     }
     if (!origin.ok) return noStoreResponse(origin.body.slice(0), origin.status, origin.statusText, origin.headers);
     const response = cacheableResponse(origin, origin.body.slice(0), "MISS", variant);

@@ -1,3 +1,5 @@
+import { createRateLimiter } from "../_shared/rate-limit.ts";
+const allowChat = createRateLimiter();
 // Gemini proxy for the website live chat.
 // The Gemini API key stays server-side here (edge secret or site_ai_settings via
 // service role). The website worker sends only the prompt/tool payload.
@@ -52,6 +54,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
+  if (!allowChat("chat-isolate", 60, 60_000)) return new Response(JSON.stringify({ error: "Chat rate limit reached" }), { status: 429, headers: { ...CORS, "Content-Type": "application/json", "Retry-After": "60" } });
+
   let payload: {
     contents?: unknown[];
     systemInstruction?: unknown;
@@ -85,6 +89,7 @@ Deno.serve(async (req) => {
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(20_000),
         body: JSON.stringify({
           ...(payload.systemInstruction ? { systemInstruction: payload.systemInstruction } : {}),
           contents,
@@ -96,8 +101,8 @@ Deno.serve(async (req) => {
     const body = await response.json().catch(() => null);
     if (response.ok) return json({ ...body, model: candidate });
     lastError = { status: response.status, body };
-    // Retired, rate-limited or overloaded model: try the next one.
-    if (!(response.status === 404 || response.status === 429 || response.status >= 500)) break;
+    // Only try another model for a missing model; never amplify 429/5xx.
+    if (!(response.status === 404)) break;
   }
   const message =
     (lastError.body as { error?: { message?: string } } | null)?.error?.message ??

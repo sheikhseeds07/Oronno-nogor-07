@@ -1,3 +1,4 @@
+import { CATEGORIES_COLUMNS, PRODUCTS_COLUMNS } from "@/lib/read-columns";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -31,7 +32,7 @@ function Products() {
   const { data: products } = useQuery({
     queryKey: ["admin-products", search],
     queryFn: async () => {
-      let q = supabase.from("products").select("*, categories(name)").order("created_at", { ascending: false }).limit(200);
+      let q = supabase.from("products").select(`${PRODUCTS_COLUMNS}, categories(name)`).order("created_at", { ascending: false }).limit(200);
       if (search) q = q.ilike("name", `%${search}%`);
       return ((await q).data ?? []) as Product[];
     },
@@ -39,7 +40,7 @@ function Products() {
 
   const { data: categories } = useQuery({
     queryKey: ["admin-cats"],
-    queryFn: async () => (await supabase.from("categories").select("*").order("display_order").limit(100)).data ?? [],
+    queryFn: async () => (await supabase.from("categories").select(CATEGORIES_COLUMNS).order("display_order").limit(100)).data ?? [],
   });
 
   const togglePopular = async (product: Product) => {

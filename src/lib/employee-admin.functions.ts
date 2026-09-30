@@ -1,3 +1,4 @@
+import { EMPLOYEES_COLUMNS, EMPLOYEE_PERMISSIONS_COLUMNS, USER_ROLES_COLUMNS } from "@/lib/read-columns";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
@@ -99,13 +100,13 @@ export const listEmployeesFull = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const db = context.supabase;
     await assertHrm(db, context.userId);
-    const { data: emps, error: empError } = await db.from("employees").select("*").order("created_at", { ascending: false }).limit(200);
+    const { data: emps, error: empError } = await db.from("employees").select(EMPLOYEES_COLUMNS).order("created_at", { ascending: false }).limit(200);
     if (empError) throw new Error(empError.message);
     const ids = (emps ?? []).map((e: any) => e.user_id).filter(Boolean) as string[];
     const [{ data: perms, error: permError }, { data: roles, error: roleError }] = ids.length
       ? await Promise.all([
-          db.from("employee_permissions").select("*").in("user_id", ids).limit(500),
-          db.from("user_roles").select("*").in("user_id", ids).limit(500),
+          db.from("employee_permissions").select(EMPLOYEE_PERMISSIONS_COLUMNS).in("user_id", ids).limit(500),
+          db.from("user_roles").select(USER_ROLES_COLUMNS).in("user_id", ids).limit(500),
         ])
       : [{ data: [], error: null }, { data: [], error: null }];
     if (permError) throw new Error(permError.message);

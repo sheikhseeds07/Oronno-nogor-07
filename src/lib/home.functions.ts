@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { supabase } from "@/lib/personal-supabase/client";
 
 export type HomeBanner = { id: string; title: string | null; image_url: string; link_url: string | null };
@@ -24,14 +25,19 @@ async function getHomeDataFallback(): Promise<HomeData> {
 // Supabase response instead of paying egress on every page view.
 // Keep the SSR memory cache short-lived so product price/popular changes reach the home quickly.
 // Public catalog caching is still handled separately at the Cloudflare edge.
-const HOME_TTL_MS = 10_000;
+const HOME_TTL_MS = 300_000;
 let homeCache: { data: HomeData; at: number } | null = null;
+let homeInFlight: Promise<HomeData> | null = null;
 
 export async function getHomeData(): Promise<HomeData> {
   if (homeCache && Date.now() - homeCache.at < HOME_TTL_MS) return homeCache.data;
-  const fresh = await fetchHomeData();
-  homeCache = { data: fresh, at: Date.now() };
-  return fresh;
+  if (!homeInFlight) {
+    homeInFlight = fetchHomeData().then(fresh => {
+      homeCache = { data: fresh, at: Date.now() };
+      return fresh;
+    }).finally(() => { homeInFlight = null; });
+  }
+  return homeInFlight;
 }
 
 async function fetchHomeData(): Promise<HomeData> {
@@ -45,6 +51,6 @@ async function fetchHomeData(): Promise<HomeData> {
       products: Array.isArray(payload.products) ? payload.products : [],
     };
   }
-  console.error("get_home_data_v1 failed; using direct queries", error);
+  logger.error("get_home_data_v1 failed; using direct queries", error);
   return getHomeDataFallback();
 }

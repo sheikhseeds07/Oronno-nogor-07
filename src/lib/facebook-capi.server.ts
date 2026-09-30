@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { createHash } from "crypto";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 
@@ -206,9 +207,9 @@ export async function sendServerEvent(payload: ServerEventPayload): Promise<{ ok
     try {
       const { data, error } = await (supabaseAdmin as any).rpc("dispatch_meta_capi_event", { p_body: body });
       if (!error && data === true) return true;
-      console.error("[FB CAPI database fallback failed]", { event: payload.event_name, eventId: payload.event_id, error: error?.message ?? "dispatcher unavailable" });
+      logger.error("[FB CAPI database fallback failed]", { event: payload.event_name, eventId: payload.event_id, error: error?.message ?? "dispatcher unavailable" });
     } catch (error) {
-      console.error("[FB CAPI database fallback exception]", { event: payload.event_name, eventId: payload.event_id, error: error instanceof Error ? error.message : String(error) });
+      logger.error("[FB CAPI database fallback exception]", { event: payload.event_name, eventId: payload.event_id, error: error instanceof Error ? error.message : String(error) });
     }
     return false;
   };
@@ -236,7 +237,7 @@ export async function sendServerEvent(payload: ServerEventPayload): Promise<{ ok
     if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 250));
   }
 
-  console.error("[FB CAPI direct delivery failed]", { event: payload.event_name, eventId: payload.event_id, error: lastError });
+  logger.error("[FB CAPI direct delivery failed]", { event: payload.event_name, eventId: payload.event_id, error: lastError });
   return (await dispatchFallback()) ? { ok: true } : { ok: false };
 }
 

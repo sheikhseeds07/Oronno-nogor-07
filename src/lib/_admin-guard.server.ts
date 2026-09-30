@@ -1,3 +1,4 @@
+import { EMPLOYEE_PERMISSIONS_COLUMNS } from "@/lib/read-columns";
 // Shared server-side authorization helpers for staff/admin server functions.
 // Always import from a server-only path; never imported by client code.
 //
@@ -40,7 +41,7 @@ async function loadAuthz(userId: string): Promise<CachedAuthz> {
     if (isStaff && !isSuperAdmin) {
       const { data: perms } = await supabaseAdmin
         .from("employee_permissions")
-        .select("*")
+        .select(EMPLOYEE_PERMISSIONS_COLUMNS)
         .eq("user_id", userId)
         .maybeSingle();
       permissions = (perms ?? {}) as PermissionMap;
