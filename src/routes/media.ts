@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { getCloudflareR2Bucket } from "@/lib/cloudflare-r2.server";
 
 const ALLOWED_SUPABASE_HOSTS = new Set(["bvuhvzccziuniujeogng.supabase.co", "frtzlibogmethppqmhtr.supabase.co"]);
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
@@ -71,10 +72,7 @@ type R2BucketLike = {
 };
 
 function getR2Bucket(): R2BucketLike | undefined {
-  const env = (globalThis as typeof globalThis & {
-    __ORONNO_CF_ENV?: { MEDIA_BUCKET?: R2BucketLike };
-  }).__ORONNO_CF_ENV;
-  return env?.MEDIA_BUCKET;
+  return getCloudflareR2Bucket<R2BucketLike>();
 }
 
 async function pullR2Key(key: string): Promise<OriginSnapshot | null> {
