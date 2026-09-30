@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getCloudflareR2Bucket } from "@/lib/cloudflare-r2.server";
+import { LIVE_DATABASE_URL } from "@/lib/personal-supabase/client";
 
 const ALLOWED_SUPABASE_HOSTS = new Set(["bvuhvzccziuniujeogng.supabase.co", "frtzlibogmethppqmhtr.supabase.co"]);
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
@@ -314,7 +315,7 @@ export const Route = createFileRoute("/media")({
         // misses independent of Supabase Storage.
         const r2Variant = await pullR2Variant(asset, variant);
         const r2Origin = r2Variant ? null : await pullR2(asset);
-        if (!r2Variant && !r2Origin) return noStoreResponse("R2 object not found", 404);
+        if (!r2Variant && !r2Origin) { const source = LIVE_DATABASE_URL + "/storage/v1/object/public/" + encodeURIComponent(asset.bucket) + "/" + asset.objectPath; const legacy = await fetch(source); if (!legacy.ok) return noStoreResponse(await legacy.arrayBuffer(), legacy.status, legacy.statusText, legacy.headers); const body = await legacy.arrayBuffer(); const bucket = getR2Bucket(); if (bucket) { try { await bucket.put(asset.bucket + "/" + asset.objectPath, body.slice(0), { httpMetadata: { contentType: legacy.headers.get("content-type") || "application/octet-stream", cacheControl: "public, max-age=" + ONE_YEAR_SECONDS + ", immutable" } }); } catch {} } origin = { ok: true, status: 200, statusText: "OK", headers: legacy.headers, body }; }
 
         const origin = r2Variant ?? r2Origin!;
         if (!origin.ok) return noStoreResponse(origin.body.slice(0), origin.status, origin.statusText, origin.headers);
