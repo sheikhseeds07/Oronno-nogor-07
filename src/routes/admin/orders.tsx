@@ -1843,7 +1843,7 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
   const digits = normalizePhone(phone);
   const enabled = digits.length >= 10;
   const clientCacheKey = useMemo(
-    () => `hoorin-courier-history-v5:${digits}`,
+    () => `hoorin-courier-history-v6:${digits}`,
     [digits],
   );
 
@@ -1891,7 +1891,7 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
   }, [cachedClientResult, enabled, inView]);
 
   const { data, isFetching } = useQuery({
-    queryKey: ["hoorin-courier-history-v5", digits],
+    queryKey: ["hoorin-courier-history-v6", digits],
     enabled: enabled && inView && !cachedClientResult,
     queryFn: () => fn({ data: { phone: digits, orderCreatedAt } }),
     initialData: cachedClientResult ?? undefined,
@@ -2261,7 +2261,7 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
             {courierStats.map((c) => (
               <CourierCard key={c.name} name={c.name} total={c.total} success={c.success} cancelled={c.cancelled} />
             ))}
-            {!courierStats.some((c) => c.name.toLowerCase() === "steadfast" && c.total > 0) && <SteadfastRateCard sf={(extHistory as any)?.steadfast} />}
+            {!courierStats.some((c) => c.name.toLowerCase().startsWith("steadfast") && c.total > 0) && <SteadfastRateCard sf={(extHistory as any)?.steadfast} />}
             {courierLoading && null}
             {!courierLoading && hoorinError && <div className="min-w-[220px] rounded-lg border border-dashed p-2.5 bg-amber-50 text-xs text-amber-800 self-center">Hoorin error: {hoorinError}</div>}
             {!courierLoading && !hoorinError && hoorinReady && courierStats.length === 0 && <div className="min-w-[200px] rounded-lg border border-dashed p-2.5 bg-muted/40 text-xs text-muted-foreground self-center">এই নাম্বারে কোনো কুরিয়ার রেকর্ড নেই</div>}
@@ -2996,7 +2996,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
               {courierStats.map((c) => (
                 <CourierCard key={c.name} name={c.name} total={c.total} success={c.success} cancelled={c.cancelled} />
               ))}
-              {!courierStats.some((c) => c.name.toLowerCase() === "steadfast" && c.total > 0) && <SteadfastRateCard sf={(extHistory as any)?.steadfast} />}
+              {!courierStats.some((c) => c.name.toLowerCase().startsWith("steadfast") && c.total > 0) && <SteadfastRateCard sf={(extHistory as any)?.steadfast} />}
               {hoorinError && (
                 <div className="min-w-[220px] rounded-lg border border-dashed p-2.5 bg-amber-50 text-xs text-amber-800 self-center">
                   Hoorin error: {hoorinError}
