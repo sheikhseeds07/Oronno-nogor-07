@@ -2261,6 +2261,7 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
             {courierStats.map((c) => (
               <CourierCard key={c.name} name={c.name} total={c.total} success={c.success} cancelled={c.cancelled} />
             ))}
+            {!courierStats.some((c) => c.name.toLowerCase() === "steadfast" && c.total > 0) && <SteadfastRateCard sf={(extHistory as any)?.steadfast} />}
             {courierLoading && null}
             {!courierLoading && hoorinError && <div className="min-w-[220px] rounded-lg border border-dashed p-2.5 bg-amber-50 text-xs text-amber-800 self-center">Hoorin error: {hoorinError}</div>}
             {!courierLoading && !hoorinError && hoorinReady && courierStats.length === 0 && <div className="min-w-[200px] rounded-lg border border-dashed p-2.5 bg-muted/40 text-xs text-muted-foreground self-center">এই নাম্বারে কোনো কুরিয়ার রেকর্ড নেই</div>}
@@ -2373,6 +2374,23 @@ function CourierCard({ name, total, success, cancelled, highlight, clickable }: 
       <div className="text-muted-foreground">Total: <span className="font-semibold text-foreground">{total}</span></div>
       <div className="text-emerald-700">Success: <span className="font-semibold">{success}</span></div>
       <div className="text-rose-600">Cancelled: <span className="font-semibold">{cancelled}</span></div>
+      <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-1">
+        <div className="h-full bg-emerald-500" style={{ width: `${rate}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function SteadfastRateCard({ sf }: { sf?: { deliveryRatio: number; cancellationRatio: number; volumeBand: string | null } | null }) {
+  if (!sf) return null;
+  const rate = Math.round(sf.deliveryRatio);
+  const band: Record<string, string> = { low: "কম", medium: "মাঝারি", high: "বেশি", very_high: "খুব বেশি" };
+  return (
+    <div className="min-w-[150px] rounded-lg border p-2.5 text-xs space-y-1 bg-white">
+      <div className="font-bold text-sm text-foreground">Steadfast</div>
+      <div className="text-emerald-600 font-semibold">Success Rate: {rate}%</div>
+      <div className="text-rose-600">Cancelled: <span className="font-semibold">{Math.round(sf.cancellationRatio)}%</span></div>
+      <div className="text-muted-foreground">পরিমাণ: <span className="font-semibold text-foreground">{sf.volumeBand ? (band[sf.volumeBand] ?? sf.volumeBand) : "—"}</span></div>
       <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-1">
         <div className="h-full bg-emerald-500" style={{ width: `${rate}%` }} />
       </div>
@@ -2978,6 +2996,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
               {courierStats.map((c) => (
                 <CourierCard key={c.name} name={c.name} total={c.total} success={c.success} cancelled={c.cancelled} />
               ))}
+              {!courierStats.some((c) => c.name.toLowerCase() === "steadfast" && c.total > 0) && <SteadfastRateCard sf={(extHistory as any)?.steadfast} />}
               {hoorinError && (
                 <div className="min-w-[220px] rounded-lg border border-dashed p-2.5 bg-amber-50 text-xs text-amber-800 self-center">
                   Hoorin error: {hoorinError}
