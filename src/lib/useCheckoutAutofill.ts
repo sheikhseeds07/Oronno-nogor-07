@@ -27,6 +27,7 @@ export function useCheckoutAutofill(params: {
   const phone = form.phone.replace(/[\s-]/g, "");
   const phoneValid = PHONE_RE.test(phone);
   const lookupRef = useRef<string>("");
+  const lastSavedRef = useRef<string>("");
   const [checkoutSessionId] = useState("");
 
   useEffect(() => {
@@ -61,20 +62,25 @@ export function useCheckoutAutofill(params: {
   const itemsKey = JSON.stringify(params.items);
   useEffect(() => {
     if (!phoneValid || !params.items.length) return;
+    const snapshot = JSON.stringify({
+      customer_phone: phone,
+      customer_name: form.name || null,
+      customer_address: form.address || null,
+      delivery_zone: params.zone || null,
+      delivery_fee: Number(params.deliveryFee) || 0,
+      subtotal: Number(params.subtotal) || 0,
+      total: Number(params.total) || 0,
+      note: form.note || null,
+      items: params.items,
+    });
+    // Skip the network call entirely when nothing changed since the last save.
+    if (snapshot === lastSavedRef.current) return;
     const timer = window.setTimeout(() => {
-      saveIncomplete({
-        data: {
-          customer_phone: phone,
-          customer_name: form.name || null,
-          customer_address: form.address || null,
-          delivery_zone: params.zone || null,
-          delivery_fee: Number(params.deliveryFee) || 0,
-          subtotal: Number(params.subtotal) || 0,
-          total: Number(params.total) || 0,
-          note: form.note || null,
-          items: params.items,
-        },
-      }).catch(() => {});
+      if (snapshot === lastSavedRef.current) return;
+      lastSavedRef.current = snapshot;
+      saveIncomplete({ data: JSON.parse(snapshot) }).catch(() => {
+        lastSavedRef.current = "";
+      });
     }, 10_000);
     return () => window.clearTimeout(timer);
   }, [phoneValid, phone, form.name, form.address, form.note, params.zone, params.deliveryFee, params.subtotal, params.total, itemsKey, saveIncomplete]);
