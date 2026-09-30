@@ -6,7 +6,7 @@
 // Employees → Permissions (public.employee_permissions).
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 
-const AUTHZ_CACHE_TTL_MS = 20_000;
+const AUTHZ_CACHE_TTL_MS = 60_000;
 type PermissionMap = Record<string, boolean>;
 type CachedAuthz = {
   expiresAt: number;
