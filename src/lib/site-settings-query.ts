@@ -22,6 +22,9 @@ export type PublicSiteSettings = Record<string, unknown> & {
 
 export type PublicSiteSettingsRow = { settings: PublicSiteSettings } | null;
 
+let serverSettingsCache: { at: number; value: PublicSiteSettingsRow } | null = null;
+const SERVER_SETTINGS_TTL_MS = 5 * 60_000;
+
 /**
  * Public settings are configuration, not long-lived content. In particular,
  * delivery charges must reflect the admin setting on the next checkout visit.
@@ -35,11 +38,14 @@ export const publicSiteSettingsQuery = {
     return cached ? { settings: cached } : undefined;
   },
   queryFn: async (): Promise<PublicSiteSettingsRow> => {
+    if (typeof window === "undefined" && serverSettingsCache && Date.now() - serverSettingsCache.at < SERVER_SETTINGS_TTL_MS) return serverSettingsCache.value;
     const { data, error } = await supabase.from("site_settings").select("settings").maybeSingle();
     if (error) throw error;
     const settings = (data?.settings as PublicSiteSettings | null) ?? {};
+    const value = { settings };
+    if (typeof window === "undefined") serverSettingsCache = { at: Date.now(), value };
     writePublicSettingsCache(settings);
-    return { settings };
+    return value;
   },
   // Settings are configuration. A 5-minute revalidation window cuts repeated
   // reads while still making admin changes visible quickly.
