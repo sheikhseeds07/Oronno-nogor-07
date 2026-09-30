@@ -135,7 +135,7 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
       if (data?.settings) writePublicSettingsCache(data.settings as SiteSettings);
       return data;
     },
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
   });
   const brand = (brandRow?.settings as SiteSettings) ?? {};
   const brandLogo = brand.logo_url;
