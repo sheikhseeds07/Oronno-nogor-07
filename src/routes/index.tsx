@@ -3,7 +3,7 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { ProductCard, type Product } from "@/components/shop/ProductCard";
-import { Truck, Headphones, ArrowRight, Sparkles, Sprout, Wallet } from "lucide-react";
+import { Truck, Headphones, ArrowRight, Sparkles, Sprout, Wallet, ShieldCheck, MapPin, BadgeCheck, Leaf } from "lucide-react";
 import { getHomeData, type HomeData } from "@/lib/home.functions";
 import { toImg, imgSrcSet } from "@/lib/img";
 
@@ -54,6 +54,43 @@ const homeQueryOptions = queryOptions({
   refetchOnWindowFocus: false,
   refetchOnReconnect: true,
 });
+
+function AnimatedStat({ value, suffix = "", label, icon: Icon }: { value: number; suffix?: string; label: string; icon: typeof Sprout }) {
+  const [count, setCount] = useState(0);
+  const [started, setStarted] = useState(false);
+  useEffect(() => {
+    if (started) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return;
+      setStarted(true);
+      const startTime = performance.now();
+      const duration = 1500;
+      let raf = 0;
+      const tick = (now: number) => {
+        const progress = Math.min(1, (now - startTime) / duration);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setCount(Math.round(value * eased));
+        if (progress < 1) raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+      observer.disconnect();
+      return () => cancelAnimationFrame(raf);
+    }, { threshold: 0.35 });
+    const node = document.getElementById(`home-stat-${label}`);
+    if (node) observer.observe(node);
+    return () => observer.disconnect();
+  }, [label, started, value]);
+  return (
+    <div id={`home-stat-${label}`} className="group relative overflow-hidden px-2 py-2.5 sm:px-4 sm:py-3.5">
+      <div className="absolute inset-0 bg-gradient-to-b from-brand/5 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+      <div className="relative mx-auto mb-1.5 flex h-8 w-8 items-center justify-center rounded-full bg-brand-light/80 text-brand-dark ring-1 ring-brand/15 transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 group-hover:bg-brand group-hover:text-primary-foreground sm:h-9 sm:w-9">
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="relative text-base font-black tracking-tight text-brand-dark tabular-nums sm:text-xl">{count.toLocaleString("bn-BD")}{suffix}</div>
+      <div className="relative mt-0.5 text-[9.5px] font-medium text-muted-foreground sm:text-[11px]">{label}</div>
+    </div>
+  );
+}
 
 function SectionTitle({ title, subtitle, action }: { title: string; subtitle?: string; action?: { label: string; to: string } }) {
   return (
@@ -197,64 +234,60 @@ function Home() {
         )}
       </section>
 
-      <section className="py-5 sm:py-8">
-        <div className="container mx-auto px-3 sm:px-4">
-          <div className="reveal-up relative mx-auto max-w-5xl overflow-hidden rounded-3xl border border-brand/15 bg-gradient-to-br from-brand-light/40 via-card to-card px-3.5 py-4 shadow-sm sm:px-6 sm:py-6">
-            <span className="pointer-events-none absolute -right-14 -top-14 h-40 w-40 rounded-full bg-brand/10 blur-3xl" />
-            <span className="pointer-events-none absolute -bottom-16 -left-12 h-36 w-36 rounded-full bg-brand/10 blur-3xl" />
-
-            <div className="relative mb-3.5 text-center sm:mb-5">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-card/80 px-2.5 py-0.5 text-[10px] font-bold tracking-wide text-brand-dark ring-1 ring-brand/15 backdrop-blur sm:text-[11px]">
-                <Sparkles className="h-3 w-3" />শেখ সিডস প্রতিশ্রুতি
-              </span>
-              <h2 className="mt-2 text-[17px] font-extrabold leading-snug tracking-tight text-brand-dark sm:text-2xl">
-                ভালো বীজেই ভালো ফলন
-              </h2>
-              <p className="mx-auto mt-1 max-w-md text-[11px] leading-relaxed text-muted-foreground sm:text-sm">
-                বাছাই থেকে আপনার হাতে — প্রতিটি ধাপে মান ও যত্নের নিশ্চয়তা।
-              </p>
-            </div>
-
-            <div className="relative grid grid-cols-2 gap-2 sm:gap-2.5 lg:grid-cols-4">
-              {[
-                { icon: Sprout, t: "উচ্চ অঙ্কুরোদগম", s: "টেস্ট করা ব্যাচ — চারা গজায় প্রায় সবটাই।" },
-                { icon: Truck, t: "দ্রুত ডেলিভারি", s: "নিরাপদ প্যাকেজিংয়ে সারাদেশে পৌঁছে যায়।" },
-                { icon: Wallet, t: "ক্যাশ অন ডেলিভারি", s: "হাতে পেয়ে দেখে তারপর মূল্য পরিশোধ।" },
-                { icon: Headphones, t: "ফ্রি পরামর্শ", s: "বপন ও পরিচর্যায় কৃষিবিদের দিকনির্দেশনা।" },
-              ].map(({ icon: Icon, t, s }, i) => (
-                <div
-                  key={t}
-                  className="reveal-up group relative overflow-hidden rounded-2xl border border-border/60 bg-card/85 p-3 shadow-sm backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-brand/30 hover:shadow-lg"
-                  style={{ animationDelay: `${i * 70}ms` }}
-                >
-                  <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-brand-light/70 text-brand-dark ring-1 ring-brand/10 transition-all duration-300 group-hover:scale-110 group-hover:bg-brand group-hover:text-primary-foreground sm:h-9 sm:w-9">
-                    <Icon className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
+      <section className="relative overflow-hidden py-7 sm:py-11">
+        <style>{`
+          @keyframes trustFloat { 0%,100% { transform: translate3d(0,0,0) rotate(0deg); } 50% { transform: translate3d(0,-7px,0) rotate(1deg); } }
+          @keyframes trustPulse { 0%,100% { box-shadow: 0 0 0 0 hsl(var(--brand) / .10); } 50% { box-shadow: 0 0 0 9px hsl(var(--brand) / 0); } }
+          @keyframes trustShimmer { 0% { transform: translateX(-120%); } 100% { transform: translateX(320%); } }
+        `}</style>
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,hsl(var(--brand)/.09),transparent_28%),radial-gradient(circle_at_85%_80%,hsl(var(--brand)/.07),transparent_30%)]" />
+        <div className="container relative mx-auto px-3 sm:px-4">
+          <div className="mx-auto max-w-6xl overflow-hidden rounded-[1.75rem] border border-brand/15 bg-card/95 shadow-[0_18px_60px_hsl(var(--brand)/.10)] backdrop-blur sm:rounded-[2.25rem]">
+            <div className="relative overflow-hidden px-4 pb-4 pt-5 sm:px-8 sm:pb-6 sm:pt-7">
+              <div className="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-brand/10 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-24 -left-20 h-56 w-56 rounded-full bg-brand/10 blur-3xl" />
+              <div className="relative mx-auto max-w-2xl text-center">
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-brand/15 bg-brand-light/60 px-3 py-1 text-[10px] font-extrabold tracking-wide text-brand-dark shadow-sm sm:text-[11px]">
+                  <ShieldCheck className="h-3.5 w-3.5" />অরন্নো নগর — আপনার আস্থার ঠিকানা
+                </div>
+                <h2 className="mt-2.5 text-xl font-black tracking-tight text-brand-dark sm:text-3xl">ভালো বীজে শুরু, ভালো ফলনে আস্থা</h2>
+                <p className="mx-auto mt-1.5 max-w-xl text-[11px] leading-relaxed text-muted-foreground sm:text-sm">অরিজিনাল পণ্য, নিরাপদ ডেলিভারি এবং বাগান করার প্রতিটি ধাপে প্রয়োজনীয় সহযোগিতা — সব একসাথে।</p>
+              </div>
+              <div className="relative mt-5 grid grid-cols-2 gap-2.5 sm:mt-7 sm:grid-cols-4 sm:gap-3">
+                {[
+                  { icon: Wallet, t: "হাতে পেয়ে মূল্য পরিশোধ", s: "পণ্য হাতে দেখে তারপর ক্যাশ অন ডেলিভারি।" },
+                  { icon: Headphones, t: "ফ্রি পরামর্শ", s: "বপন ও পরিচর্যায় কৃষিবিদের দিকনির্দেশনা।" },
+                  { icon: Truck, t: "নিরাপদ ডেলিভারি", s: "যত্নসহ প্যাকেজিংয়ে সারাদেশে পৌঁছে দিই।" },
+                  { icon: BadgeCheck, t: "মানের প্রতি অঙ্গীকার", s: "বাছাইকৃত বীজ ও পণ্যে নির্ভরযোগ্যতার চেষ্টা।" },
+                ].map(({ icon: Icon, t, s }, i) => (
+                  <div key={t} className="group relative overflow-hidden rounded-2xl border border-border/60 bg-background/75 p-3.5 shadow-sm transition-all duration-500 hover:-translate-y-1.5 hover:border-brand/30 hover:shadow-[0_14px_30px_hsl(var(--brand)/.12)] sm:p-4" style={{ animation: "trustFloat 5s ease-in-out infinite", animationDelay: `${i * 180}ms` }}>
+                    <div className="relative mb-2.5 flex h-10 w-10 items-center justify-center rounded-xl bg-brand-light/75 text-brand-dark ring-1 ring-brand/10 transition-all duration-500 group-hover:scale-110 group-hover:bg-brand group-hover:text-primary-foreground sm:h-11 sm:w-11">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div className="text-[12px] font-extrabold leading-tight text-foreground sm:text-sm">{t}</div>
+                    <div className="mt-1 text-[10px] leading-relaxed text-muted-foreground sm:text-[11.5px]">{s}</div>
+                    <span className="absolute bottom-0 left-0 h-0.5 w-full origin-left scale-x-0 bg-gradient-to-r from-brand to-brand-dark transition-transform duration-500 group-hover:scale-x-100" />
                   </div>
-                  <div className="mb-0.5 text-[12px] font-bold text-foreground sm:text-[13px]">{t}</div>
-                  <div className="text-[10.5px] leading-relaxed text-muted-foreground sm:text-[11.5px]">{s}</div>
-                  <span className="absolute inset-x-0 bottom-0 h-0.5 origin-left scale-x-0 bg-gradient-to-r from-brand to-brand-dark transition-transform duration-500 group-hover:scale-x-100" />
+                ))}
+              </div>
+              <div className="relative mt-3.5 overflow-hidden rounded-2xl border border-brand/15 bg-gradient-to-r from-brand-light/45 via-card to-brand-light/30 shadow-inner sm:mt-5">
+                <div className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/2 bg-gradient-to-r from-transparent via-white/30 to-transparent" style={{ animation: "trustShimmer 4.5s ease-in-out infinite" }} />
+                <div className="grid grid-cols-3 divide-x divide-border/60">
+                  <AnimatedStat value={20000} suffix="+" label="সন্তুষ্ট বাগানি" icon={Sprout} />
+                  <AnimatedStat value={500} suffix="+" label="বীজ ও পণ্য" icon={Leaf} />
+                  <AnimatedStat value={64} label="জেলায় ডেলিভারি" icon={MapPin} />
                 </div>
-              ))}
-            </div>
-
-            <div className="reveal-up relative mt-2.5 grid grid-cols-3 divide-x divide-border/60 rounded-2xl border border-border/60 bg-card/70 py-2.5 text-center backdrop-blur sm:mt-3">
-              {[
-                { v: "২০,০০০+", l: "সন্তুষ্ট বাগানি" },
-                { v: "৫০০+", l: "বীজ ও পণ্য" },
-                { v: "৬৪", l: "জেলায় ডেলিভারি" },
-              ].map(({ v, l }) => (
-                <div key={l} className="px-1">
-                  <div className="text-sm font-extrabold text-brand-dark sm:text-lg">{v}</div>
-                  <div className="mt-0.5 text-[9.5px] text-muted-foreground sm:text-[11px]">{l}</div>
-                </div>
-              ))}
+              </div>
+              <div className="relative mt-3 flex items-center justify-center gap-2 text-[9.5px] font-semibold text-muted-foreground sm:text-[11px]">
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand-light text-brand-dark" style={{ animation: "trustPulse 2.4s ease-in-out infinite" }}><ShieldCheck className="h-3 w-3" /></span>
+                বিশ্বস্ত সেবা • সহজ অর্ডার • সারাদেশে ডেলিভারি
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-
-    </SiteLayout>
+</SiteLayout>
   );
 }
 
