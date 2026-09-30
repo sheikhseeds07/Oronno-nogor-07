@@ -141,8 +141,16 @@ function LandingPagesAdmin() {
       : await supabase.from("landing_pages").insert(payload);
     if (error) return toast.error(error.message);
     toast.success("সংরক্ষণ হয়েছে");
+    // Keep any already-open landing page in the same app in sync immediately.
+    // Seed Combo uses the clean landing query; All Product pages use their own key.
+    const savedSlug = editing.slug;
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["admin-landing"] }),
+      qc.invalidateQueries({ queryKey: ["landing-clean", savedSlug] }),
+      qc.invalidateQueries({ queryKey: ["landing-all-product", savedSlug] }),
+      qc.invalidateQueries({ queryKey: ["landing-template", savedSlug] }),
+    ]);
     setEditing(null);
-    qc.invalidateQueries({ queryKey: ["admin-landing"] });
   };
 
   const remove = async (id: string) => {
