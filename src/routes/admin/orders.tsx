@@ -772,7 +772,7 @@ function OrdersTable({
     queryKey: ["order-locks", orderIdsKey],
     enabled: orderIds.length > 0,
     queryFn: () => fetchLocks({ data: { order_ids: orderIds } }),
-    refetchInterval: 25_000,
+    refetchInterval: 45_000,
   });
   const lockMap = useMemo(() => {
     const m = new Map<string, { user_id: string; user_name: string }>();
