@@ -25,6 +25,8 @@ const PUBLIC_MEDIA_BUCKETS = new Set([
   "site-assets",
   "landing-images",
   "review-images",
+  "customer-profiles",
+  "community-media",
   "blog-images",
   "public-assets",
 ]);
@@ -120,6 +122,20 @@ function getSafeSource(request: Request): URL | null {
   }
 }
 
+function getDirectAsset(request: Request): { bucket: string; objectPath: string; signed: false } | null {
+  const raw = new URL(request.url).searchParams.get("asset");
+  if (!raw) return null;
+  let decoded = raw;
+  try { decoded = decodeURIComponent(raw); } catch {}
+  const slash = decoded.indexOf("/");
+  if (slash <= 0) return null;
+  const bucket = decoded.slice(0, slash);
+  const objectPath = decoded.slice(slash + 1).replace(/^\/+/, "");
+  if (!PUBLIC_MEDIA_BUCKETS.has(bucket)) return null;
+  if (!objectPath || objectPath.includes("../") || objectPath.includes("/..") || objectPath.includes("\0")) return null;
+  return { bucket, objectPath, signed: false };
+}
+
 function supportsWebp(request: Request): boolean {
   return /(?:^|,)\s*image\/webp(?:\s*;|,|$)/i.test(request.headers.get("Accept") || "");
 }
@@ -141,11 +157,14 @@ function getVariant(request: Request): DeliveryVariant {
   return { width, quality, format, id: `w${width}-q${quality}-${format}` };
 }
 
-function makeCacheKey(request: Request, source: URL, variant: DeliveryVariant): Request {
-  const asset = getStorageAsset(source);
+function makeCacheKey(
+  request: Request,
+  asset: { bucket: string; objectPath: string },
+  variant: DeliveryVariant,
+): Request {
   const key = new URL(request.url);
   key.search = "";
-  key.searchParams.set("asset", `${asset?.bucket ?? "unknown"}/${asset?.objectPath ?? source.pathname}`);
+  key.searchParams.set("asset", `${asset.bucket}/${asset.objectPath}`);
   key.searchParams.set("variant", variant.id);
   return new Request(key.toString(), { method: "GET" });
 }
@@ -281,10 +300,11 @@ export const Route = createFileRoute("/media")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const source = getSafeSource(request);
-        if (!source) return noStoreResponse("Invalid media source", 400);
+        const directAsset = getDirectAsset(request);
+        const source = directAsset ? null : getSafeSource(request);
+        if (!directAsset && !source) return noStoreResponse("Invalid media source", 400);
 
-        const asset = getStorageAsset(source);
+        const asset = directAsset ?? (source ? getStorageAsset(source) : null);
         if (!asset) return noStoreResponse("Invalid storage asset", 400);
 
         const publicAsset = PUBLIC_MEDIA_BUCKETS.has(asset.bucket);
@@ -295,15 +315,17 @@ export const Route = createFileRoute("/media")({
         // not change their existing privacy/cache semantics.
         if (!publicAsset) {
           const r2Origin = await pullR2(asset);
-          const origin = r2Origin ?? await pullOrigin(source, "", request, false, variant);
+          if (r2Origin) return noStoreResponse(r2Origin.body.slice(0), r2Origin.status, r2Origin.statusText, r2Origin.headers);
+          if (!source) return noStoreResponse("R2 object not found", 404);
+          const origin = await pullOrigin(source, "", request, false, variant);
           return noStoreResponse(origin.body.slice(0), origin.status, origin.statusText, origin.headers);
         }
 
         // Conditional requests: if the browser already has the bytes, answer 304
         // and send no body at all.
         const cache = getCloudflareCache();
-        const cacheKey = makeCacheKey(request, source, variant);
-        const originCacheKey = makeOriginCacheKey(source, variant);
+        const cacheKey = makeCacheKey(request, asset, variant);
+        const originCacheKey = source ? makeOriginCacheKey(source, variant) : "";
         const ifNoneMatch = request.headers.get("If-None-Match");
 
         if (cache) {
@@ -326,7 +348,8 @@ export const Route = createFileRoute("/media")({
         // there yet, transparently fall back to Supabase Storage. This makes
         // migration safe and allows the bucket to be populated incrementally.
         const r2Origin = await pullR2(asset);
-        const origin = r2Origin ?? await pullOrigin(source, originCacheKey, request, true, variant);
+        if (!r2Origin && !source) return noStoreResponse("R2 object not found", 404);
+        const origin = r2Origin ?? await pullOrigin(source!, originCacheKey, request, true, variant);
         if (!origin.ok) return noStoreResponse(origin.body.slice(0), origin.status, origin.statusText, origin.headers);
 
         const response = cacheableResponse(origin, origin.body.slice(0), "MISS", variant);
