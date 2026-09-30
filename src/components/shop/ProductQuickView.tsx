@@ -21,8 +21,8 @@ export function ProductQuickView({ product, onClose }: { product: Product & { de
   const price = product.sale_price ?? product.price;
   const discount = product.sale_price ? Math.round(((product.price - product.sale_price) / product.price) * 100) : 0;
   const img = product.images?.[0] || "/placeholder.svg";
-  const reviewsQ = useQuery({ queryKey:["quick-view-review-count",product.id], enabled:isUuid(product.id), staleTime:60000, queryFn:async()=>{ const {count}=await db.from("product_reviews").select("id",{count:"exact",head:true}).eq("product_id",product.id).eq("status","approved"); return count??0; } });
-  const questionsQ = useQuery({ queryKey:["quick-view-question-count",product.id], enabled:isUuid(product.id), staleTime:60000, queryFn:async()=>{ const {count}=await db.from("product_questions").select("id",{count:"exact",head:true}).eq("product_id",product.id).eq("status","approved"); return count??0; } });
+  const reviewsQ = useQuery({ queryKey:["quick-view-review-count",product.id], enabled:isUuid(product.id), staleTime: 5 * 60_000, queryFn:async()=>{ const {count}=await db.from("product_reviews").select("id",{count:"exact",head:true}).eq("product_id",product.id).eq("status","approved"); return count??0; } });
+  const questionsQ = useQuery({ queryKey:["quick-view-question-count",product.id], enabled:isUuid(product.id), staleTime: 5 * 60_000, queryFn:async()=>{ const {count}=await db.from("product_questions").select("id",{count:"exact",head:true}).eq("product_id",product.id).eq("status","approved"); return count??0; } });
 
   const addItem=()=>{ add({id:product.id,name:product.name,slug:product.slug,price,image:img,stock:product.stock},1); trackAddToCart({id:product.id,name:product.name,price,quantity:1}); };
   const handleAdd=()=>{ addItem(); toastAddedToCart(product.name); onClose(); };
