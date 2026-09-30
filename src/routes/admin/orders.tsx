@@ -2162,7 +2162,7 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
     enabled: phoneReady,
     queryFn: () => courierHistoryFn({ data: { phone: phoneDigits } }),
     staleTime: 5 * 60_000,
-    refetchOnMount: "always",
+    refetchOnMount: false,
     refetchOnWindowFocus: false,
     retry: 2,
     retryDelay: (attempt) => 600 * (attempt + 1),
