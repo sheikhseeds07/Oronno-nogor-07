@@ -1,6 +1,10 @@
 name: Migrate Supabase Storage to R2
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/migrate-supabase-storage-to-r2.yml"
   workflow_dispatch:
   repository_dispatch:
     types: [run-r2-migration]
