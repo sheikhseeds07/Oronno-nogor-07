@@ -3,7 +3,17 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/personal-supabase/db.types";
 import { LIVE_DATABASE_KEY, LIVE_DATABASE_URL } from "@/lib/personal-supabase/client";
 
-const STAFF_BUCKETS = new Set(["banners", "category-images", "product-images", "site-assets"]);
+// Keep every public/admin-managed image class on the R2 upload path so new
+// media never falls back to Supabase Storage.
+const STAFF_BUCKETS = new Set([
+  "banners",
+  "category-images",
+  "product-images",
+  "site-assets",
+  "landing-images",
+  "blog-images",
+  "public-assets",
+]);
 const CUSTOMER_BUCKETS = new Set(["customer-profiles", "review-images", "community-media"]);
 const ALLOWED_BUCKETS = new Set([...STAFF_BUCKETS, ...CUSTOMER_BUCKETS]);
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
