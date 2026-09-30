@@ -34,7 +34,9 @@ function DashboardOrRedirect() {
   }
 
   if (user && !isAdmin) {
-    return <AdminLayout><div className="p-8 text-center text-muted-foreground">রিডিরেক্ট হচ্ছে...</div></AdminLayout>;
+    // Redirect is already in progress; keep the page visually blank so the
+    // temporary redirect state never flashes during refresh/navigation.
+    return <AdminLayout><div className="p-8" aria-hidden="true" /></AdminLayout>;
   }
 
   return <PremiumDashboard />;
