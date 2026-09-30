@@ -1843,7 +1843,7 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
   const digits = normalizePhone(phone);
   const enabled = digits.length >= 10;
   const clientCacheKey = useMemo(
-    () => `hoorin-courier-history-v4:${digits}`,
+    () => `hoorin-courier-history-v5:${digits}`,
     [digits],
   );
 
@@ -1891,7 +1891,7 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
   }, [cachedClientResult, enabled, inView]);
 
   const { data, isFetching } = useQuery({
-    queryKey: ["hoorin-courier-history", digits],
+    queryKey: ["hoorin-courier-history-v5", digits],
     enabled: enabled && inView && !cachedClientResult,
     queryFn: () => fn({ data: { phone: digits, orderCreatedAt } }),
     initialData: cachedClientResult ?? undefined,
@@ -1920,7 +1920,26 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
     const total = displayData.overall?.total ?? displayData.stats.reduce((sum: number, stat: any) => sum + stat.total, 0);
     const success = displayData.overall?.success ?? displayData.stats.reduce((sum: number, stat: any) => sum + stat.success, 0);
     const cancelled = displayData.overall?.cancelled ?? displayData.stats.reduce((sum: number, stat: any) => sum + stat.cancelled, 0);
-    if (total) {
+    const sf = displayData.steadfast as { deliveryRatio: number; cancellationRatio: number; volumeBand: string | null } | undefined;
+    const bandBn: Record<string, string> = { low: "কম", medium: "মাঝারি", high: "বেশি" };
+    const sfLine = sf ? (
+      <div className="text-sky-700" title="Steadfast থেকে সরাসরি (পুরো Steadfast-এর হিসাব)">
+        Steadfast: <b>{sf.deliveryRatio}%</b> সফল · <b>{sf.cancellationRatio}%</b> বাতিল{sf.volumeBand ? ` · পরিমাণ: ${bandBn[sf.volumeBand] ?? sf.volumeBand}` : ""}
+      </div>
+    ) : null;
+    if (!total && sf) {
+      const rate = Math.round(sf.deliveryRatio);
+      const ring = rate >= 80 ? "border-emerald-500 text-emerald-700" : rate >= 50 ? "border-amber-500 text-amber-700" : "border-rose-500 text-rose-700";
+      content = (
+        <div className="flex items-center gap-2">
+          <div className={`w-9 h-9 rounded-full border-[3px] ${ring} flex items-center justify-center text-[10px] font-bold`}>{rate}%</div>
+          <div className="text-[11px] leading-tight">
+            <div className="font-bold text-slate-700">Steadfast</div>
+            {sfLine}
+          </div>
+        </div>
+      );
+    } else if (total) {
       const rate = Math.round((success / total) * 100);
       const ring = rate >= 80 ? "border-emerald-500 text-emerald-700" : rate >= 50 ? "border-amber-500 text-amber-700" : "border-rose-500 text-rose-700";
       content = (
@@ -1931,6 +1950,7 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
             <div className="text-emerald-700">Success: <b>{rate}%</b></div>
             <div className="text-muted-foreground">Order: <b>{success}/{total}</b></div>
             <div className="text-rose-600">Cancel: <b>{cancelled}</b></div>
+            {sfLine}
           </div>
         </div>
       );
