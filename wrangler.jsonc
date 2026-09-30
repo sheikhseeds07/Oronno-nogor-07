@@ -15,7 +15,7 @@
   "r2_buckets": [
     {
       "binding": "MEDIA_BUCKET",
-      "bucket_name": "oronnonogor-media"
+      "bucket_name": "sheikhseeds"
     }
   ],
   "observability": {
