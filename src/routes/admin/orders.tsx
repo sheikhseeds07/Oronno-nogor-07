@@ -1586,7 +1586,7 @@ function toR2MediaUrl(raw: string): string {
     if (asset) return `/media?asset=${encodeURIComponent(asset)}`;
     const nested = outer.searchParams.get("src");
     if (nested) return toR2MediaUrl(nested);
-    const match = outer.pathname.match(/^\\/storage\\/v1\\/object\\/(?:public|sign)\\/([^/]+)\\/(.+)$/);
+    const match = outer.pathname.match(/^\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+)$/);
     if (match) return `/media?asset=${encodeURIComponent(match[1] + "/" + match[2])}`;
   } catch {
     // Keep non-URL values unchanged below.
