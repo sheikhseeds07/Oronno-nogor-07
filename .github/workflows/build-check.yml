@@ -28,6 +28,11 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Check Storage failure handling
+        run: bun run check:storage
+
       # Full production build — optimization must never merge if the build fails.
       - name: Build
+        env:
+          R2_PUBLIC_URL: /media
         run: bun run build

@@ -1,3 +1,4 @@
+import { SafeImage } from "@/components/SafeImage";
 import { CATEGORIES_COLUMNS } from "@/lib/read-columns";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -119,7 +120,7 @@ function Categories() {
           <div key={c.id} className="bg-white border rounded-xl p-3">
             <div className="aspect-square bg-muted rounded-lg mb-2 overflow-hidden">
               {c.image_url ? (
-                <img src={c.image_url} className="w-full h-full object-cover" alt="" />
+                <SafeImage src={c.image_url} className="w-full h-full object-cover" alt="" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-3xl">🌱</div>
               )}
@@ -216,7 +217,7 @@ function Categories() {
 
             <label className="text-xs font-semibold text-muted-foreground">ক্যাটাগরি ছবি</label>
             <input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} className="block my-2 text-sm" />
-            {editing.image_url && <img src={editing.image_url} className="w-24 h-24 object-cover rounded mb-2" alt="" />}
+            {editing.image_url && <SafeImage src={editing.image_url} className="w-24 h-24 object-cover rounded mb-2" alt="" />}
 
             <div className="flex gap-2 justify-end mt-4">
               <button onClick={() => setEditing(null)} className="px-4 py-2 border rounded-lg">ক্যান্সেল</button>

@@ -1,3 +1,4 @@
+import { SafeImage } from "@/components/SafeImage";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -83,7 +84,7 @@ function LandingSeedsAdmin() {
             {rows.map((seed, index) => (
               <div key={`${seed.name}-${index}`} className="rounded-xl border bg-card p-2.5 space-y-2">
                 <div className="aspect-[1/.82] rounded-lg overflow-hidden bg-muted flex items-center justify-center relative">
-                  {seed.image ? <img src={seed.image} alt={seed.name} className="w-full h-full object-cover" /> : <div className="text-3xl">🌱</div>}
+                  {seed.image ? <SafeImage src={seed.image} alt={seed.name} className="w-full h-full object-cover" /> : <div className="text-3xl">🌱</div>}
                   <label className="absolute inset-x-2 bottom-2 flex items-center justify-center gap-1 rounded-lg bg-black/65 text-white py-1.5 text-xs font-semibold cursor-pointer">
                     <ImagePlus className="w-3.5 h-3.5" /> {uploading === index ? "আপলোড…" : seed.image ? "ইমেজ পরিবর্তন" : "ইমেজ আপলোড"}
                     <input type="file" accept="image/*" className="hidden" disabled={uploading !== null} onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(index, f); e.currentTarget.value = ""; }} />

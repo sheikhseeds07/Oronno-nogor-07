@@ -1,3 +1,4 @@
+import { SafeImage } from "@/components/SafeImage";
 import { LANDING_PAGES_COLUMNS } from "@/lib/read-columns";
 import { useEffect, useMemo, useState, useRef, type ReactElement, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
@@ -291,7 +292,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-all-product-gold/70 to-transparent" />
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-6 bg-gradient-to-b from-white/[0.07] to-transparent" />
       <div className="relative mx-auto flex h-[40px] max-w-6xl items-center justify-between gap-1.5 px-3 sm:h-[46px] sm:px-4">
-        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2"><img src={logo} alt={brand} className="h-6 w-6 rounded-full object-cover ring-1 ring-all-product-gold/50 sm:h-7 sm:w-7" /><div className="min-w-0 pt-0.5"><span style={{ fontFamily: "'Noto Serif Bengali', 'Hind Siliguri', serif" }} className="block whitespace-nowrap text-[18px] font-black leading-[1.3] tracking-[0.01em] text-all-product-primary sm:text-[21px]">{brandBn}</span><svg viewBox="0 0 72 8" className="mt-0 block h-1.5 w-[56px] drop-shadow-[0_0_3px_var(--all-product-gold)] sm:w-[70px]" aria-hidden="true"><defs><linearGradient id="ap-gold-arc" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="var(--all-product-gold, #d9a53a)" stopOpacity="0.25" /><stop offset="50%" stopColor="var(--all-product-gold, #d9a53a)" /><stop offset="100%" stopColor="var(--all-product-gold, #d9a53a)" stopOpacity="0.25" /></linearGradient></defs><path d="M2 6.5 Q36 0.5 70 6.5" fill="none" stroke="url(#ap-gold-arc)" strokeWidth="2" strokeLinecap="round" /></svg></div></div>
+        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2"><SafeImage src={logo} alt={brand} className="h-6 w-6 rounded-full object-cover ring-1 ring-all-product-gold/50 sm:h-7 sm:w-7" /><div className="min-w-0 pt-0.5"><span style={{ fontFamily: "'Noto Serif Bengali', 'Hind Siliguri', serif" }} className="block whitespace-nowrap text-[18px] font-black leading-[1.3] tracking-[0.01em] text-all-product-primary sm:text-[21px]">{brandBn}</span><svg viewBox="0 0 72 8" className="mt-0 block h-1.5 w-[56px] drop-shadow-[0_0_3px_var(--all-product-gold)] sm:w-[70px]" aria-hidden="true"><defs><linearGradient id="ap-gold-arc" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="var(--all-product-gold, #d9a53a)" stopOpacity="0.25" /><stop offset="50%" stopColor="var(--all-product-gold, #d9a53a)" /><stop offset="100%" stopColor="var(--all-product-gold, #d9a53a)" stopOpacity="0.25" /></linearGradient></defs><path d="M2 6.5 Q36 0.5 70 6.5" fill="none" stroke="url(#ap-gold-arc)" strokeWidth="2" strokeLinecap="round" /></svg></div></div>
         <OfferCountdown />
       </div>
     </div>
@@ -384,7 +385,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
             <div className="all-product-image-wrap mx-auto max-w-xl overflow-hidden rounded-2xl border-2 border-all-product-gold/45 bg-all-product-surface shadow-2xl">
               <div className="relative aspect-square overflow-hidden">
                 {heroImages.map((image, index) => (
-                  <img key={image + index} src={toImg(image, { w: 1100, q: 88 })} onError={event => imgFallback(event, image)} alt={page.hero_title || page.title} width={760} height={760} fetchPriority={index === 0 ? "high" : "auto"} className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[1400ms] ease-in-out ${index === heroImageIndex ? "opacity-100" : "opacity-0"}`} />
+                  <SafeImage key={image + index} src={toImg(image, { w: 1100, q: 88 })}  alt={page.hero_title || page.title} width={760} height={760} fetchPriority={index === 0 ? "high" : "auto"} className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[1400ms] ease-in-out ${index === heroImageIndex ? "opacity-100" : "opacity-0"}`} />
                 ))}
                 {!isNutrimix && <span className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-all-product-surface/95 px-3 py-2 text-xs font-black text-all-product-primary shadow-lg"><Leaf className="h-4 w-4" /> ১০০% অরিজিনাল</span>}
                 {isNutrimix && heroImages.length > 1 && <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5 rounded-full bg-black/25 px-2.5 py-1.5 backdrop-blur-md">{heroImages.map((_, index) => <button key={index} type="button" onClick={() => setHeroImageIndex(index)} aria-label={`ইমেজ ${index + 1}`} className={`h-1.5 rounded-full transition-all duration-500 ${index === heroImageIndex ? "w-7 bg-white" : "w-1.5 bg-white/55"}`} />)}</div>}
@@ -424,7 +425,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
         <div className="overflow-hidden rounded-lg border border-all-product-line bg-all-product-surface shadow-all-product">
           <div className="flex items-center justify-center gap-2 border-b border-all-product-line bg-all-product-soft px-3.5 py-2 text-center"><Leaf className="h-4 w-4 shrink-0 text-all-product-primary" /><h2 className="text-[13.5px] font-black leading-5">প্রোডাক্ট বিস্তারিত</h2></div>
           {detailRows.length > 0 && <table className="w-full border-collapse text-left"><tbody>{detailRows.map((row, index) => { const [head, ...rest] = row.split(":"); const value = rest.join(":").trim(); return <tr key={index} className="border-b border-all-product-line/70 last:border-0"><td className="px-4 py-2.5 text-[12.5px] leading-6"><span className="mr-1.5 font-black text-all-product-primary">•</span><span className="font-black">{value ? head.trim() : row}</span>{value && <span className="text-all-product-muted"> — {value}</span>}</td></tr>; })}</tbody></table>}
-          {C.gallery_images.length > 0 && <div className="grid grid-cols-2 gap-1.5 p-1.5 sm:grid-cols-3">{C.gallery_images.slice(0,3).map((image, index) => <img key={image + index} src={toImg(image, { w: 600, q: 82 })} alt={`${page.title} বিস্তারিত ${index + 1}`} loading="lazy" className="aspect-[4/3] w-full rounded-md border border-all-product-line object-cover" />)}</div>}
+          {C.gallery_images.length > 0 && <div className="grid grid-cols-2 gap-1.5 p-1.5 sm:grid-cols-3">{C.gallery_images.slice(0,3).map((image, index) => <SafeImage key={image + index} src={toImg(image, { w: 600, q: 82 })} alt={`${page.title} বিস্তারিত ${index + 1}`} loading="lazy" className="aspect-[4/3] w-full rounded-md border border-all-product-line object-cover" />)}</div>}
         </div>
       </div></section>}
 
@@ -507,7 +508,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
                       className={`group relative flex w-full min-w-0 items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left transition-all duration-200 active:scale-[.995] ${active ? "border-all-product-primary bg-all-product-primary/[0.045] ring-1 ring-all-product-primary/15 shadow-[0_6px_18px_-14px_rgba(20,83,45,.5)]" : "border-all-product-line bg-all-product-surface hover:border-all-product-primary/40 hover:bg-all-product-soft/30"}`}
                     >
                       <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-all-product-soft ring-1 ring-black/[0.04] sm:h-14 sm:w-14">
-                        <img src={toImg(offer.image || "/placeholder.svg", { w: 180, q: 82 })} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+                        <SafeImage src={toImg(offer.image || "/placeholder.svg", { w: 180, q: 82 })} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[12px] font-black leading-5 text-all-product-ink sm:text-[12.5px]">{offer.name}</span>
@@ -550,7 +551,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
                           className={`group relative overflow-hidden rounded-xl border bg-all-product-surface p-1.5 text-left transition-all active:scale-[.99] ${active ? "border-all-product-primary ring-1 ring-all-product-primary/25 shadow-[0_8px_24px_-14px_rgba(20,83,45,.55)]" : "border-all-product-line hover:border-all-product-primary/50"}`}
                         >
                           <div className="relative overflow-hidden rounded-lg bg-all-product-soft">
-                            <img src={toImg(offer.image || "/placeholder.svg", { w: 420, q: 80 })} alt={offer.name} loading="lazy" className="aspect-square w-full object-cover" />
+                            <SafeImage src={toImg(offer.image || "/placeholder.svg", { w: 420, q: 80 })} alt={offer.name} loading="lazy" className="aspect-square w-full object-cover" />
                           </div>
                           <div className="px-0.5 pb-1 pt-1.5">
                             <div className="text-[12px] font-black leading-[1.35] text-all-product-ink break-words">{offer.name}</div>
@@ -776,7 +777,7 @@ function OfferSelectionPopup({
                         active ? "border-all-product-primary bg-all-product-primary/[0.045] ring-1 ring-all-product-primary/15 shadow-[0_10px_24px_-16px_rgba(20,83,45,.65)]" : "border-all-product-line hover:border-all-product-primary/45 hover:shadow-[0_10px_24px_-18px_rgba(0,0,0,.3)]"
                       }`}>
                       <div className="relative overflow-hidden rounded-[14px] bg-all-product-soft ring-1 ring-black/[0.035]">
-                        <img src={toImg(offer.image || "/placeholder.svg", { w: 520, q: 84 })} alt={offer.name} loading="lazy" className="aspect-[1.08/1] w-full object-cover transition-transform duration-300 group-hover:scale-[1.025]" />
+                        <SafeImage src={toImg(offer.image || "/placeholder.svg", { w: 520, q: 84 })} alt={offer.name} loading="lazy" className="aspect-[1.08/1] w-full object-cover transition-transform duration-300 group-hover:scale-[1.025]" />
                       </div>
                       <div className="px-0.5 pb-0.5 pt-1">
                         <div className="min-h-[30px] break-words text-[12.5px] font-black leading-[1.3] text-all-product-ink">{offer.name}</div>
@@ -808,7 +809,7 @@ function OfferSelectionPopup({
                         active ? "border-all-product-primary ring-1 ring-all-product-primary/15 shadow-[0_10px_24px_-16px_rgba(20,83,45,.65)]" : "border-all-product-line hover:border-all-product-primary/45 hover:shadow-[0_8px_20px_-16px_rgba(0,0,0,.28)]"
                       }`}>
                       <div className="relative overflow-hidden rounded-[12px] bg-all-product-soft">
-                        <img src={toImg(offer.image || "/placeholder.svg", { w: 520, q: 82 })} alt={offer.name} loading="lazy" className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-[1.025]" />
+                        <SafeImage src={toImg(offer.image || "/placeholder.svg", { w: 520, q: 82 })} alt={offer.name} loading="lazy" className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-[1.025]" />
                       </div>
                       <div className="px-0.5 pb-0.5 pt-1">
                         <div className="min-h-[30px] break-words text-[12.5px] font-black leading-[1.3] text-all-product-ink">{offer.name}</div>

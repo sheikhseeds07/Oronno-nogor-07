@@ -1,3 +1,4 @@
+import { SafeImage } from "@/components/SafeImage";
 import { useQuery } from "@tanstack/react-query";
 import { BadgeCheck } from "lucide-react";
 import { publicSiteSettingsQuery } from "@/lib/site-settings-query";
@@ -10,7 +11,7 @@ export function CustomerAvatar({ name, src, size = 32 }: { name?: string | null;
   const style = { width: size, height: size } as const;
   if (src)
     return (
-      <img
+      <SafeImage
         src={src}
         alt={name || "কাস্টমার"}
         loading="lazy"
@@ -37,7 +38,7 @@ export function BrandBadge({ size = 24 }: { size?: number }) {
 
   return (
     <span className="inline-flex min-w-0 items-center gap-1.5">
-      <img
+      <SafeImage
         src={brandLogo}
         alt={brandName}
         style={{ width: size, height: size }}

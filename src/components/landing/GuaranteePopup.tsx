@@ -1,3 +1,4 @@
+import { SafeImage } from "@/components/SafeImage";
 import { useEffect, useState } from "react";
 
 /**
@@ -84,7 +85,7 @@ export function GuaranteePopup({ slug, delay = 600, logo, brand = "", nutrimix =
           <button type="button" className="gp-close" onClick={close} aria-label="বন্ধ করুন">×</button>
           <div className="gp-logo-wrap">
             <span className="gp-logo-aura" aria-hidden="true" />
-            {logo && <img className="gp-logo" src={logo} alt={brand} width={68} height={68} />}
+            {logo && <SafeImage className="gp-logo" src={logo} alt={brand} width={68} height={68} />}
           </div>
           <h2 className="gp-title">{nutrimix ? "ফ্রী গিফট" : "গ্যারান্টি কার্ড"}</h2>
           <span className="gp-divider" aria-hidden="true">✦</span>

@@ -1,4 +1,6 @@
 "use client";
+import { SafeImage } from "@/components/SafeImage";
+
 
 import { Button } from "@/components/ui/button";
 import {
@@ -91,7 +93,7 @@ const renderAttachmentImage = (
   isGrid: boolean
 ) =>
   isGrid ? (
-    <img
+    <SafeImage
       alt={filename || "Image"}
       className="size-full object-cover"
       height={96}
@@ -99,7 +101,7 @@ const renderAttachmentImage = (
       width={96}
     />
   ) : (
-    <img
+    <SafeImage
       alt={filename || "Image"}
       className="size-full rounded object-cover"
       height={20}

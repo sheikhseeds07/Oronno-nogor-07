@@ -1,3 +1,4 @@
+import { SafeImage } from "@/components/SafeImage";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -177,7 +178,7 @@ function Home() {
                 const copy = HERO_COPY[b.id as string];
                 return (
                   <a key={b.id} href={b.link_url || "#"} className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${i === slide ? "z-10 opacity-100" : "z-0 opacity-0"}`} aria-hidden={i !== slide}>
-                    <img
+                    <SafeImage
                       src={toImg(b.image_url, { w: 1280, q: 74 })}
                       alt={b.title || "Banner"}
                       width={1600}
@@ -235,7 +236,7 @@ function Home() {
                   <Link key={`${category.id}-${index}`} to="/category/$slug" params={{ slug: category.slug }} className="group w-[104px] shrink-0 rounded-xl border border-border/60 bg-card p-1.5 text-center shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-md sm:w-[132px] sm:rounded-2xl sm:p-2">
                     <div className="mb-1.5 aspect-square overflow-hidden rounded-lg bg-brand-light/30 ring-1 ring-black/5 sm:mb-2 sm:rounded-xl">
                       {category.image_url ? (
-                        <img src={toImg(category.image_url, { w: 264, q: 75 })} srcSet={imgSrcSet(category.image_url, [132, 198, 264])} sizes="(max-width: 640px) 104px, 132px" alt={category.name} width={132} height={132} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                        <SafeImage src={toImg(category.image_url, { w: 264, q: 75 })} srcSet={imgSrcSet(category.image_url, [132, 198, 264])} sizes="(max-width: 640px) 104px, 132px" alt={category.name} width={132} height={132} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center text-2xl sm:text-3xl">🌱</div>
                       )}

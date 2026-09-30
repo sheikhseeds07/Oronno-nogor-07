@@ -1,3 +1,4 @@
+import { retiredStorageResponse } from "@/lib/retired-storage";
 // Server-only Supabase client used by request-scoped server functions.
 //
 // Important: do not keep a user-authenticated client in a module-level cache.
@@ -30,11 +31,12 @@ function createRequestScopedSupabaseClient() {
   const authorization = currentAuthorization();
 
   return createClient<Database>(url, publishableKey, {
+    db: { schema: "public" },
     global: {
       fetch: createSupabaseFetch(publishableKey),
       ...(authorization ? { headers: { Authorization: authorization } } : {}),
     },
-    auth: {
+    auth: { debug: false,
       storage: undefined,
       persistSession: false,
       autoRefreshToken: false,

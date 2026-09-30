@@ -1,3 +1,4 @@
+import { SafeImage } from "@/components/SafeImage";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ShoppingCart, Search, X, ChevronRight, Home, Grid3x3, Phone, ArrowRight, Palette, Leaf, Sprout, Flower2, TreePine, Wheat, Sun, UserRound, BadgePercent } from "lucide-react";
@@ -65,9 +66,9 @@ export function Header() {
   useEffect(() => { void hydrateCartStore(); const t = getStoredTheme(); setTheme(t); applyTheme(t); }, []);
 
   const logoNode = brandLogo ? (
-    <img src={brandLogo} alt={brandName} width={40} height={40} loading="eager" fetchPriority="high" decoding="async" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/logo.jpg"; }} className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover ring-2 ring-brand/30 shadow-md group-hover:ring-brand group-hover:scale-110 group-hover:rotate-3 transition-all duration-300" />
+    <SafeImage src={brandLogo} alt={brandName} width={40} height={40} loading="eager" fetchPriority="high" decoding="async"  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover ring-2 ring-brand/30 shadow-md group-hover:ring-brand group-hover:scale-110 group-hover:rotate-3 transition-all duration-300" />
   ) : <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-brand-light/40 animate-pulse ring-2 ring-brand/20" aria-hidden="true" />;
-  const drawerLogoNode = brandLogo ? <img src={brandLogo} alt={brandName} width={48} height={48} decoding="async" onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/logo.jpg"; }} className="w-12 h-12 rounded-2xl object-cover ring-2 ring-white/50 shadow-xl" /> : <div className="w-12 h-12 rounded-2xl bg-white/10 animate-pulse ring-2 ring-white/20" aria-hidden="true" />;
+  const drawerLogoNode = brandLogo ? <SafeImage src={brandLogo} alt={brandName} width={48} height={48} decoding="async"  className="w-12 h-12 rounded-2xl object-cover ring-2 ring-white/50 shadow-xl" /> : <div className="w-12 h-12 rounded-2xl bg-white/10 animate-pulse ring-2 ring-white/20" aria-hidden="true" />;
 
   let itemIdx = 0;
   const nextDelay = () => `${80 + itemIdx++ * 45}ms`;

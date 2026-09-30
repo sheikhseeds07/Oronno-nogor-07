@@ -49,6 +49,8 @@ import { Route as LandingSlugRouteImport } from './routes/landing.$slug'
 import { Route as OrderIdRouteImport } from './routes/order.$id'
 import { Route as ProductSlugRouteImport } from './routes/product.$slug'
 import { Route as AdminEmployeesUserIdRouteImport } from './routes/admin/employees_.$userId'
+import { Route as ApiInternalR2BackfillRouteImport } from './routes/api/internal/r2-backfill'
+import { Route as ApiMediaUploadRouteImport } from './routes/api/media/upload'
 import { Route as ApiPublicFbCapiRouteImport } from './routes/api/public/fb-capi'
 import { Route as ApiPublicFbPixelRouteImport } from './routes/api/public/fb-pixel'
 import { Route as ApiPublicFbWebhookRouteImport } from './routes/api/public/fb-webhook'
@@ -259,6 +261,16 @@ const AdminEmployeesUserIdRoute = AdminEmployeesUserIdRouteImport.update({
   path: '/admin/employees/$userId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiInternalR2BackfillRoute = ApiInternalR2BackfillRouteImport.update({
+  id: '/api/internal/r2-backfill',
+  path: '/api/internal/r2-backfill',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMediaUploadRoute = ApiMediaUploadRouteImport.update({
+  id: '/api/media/upload',
+  path: '/api/media/upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicFbCapiRoute = ApiPublicFbCapiRouteImport.update({
   id: '/api/public/fb-capi',
   path: '/api/public/fb-capi',
@@ -346,6 +358,8 @@ export interface FileRoutesByFullPath {
   '/product/$slug': typeof ProductSlugRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/employees/$userId': typeof AdminEmployeesUserIdRoute
+  '/api/internal/r2-backfill': typeof ApiInternalR2BackfillRoute
+  '/api/media/upload': typeof ApiMediaUploadRoute
   '/api/public/fb-capi': typeof ApiPublicFbCapiRoute
   '/api/public/fb-pixel': typeof ApiPublicFbPixelRoute
   '/api/public/fb-webhook': typeof ApiPublicFbWebhookRoute
@@ -397,6 +411,8 @@ export interface FileRoutesByTo {
   '/product/$slug': typeof ProductSlugRoute
   '/admin': typeof AdminIndexRoute
   '/admin/employees/$userId': typeof AdminEmployeesUserIdRoute
+  '/api/internal/r2-backfill': typeof ApiInternalR2BackfillRoute
+  '/api/media/upload': typeof ApiMediaUploadRoute
   '/api/public/fb-capi': typeof ApiPublicFbCapiRoute
   '/api/public/fb-pixel': typeof ApiPublicFbPixelRoute
   '/api/public/fb-webhook': typeof ApiPublicFbWebhookRoute
@@ -449,6 +465,8 @@ export interface FileRoutesById {
   '/product/$slug': typeof ProductSlugRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/employees_/$userId': typeof AdminEmployeesUserIdRoute
+  '/api/internal/r2-backfill': typeof ApiInternalR2BackfillRoute
+  '/api/media/upload': typeof ApiMediaUploadRoute
   '/api/public/fb-capi': typeof ApiPublicFbCapiRoute
   '/api/public/fb-pixel': typeof ApiPublicFbPixelRoute
   '/api/public/fb-webhook': typeof ApiPublicFbWebhookRoute
@@ -502,6 +520,8 @@ export interface FileRouteTypes {
     | '/product/$slug'
     | '/admin/'
     | '/admin/employees/$userId'
+    | '/api/internal/r2-backfill'
+    | '/api/media/upload'
     | '/api/public/fb-capi'
     | '/api/public/fb-pixel'
     | '/api/public/fb-webhook'
@@ -553,6 +573,8 @@ export interface FileRouteTypes {
     | '/product/$slug'
     | '/admin'
     | '/admin/employees/$userId'
+    | '/api/internal/r2-backfill'
+    | '/api/media/upload'
     | '/api/public/fb-capi'
     | '/api/public/fb-pixel'
     | '/api/public/fb-webhook'
@@ -604,6 +626,8 @@ export interface FileRouteTypes {
     | '/product/$slug'
     | '/admin/'
     | '/admin/employees_/$userId'
+    | '/api/internal/r2-backfill'
+    | '/api/media/upload'
     | '/api/public/fb-capi'
     | '/api/public/fb-pixel'
     | '/api/public/fb-webhook'
@@ -656,6 +680,8 @@ export interface RootRouteChildren {
   ProductSlugRoute: typeof ProductSlugRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminEmployeesUserIdRoute: typeof AdminEmployeesUserIdRoute
+  ApiInternalR2BackfillRoute: typeof ApiInternalR2BackfillRoute
+  ApiMediaUploadRoute: typeof ApiMediaUploadRoute
   ApiPublicFbCapiRoute: typeof ApiPublicFbCapiRoute
   ApiPublicFbPixelRoute: typeof ApiPublicFbPixelRoute
   ApiPublicFbWebhookRoute: typeof ApiPublicFbWebhookRoute
@@ -949,6 +975,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminEmployeesUserIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/internal/r2-backfill': {
+      id: '/api/internal/r2-backfill'
+      path: '/api/internal/r2-backfill'
+      fullPath: '/api/internal/r2-backfill'
+      preLoaderRoute: typeof ApiInternalR2BackfillRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/media/upload': {
+      id: '/api/media/upload'
+      path: '/api/media/upload'
+      fullPath: '/api/media/upload'
+      preLoaderRoute: typeof ApiMediaUploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/fb-capi': {
       id: '/api/public/fb-capi'
       path: '/api/public/fb-capi'
@@ -1056,6 +1096,8 @@ const rootRouteChildren: RootRouteChildren = {
   ProductSlugRoute: ProductSlugRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminEmployeesUserIdRoute: AdminEmployeesUserIdRoute,
+  ApiInternalR2BackfillRoute: ApiInternalR2BackfillRoute,
+  ApiMediaUploadRoute: ApiMediaUploadRoute,
   ApiPublicFbCapiRoute: ApiPublicFbCapiRoute,
   ApiPublicFbPixelRoute: ApiPublicFbPixelRoute,
   ApiPublicFbWebhookRoute: ApiPublicFbWebhookRoute,

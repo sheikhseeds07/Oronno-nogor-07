@@ -1,3 +1,4 @@
+import { SafeImage } from "@/components/SafeImage";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { X, BadgePercent, PackageCheck, Sparkles, Check } from "lucide-react";
@@ -59,7 +60,7 @@ export function OfferDetailDialog({ offer, onClose }: { offer: OfferDetail | nul
           <X className="h-4 w-4" />
         </button>
         <div className="relative h-32 overflow-hidden bg-slate-100">
-          <img src={offer.images?.[0] || "/placeholder.svg"} alt={offer.name} className="h-full w-full object-cover" />
+          <SafeImage src={offer.images?.[0] || "/placeholder.svg"} alt={offer.name} className="h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
           <div className="absolute inset-x-3 bottom-2.5">
             <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-black text-white backdrop-blur">
@@ -93,7 +94,7 @@ export function OfferDetailDialog({ offer, onClose }: { offer: OfferDetail | nul
             ) : (
               items.map((it, i) => (
                 <div key={it.id} className="offer-item-row flex items-center gap-2.5 rounded-2xl border border-brand/10 bg-gradient-to-r from-white to-brand-light/30 p-2 shadow-[0_8px_20px_-18px_rgba(6,78,59,.7)] transition hover:-translate-y-0.5 hover:border-brand/30" style={{ animationDelay: `${i * 60}ms` }}>
-                  <img src={it.image} alt="" className="h-11 w-11 shrink-0 rounded-xl object-cover ring-1 ring-black/5" />
+                  <SafeImage src={it.image} alt="" className="h-11 w-11 shrink-0 rounded-xl object-cover ring-1 ring-black/5" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[12px] font-black text-slate-900">{it.name}</p>
                     <p className="text-[10px] font-bold text-muted-foreground">{bnDigits(it.quantity)} টি × {taka(it.price)}</p>

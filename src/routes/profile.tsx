@@ -1,3 +1,4 @@
+import { SafeImage } from "@/components/SafeImage";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
@@ -152,7 +153,7 @@ function Profile() {
         <div className="container mx-auto max-w-4xl px-2.5 sm:px-3">
           <section className="overflow-hidden rounded-[22px] border border-brand-light/70 bg-background shadow-[0_12px_40px_rgba(20,83,45,.10)] animate-in fade-in slide-in-from-bottom-2 duration-500">
             <div className="relative h-[104px] overflow-hidden sm:h-[132px]">
-              <img src={cover || DEFAULT_COVER} alt="Sheikh Seeds garden" className="h-full w-full object-cover transition-transform duration-1000 hover:scale-[1.02]" />
+              <SafeImage src={cover || DEFAULT_COVER} alt="Sheikh Seeds garden" className="h-full w-full object-cover transition-transform duration-1000 hover:scale-[1.02]" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/5" />
               {editing && <button onClick={() => coverRef.current?.click()} className="absolute right-2.5 top-2.5 rounded-full border border-white/20 bg-black/55 px-2.5 py-1.5 text-[10px] font-bold text-white backdrop-blur-md"><ImagePlus className="mr-1 inline h-3.5 w-3.5" />কভার</button>}
               <input ref={coverRef} type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && uploadImage(e.target.files[0], "cover")} />
@@ -160,7 +161,7 @@ function Profile() {
             <div className="relative px-3.5 pb-3.5 sm:px-5 sm:pb-4">
               <div className="-mt-9 flex items-end justify-between gap-2 sm:-mt-11">
                 <div className="relative">
-                  <div className="h-[76px] w-[76px] overflow-hidden rounded-[24px] border-[4px] border-background bg-brand-light shadow-lg sm:h-24 sm:w-24"><img src={avatar || DEFAULT_AVATAR} alt={displayName} className="h-full w-full object-cover" /></div>
+                  <div className="h-[76px] w-[76px] overflow-hidden rounded-[24px] border-[4px] border-background bg-brand-light shadow-lg sm:h-24 sm:w-24"><SafeImage src={avatar || DEFAULT_AVATAR} alt={displayName} className="h-full w-full object-cover" /></div>
                   {editing && <button onClick={() => avatarRef.current?.click()} className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-brand text-white shadow-md"><Camera className="h-3.5 w-3.5" /></button>}
                   <input ref={avatarRef} type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && uploadImage(e.target.files[0], "avatar")} />
                 </div>

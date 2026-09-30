@@ -1,3 +1,4 @@
+import { SafeImage } from "@/components/SafeImage";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
@@ -75,7 +76,7 @@ export function Footer() {
         <div className="relative mx-auto flex max-w-2xl flex-col items-center px-4 py-7 text-center sm:py-8">
           <Link to="/" className="group flex flex-col items-center" aria-label={name}>
             <span className="rounded-[18px] bg-white/[0.045] p-1.5 ring-1 ring-white/10 shadow-2xl shadow-black/20 transition-all duration-300 group-hover:-translate-y-0.5 group-hover:ring-brand/40">
-              <img src={toImg(logoSrc)} alt={name} width={46} height={46} loading="lazy" decoding="async" className="h-11 w-11 rounded-[13px] object-cover" />
+              <SafeImage src={toImg(logoSrc)} alt={name} width={46} height={46} loading="lazy" decoding="async" className="h-11 w-11 rounded-[13px] object-cover" />
             </span>
             <span className="mt-2 text-[16px] font-black tracking-tight">{name}</span>
             <span className="mt-0.5 text-[10.5px] text-white/40">{s.tagline || "বিশ্বাসে গড়া সবুজ ভবিষ্যৎ"}</span>

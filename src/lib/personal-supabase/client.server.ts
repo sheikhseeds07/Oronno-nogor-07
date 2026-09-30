@@ -1,3 +1,4 @@
+import { retiredStorageResponse } from "@/lib/retired-storage";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import type { Database } from "./db.types";
@@ -13,9 +14,12 @@ function createRequestClient(): SupabaseClient<Database> {
   }
 
   return createClient<Database>(LIVE_DATABASE_URL, LIVE_DATABASE_KEY, {
+    db: { schema: "public" },
     global: {
       ...(authorization ? { headers: { Authorization: authorization } } : {}),
       fetch: (input, init) => {
+        const retired = retiredStorageResponse(input);
+        if (retired) return Promise.resolve(retired);
         const headers = new Headers(input instanceof Request ? input.headers : undefined);
         if (init?.headers) new Headers(init.headers).forEach((value, key) => headers.set(key, value));
         if (headers.get("Authorization") === `Bearer ${LIVE_DATABASE_KEY}`) headers.delete("Authorization");
@@ -23,7 +27,7 @@ function createRequestClient(): SupabaseClient<Database> {
         return fetch(input, { ...init, headers });
       },
     },
-    auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
+    auth: { debug: false, storage: undefined, persistSession: false, autoRefreshToken: false },
   });
 }
 

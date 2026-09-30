@@ -1,3 +1,4 @@
+import { SafeImage } from "@/components/SafeImage";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Minus, Plus, Trash2, X, ShoppingBag, Truck, Sparkles, ArrowRight, ShieldCheck } from "lucide-react";
@@ -57,7 +58,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
               {items.map((i) => (
                 <div key={i.id} className="bg-white border rounded-xl p-2.5 flex gap-2.5">
-                  <img src={toImg(i.image, { w: 160, h: 160, q: 75 })} loading="lazy" decoding="async" alt={i.name} className="w-16 h-16 object-cover rounded-lg shrink-0 bg-white border" />
+                  <SafeImage src={toImg(i.image, { w: 160, h: 160, q: 75 })} loading="lazy" decoding="async" alt={i.name} className="w-16 h-16 object-cover rounded-lg shrink-0 bg-white border" />
                   <div className="flex-1 min-w-0"><div className="font-semibold text-sm line-clamp-2">{i.name}</div><div className="text-brand-dark font-bold text-sm mt-0.5">{taka(i.price)}</div><div className="mt-1.5 flex items-center gap-2"><div className="flex items-center border rounded"><button onClick={() => (i.quantity <= 1 ? remove(i.id) : setQty(i.id, i.quantity - 1))} className="px-2 py-1" aria-label="কমান"><Minus className="w-3 h-3" /></button><span className="px-2.5 font-bold text-xs">{bnDigits(i.quantity)}</span><button onClick={() => setQty(i.id, i.quantity + 1)} className="px-2 py-1" aria-label="বাড়ান"><Plus className="w-3 h-3" /></button></div><button onClick={() => remove(i.id)} className="text-destructive ml-auto" aria-label="মুছুন"><Trash2 className="w-4 h-4" /></button></div></div>
                 </div>
               ))}

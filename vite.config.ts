@@ -5,6 +5,12 @@
 //     React/TanStack dedupe, error logger plugins, and sandbox detection (port/host/strictPort).
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import { loadEnv } from "vite";
+import { validateR2PublicUrl } from "./src/lib/r2-config.ts";
+
+const r2PublicUrl = validateR2PublicUrl(
+  process.env.R2_PUBLIC_URL ?? loadEnv("production", process.cwd(), "").R2_PUBLIC_URL,
+);
 
 export default defineConfig({
   tanstackStart: {
@@ -13,6 +19,7 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
+    define: { "import.meta.env.VITE_R2_PUBLIC_URL": JSON.stringify(r2PublicUrl) },
     // cloudflare:workers is provided by the Workers runtime, not npm.
     // Keep it external in both SSR resolution and Vite 8/Rolldown output.
     ssr: { external: ["cloudflare:workers"] },

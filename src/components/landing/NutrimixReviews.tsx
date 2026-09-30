@@ -1,3 +1,4 @@
+import { SafeImage } from "@/components/SafeImage";
 import { useEffect, useState } from "react";
 import { BadgeCheck, Star } from "lucide-react";
 import { toImg } from "@/lib/img";
@@ -67,7 +68,7 @@ export function NutrimixReviews({ reviews, themeColor }: { reviews: Review[]; th
 
                 <div className="flex items-center gap-2 border-t border-slate-100 pt-2.5">
                   {review.image ? (
-                    <img
+                    <SafeImage
                       src={toImg(review.image, { w: 80, q: 78 })}
                       alt={review.name}
                       width={32}

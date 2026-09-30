@@ -1,3 +1,4 @@
+import { SafeImage } from "@/components/SafeImage";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -48,7 +49,7 @@ export function ProductQuickView({ product, onClose }: { product: Product & { de
       <div className="min-h-0 flex-1 overflow-hidden">
         {activeSection==="desc" && <div className="h-full overflow-hidden px-2.5 pb-2.5 pt-2 sm:px-4 sm:pb-3 sm:pt-2.5">
           <div className="relative mx-auto h-[210px] w-full max-w-[590px] shrink-0 overflow-hidden bg-muted/25 ring-1 ring-border/40 shadow-[0_10px_35px_rgba(0,0,0,.08)] sm:h-[245px] sm:max-w-[640px]">
-            <img src={toImg(img,{w:1000,q:88})} srcSet={imgSrcSet(img,[500,800,1000])} sizes="(min-width:640px) 640px, 100vw" decoding="async" alt={product.name} className="h-full w-full object-cover transition-transform duration-700 ease-out hover:scale-[1.025]"/>
+            <SafeImage src={toImg(img,{w:1000,q:88})} srcSet={imgSrcSet(img,[500,800,1000])} sizes="(min-width:640px) 640px, 100vw" decoding="async" alt={product.name} className="h-full w-full object-cover transition-transform duration-700 ease-out hover:scale-[1.025]"/>
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-white/5"/>
             <div className="pointer-events-none absolute left-0 right-0 top-0 h-px bg-gradient-to-r from-transparent via-white/70 to-transparent animate-pulse"/>
             {discount>0&&<span className="absolute left-2.5 top-2.5 bg-destructive px-2.5 py-1 text-[9px] font-black text-white shadow-lg">{discount}% ছাড়</span>}

@@ -1,3 +1,4 @@
+import { SafeImage } from "@/components/SafeImage";
 import { PRODUCTS_COLUMNS } from "@/lib/read-columns";
 import { createFileRoute, useParams, Link, useNavigate } from "@tanstack/react-router";
 import { BrandLoader } from "@/components/layout/BrandLoader";
@@ -107,12 +108,12 @@ function ProductPage() {
           <div className="relative bg-gradient-to-b from-brand-light/20 via-white to-brand-light/5 p-2 sm:p-3 md:p-3.5">
             <div className="relative aspect-square overflow-hidden rounded-[13px] border border-black/5 bg-white shadow-inner">
               <div className="product-image-glow pointer-events-none absolute -inset-5 rounded-full bg-brand/10 blur-3xl" />
-              <img src={toImg(images[activeImg], { w: 1000, q: 84 })} srcSet={imgSrcSet(images[activeImg], [500, 800, 1000, 1200])} sizes="(max-width: 768px) 100vw, 540px" alt={p.name} width={1000} height={1000} fetchPriority="high" decoding="async" className="relative z-10 h-full w-full object-cover transition duration-700 hover:scale-[1.025]" />
+              <SafeImage src={toImg(images[activeImg], { w: 1000, q: 84 })} srcSet={imgSrcSet(images[activeImg], [500, 800, 1000, 1200])} sizes="(max-width: 768px) 100vw, 540px" alt={p.name} width={1000} height={1000} fetchPriority="high" decoding="async" className="relative z-10 h-full w-full object-cover transition duration-700 hover:scale-[1.025]" />
               {discount > 0 && <span className="product-badge absolute left-2.5 top-2.5 z-20 inline-flex items-center gap-1 rounded-full bg-destructive px-2.5 py-1 text-[10px] font-extrabold text-white shadow-lg"><Sparkles className="h-3 w-3 animate-pulse" /> {bnDigits(discount)}% ছাড়</span>}
               {p.stock <= 0 && <span className="absolute inset-0 z-20 flex items-center justify-center bg-black/45 text-sm font-extrabold text-white backdrop-blur-[2px]">স্টক শেষ</span>}
               <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-px overflow-hidden bg-white/20"><span className="product-live-line block h-full w-1/3 bg-gradient-to-r from-transparent via-white/80 to-transparent" /></div>
             </div>
-            {images.length > 1 && <div className="mt-2 flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{images.map((src, i) => <button key={i} onClick={() => setActiveImg(i)} className={`group relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 bg-white transition-all duration-300 active:scale-95 sm:h-16 sm:w-16 ${i === activeImg ? "border-brand shadow-md ring-2 ring-brand/10" : "border-transparent opacity-70 hover:opacity-100 hover:-translate-y-0.5"}`}><img src={toImg(src, { w: 180, q: 72 })} alt="" width={80} height={80} loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-500 group-hover:scale-110" /></button>)}</div>}
+            {images.length > 1 && <div className="mt-2 flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{images.map((src, i) => <button key={i} onClick={() => setActiveImg(i)} className={`group relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 bg-white transition-all duration-300 active:scale-95 sm:h-16 sm:w-16 ${i === activeImg ? "border-brand shadow-md ring-2 ring-brand/10" : "border-transparent opacity-70 hover:opacity-100 hover:-translate-y-0.5"}`}><SafeImage src={toImg(src, { w: 180, q: 72 })} alt="" width={80} height={80} loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-500 group-hover:scale-110" /></button>)}</div>}
           </div>
 
           <div className="flex flex-col p-3 sm:p-4 md:p-5 lg:p-6">

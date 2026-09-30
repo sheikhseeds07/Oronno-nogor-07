@@ -4,6 +4,7 @@
   "main": ".output/server/index.mjs",
   "compatibility_date": "2026-08-12",
   "compatibility_flags": ["nodejs_compat"],
+  "vars": { "R2_PUBLIC_URL": "/media" },
   "cache": {
     "enabled": true
   },

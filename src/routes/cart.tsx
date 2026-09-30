@@ -1,3 +1,4 @@
+import { SafeImage } from "@/components/SafeImage";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { useCart } from "@/lib/cart-store";
@@ -27,7 +28,7 @@ function Cart() {
             <div className="space-y-3">
               {items.map((i) => (
                 <div key={i.id} className="bg-white border rounded-xl p-3 flex gap-3">
-                  <img src={toImg(i.image, { w: 160, q: 70 })} alt={i.name} width={80} height={80} loading="lazy" decoding="async" className="w-20 h-20 object-cover rounded-lg" />
+                  <SafeImage src={toImg(i.image, { w: 160, q: 70 })} alt={i.name} width={80} height={80} loading="lazy" decoding="async" className="w-20 h-20 object-cover rounded-lg" />
                   <div className="flex-1 min-w-0">
                     <Link to="/product/$slug" params={{ slug: i.slug }} className="font-semibold hover:text-brand line-clamp-2">{i.name}</Link>
                     <div className="text-brand-dark font-bold mt-1">{taka(i.price)}</div>

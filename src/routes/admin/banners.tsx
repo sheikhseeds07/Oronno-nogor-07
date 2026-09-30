@@ -1,3 +1,4 @@
+import { SafeImage } from "@/components/SafeImage";
 import { BANNERS_COLUMNS } from "@/lib/read-columns";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -84,7 +85,7 @@ function Banners() {
           <input placeholder="লিংক URL (ঐচ্ছিক)" value={form.link_url} onChange={(e) => setForm({ ...form, link_url: e.target.value })} className="w-full border rounded-lg px-3 py-2" />
           <input type="number" placeholder="অর্ডার" value={form.display_order} onChange={(e) => setForm({ ...form, display_order: +e.target.value })} className="w-full border rounded-lg px-3 py-2" />
           <input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
-          {form.image_url && <img src={form.image_url} className="w-full max-w-sm rounded" alt="ব্যানার প্রিভিউ" />}
+          {form.image_url && <SafeImage src={form.image_url} className="w-full max-w-sm rounded" alt="ব্যানার প্রিভিউ" />}
           <div className="flex gap-2"><button onClick={save} className="bg-brand text-white px-4 py-2 rounded">{editing ? "আপডেট" : "সংরক্ষণ"}</button><button onClick={closeForm} className="border px-4 py-2 rounded">ক্যান্সেল</button></div>
         </div>
       )}
@@ -92,7 +93,7 @@ function Banners() {
       <div className="space-y-3">
         {data?.map((b) => (
           <div key={b.id} className="bg-white border rounded-xl p-3 flex gap-3 items-center">
-            <img src={b.image_url} className="w-32 h-16 object-cover rounded" alt="" />
+            <SafeImage src={b.image_url} className="w-32 h-16 object-cover rounded" alt="" />
             <div className="flex-1 min-w-0"><div className="font-semibold truncate">{b.title || "—"}</div><div className="text-xs text-muted-foreground truncate">{b.link_url}</div></div>
             <label className="flex items-center gap-1 text-sm shrink-0"><input type="checkbox" checked={b.is_active} onChange={(e) => toggle(b.id, e.target.checked)} /> সক্রিয়</label>
             <button onClick={() => openEdit(b)} className="text-brand p-2 hover:bg-brand/10 rounded-lg" title="এডিট" aria-label="ব্যানার এডিট করুন"><Pencil className="w-4 h-4" /></button>

@@ -1,104 +1,12 @@
-name: Migrate Supabase Storage to R2
+name: Storage migration retired
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/migrate-supabase-storage-to-r2.yml"
   workflow_dispatch:
-  repository_dispatch:
-    types: [run-r2-migration]
-
-concurrency:
-  group: supabase-storage-to-r2
-  cancel-in-progress: false
 
 jobs:
-  migrate:
+  retired:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
-    permissions:
-      contents: read
+    permissions: {}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.2.15
-
-      - name: Verify AWS CLI
-        run: aws --version
-
-      - name: Wrangler account and bucket audit
-        continue-on-error: true
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: a91d9451c87479d4d01d2d2add2530f5
-        run: |
-          if [ -n "$CLOUDFLARE_API_TOKEN" ]; then
-            bunx wrangler@latest whoami
-            bunx wrangler@latest r2 bucket list
-          else
-            echo "CLOUDFLARE_API_TOKEN secret is not set; skipping Wrangler control-plane audit."
-          fi
-
-      - name: Install tsx runner
-        run: npm install --global tsx@4.23.15
-
-      - name: Dry-run R2 migration
-        env:
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          R2_ACCOUNT_ID: a91d9451c87479d4d01d2d2add2530f5
-          R2_BUCKET_NAME: sheikhseeds
-          SUPABASE_URL: https://frtzlibogmethppqmhtr.supabase.co
-          NEXT_PUBLIC_R2_PUBLIC_URL: ""
-        run: npm run migrate:r2:dry
-
-      - name: Select valid R2 credential pair
-        env:
-          R2_ACCESS_KEY_ID_PRIMARY: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_ACCESS_KEY_ID_LEGACY: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY_PRIMARY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_SECRET_ACCESS_KEY_LEGACY: ${{ secrets.CLOUDFLARE_API_TOKEN_R2 }}
-        run: |
-          set +x
-          found=0
-          for access_var in R2_ACCESS_KEY_ID_PRIMARY R2_ACCESS_KEY_ID_LEGACY; do
-            access="${!access_var}"
-            [ -n "$access" ] || continue
-            for secret_var in R2_SECRET_ACCESS_KEY_PRIMARY R2_SECRET_ACCESS_KEY_LEGACY; do
-              secret="${!secret_var}"
-              [ -n "$secret" ] || continue
-              if AWS_ACCESS_KEY_ID="$access" AWS_SECRET_ACCESS_KEY="$secret" AWS_DEFAULT_REGION=auto \
-                aws s3api list-objects-v2 \
-                  --bucket sheikhseeds \
-                  --max-keys 1 \
-                  --endpoint-url https://a91d9451c87479d4d01d2d2add2530f5.r2.cloudflarestorage.com \
-                  --region auto >/dev/null 2>&1; then
-                echo "::add-mask::$access"
-                echo "::add-mask::$secret"
-                echo "R2_ACCESS_KEY_ID=$access" >> "$GITHUB_ENV"
-                echo "R2_SECRET_ACCESS_KEY=$secret" >> "$GITHUB_ENV"
-                echo "Validated R2 credential pair: $access_var + $secret_var"
-                found=1
-                break 2
-              fi
-            done
-          done
-          if [ "$found" -ne 1 ]; then
-            echo "No configured GitHub R2 credential pair can access bucket sheikhseeds." >&2
-            exit 1
-          fi
-
-      - name: Migrate repo media and selected Supabase Storage buckets to R2
-        env:
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID || secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY || secrets.CLOUDFLARE_API_TOKEN_R2 }}
-          R2_ACCOUNT_ID: a91d9451c87479d4d01d2d2add2530f5
-          R2_BUCKET_NAME: sheikhseeds
-          SUPABASE_URL: https://frtzlibogmethppqmhtr.supabase.co
-          NEXT_PUBLIC_R2_PUBLIC_URL: ""
-        run: npm run migrate:r2
+      - name: Report retired migration
+        run: echo "Supabase Storage migration is permanently disabled. Media uses Cloudflare R2."

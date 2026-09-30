@@ -6,13 +6,14 @@
   "packageManager": "bun@1.2.15",
   "scripts": {
     "dev": "vite dev",
+    "check:storage": "node scripts/check-storage-regression.mjs",
     "build": "node scripts/fix-cloudflare-build-blockers.mjs && node scripts/apply-courier-egress-guard.mjs && node scripts/fix-dashboard-profit-range.mjs && node scripts/remove-live-website-section.mjs && node scripts/apply-invoice-desc-sort.mjs && vite build",
     "build:dev": "node scripts/fix-cloudflare-build-blockers.mjs && node scripts/apply-courier-egress-guard.mjs && node scripts/fix-dashboard-profit-range.mjs && node scripts/remove-live-website-section.mjs && node scripts/apply-invoice-desc-sort.mjs && vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "migrate:r2": "tsx scripts/migrate-to-r2.ts",
-    "migrate:r2:dry": "tsx scripts/migrate-to-r2.ts --dry-run"
+    "migrate:r2": "node scripts/migrate-supabase-storage-to-r2.mjs",
+    "migrate:r2:dry": "node scripts/migrate-supabase-storage-to-r2.mjs"
   },
   "dependencies": {
     "@lovable.dev/cloud-auth-js": "^1.1.2",

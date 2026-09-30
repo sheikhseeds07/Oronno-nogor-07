@@ -1,3 +1,4 @@
+import { retiredStorageResponse } from "@/lib/retired-storage";
 // The shop's production data now lives in the restored Supabase project.
 // Keep this wrapper independent from workspace-injected VITE_* values so a stale
 // deployment variable cannot silently point the storefront at a different DB.
@@ -11,6 +12,8 @@ export const LIVE_DATABASE_URL = "https://frtzlibogmethppqmhtr.supabase.co";
 export const LIVE_DATABASE_KEY = "sb_publishable_IwyqncvDdP4OF2UDNMlK9g_bn6Hu6n1";
 
 async function liveFetch(input: RequestInfo | URL, init?: RequestInit) {
+  const retired = retiredStorageResponse(input);
+  if (retired) return retired;
   const headers = new Headers(input instanceof Request ? input.headers : undefined);
   if (init?.headers) new Headers(init.headers).forEach((value, key) => headers.set(key, value));
   if (headers.get("Authorization") === `Bearer ${LIVE_DATABASE_KEY}`) headers.delete("Authorization");
@@ -41,8 +44,9 @@ async function liveFetch(input: RequestInfo | URL, init?: RequestInit) {
 
 function createLiveClient(storageKey: string): TypedSupabaseClient {
   return createClient<Database>(LIVE_DATABASE_URL, LIVE_DATABASE_KEY, {
+    db: { schema: "public" },
     global: { fetch: liveFetch },
-    auth: {
+    auth: { debug: false,
       storage: typeof window !== "undefined" ? window.localStorage : undefined,
       storageKey,
       persistSession: true,

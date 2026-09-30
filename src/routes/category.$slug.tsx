@@ -1,3 +1,4 @@
+import { SafeImage } from "@/components/SafeImage";
 import { createFileRoute, useParams, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
@@ -162,7 +163,7 @@ function CategoryPage() {
                 return (
                   <Link key={c.id} to="/category/$slug" params={{ slug: c.slug }} style={{ animationDelay: `${i * 25}ms` }} className={`cat-slide group flex h-11 min-w-[82px] items-center gap-1.5 rounded-xl border px-2 shadow-sm transition-all duration-300 hover:-translate-y-0.5 ${active ? "border-brand bg-brand text-white shadow-[0_5px_14px_rgba(190,55,91,.2)]" : "border-border/80 bg-white text-foreground hover:border-brand/35"}`}>
                     <span className={`h-7 w-7 shrink-0 overflow-hidden rounded-lg bg-white/90 ring-1 ${active ? "ring-white/30" : "ring-black/5"}`}>
-                      {c.image_url ? <img src={toImg(c.image_url)} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" /> : <span className="flex h-full w-full items-center justify-center text-brand">🌱</span>}
+                      {c.image_url ? <SafeImage src={toImg(c.image_url)} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" /> : <span className="flex h-full w-full items-center justify-center text-brand">🌱</span>}
                     </span>
                     <span className="max-w-[66px] truncate text-[11.5px] font-extrabold">{c.name}</span>
                   </Link>
@@ -176,7 +177,7 @@ function CategoryPage() {
               <div className="cat-shine rounded-2xl border border-brand/15 bg-white/95 px-2.5 py-2 shadow-[0_3px_16px_rgba(85,40,55,.05)] sm:px-3">
                 <div className="flex items-center gap-2.5">
                   <div className="cat-float h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-brand-light/40 p-0.5 ring-1 ring-brand/15 sm:h-11 sm:w-11">
-                    {cat.image_url ? <img src={toImg(cat.image_url)} alt={cat.name} className="h-full w-full rounded-[10px] object-cover" loading="eager" /> : <div className="flex h-full w-full items-center justify-center text-base">🌱</div>}
+                    {cat.image_url ? <SafeImage src={toImg(cat.image_url)} alt={cat.name} className="h-full w-full rounded-[10px] object-cover" loading="eager" /> : <div className="flex h-full w-full items-center justify-center text-base">🌱</div>}
                   </div>
                   <div className="min-w-0 shrink-0">
                     <div className="flex items-center gap-1 text-[8px] font-bold uppercase tracking-[.16em] text-brand/70"><Sparkles className="h-2.5 w-2.5" /> SHEIKH SEEDS</div>
@@ -189,7 +190,7 @@ function CategoryPage() {
                       <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-7 bg-gradient-to-l from-white via-white/80 to-transparent" />
                       {children.length > 2 && <div className="pointer-events-none absolute right-1 top-1/2 z-20 flex -translate-y-1/2 items-center gap-0.5 rounded-full bg-brand/90 px-1.5 py-1 text-[8px] font-black text-white shadow-sm"><ChevronRight className="h-2.5 w-2.5" /></div>}
                       <div ref={subcatRef} className="subcat-scroll overflow-x-auto"><div className="flex min-w-max justify-start gap-1.5 pr-7">
-                        {children.map((child, i) => <Link key={child.id} to="/category/$slug" params={{ slug: child.slug }} style={{ animationDelay: `${i * 35}ms` }} className="cat-slide group flex h-9 shrink-0 items-center gap-1 rounded-full border border-border/80 bg-[#fffdfd] px-2.5 text-[11px] font-bold shadow-sm transition-all duration-300 hover:border-brand hover:bg-brand hover:text-white active:scale-95"><span className="h-5 w-5 overflow-hidden rounded-full bg-brand-light/40 ring-1 ring-black/5">{child.image_url ? <img src={toImg(child.image_url)} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" /> : <span className="flex h-full w-full items-center justify-center text-[9px]">🌿</span>}</span><span className="max-w-[75px] truncate">{child.name}</span><ChevronRight className="h-3 w-3 opacity-40" /></Link>)}
+                        {children.map((child, i) => <Link key={child.id} to="/category/$slug" params={{ slug: child.slug }} style={{ animationDelay: `${i * 35}ms` }} className="cat-slide group flex h-9 shrink-0 items-center gap-1 rounded-full border border-border/80 bg-[#fffdfd] px-2.5 text-[11px] font-bold shadow-sm transition-all duration-300 hover:border-brand hover:bg-brand hover:text-white active:scale-95"><span className="h-5 w-5 overflow-hidden rounded-full bg-brand-light/40 ring-1 ring-black/5">{child.image_url ? <SafeImage src={toImg(child.image_url)} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" /> : <span className="flex h-full w-full items-center justify-center text-[9px]">🌿</span>}</span><span className="max-w-[75px] truncate">{child.name}</span><ChevronRight className="h-3 w-3 opacity-40" /></Link>)}
                       </div></div>
                     </div>
                   )}

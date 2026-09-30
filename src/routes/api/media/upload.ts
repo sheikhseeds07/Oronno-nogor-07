@@ -4,6 +4,8 @@ import { getCloudflareR2Bucket } from "@/lib/cloudflare-r2.server";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/personal-supabase/db.types";
 import { LIVE_DATABASE_KEY, LIVE_DATABASE_URL } from "@/lib/personal-supabase/client";
+import { safeMediaKey } from "@/lib/r2-media";
+import { retiredStorageResponse } from "@/lib/retired-storage";
 
 // Keep every public/admin-managed image class on the R2 upload path so new
 // media never falls back to Supabase Storage.
@@ -53,9 +55,12 @@ async function authenticatedClient(request: Request) {
   if (!token) return null;
 
   const db = createClient<Database>(LIVE_DATABASE_URL, LIVE_DATABASE_KEY, {
+    db: { schema: "public" },
     global: {
       headers: { Authorization: `Bearer ${token}` },
       fetch: (input, init) => {
+        const retired = retiredStorageResponse(input);
+        if (retired) return Promise.resolve(retired);
         const headers = new Headers(input instanceof Request ? input.headers : undefined);
         if (init?.headers) new Headers(init.headers).forEach((value, key) => headers.set(key, value));
         headers.set("apikey", LIVE_DATABASE_KEY);
@@ -63,7 +68,7 @@ async function authenticatedClient(request: Request) {
         return fetch(input, { ...init, headers });
       },
     },
-    auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
+    auth: { debug: false, storage: undefined, persistSession: false, autoRefreshToken: false },
   });
 
   const { data, error } = await db.auth.getClaims(token);
@@ -110,18 +115,23 @@ export const Route = createFileRoute("/api/media/upload")({
         const bucket = getR2Bucket();
         if (!bucket) return json({ error: "R2 binding unavailable" }, 503);
 
-        const key = `${bucketName}/${objectPath}`;
-        if (!upsert) {
-          const existing = await bucket.head(key);
-          if (existing) return json({ error: "Object already exists" }, 409);
+        const key = safeMediaKey(`${bucketName}/${objectPath}`);
+        if (!key) return json({ error: "Invalid media key" }, 400);
+        try {
+          if (!upsert) {
+            const existing = await bucket.head(key);
+            if (existing) return json({ error: "Object already exists" }, 409);
+          }
+          await bucket.put(key, await file.arrayBuffer(), {
+            httpMetadata: {
+              contentType: file.type || "application/octet-stream",
+              cacheControl: "public, max-age=31536000, immutable",
+            },
+          });
+        } catch {
+          // Return one bounded error without triggering SSR error logs or retries.
+          return json({ error: "R2 upload temporarily unavailable" }, 503);
         }
-
-        await bucket.put(key, await file.arrayBuffer(), {
-          httpMetadata: {
-            contentType: file.type || "application/octet-stream",
-            cacheControl: "public, max-age=31536000, immutable",
-          },
-        });
 
         return json({
           ok: true,

@@ -1,3 +1,4 @@
+import { SafeImage } from "@/components/SafeImage";
 import { createFileRoute, useParams, Link } from "@tanstack/react-router";
 import { BrandLoader } from "@/components/layout/BrandLoader";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -106,7 +107,7 @@ function Profile() {
       <div className="flex flex-wrap gap-4 items-center">
         <div className="relative shrink-0">
           <div className="relative w-20 h-20 rounded-[1.15rem] overflow-hidden bg-brand text-white flex items-center justify-center text-2xl font-bold">
-            {avatar ? <img src={avatar} alt={displayName} className="w-full h-full object-cover" /> : <span>{displayName.charAt(0)}</span>}
+            {avatar ? <SafeImage src={avatar} alt={displayName} className="w-full h-full object-cover" /> : <span>{displayName.charAt(0)}</span>}
           </div>
         </div>
         <div className="flex-1 min-w-0">
@@ -132,7 +133,7 @@ function Profile() {
         <div className="p-5 space-y-4">
           <div className="flex items-center gap-4">
             <div className="w-20 h-20 rounded-2xl overflow-hidden bg-brand text-white flex items-center justify-center text-2xl font-bold shrink-0">
-              {form.avatar_url ? <img src={form.avatar_url} alt="Avatar" className="w-full h-full object-cover" /> : <UserRound className="w-9 h-9" />}
+              {form.avatar_url ? <SafeImage src={form.avatar_url} alt="Avatar" className="w-full h-full object-cover" /> : <UserRound className="w-9 h-9" />}
             </div>
             <div>
               <label className="inline-flex items-center gap-2 border px-3 py-2 rounded-xl font-semibold cursor-pointer hover:bg-muted">

@@ -1,3 +1,4 @@
+import { SafeImage } from "@/components/SafeImage";
 import { useEffect, useState, useRef } from "react";
 import { Check, ShieldCheck, ShoppingCart, User, Phone, MapPin, Wallet } from "lucide-react";
 import { toImg } from "@/lib/img";
@@ -68,7 +69,7 @@ export function LpPackageSelector({ packages, selected, onSelect, themeColor, ti
   return <div className="lp-inline-selector"><div className="lp-inline-title">{title}</div><div className="lp-inline-options">{packages.map((p, i) => {
     const active = selected === i;
     return <button type="button" key={i} onClick={() => onSelect(i)} className="lp-inline-option w-full flex items-center gap-2 border text-left transition bg-white" style={active ? { borderColor: themeColor, background: themeBg05, boxShadow: `0 0 0 1px ${themeColor}` } : { borderColor: "#dcece0" }}>
-      {p.image && <img src={toImg(p.image)} alt="" width={34} height={34} loading="lazy" decoding="async" className="shrink-0 object-cover bg-slate-50" />}
+      {p.image && <SafeImage src={toImg(p.image)} alt="" width={34} height={34} loading="lazy" decoding="async" className="shrink-0 object-cover bg-slate-50" />}
       <div className="flex-1 min-w-0"><div className="lp-option-name font-semibold text-slate-900">{p.label || p.name}</div>{p.badge && <span className="inline-block mt-0.5 text-[9px] px-1.5 py-0.5 rounded font-semibold" style={{ background: themeBg10, color: themeColor }}>{p.badge}</span>}</div>
       <div className="lp-option-price text-right font-bold text-slate-900 shrink-0">{taka(p.price)}</div>
       <span className="grid place-items-center w-4 h-4 rounded-full border-2 shrink-0" style={active ? { background: themeColor, borderColor: themeColor } : { borderColor: "#cbd5e1" }}>{active && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}</span>

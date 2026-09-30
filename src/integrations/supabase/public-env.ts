@@ -1,3 +1,4 @@
+import { retiredStorageResponse } from "@/lib/retired-storage";
 // Shared resolver for the Supabase URL + publishable key on the server.
 // Hosts (Cloudflare/Vercel) often inject only the VITE_* variables, or nothing
 // at all, so we accept every common alias and finally fall back to the live
@@ -50,6 +51,8 @@ export function isNewSupabaseApiKey(value: string): boolean {
 // New-format sb_ keys are opaque strings, not JWTs: send them as `apikey` only.
 export function createSupabaseFetch(supabaseKey: string): typeof fetch {
   return (input, init) => {
+    const retired = retiredStorageResponse(input);
+    if (retired) return Promise.resolve(retired);
     const headers = new Headers(
       typeof Request !== 'undefined' && input instanceof Request ? input.headers : undefined,
     );

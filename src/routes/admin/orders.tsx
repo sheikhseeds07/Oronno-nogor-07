@@ -1,3 +1,5 @@
+import { toImg } from "@/lib/img";
+import { SafeImage } from "@/components/SafeImage";
 import { INCOMPLETE_ORDERS_COLUMNS, ORDERS_COLUMNS, ORDER_ITEMS_COLUMNS } from "@/lib/read-columns";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { z } from "zod";
@@ -1525,7 +1527,7 @@ function OrderItemsThumbs({ items }: { items: OrderItemRow[] }) {
   const Thumb = ({ it, size = "w-12 h-12" }: { it: OrderItemRow; size?: string }) => (
     <div className="relative shrink-0" title={`${it.product_name} × ${it.quantity}`}>
       {it.image ? (
-        <img src={it.image} alt="" loading="lazy" className={`${size} object-cover rounded border`} />
+        <SafeImage src={it.image} alt="" loading="lazy" className={`${size} object-cover rounded border`} />
       ) : (
         <div className={`${size} rounded border bg-muted`} />
       )}
@@ -1578,20 +1580,7 @@ const normalizeProductName = (name: string) =>
  * to the corresponding R2 asset key so the browser never loads the Supabase URL directly.
  */
 function toR2MediaUrl(raw: string): string {
-  const value = String(raw ?? "").trim();
-  if (!value) return "";
-  try {
-    const outer = new URL(value, typeof window !== "undefined" ? window.location.origin : "https://oronnonogor.com");
-    const asset = outer.searchParams.get("asset");
-    if (asset) return `/media?asset=${encodeURIComponent(asset)}`;
-    const nested = outer.searchParams.get("src");
-    if (nested) return toR2MediaUrl(nested);
-    const match = outer.pathname.match(/^\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+)$/);
-    if (match) return `/media?asset=${encodeURIComponent(match[1] + "/" + match[2])}`;
-  } catch {
-    // Keep non-URL values unchanged below.
-  }
-  return value;
+  return raw?.trim() ? toImg(raw) : "";
 }
 
 /** Resolve a thumbnail for every order item:
@@ -3127,7 +3116,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
               <div className="space-y-1 max-h-[360px] overflow-y-auto">
                 {products?.map((p) => (
                   <button key={p.id} onClick={() => addItem(p)} className="w-full flex items-center gap-2 p-2 hover:bg-muted rounded-lg text-left">
-                    {p.images?.[0] && <img src={p.images[0]} className="w-10 h-10 rounded object-cover" alt="" />}
+                    {p.images?.[0] && <SafeImage src={p.images[0]} className="w-10 h-10 rounded object-cover" alt="" />}
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-semibold truncate">{p.name}</div>
                       <div className="text-[11px] text-muted-foreground">SKU: {p.sku ?? "—"} · Stock: {p.stock}</div>

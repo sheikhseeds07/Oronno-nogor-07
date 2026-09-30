@@ -1,9 +1,10 @@
+import { SafeImage } from "@/components/SafeImage";
 import { ShoppingCart, Minus, Plus, Check, Sparkles } from "lucide-react";
 import { memo, useRef, useState } from "react";
 import { taka, bnDigits } from "@/lib/format";
 import { useCart } from "@/lib/cart-store";
 import { trackAddToCart } from "@/lib/fbq";
-import { toImg, imgSrcSet } from "@/lib/img";
+import { toImg, imgSrcSet, IMAGE_PLACEHOLDER } from "@/lib/img";
 import { ProductQuickView } from "./ProductQuickView";
 
 export type Product = {
@@ -44,7 +45,8 @@ function flyProductToCart(image: string, source: HTMLElement) {
   });
 
   const img = document.createElement("img");
-  img.src = image;
+  img.onerror = () => { img.onerror = null; img.src = IMAGE_PLACEHOLDER; };
+  img.src = toImg(image);
   img.alt = "";
   Object.assign(img.style, {
     position: "fixed", left: `${startX}px`, top: `${startY}px`, width: `${size}px`, height: `${size}px`, objectFit: "cover", borderRadius: "16px",
@@ -98,7 +100,7 @@ export const ProductCard = memo(function ProductCard({ p }: { p: Product }) {
   const price = p.sale_price ?? p.price;
   const discount = p.sale_price ? Math.round(((p.price - p.sale_price) / p.price) * 100) : 0;
   const img = p.images?.[0] || "/placeholder.svg";
-  const [imageSrc, setImageSrc] = useState(() => toImg(img, { w: 500, q: 78 }));
+  const imageSrc = toImg(img, { w: 500, q: 78 });
 
   const addItem = () => {
     if (p.stock <= 0) return;
@@ -113,7 +115,7 @@ export const ProductCard = memo(function ProductCard({ p }: { p: Product }) {
     <>
       <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border/70 bg-white shadow-[0_5px_18px_-14px_rgba(20,83,45,.5)] transition-all duration-300 hover:-translate-y-0.5 hover:border-brand/25 hover:shadow-[0_12px_28px_-16px_rgba(20,83,45,.42)]">
         <button ref={imageRef} onClick={() => setOpen(true)} className="relative block aspect-square w-full overflow-hidden bg-muted text-left" aria-label={`${p.name} বিস্তারিত দেখুন`}>
-          <img
+          <SafeImage
             src={imageSrc}
             srcSet={imageSrc === "/placeholder.svg" ? undefined : imgSrcSet(img, [200, 400, 600])}
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 220px"
@@ -122,7 +124,7 @@ export const ProductCard = memo(function ProductCard({ p }: { p: Product }) {
             height={500}
             loading="lazy"
             decoding="async"
-            onError={() => setImageSrc("/placeholder.svg")}
+
             className="h-full w-full object-cover transition duration-500 ease-out group-hover:scale-[1.045]"
           />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-black/10 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />

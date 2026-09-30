@@ -1,3 +1,4 @@
+import { SafeImage } from "@/components/SafeImage";
 import { LANDING_PAGES_COLUMNS, PRODUCTS_COLUMNS } from "@/lib/read-columns";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
@@ -92,7 +93,7 @@ export function ProfessionalLandingPage({ slug, variant }: Props) {
     {C.show_popup && <div className="hidden" aria-hidden="true" />}
     <div className="sticky top-0 z-40 border-b bg-white/95 backdrop-blur">
       <div className="max-w-5xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5 min-w-0"><img src={toImg(logo)} alt={brand} className="w-9 h-9 rounded-full object-cover"/><div className="min-w-0"><div className="font-black truncate">{brand}</div>{settings.tagline && <div className="text-[10px] text-slate-500 truncate">{settings.tagline}</div>}</div></div>
+        <div className="flex items-center gap-2.5 min-w-0"><SafeImage src={toImg(logo)} alt={brand} className="w-9 h-9 rounded-full object-cover"/><div className="min-w-0"><div className="font-black truncate">{brand}</div>{settings.tagline && <div className="text-[10px] text-slate-500 truncate">{settings.tagline}</div>}</div></div>
         <LpHeaderCountdown hours={Number(C.countdown_hours) || 3} />
       </div>
     </div>
@@ -109,7 +110,7 @@ export function ProfessionalLandingPage({ slug, variant }: Props) {
           <p className="mt-4 text-sm text-slate-600 flex items-center gap-2"><Truck className="w-4 h-4" style={{ color: theme }}/>{C.hero_note || "সারা দেশে ক্যাশ অন ডেলিভারি"}</p>
           <div className="mt-5"><Cta /></div>
         </div>
-        <div className="order-1 md:order-2"><div className="rounded-[26px] overflow-hidden bg-slate-100 border shadow-sm"><img src={toImg(heroImage, { w: 1000, q: 86 })} onError={e => imgFallback(e, heroImage)} alt={page.title} className="w-full aspect-square object-cover"/></div></div>
+        <div className="order-1 md:order-2"><div className="rounded-[26px] overflow-hidden bg-slate-100 border shadow-sm"><SafeImage src={toImg(heroImage, { w: 1000, q: 86 })}  alt={page.title} className="w-full aspect-square object-cover"/></div></div>
       </section>
 
       {packages.length > 1 && <section className="rounded-3xl bg-white border p-4 sm:p-6"><LpPackageSelector packages={packages} selected={selected} onSelect={setSelected} themeColor={theme} /></section>}
@@ -118,7 +119,7 @@ export function ProfessionalLandingPage({ slug, variant }: Props) {
         {features.map((f, i) => <div key={i} className="bg-white border rounded-2xl p-4 flex gap-3 shadow-sm"><span className="w-10 h-10 rounded-xl grid place-items-center shrink-0 text-lg" style={{ background: `${theme}12` }}>{f.icon || icons[i % icons.length]}</span><div><div className="font-black">{f.title}</div>{f.text && <p className="text-sm text-slate-500 mt-1 leading-relaxed">{f.text}</p>}</div></div>)}
       </section>
 
-      {C.gallery_images.length > 0 && <section className="grid sm:grid-cols-2 gap-3">{C.gallery_images.map((src, i) => <img key={src + i} src={toImg(src, { w: 900, q: 82 })} alt={`${page.title} ${i + 1}`} className="w-full rounded-2xl object-cover border"/>)}</section>}
+      {C.gallery_images.length > 0 && <section className="grid sm:grid-cols-2 gap-3">{C.gallery_images.map((src, i) => <SafeImage key={src + i} src={toImg(src, { w: 900, q: 82 })} alt={`${page.title} ${i + 1}`} className="w-full rounded-2xl object-cover border"/>)}</section>}
 
       <section className="rounded-3xl bg-white border overflow-hidden"><div className="p-5 sm:p-7"><div className="text-xs font-black uppercase tracking-widest" style={{ color: theme }}>{C.why_kicker || "আমাদের নিশ্চয়তা"}</div><h2 className="text-2xl font-black mt-1">{C.why_title || "কেন আমাদের ওপর আস্থা রাখবেন"}</h2></div><div className="grid sm:grid-cols-2 border-t">{why.map((w, i) => <div key={i} className="p-5 border-b sm:border-r flex gap-3"><span className="text-lg">{w.icon || ["💳", "🚚", "🛡️", "☎️"][i % 4]}</span><div><div className="font-black">{w.title}</div>{w.text && <p className="text-sm text-slate-500 mt-1">{w.text}</p>}</div></div>)}</div></section>
 

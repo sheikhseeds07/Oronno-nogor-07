@@ -5,6 +5,11 @@ import { createRateLimiter } from '../src/lib/rate-limit.ts';
 import { assessUsage } from '../scripts/check-usage.ts';
 
 const loadSource = (source) => import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+async function r2MediaModuleUrl() {
+  const { stripTypeScriptTypes } = await import('node:module');
+  const source = await readFile(new URL('../src/lib/r2-media.ts', import.meta.url), 'utf8');
+  return 'data:text/javascript;base64,' + Buffer.from(stripTypeScriptTypes(source)).toString('base64');
+}
 test('rate limiter bounds keys, denies excess requests, and expires windows', () => {
   const take = createRateLimiter(1);
   assert.equal(take('a', 2, 100, 0), true);
@@ -24,7 +29,9 @@ test('usage checker alerts at separate quotas, rejects stale or absent metrics',
 });
 test('image failure uses only an inline placeholder and never schedules origin retries', async () => {
   const { stripTypeScriptTypes } = await import('node:module');
-  const source = await readFile(new URL('../src/lib/img.ts', import.meta.url), 'utf8');
+  const source = (await readFile(new URL('../src/lib/img.ts', import.meta.url), 'utf8'))
+    .replace('"./r2-media"', JSON.stringify(await r2MediaModuleUrl()))
+    .replace('import.meta.env.VITE_R2_PUBLIC_URL', JSON.stringify('/media'));
   const { imgFallback, toImg } = await loadSource(stripTypeScriptTypes(source));
   const el = { dataset: {}, removeAttribute() {}, src: '' };
   const old = 'https://frtzlibogmethppqmhtr.supabase.co/storage/v1/object/public/product-images/test.jpg';
@@ -45,7 +52,8 @@ test('missing R2 media never fetches Supabase and private buckets are denied', a
   const { stripTypeScriptTypes } = await import('node:module');
   let source = await readFile(new URL('../src/routes/media.ts', import.meta.url), 'utf8');
   source = source.replace(/^import .*;\n/gm, '');
-  source = 'const createFileRoute = () => config => config; const getCloudflareR2Bucket = () => undefined;\n' + source;
+  source = `import { legacyMediaKey, legacyMediaBucket, safeMediaKey, PUBLIC_MEDIA_BUCKETS } from ${JSON.stringify(await r2MediaModuleUrl())};\n` +
+    'const createFileRoute = () => config => config; const getCloudflareR2Bucket = () => ({ get: async () => null });\n' + source;
   const { Route } = await loadSource(stripTypeScriptTypes(source));
   const originalFetch = globalThis.fetch;
   globalThis.fetch = () => { throw new Error('Unexpected origin fetch'); };

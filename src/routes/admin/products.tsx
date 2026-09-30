@@ -1,3 +1,4 @@
+import { SafeImage } from "@/components/SafeImage";
 import { CATEGORIES_COLUMNS, PRODUCTS_COLUMNS } from "@/lib/read-columns";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -80,7 +81,7 @@ function Products() {
             <tbody>
               {products?.map((p) => (
                 <tr key={p.id} className="border-t">
-                  <td className="p-3"><img src={p.images?.[0] || "/placeholder.svg"} className="w-12 h-12 object-cover rounded" alt="" /></td>
+                  <td className="p-3"><SafeImage src={p.images?.[0] || "/placeholder.svg"} className="w-12 h-12 object-cover rounded" alt="" /></td>
                   <td className="p-3 font-semibold">{p.name}</td>
                   <td className="p-3 text-xs">{p.categories?.name ?? "-"}</td>
                   <td className="p-3 text-right">{taka(p.sale_price ?? p.price)}</td>
@@ -187,7 +188,7 @@ function ProductModal({ product, categories, onClose, onSaved, onAdded }: { prod
             <div className="grid grid-cols-4 gap-2 mt-2">
               {p.images?.map((src, i) => (
                 <div key={i} className="relative aspect-square">
-                  <img src={src} className="w-full h-full object-cover rounded" alt="" />
+                  <SafeImage src={src} className="w-full h-full object-cover rounded" alt="" />
                   <button onClick={() => setP({ ...p, images: p.images?.filter((_, j) => j !== i) })} className="absolute top-1 right-1 bg-destructive text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">×</button>
                 </div>
               ))}

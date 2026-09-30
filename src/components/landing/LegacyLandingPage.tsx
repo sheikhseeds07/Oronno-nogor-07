@@ -1,3 +1,4 @@
+import { SafeImage } from "@/components/SafeImage";
 import { LANDING_PAGES_COLUMNS, PRODUCTS_COLUMNS } from "@/lib/read-columns";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -224,7 +225,7 @@ export function LegacyLandingPage({ slug }: { slug: string }) {
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             {brandLogo ? (
-              <img src={toImg(brandLogo)} alt={brandName} width={40} height={40} decoding="async" className="h-10 w-10 rounded-full object-contain ring-2 ring-offset-1 bg-white" style={{ ["--tw-ring-color" as string]: themeColor }} />
+              <SafeImage src={toImg(brandLogo)} alt={brandName} width={40} height={40} decoding="async" className="h-10 w-10 rounded-full object-contain ring-2 ring-offset-1 bg-white" style={{ ["--tw-ring-color" as string]: themeColor }} />
             ) : (
               <div className="h-10 w-10 rounded-full grid place-items-center text-white shadow" style={{ background: themeColor }}>
                 <Leaf className="w-5 h-5" />
@@ -245,7 +246,7 @@ export function LegacyLandingPage({ slug }: { slug: string }) {
 
         {/* Image carousel */}
         <div className="relative rounded-2xl overflow-hidden bg-slate-100 border shadow-sm">
-          <img src={toImg(gallery[activeImg], { w: 800, q: 80 })} srcSet={imgSrcSet(gallery[activeImg], [400, 600, 800, 1000])} sizes="(max-width: 768px) 100vw, 600px" alt={page.title} width={800} height={800} fetchPriority="high" decoding="async" className="w-full aspect-square object-cover" />
+          <SafeImage src={toImg(gallery[activeImg], { w: 800, q: 80 })} srcSet={imgSrcSet(gallery[activeImg], [400, 600, 800, 1000])} sizes="(max-width: 768px) 100vw, 600px" alt={page.title} width={800} height={800} fetchPriority="high" decoding="async" className="w-full aspect-square object-cover" />
           {gallery.length > 1 && (
             <>
               <button onClick={() => setActiveImg((activeImg - 1 + gallery.length) % gallery.length)} className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/95 grid place-items-center shadow hover:scale-105 transition">
@@ -351,7 +352,7 @@ export function LegacyLandingPage({ slug }: { slug: string }) {
               {seeds.map((s, i) => (
                 <div key={i} className="bg-white p-3 flex items-center gap-2.5">
                   {s.image ? (
-                    <img src={toImg(s.image, { w: 80, q: 70 })} alt={s.name} width={40} height={40} loading="lazy" decoding="async" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                    <SafeImage src={toImg(s.image, { w: 80, q: 70 })} alt={s.name} width={40} height={40} loading="lazy" decoding="async" className="w-10 h-10 rounded-lg object-cover shrink-0" />
                   ) : (
                     <span className="w-8 h-8 rounded-full grid place-items-center text-white text-xs font-bold shrink-0" style={{ background: themeColor }}>
                       {bnDigits(i + 1)}
