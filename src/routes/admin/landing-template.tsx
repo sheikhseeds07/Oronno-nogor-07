@@ -15,7 +15,7 @@ function LandingTemplateAdmin() {
   const [busy, setBusy] = useState<string | null>(null);
   const { data, isLoading } = useQuery({
     queryKey: ["admin-landing-template-selector"],
-    queryFn: async () => (await supabase.from("landing_pages").select("id,slug,title,is_published,planting_steps").order("created_at", { ascending: false })).data as Row[] ?? [],
+    queryFn: async () => (await supabase.from("landing_pages").select("id,slug,title,is_published,planting_steps").order("created_at", { ascending: false }).limit(100)).data as Row[] ?? [],
   });
 
   const getTemplate = (raw: unknown) => {
