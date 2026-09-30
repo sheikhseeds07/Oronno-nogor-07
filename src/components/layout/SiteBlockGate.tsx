@@ -48,7 +48,21 @@ export function SiteBlockGate() {
     enabled: ready && !isAdminArea,
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
-    queryFn: () => check({ data: { deviceId, customerId } }),
+    queryFn: async () => {
+      const cacheKey = `site-block-gate:${deviceId ?? "none"}:${customerId ?? "guest"}`;
+      try {
+        const raw = localStorage.getItem(cacheKey);
+        if (raw) {
+          const cached = JSON.parse(raw) as { at?: number; blocked?: boolean };
+          if (typeof cached.at === "number" && Date.now() - cached.at < 5 * 60_000 && typeof cached.blocked === "boolean") {
+            return { blocked: cached.blocked };
+          }
+        }
+      } catch {}
+      const result = await check({ data: { deviceId, customerId } });
+      try { localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), blocked: !!result?.blocked })); } catch {}
+      return result;
+    },
   });
 
   if (isAdminArea || !data?.blocked) return null;
