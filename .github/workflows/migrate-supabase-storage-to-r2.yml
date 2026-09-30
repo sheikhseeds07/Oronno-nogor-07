@@ -23,20 +23,42 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: 22
+          bun-version: 1.2.15
 
       - name: Verify AWS CLI
         run: aws --version
 
-      - name: Migrate all Supabase media buckets to R2
+      - name: Wrangler account and bucket audit
+        continue-on-error: true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: a91d9451c87479d4d01d2d2add2530f5
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ]; then
+            bunx wrangler@latest whoami
+            bunx wrangler@latest r2 bucket list
+          else
+            echo "CLOUDFLARE_API_TOKEN secret is not set; skipping Wrangler control-plane audit."
+          fi
+
+      - name: Verify R2 bucket via S3 API
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_API_TOKEN_R2 }}
+          AWS_DEFAULT_REGION: auto
+        run: |
+          aws s3 ls s3://sheikhseeds --endpoint-url https://a91d9451c87479d4d01d2d2add2530f5.r2.cloudflarestorage.com --region auto | head -100 || true
+
+      - name: Migrate repo media and Supabase Storage to R2
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          CLOUDFLARE_R2_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
-          CLOUDFLARE_API_TOKEN_R2: ${{ secrets.CLOUDFLARE_API_TOKEN_R2 }}
-          CLOUDFLARE_ACCOUNT_ID: a91d9451c87479d4d01d2d2add2530f5
-          R2_BUCKET: sheikhseeds
+          R2_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_API_TOKEN_R2 }}
+          R2_ACCOUNT_ID: a91d9451c87479d4d01d2d2add2530f5
+          R2_BUCKET_NAME: sheikhseeds
           SUPABASE_URL: https://frtzlibogmethppqmhtr.supabase.co
-        run: node scripts/migrate-supabase-storage-to-r2.mjs
+          NEXT_PUBLIC_R2_PUBLIC_URL: ""
+        run: bun scripts/migrate-to-r2.ts
