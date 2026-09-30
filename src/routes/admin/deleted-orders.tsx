@@ -88,7 +88,7 @@ function DeletedOrdersPage() {
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["deleted-orders"],
     queryFn: () => listFn({}),
-    staleTime: 30_000,
+    staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
