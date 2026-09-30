@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Bar } from "recharts";
-import { Activity, AlertTriangle, CheckCircle2, ChevronDown, Clock3, Package, RefreshCw, ShoppingCart, TrendingUp, Users, XCircle, Sparkles, Target, LockKeyhole } from "lucide-react";
+import { Activity, AlertTriangle, CheckCircle2, ChevronDown, Clock3, Package, RefreshCw, ShoppingCart, TrendingUp, Users, XCircle, Sparkles, Target } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { taka, enDigits } from "@/lib/format";
@@ -208,10 +208,10 @@ function MonthlyBonusCard() {
               <div className="truncate text-[12px] font-black text-slate-900">Hello, {data?.employeeName ?? "আপনি"}, 👋</div>
               <div className="flex shrink-0 items-center gap-1">
                 <button type="button" onClick={() => setShowDetails(true)} className="rounded-full border border-slate-200 bg-white/90 px-2 py-1 text-[7px] font-black text-slate-600 shadow-sm hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700">বিস্তারিত দেখুন</button>
-                <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[7px] font-black uppercase tracking-wide text-amber-700"><LockKeyhole className="h-2.5 w-2.5"/> Locked</span>
+
               </div>
             </div>
-            <div className="mt-0.5 text-[9px] leading-4 text-slate-600"><b className="text-emerald-700">🎉 Good News!</b> আগামী মাসের ১ তারিখ থেকে <b>Monthly Bonus</b> চালু হবে। এক মাসে Incomplete Order থেকে <b>৩০০টি Confirm</b> করে Delivery সম্পন্ন করতে পারলে মাস শেষে পাবেন <b className="text-emerald-700">৳২,০০০ Extra Bonus</b>। 💰</div>
+            <div className="mt-0.5 text-[9px] leading-4 text-slate-600"><b className="text-emerald-700">🎉 Good News!</b> এক মাসে Incomplete Order থেকে <b>৩০০টি Confirm</b> করে Delivery সম্পন্ন করতে পারলে মাস শেষে পাবেন <b className="text-emerald-700">৳২,০০০ Extra Bonus</b>। 💰</div>
           </div>
         </div>
 
@@ -229,7 +229,7 @@ function MonthlyBonusCard() {
         </div>
 
         <div className="mt-2 text-[8px] font-semibold leading-3.5 text-slate-500">🔥 প্রতিদিন গড়ে ১৫টি Incomplete Order Confirm করার লক্ষ্য রাখুন। নিয়মিত Follow-up ও ভালোভাবে Customer Convince করলে Target পূরণে সাহায্য করবে।</div>
-        <div className="mt-1.5 flex items-center justify-center gap-1 rounded-lg bg-slate-900/[0.04] px-2.5 py-1.5 text-[7px] font-bold text-slate-500"><LockKeyhole className="h-2.5 w-2.5"/> Bonus এখন Locked — আগামী মাসের ১ তারিখ থেকে Progress গণনা Bonus-এর জন্য কার্যকর হবে।</div>
+
       </div>
     </div>
 
