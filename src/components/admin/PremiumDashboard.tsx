@@ -193,8 +193,8 @@ function MonthlyBonusCard() {
   const confirmed = Number(data?.confirmed ?? 0);
   const delivered = Number(data?.delivered ?? 0);
   const cancelled = Number(data?.cancelled ?? 0);
+  const pending = Number(data?.pending ?? Math.max(0, confirmed - delivered - cancelled));
   const target = Number(data?.target ?? 300);
-  const confirmProgress = Math.min(100, (confirmed / target) * 100);
   const deliveryProgress = Math.min(100, (delivered / target) * 100);
 
   return <>
@@ -215,17 +215,15 @@ function MonthlyBonusCard() {
           </div>
         </div>
 
-        <div className="mt-2.5 grid grid-cols-3 gap-1.5">
-          <div className="rounded-xl border border-emerald-100 bg-white/90 px-2 py-2 text-center"><div className="text-base font-black text-emerald-700">{isLoading ? "—" : enDigits(confirmed)}</div><div className="text-[7px] font-bold text-slate-400">INCOMPLETE CONFIRM</div></div>
+        <div className="mt-2.5 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
           <div className="rounded-xl border border-blue-100 bg-white/90 px-2 py-2 text-center"><div className="text-base font-black text-blue-700">{isLoading ? "—" : enDigits(delivered)}</div><div className="text-[7px] font-bold text-slate-400">DELIVERED</div></div>
           <div className="rounded-xl border border-rose-100 bg-white/90 px-2 py-2 text-center"><div className="text-base font-black text-rose-600">{isLoading ? "—" : enDigits(cancelled)}</div><div className="text-[7px] font-bold text-slate-400">CANCELLED</div></div>
+          <div className="rounded-xl border border-amber-100 bg-white/90 px-2 py-2 text-center"><div className="text-base font-black text-amber-700">{isLoading ? "—" : enDigits(pending)}</div><div className="text-[7px] font-bold text-slate-400">PENDING</div></div>
         </div>
 
         <div className="mt-2 rounded-xl border border-white/90 bg-white/75 px-2.5 py-2">
-          <div className="flex items-center justify-between gap-2 text-[8px] font-black text-slate-500"><span>এই মাসের Current Progress</span><span className="text-emerald-700">{enDigits(confirmed)} / {enDigits(target)} Confirm</span></div>
-          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-emerald-100"><div className="h-full rounded-full bg-emerald-500 transition-all duration-700" style={{width: `${confirmProgress}%`}}/></div>
-          <div className="mt-1.5 flex items-center justify-between text-[7px] font-semibold text-slate-500"><span>Delivered: <b className="text-blue-700">{enDigits(delivered)} / {enDigits(target)}</b></span><span>Cancel: <b className="text-rose-600">{enDigits(cancelled)}</b></span></div>
-          <div className="mt-1 h-1 overflow-hidden rounded-full bg-blue-100"><div className="h-full rounded-full bg-blue-500 transition-all duration-700" style={{width: `${deliveryProgress}%`}}/></div>
+          <div className="flex items-center justify-between gap-2 text-[8px] font-black text-slate-500"><span>এই মাসের Delivery Progress</span><span className="text-blue-700">{enDigits(delivered)} / {enDigits(target)} Delivered</span></div>
+          <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-blue-100"><div className="h-full rounded-full bg-blue-500 transition-all duration-700" style={{width: `${deliveryProgress}%`}}/></div>
         </div>
 
         <div className="mt-2 text-[8px] font-semibold leading-3.5 text-slate-500">🔥 প্রতিদিন গড়ে ১৫টি Incomplete Order Confirm করার লক্ষ্য রাখুন। নিয়মিত Follow-up ও ভালোভাবে Customer Convince করলে Target পূরণে সাহায্য করবে।</div>
