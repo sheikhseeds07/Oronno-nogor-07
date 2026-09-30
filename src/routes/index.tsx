@@ -47,7 +47,7 @@ const homeQueryOptions = queryOptions({
   enabled: typeof window !== "undefined",
   placeholderData: getCachedHomeData,
   // Product price/popular status should refresh immediately after admin changes.
-  staleTime: 60_000,
+  staleTime: 5 * 60_000,
   gcTime: 30 * 60_000,
   retry: 1,
   refetchOnMount: false,
