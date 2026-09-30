@@ -646,8 +646,7 @@ function OrdersTable({
       } catch { /* skip */ }
     };
     run();
-    const t = setInterval(run, 900_000); // Courier status refresh capped at 15 minutes
-    return () => { alive = false; clearInterval(t); };
+    return () => { alive = false; };
   }, [isShippedFilter, syncStatuses, qc]);
 
   // Realtime is handled centrally by useLiveOrders() and AdminOrderStability().
@@ -1945,10 +1944,6 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
 function RelativeUpdatedTime({ value }: { value?: string | null }) {
   const [, refresh] = useState(0);
 
-  useEffect(() => {
-    const timer = window.setInterval(() => refresh((v) => v + 1), 30_000);
-    return () => window.clearInterval(timer);
-  }, []);
 
   if (!value) return null;
   const timestamp = new Date(value).getTime();
@@ -2166,7 +2161,7 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
     queryKey: ["hoorin-courier-history", phoneDigits],
     enabled: phoneReady,
     queryFn: () => courierHistoryFn({ data: { phone: phoneDigits } }),
-    staleTime: 0,
+    staleTime: 5 * 60_000,
     refetchOnMount: "always",
     refetchOnWindowFocus: false,
     retry: 2,
