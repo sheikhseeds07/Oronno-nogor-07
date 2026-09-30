@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { getCloudflareR2Bucket } from "@/lib/cloudflare-r2.server";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/personal-supabase/db.types";
 import { LIVE_DATABASE_KEY, LIVE_DATABASE_URL } from "@/lib/personal-supabase/client";
@@ -28,10 +29,7 @@ type R2BucketLike = {
 };
 
 function getR2Bucket(): R2BucketLike | undefined {
-  const env = (globalThis as typeof globalThis & {
-    __ORONNO_CF_ENV?: { MEDIA_BUCKET?: R2BucketLike };
-  }).__ORONNO_CF_ENV;
-  return env?.MEDIA_BUCKET;
+  return getCloudflareR2Bucket<R2BucketLike>();
 }
 
 function json(body: unknown, status = 200) {
