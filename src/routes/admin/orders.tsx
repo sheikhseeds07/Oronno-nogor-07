@@ -1874,7 +1874,6 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
     () => `hoorin-courier-history-v4:${digits}`,
     [digits],
   );
-  const orderCreatedAtMs = orderCreatedAt ? new Date(orderCreatedAt).getTime() : 0;
 
   // Persist the last successful result in the browser. This lets a full
   // page refresh render the saved rate immediately, without waiting for
@@ -1888,12 +1887,11 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
       if (!parsed || !parsed.configured || parsed.error || !parsed.overall) return null;
       const fetchedAt = Number(parsed._fetchedAt ?? 0);
       if (fetchedAt && Date.now() - fetchedAt > 24 * 60 * 60 * 1000) return null;
-      if (orderCreatedAtMs && fetchedAt && orderCreatedAtMs > fetchedAt) return null;
       return parsed;
     } catch {
       return null;
     }
-  }, [clientCacheKey, enabled, orderCreatedAtMs]);
+  }, [clientCacheKey, enabled]);
 
   const cachedClientResult = readClientCache();
 
@@ -1929,7 +1927,7 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
     gcTime: 24 * 60 * 60 * 1000,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
-    retry: 2,
+    retry: 1,
     retryDelay: (attempt) => 600 * (attempt + 1),
   });
 
