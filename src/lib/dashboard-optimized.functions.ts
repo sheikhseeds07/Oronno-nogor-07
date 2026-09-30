@@ -127,7 +127,7 @@ async function getLiveEmployeeCancellationPerformance(from: string, to: string, 
   const [employeesR, divisionMembersR, processingR, confirmEvents] = await Promise.all([
     db.from("employees").select("user_id,name").eq("is_active", true),
     db.from("order_distribution_members").select("user_id,enabled").eq("enabled", true),
-    db.from("orders").select("assigned_to").in("status", ["web_pending", "processing"]).not("assigned_to", "is", null),
+    db.from("orders").select("assigned_to").eq("status", "web_pending").not("assigned_to", "is", null),
     fetchAllActionEvents(db, "confirm", from, to),
   ]);
 
@@ -325,7 +325,7 @@ export const getEmployeeMetricOrders = createServerFn({ method: "POST" })
         .from("orders")
         .select("id,source,originated_from_import,notes,invoice_no,customer_name,customer_phone,total,status,created_at,updated_at")
         .eq("assigned_to", data.userId)
-        .in("status", ["web_pending", "processing"])
+        .eq("status", "web_pending")
         .order("updated_at", { ascending: false });
       if (processingError) throw new Error(processingError.message);
       return (processingOrders ?? []).map((o: any) => ({ ...o, archived: false }));
