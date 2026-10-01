@@ -460,6 +460,18 @@ function LandingPagesAdmin() {
 
               {tab === "combo-offer" && C.template === "all-product" && (
                 <>
+                  <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-sm font-black text-slate-900">CTA Product Selection Popup</div>
+                        <div className="mt-0.5 text-[11px] font-semibold leading-5 text-slate-600">ON থাকলে CTA চাপলে Product Selection Popup আসবে। OFF থাকলে CTA সরাসরি নিচের Checkout ফর্মে Scroll করবে।</div>
+                      </div>
+                      <button type="button" role="switch" aria-checked={C.product_selection_popup_enabled !== false} onClick={() => setC({ product_selection_popup_enabled: C.product_selection_popup_enabled === false })} className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full p-1 transition-colors ${C.product_selection_popup_enabled !== false ? "bg-emerald-600" : "bg-slate-300"}`} title={C.product_selection_popup_enabled !== false ? "Popup চালু" : "Popup বন্ধ"}>
+                        <span className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${C.product_selection_popup_enabled !== false ? "translate-x-5" : "translate-x-0"}`} />
+                      </button>
+                    </div>
+                    <div className={`mt-2 text-[10px] font-bold ${C.product_selection_popup_enabled !== false ? "text-emerald-700" : "text-slate-500"}`}>{C.product_selection_popup_enabled !== false ? "বর্তমান: Popup ON" : "বর্তমান: Popup OFF"}</div>
+                  </div>
                   <div className="space-y-2 pt-1">
                     {(C.combo_offers || []).map((item, index) => (
                       <div
