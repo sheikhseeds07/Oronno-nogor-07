@@ -58,13 +58,13 @@ function addPublicEdgeCacheHeaders(request: Request, response: Response): Respon
   headers.set(
     "Cache-Control",
     isLanding
-      ? "public, max-age=15, stale-while-revalidate=120, stale-if-error=86400"
+      ? "public, max-age=0, must-revalidate, stale-while-revalidate=0, stale-if-error=300"
       : "public, max-age=60, stale-while-revalidate=300, stale-if-error=86400",
   );
   headers.set(
     "Cloudflare-CDN-Cache-Control",
     isLanding
-      ? "max-age=60, stale-while-revalidate=300, stale-if-error=86400"
+      ? "max-age=10, stale-while-revalidate=0, stale-if-error=300"
       : "max-age=300, stale-while-revalidate=3600, stale-if-error=86400",
   );
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
