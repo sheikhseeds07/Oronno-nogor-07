@@ -187,14 +187,26 @@ export const placeLandingOrder = createServerFn({ method: "POST" }).inputValidat
   if (!requested || !offer || offer.price < 0 || offer.deliveryFee < 0) throw new Error("ল্যান্ডিং পেজের প্যাকেজটি সঠিক নয়");
 
   const items = [{ id: offer.id, name: offer.name, price: offer.price, quantity: requested.quantity }];
-  const { data: orderId, error: orderError } = await supabaseAdmin.rpc("place_public_order", {
+  const { data: intentId, error: intentError } = await supabaseAdmin.rpc("create_landing_checkout_intent" as never, {
+    p_checkout_session_id: crypto.randomUUID(),
     p_customer_name: data.customer_name.trim(),
     p_customer_phone: customerPhone,
     p_customer_address: data.customer_address.trim(),
     p_delivery_fee: offer.deliveryFee,
-    p_items: items,
+    p_seed_items: items,
+    p_nutrimix_item: null,
     p_notes: data.notes ?? null,
     p_client_ip: clientIp,
+  } as never);
+  if (intentError || !intentId || typeof intentId !== "string") {
+    const rpcMessage = intentError?.message ?? "";
+    if (/blocked/i.test(rpcMessage)) throw new Error(`${BLOCKED_ORDER_CODE}: ${BLOCKED_ORDER_MESSAGE}`);
+    throw new Error(rpcMessage || "Checkout intent create failed");
+  }
+
+  const { data: orderId, error: orderError } = await supabaseAdmin.rpc("finalize_landing_checkout_intent" as never, {
+    p_intent_id: intentId,
+    p_include_nutrimix: false,
   } as never);
   if (orderError) {
     const rpcMessage = orderError.message ?? "";
@@ -204,9 +216,6 @@ export const placeLandingOrder = createServerFn({ method: "POST" }).inputValidat
   if (!orderId || typeof orderId !== "string") throw new Error("Order create failed");
 
   const subtotal = offer.price * requested.quantity;
-  const { error: totalError } = await supabaseAdmin.from("orders").update({ subtotal, delivery_fee: offer.deliveryFee, total: subtotal + offer.deliveryFee }).eq("id", orderId);
-  if (totalError) throw new Error("অর্ডারের মোট দাম সংরক্ষণ করা যায়নি");
-
   try {
     const userAgent = getRequestHeader("user-agent") ?? null;
     await sendPurchaseEvent({ orderId, value: subtotal + offer.deliveryFee, currency: "BDT", phone: customerPhone, name: data.customer_name, country: "bd", contents: items.map((item) => ({ id: item.id, quantity: item.quantity, price: item.price })), clientIp, userAgent, fbp: data.fbp ?? null, fbc: data.fbc ?? null, eventSourceUrl: data.source_url ?? null } as never);
