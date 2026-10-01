@@ -28,6 +28,7 @@ const PUBLIC_RPCS = new Set(["get_home_data_v1"]);
 // Keep it cached briefly for egress protection without making admin changes stale for minutes.
 const HOME_RPC_TTL_SECONDS = 3600;
 const EDGE_TTL_SECONDS = 3600;
+const LANDING_TTL_SECONDS = 10;
 const STALE_SECONDS = 86400;
 const BROWSER_TTL_SECONDS = 300;
 
@@ -86,6 +87,8 @@ export const Route = createFileRoute("/api/public/pg")({
         cacheKeyUrl.searchParams.set("m", method);
         if (body) cacheKeyUrl.searchParams.set("b", body);
         cacheKeyUrl.searchParams.set("a", accept);
+        const isLandingRead = path.split("?")[0] === "/rest/v1/landing_pages";
+        if (isLandingRead) cacheKeyUrl.searchParams.set("v", "landing-v2");
         if (range) cacheKeyUrl.searchParams.set("r", range);
         const cacheKey = new Request(cacheKeyUrl.toString(), { method: "GET" });
 
@@ -117,14 +120,14 @@ export const Route = createFileRoute("/api/public/pg")({
           headers,
           body: method === "POST" ? (body ?? "{}") : undefined,
           signal: AbortSignal.timeout(10_000),
-          ...({ cf: { cacheEverything: true, cacheTtl: path.includes("/rpc/get_home_data_v1") ? HOME_RPC_TTL_SECONDS : EDGE_TTL_SECONDS } } as RequestInit),
+          ...({ cf: { cacheEverything: true, cacheTtl: path.includes("/rpc/get_home_data_v1") ? HOME_RPC_TTL_SECONDS : isLandingRead ? LANDING_TTL_SECONDS : EDGE_TTL_SECONDS } } as RequestInit),
         });
 
         const payload = await origin.text();
         if (!origin.ok) return noStore(payload, origin.status);
 
-        const edgeTtl = path.includes("/rpc/get_home_data_v1") ? HOME_RPC_TTL_SECONDS : EDGE_TTL_SECONDS;
-        const policy = `public, max-age=${path.includes("/rpc/get_home_data_v1") ? 0 : BROWSER_TTL_SECONDS}, s-maxage=${edgeTtl}, stale-while-revalidate=${path.includes("/rpc/get_home_data_v1") ? 0 : STALE_SECONDS}`;
+        const edgeTtl = path.includes("/rpc/get_home_data_v1") ? HOME_RPC_TTL_SECONDS : isLandingRead ? LANDING_TTL_SECONDS : EDGE_TTL_SECONDS;
+        const policy = `public, max-age=${path.includes("/rpc/get_home_data_v1") || isLandingRead ? 0 : BROWSER_TTL_SECONDS}, s-maxage=${edgeTtl}, stale-while-revalidate=${path.includes("/rpc/get_home_data_v1") || isLandingRead ? 0 : STALE_SECONDS}`;
         const make = (state: string) => {
           const out = new Headers({
             "Content-Type": origin.headers.get("content-type") || "application/json",
