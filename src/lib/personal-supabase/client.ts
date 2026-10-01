@@ -36,7 +36,10 @@ async function liveFetch(input: RequestInfo | URL, init?: RequestInit) {
   }
 
   if (typeof window === "undefined" && isPublicAnonRead(rawUrl, LIVE_DATABASE_URL, method, hasUserToken)) {
-    return fetch(input, { ...init, headers, cf: { cacheEverything: true, cacheTtl: 3600 } } as RequestInit);
+    const isLandingRead = new URL(rawUrl).pathname === "/rest/v1/landing_pages";
+    const cacheTtl = isLandingRead ? 10 : 3600;
+    const cacheKey = isLandingRead ? `${rawUrl}${rawUrl.includes("?") ? "&" : "?"}__cache_v=landing-v2` : undefined;
+    return fetch(input, { ...init, headers, cf: { cacheEverything: true, cacheTtl, ...(cacheKey ? { cacheKey } : {}) } } as RequestInit);
   }
 
   return fetch(input, { ...init, headers });
