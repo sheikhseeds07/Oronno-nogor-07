@@ -10,6 +10,9 @@ const PHONE_RE = /^01[3-9][0-9]{8}$/;
 const ItemSchema = z.object({ id: z.string().min(1).max(64), name: z.string().min(1).max(500), price: z.number().min(0).max(10_000_000), quantity: z.number().int().min(1).max(1000) });
 const InputSchema = z.object({ customer_name: z.string().min(1).max(255), customer_phone: z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number. Use 01XXXXXXXXX."), customer_address: z.string().min(1).max(1000), district: z.string().max(100).optional().nullable(), thana: z.string().max(100).optional().nullable(), notes: z.string().max(2000).optional().nullable(), delivery_fee: z.number().min(0).max(10000).default(50), items: z.array(ItemSchema).min(1).max(100), created_by: z.string().uuid().optional().nullable(), fbp: z.string().max(200).optional().nullable(), fbc: z.string().max(500).optional().nullable(), source_url: z.string().max(2000).optional().nullable(), checkout_session_id: z.string().max(200).optional().nullable() });
 type Input = z.infer<typeof InputSchema>;
+const LandingOrderInputSchema = InputSchema.extend({ landing_slug: z.string().min(1).max(200) });
+
+type LandingAddon = { product_id?: string | null; name?: string; price?: number; delivery_fee?: number | null };
 
 const LandingIntentInputSchema = z.object({
   checkout_session_id: z.string().uuid(),
@@ -148,6 +151,66 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
     const userAgent = getRequestHeader("user-agent") ?? null;
     await sendPurchaseEvent({ orderId, value: total, currency: "BDT", phone: customerPhone, name: data.customer_name, city: data.district ?? data.thana ?? null, country: "bd", contents: data.items.map((i) => ({ id: i.id, quantity: i.quantity, price: i.price })), clientIp, userAgent, fbp: data.fbp ?? null, fbc: data.fbc ?? null, eventSourceUrl: data.source_url ?? null } as never);
   } catch (e) { logger.error("[placeOrder] CAPI dispatch failed:", e); }
+
+  return { id: orderId };
+});
+
+export const placeLandingOrder = createServerFn({ method: "POST" }).inputValidator((input) => LandingOrderInputSchema.parse(input)).handler(async ({ data }) => {
+  const customerPhone = data.customer_phone;
+  const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
+  const { data: blocked, error: blockCheckError } = await supabaseAdmin.rpc("is_blocked_visitor", { p_ip: clientIp ?? undefined, p_phone: customerPhone });
+  if (!blockCheckError && blocked === true) throw new Error(`${BLOCKED_ORDER_CODE}: ${BLOCKED_ORDER_MESSAGE}`);
+
+  const { data: page, error: pageError } = await supabaseAdmin
+    .from("landing_pages")
+    .select("product_id,sale_price,regular_price,main_delivery_fee,addons,products(name,price,sale_price)")
+    .eq("slug", data.landing_slug)
+    .eq("is_published", true)
+    .maybeSingle();
+  if (pageError || !page) throw new Error("ল্যান্ডিং পেজের অফারটি পাওয়া যায়নি");
+
+  const product = Array.isArray(page.products) ? page.products[0] : page.products;
+  const mainPrice = Number(page.sale_price ?? product?.sale_price ?? page.regular_price ?? product?.price ?? 0);
+  const offers = [
+    ...(page.product_id && product ? [{ id: page.product_id, name: product.name, price: mainPrice, deliveryFee: Number(page.main_delivery_fee ?? 70) }] : []),
+    ...((Array.isArray(page.addons) ? page.addons : []) as LandingAddon[]).map((addon, index) => ({
+      id: addon.product_id || `addon-${index}`,
+      name: String(addon.name ?? ""),
+      price: Number(addon.price ?? 0),
+      deliveryFee: addon.delivery_fee == null ? Number(page.main_delivery_fee ?? 70) : Number(addon.delivery_fee),
+    })),
+  ];
+  const requested = data.items[0];
+  const offer = data.items.length === 1 && requested
+    ? offers.find((candidate) => candidate.id === requested.id || (!page.product_id && candidate.name === requested.name))
+    : undefined;
+  if (!requested || !offer || offer.price < 0 || offer.deliveryFee < 0) throw new Error("ল্যান্ডিং পেজের প্যাকেজটি সঠিক নয়");
+
+  const items = [{ id: offer.id, name: offer.name, price: offer.price, quantity: requested.quantity }];
+  const { data: orderId, error: orderError } = await supabaseAdmin.rpc("place_public_order", {
+    p_customer_name: data.customer_name.trim(),
+    p_customer_phone: customerPhone,
+    p_customer_address: data.customer_address.trim(),
+    p_delivery_fee: offer.deliveryFee,
+    p_items: items,
+    p_notes: data.notes ?? null,
+    p_client_ip: clientIp,
+  } as never);
+  if (orderError) {
+    const rpcMessage = orderError.message ?? "";
+    if (/blocked/i.test(rpcMessage)) throw new Error(`${BLOCKED_ORDER_CODE}: ${BLOCKED_ORDER_MESSAGE}`);
+    throw new Error(rpcMessage || "Order create failed");
+  }
+  if (!orderId || typeof orderId !== "string") throw new Error("Order create failed");
+
+  const subtotal = offer.price * requested.quantity;
+  const { error: totalError } = await supabaseAdmin.from("orders").update({ subtotal, delivery_fee: offer.deliveryFee, total: subtotal + offer.deliveryFee }).eq("id", orderId);
+  if (totalError) throw new Error("অর্ডারের মোট দাম সংরক্ষণ করা যায়নি");
+
+  try {
+    const userAgent = getRequestHeader("user-agent") ?? null;
+    await sendPurchaseEvent({ orderId, value: subtotal + offer.deliveryFee, currency: "BDT", phone: customerPhone, name: data.customer_name, country: "bd", contents: items.map((item) => ({ id: item.id, quantity: item.quantity, price: item.price })), clientIp, userAgent, fbp: data.fbp ?? null, fbc: data.fbc ?? null, eventSourceUrl: data.source_url ?? null } as never);
+  } catch (e) { logger.error("[placeLandingOrder] CAPI dispatch failed:", e); }
 
   return { id: orderId };
 });
