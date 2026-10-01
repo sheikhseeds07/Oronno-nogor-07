@@ -2119,7 +2119,7 @@ function OrdersTableRows({
 }
 
 /* ───────────────── New Order Panel ───────────────── */
-type Cart = { product_id: string; product_name: string; price: number; quantity: number };
+type Cart = { product_id: string | null; product_name: string; price: number; quantity: number };
 
 function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
   const [name, setName] = useState("");
@@ -2132,6 +2132,10 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
   const [items, setItems] = useState<Cart[]>([]);
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
+  const [customProductOpen, setCustomProductOpen] = useState(false);
+  const [customProductName, setCustomProductName] = useState("");
+  const [customProductPrice, setCustomProductPrice] = useState("");
+  const [customProductQuantity, setCustomProductQuantity] = useState("1");
   const [autoFilledFor, setAutoFilledFor] = useState<string>("");
   const createOrder = useServerFn(createManualOrder);
 
@@ -2206,6 +2210,20 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
     });
   };
 
+  const addCustomProduct = () => {
+    const productName = customProductName.trim();
+    const price = Number(customProductPrice);
+    const quantity = Number(customProductQuantity);
+    if (!productName) return toast.error("প্রডাক্টের নাম দিন");
+    if (!Number.isFinite(price) || price < 0) return toast.error("সঠিক প্রডাক্ট মূল্য দিন");
+    if (!Number.isInteger(quantity) || quantity < 1) return toast.error("সঠিক পরিমাণ দিন");
+    setItems((prev) => [...prev, { product_id: null, product_name: productName, price, quantity }]);
+    setCustomProductName("");
+    setCustomProductPrice("");
+    setCustomProductQuantity("1");
+    setCustomProductOpen(false);
+  };
+
   const submit = async () => {
     if (!name || !phone) return toast.error("নাম ও ফোন দিন");
     if (!items.length) return toast.error("অন্তত একটি প্রোডাক্ট যোগ করুন");
@@ -2274,7 +2292,16 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
         </div>
 
         <div className="bg-white border rounded-xl p-4 space-y-3">
-          <h3 className="font-bold">প্রোডাক্ট খুঁজুন</h3>
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="font-bold">প্রোডাক্ট খুঁজুন</h3>
+            <button
+              type="button"
+              onClick={() => setCustomProductOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-brand/30 bg-brand/5 px-3 py-1.5 text-xs font-bold text-brand-dark hover:bg-brand/10"
+            >
+              <Plus className="h-3.5 w-3.5" /> Add Custom Product
+            </button>
+          </div>
           <input className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="প্রোডাক্ট নাম দিন..." value={search} onChange={(e) => setSearch(e.target.value)} />
           <div className="max-h-60 overflow-y-auto divide-y">
             {products?.map((p) => (
@@ -2320,6 +2347,34 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
         </div>
       </div>
       </div>
+
+      {customProductOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4" onClick={() => setCustomProductOpen(false)}>
+          <div className="w-full max-w-sm rounded-xl bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-extrabold">Add Custom Product</h3>
+              <button type="button" onClick={() => setCustomProductOpen(false)} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100" aria-label="Close">×</button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-[11px] font-semibold">Product Name</label>
+                <input autoFocus value={customProductName} onChange={(e) => setCustomProductName(e.target.value)} placeholder="প্রডাক্টের নাম" className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="mb-1 block text-[11px] font-semibold">Price</label>
+                  <input type="number" min={0} value={customProductPrice} onChange={(e) => setCustomProductPrice(e.target.value)} placeholder="0" className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] font-semibold">Quantity</label>
+                  <input type="number" min={1} value={customProductQuantity} onChange={(e) => setCustomProductQuantity(e.target.value)} placeholder="1" className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" />
+                </div>
+              </div>
+              <button type="button" onClick={addCustomProduct} className="w-full rounded-lg bg-brand px-3 py-2.5 text-sm font-bold text-white hover:opacity-90">Add Product</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
