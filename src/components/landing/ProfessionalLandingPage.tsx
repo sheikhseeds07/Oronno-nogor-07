@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ShieldCheck, Truck, Star, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/personal-supabase/client";
-import { placeOrder } from "@/lib/place-order.functions";
+import { placeLandingOrder } from "@/lib/place-order.functions";
 import { useCheckoutAutofill } from "@/lib/useCheckoutAutofill";
 import { taka } from "@/lib/format";
 import { toast } from "sonner";
@@ -30,7 +30,7 @@ const icons = ["🌱", "✅", "🪴", "🚚", "🛡️", "⭐"];
 
 export function ProfessionalLandingPage({ slug, variant }: Props) {
   const navigate = useNavigate();
-  const runPlaceOrder = useServerFn(placeOrder);
+  const runPlaceOrder = useServerFn(placeLandingOrder);
   const [selected, setSelected] = useState(0);
   const qty = 1;
   const [submitting, setSubmitting] = useState(false);
@@ -75,7 +75,7 @@ export function ProfessionalLandingPage({ slug, variant }: Props) {
     try {
       const items = [{ id: selectedPackage.product_id || `addon-${selected}`, name: selectedPackage.name, price: selectedPackage.price, quantity: qty }];
       trackInitiateCheckout(items, total);
-      const order = await runPlaceOrder({ data: { customer_name: form.name, customer_phone: form.phone.replace(/[\s-]/g, ""), customer_address: form.address, delivery_fee: shipping, items, notes: form.note || null, ...getFbContext() } });
+      const order = await runPlaceOrder({ data: { landing_slug: slug, customer_name: form.name, customer_phone: form.phone.replace(/[\s-]/g, ""), customer_address: form.address, delivery_fee: shipping, items, notes: form.note || null, ...getFbContext() } });
       trackPurchase(items, total, order.id);
       toast.success("অর্ডার সফল হয়েছে!");
       navigate({ to: "/order/$id", params: { id: order.id } });
