@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getCloudflareR2Bucket } from "@/lib/cloudflare-r2.server";
 import { legacyMediaKey, legacyMediaBucket, safeMediaKey, PUBLIC_MEDIA_BUCKETS } from "@/lib/r2-media";
+import { readR2Image, R2_IMAGE_PLACEHOLDER } from "@/lib/r2";
 
 type R2ObjectLike = {
   body: ReadableStream<Uint8Array>;
@@ -17,6 +18,10 @@ function response(body: BodyInit | null, status: number, policy: string, initial
   for (const name of ["Cache-Control", "CDN-Cache-Control", "Cloudflare-CDN-Cache-Control"]) headers.set(name, policy);
   headers.delete("Set-Cookie");
   return new Response(body, { status, headers });
+}
+
+function placeholderResponse() {
+  return response(null, 302, "public, max-age=60, s-maxage=60", new Headers({ Location: R2_IMAGE_PLACEHOLDER }));
 }
 
 async function readR2(bucket: R2BucketLike, key: string): Promise<Snapshot | null> {
@@ -53,16 +58,11 @@ async function serveMedia(request: Request): Promise<Response> {
   try { delivered = await cache?.match(cacheKey); } catch { /* cache failures do not fail media */ }
   if (!delivered) {
     const bucket = getCloudflareR2Bucket<R2BucketLike>();
-    if (!bucket) return response("R2 binding unavailable", 503, "private, no-store");
-    try {
-      const object = await readR2(bucket, key);
-      delivered = object
-        ? response(object.body, 200, "public, max-age=31536000, s-maxage=31536000, immutable", object.headers)
-        : response("R2 object not found", 404, "public, max-age=60, s-maxage=60");
-    } catch {
-      // A single failed R2 read returns once. No origin fallback, retries or logs.
-      return response("R2 temporarily unavailable", 503, "private, no-store");
-    }
+    if (!bucket) return placeholderResponse();
+    const object = await readR2Image(() => readR2(bucket, key));
+    delivered = object === R2_IMAGE_PLACEHOLDER
+      ? placeholderResponse()
+      : response(object.body, 200, "public, max-age=31536000, s-maxage=31536000, immutable", object.headers);
     delivered.headers.set("X-Oronno-Media-Cache", "MISS");
     try { await cache?.put(cacheKey, delivered.clone()); } catch { /* return the R2 result */ }
   } else {

@@ -2,9 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 
 function retired() {
   return Response.json({
-    error: "legacy_storage_migration_retired",
-    message: "Media is served from Cloudflare R2. Supabase Storage backfill is permanently disabled.",
-  }, { status: 410, headers: { "Cache-Control": "private, no-store" } });
+    ok: true,
+    status: "complete",
+    performed: false,
+    message: "Media is served from Cloudflare R2. No legacy backfill is needed.",
+  }, { status: 200, headers: { "Cache-Control": "private, no-store" } });
 }
 
 export const Route = createFileRoute("/api/internal/r2-backfill")({

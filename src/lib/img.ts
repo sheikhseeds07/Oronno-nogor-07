@@ -1,7 +1,7 @@
 import { legacyMediaKey, r2MediaUrl } from "./r2-media";
+import { R2_IMAGE_PLACEHOLDER } from "./r2";
 
-// An embedded, static image cannot start another network request on failure.
-export const IMAGE_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='240' viewBox='0 0 320 240'%3E%3Crect width='320' height='240' fill='%23f1f5f9'/%3E%3Cpath d='M120 148l25-30 19 21 17-15 25 24z' fill='%2394a3b8'/%3E%3Ccircle cx='184' cy='94' r='10' fill='%2394a3b8'/%3E%3C/svg%3E";
+export const IMAGE_PLACEHOLDER = R2_IMAGE_PLACEHOLDER;
 const MEDIA_ENDPOINT = import.meta.env.VITE_R2_PUBLIC_URL;
 
 function resolveImage(value: string, depth = 0): string {
@@ -51,6 +51,7 @@ export function safeImageSrcSet(value: string | undefined): string | undefined {
 // Compatibility for callers outside SafeImage: one failure, no retry/timer.
 export function imgFallback(e: { currentTarget: HTMLImageElement }, _original?: string | null) {
   const el = e.currentTarget;
+  el.onerror = null;
   if (el.dataset.imgFailed === "1") return;
   el.dataset.imgFailed = "1";
   el.removeAttribute("srcset");

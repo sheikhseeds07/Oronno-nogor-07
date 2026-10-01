@@ -10,8 +10,13 @@ export function SafeImage({ src, srcSet, onError: _legacyErrorHandler, ...props 
       {...props}
       src={failed ? IMAGE_PLACEHOLDER : source}
       srcSet={failed ? undefined : safeImageSrcSet(srcSet)}
-      onError={() => {
-        if (!failed && source !== IMAGE_PLACEHOLDER) setFailedSource(source);
+      onError={(event) => {
+        const image = event.currentTarget;
+        image.onerror = null;
+        if (failed || source === IMAGE_PLACEHOLDER || image.getAttribute("src") === IMAGE_PLACEHOLDER) return;
+        image.removeAttribute("srcset");
+        image.src = IMAGE_PLACEHOLDER;
+        setFailedSource(source);
       }}
     />
   );

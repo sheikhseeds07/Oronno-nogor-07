@@ -73,10 +73,11 @@ check('image error replaces once, with no retry or timer', () => {
   const el = { dataset: {}, removeAttribute: () => {}, set src(value) { assignments++; assert.equal(value, IMAGE_PLACEHOLDER); } };
   for (let i = 0; i < 20; i++) imgFallback({ currentTarget: el }, old);
   assert.equal(assignments, 1);
+  assert.equal(el.onerror, null);
 });
-check('storage fetch guard blocks only Storage, preserving DB/Auth/Functions', () => {
-  assert.equal(retiredStorageResponse(old).status, 410);
-  assert.equal(retiredStorageResponse(new Request(old)).status, 410);
+check('compatibility fetch hook no longer synthesizes 410 responses', () => {
+  assert.equal(retiredStorageResponse(old), null);
+  assert.equal(retiredStorageResponse(new Request(old)), null);
   for (const pathname of ['/rest/v1/products', '/auth/v1/token', '/functions/v1/courier-history-bridge']) assert.equal(retiredStorageResponse(`https://frtzlibogmethppqmhtr.supabase.co${pathname}`), null);
 });
 
@@ -91,19 +92,21 @@ function memoryCache() {
   const map = new Map();
   return { match: async key => map.get(key.url)?.clone(), put: async (key, response) => { map.set(key.url, response.clone()); } };
 }
-await checkAsync('R2 miss returns cached 404 and never contacts Supabase', async () => {
+await checkAsync('R2 miss returns cached placeholder and never contacts Supabase', async () => {
   const h = mediaHarness({ get: () => null, cache: memoryCache() });
-  assert.equal((await h.serve(req())).status, 404);
+  const first = await h.serve(req());
+  assert.equal(first.status, 302);
+  assert.equal(first.headers.get('Location'), '/placeholder.png');
   const repeated = await h.serve(req());
-  assert.equal(repeated.status, 404);
+  assert.equal(repeated.status, 302);
   assert.equal(repeated.headers.get('X-Oronno-Media-Cache'), 'HIT');
   assert.equal(h.pulls(), 1);
 });
 await checkAsync('R2 binding/read failure returns once without logging', async () => {
   const noBinding = mediaHarness({ get: () => null, binding: false });
-  assert.equal((await noBinding.serve(req())).status, 503); assert.equal(noBinding.pulls(), 0);
+  assert.equal((await noBinding.serve(req())).headers.get('Location'), '/placeholder.png'); assert.equal(noBinding.pulls(), 0);
   const failure = mediaHarness({ get: () => { throw new Error('R2 unavailable'); } });
-  assert.equal((await failure.serve(req())).status, 503); assert.equal(failure.pulls(), 1);
+  assert.equal((await failure.serve(req())).headers.get('Location'), '/placeholder.png'); assert.equal(failure.pulls(), 1);
 });
 await checkAsync('R2 success caches bytes and honors ETag', async () => {
   const h = mediaHarness({ cache: memoryCache(), get: key => {
@@ -127,11 +130,11 @@ await checkAsync('concurrent requests share one R2 read', async () => {
 await checkAsync('invalid and legacy requests validate before one R2 read', async () => {
   const h = mediaHarness({ get: () => null });
   assert.equal((await h.serve(req('product-images/../secret'))).status, 400); assert.equal(h.pulls(), 0);
-  assert.equal((await h.serve(new Request(`https://sheikhseeds.com/media?src=${encodeURIComponent(old)}`))).status, 404); assert.equal(h.pulls(), 1);
+  assert.equal((await h.serve(new Request(`https://sheikhseeds.com/media?src=${encodeURIComponent(old)}`))).status, 302); assert.equal(h.pulls(), 1);
 });
 await checkAsync('retired backfill does no SDK or network work', async () => {
   const retired = load('src/routes/api/internal/r2-backfill.ts').Route.server.handlers;
-  assert.equal(retired.GET().status, 410); assert.equal(retired.POST().status, 410);
+  assert.equal(retired.GET().status, 200); assert.equal(retired.POST().status, 200);
 });
 
 function uploadHarness(put, head = async () => null) {
@@ -173,8 +176,34 @@ await checkAsync('all five retired Edge Functions respond without SDK/network ac
     let handler;
     const edge = loader({ globals: { Deno: { serve: fn => { handler = fn; } } } });
     edge.load(`supabase/functions/${slug}/index.ts`);
-    assert.equal((await handler(new Request('https://functions.test', { method: 'POST' }))).status, 410);
+    const response = await handler(new Request('https://functions.test', { method: 'POST' }));
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).performed, false);
   }
+});
+
+check('static PNG placeholder exists and logger is silent in every environment', () => {
+  assert.equal(IMAGE_PLACEHOLDER, '/placeholder.png');
+  assert.equal(fs.readFileSync('public/placeholder.png').subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+  const { logger } = load('src/lib/logger.ts');
+  for (const method of Object.values(logger)) assert.equal(method('failed image'), undefined);
+});
+check('SafeImage immediately stops repeated errors and parent rerender retries', () => {
+  let failedSource = null, assignments = 0, nativeSource = canonical;
+  const l = loader({ imports: {
+    react: { useState: () => [failedSource, next => { failedSource = next; }] },
+    'react/jsx-runtime': { jsx: (_tag, props) => props },
+  } });
+  const { SafeImage } = l.load('src/components/SafeImage.tsx');
+  const image = {
+    onerror: () => {}, removeAttribute() {}, getAttribute: () => nativeSource,
+    set src(value) { nativeSource = value; assignments++; },
+  };
+  const first = SafeImage({ src: old });
+  for (let i = 0; i < 20; i++) first.onError({ currentTarget: image });
+  assert.equal(assignments, 1); assert.equal(image.onerror, null);
+  assert.equal(SafeImage({ src: old }).src, '/placeholder.png');
+  assert.equal(SafeImage({ src: '/media?asset=product-images%2Fnew.webp' }).src, '/media?asset=product-images%2Fnew.webp');
 });
 
 function* allFiles(dir) { for (const entry of fs.readdirSync(dir, { withFileTypes: true })) { const name = path.join(dir, entry.name); if (entry.isDirectory()) yield* allFiles(name); else yield name; } }
