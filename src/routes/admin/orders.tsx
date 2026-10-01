@@ -1682,9 +1682,21 @@ async function loadProductImageCache() {
     const expiresAt = Date.now() + PRODUCT_IMAGE_CACHE_TTL;
     productImageCache = { expiresAt, idMap, nameMap, comboImageMap };
 
-    // Resolve known landing/custom names once so every page load only maps rows.
+    // Prefer permanent R2 asset links over legacy signed links. The same add-on
+    // name can exist on several landing pages; keeping the first match could
+    // leave old orders pointing at an expired/deleted image even after an admin
+    // uploaded a replacement on the current landing page.
+    const imagePriority = (image: string) => {
+      if (/\/media\?asset=/i.test(image)) return 3;
+      if (/\/media\?src=/i.test(image)) return 1;
+      return image ? 2 : 0;
+    };
     for (const candidate of landingCandidates) {
-      if (candidate.name && candidate.image && !nameMap[candidate.name]) nameMap[candidate.name] = candidate.image;
+      if (!candidate.name || !candidate.image) continue;
+      const current = nameMap[candidate.name] ?? "";
+      if (!current || imagePriority(candidate.image) >= imagePriority(current)) {
+        nameMap[candidate.name] = candidate.image;
+      }
     }
 
     return productImageCache;
