@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Landing-page content caches must expire within 10 seconds so admin image, price, and copy edits become visible promptly without disabling caching elsewhere.
