@@ -11,3 +11,4 @@
 
 - Landing-page content caches must expire within 10 seconds so admin image, price, and copy edits become visible promptly without disabling caching elsewhere.
 - Direct landing-page orders must use the dedicated server function that validates package price and delivery fee against the published landing configuration, so landing-specific free delivery survives the general checkout fee rules without trusting browser values.
+- Customer block/unblock functions authorize administrators or employees with orders/customers permission inside the database function, so order staff can act without opening access to unrelated users.

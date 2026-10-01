@@ -1527,7 +1527,7 @@ function OrderItemsThumbs({ items }: { items: OrderItemRow[] }) {
   const Thumb = ({ it, size = "w-12 h-12" }: { it: OrderItemRow; size?: string }) => (
     <div className="relative shrink-0" title={`${it.product_name} × ${it.quantity}`}>
       {it.image ? (
-        <SafeImage src={it.image} alt="" loading="lazy" className={`${size} object-cover rounded border`} />
+        <SafeImage src={it.image} alt="" loading="eager" className={`${size} object-cover rounded border`} />
       ) : (
         <div className={`${size} rounded border bg-muted`} />
       )}
@@ -2037,7 +2037,6 @@ function OrdersTableRows({
               <tr
                 key={o.id}
                 className="border-t hover:bg-muted/50 align-top"
-                style={{ contentVisibility: "auto", containIntrinsicSize: "0 132px" }}
               >
                 {showCheckbox && (
                   <td className="p-3">
