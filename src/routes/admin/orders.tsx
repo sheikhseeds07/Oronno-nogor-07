@@ -513,6 +513,38 @@ function IncompleteOrdersPanel() {
 /* ───────────────── Orders Table ───────────────── */
 type SendProgress = { id: string; invoice: string; tracking: string; status: "pending" | "ok" | "fail"; message?: string };
 
+function patchCachedOrderStatus(qc: ReturnType<typeof useQueryClient>, id: string, status: OrderStatus) {
+  for (const [queryKey, cached] of qc.getQueriesData<OrdersPage | undefined>({ queryKey: ["admin-orders"] })) {
+    const old = cached;
+    if (!old) continue;
+    const modeKey = String(queryKey?.[1] ?? "");
+    const filterKey = String(queryKey?.[2] ?? "");
+    const belongs = modeKey === "web"
+      ? (filterKey === "all" ? ["web_pending", "hold", "cancelled"].includes(status) : filterKey === status)
+      : modeKey === "list"
+        ? (filterKey === "all"
+            ? ["pending", "rts", "shipped", "delivered", "pending_return", "returned", "partial", "cancelled"].includes(status)
+            : filterKey === status)
+        : true;
+
+    if (!old.rows.some((order) => order.id === id)) continue;
+    if (!belongs) {
+      qc.setQueryData<OrdersPage>(queryKey, {
+        ...old,
+        rows: old.rows.filter((order) => order.id !== id),
+        total: Math.max(0, old.total - 1),
+      });
+      continue;
+    }
+    qc.setQueryData<OrdersPage>(queryKey, {
+      ...old,
+      rows: old.rows.map((order) => order.id === id
+        ? { ...order, status, updated_at: new Date().toISOString() }
+        : order),
+    });
+  }
+}
+
 function OrdersTable({
   statuses, mode, onOpen,
 }: { statuses: OrderStatus[]; mode: "web" | "list"; onOpen: (id: string) => void }) {
@@ -799,31 +831,7 @@ function OrdersTable({
 
     // Optimistically patch cached pages. Filtered queues remove the order;
     // an "all" queue keeps it and updates the status in-place.
-    qc.setQueriesData<OrdersPage | undefined>({ queryKey: ["admin-orders"] }, (old, queryKey) => {
-      if (!old) return old;
-      const modeKey = String(queryKey?.[1] ?? "");
-      const filterKey = String(queryKey?.[2] ?? "");
-      const belongs = modeKey === "web"
-        ? (filterKey === "all" ? ["web_pending", "hold", "cancelled"].includes(status) : filterKey === status)
-        : modeKey === "list"
-          ? (filterKey === "all"
-              ? ["pending", "rts", "shipped", "delivered", "pending_return", "returned", "partial", "cancelled"].includes(status)
-              : filterKey === status)
-          : true;
-
-      if (!old.rows.some((order) => order.id === id)) return old;
-
-      if (!belongs) {
-        return { ...old, rows: old.rows.filter((order) => order.id !== id), total: Math.max(0, old.total - 1) };
-      }
-
-      return {
-        ...old,
-        rows: old.rows.map((order) => order.id === id
-          ? { ...order, status, updated_at: new Date().toISOString() }
-          : order),
-      };
-    });
+    patchCachedOrderStatus(qc, id, status);
 
     const { error } = await supabase.from("orders").update({ status }).eq("id", id);
     if (error) {
@@ -858,6 +866,44 @@ function OrdersTable({
   const totalRows = isIncomplete ? rows.length : (orderResult?.total ?? 0);
   const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
   const displayRows = isIncomplete ? rows.slice((page - 1) * pageSize, page * pageSize) : rows;
+  const scrollStateKey = `admin-orders-scroll:${mode}:${filter}:${page}:${pageSize}:${debouncedSearch}`;
+  const scrollReady = isIncomplete ? incompleteRows !== undefined : orderResult !== undefined;
+  useEffect(() => {
+    if (!scrollReady || typeof window === "undefined") return;
+    let restored = false;
+    let frame = 0;
+    let innerFrame = 0;
+    let saveTimer: number | null = null;
+    const stored = window.sessionStorage.getItem(scrollStateKey);
+    const savedY = Math.max(0, Number(stored) || 0);
+    const save = () => {
+      if (!restored) return;
+      window.sessionStorage.setItem(scrollStateKey, String(Math.max(0, Math.round(window.scrollY))));
+    };
+    const scheduleSave = () => {
+      if (!restored || saveTimer !== null) return;
+      saveTimer = window.setTimeout(() => {
+        saveTimer = null;
+        save();
+      }, 150);
+    };
+    frame = window.requestAnimationFrame(() => {
+      innerFrame = window.requestAnimationFrame(() => {
+        window.scrollTo({ top: savedY, left: 0, behavior: "auto" });
+        restored = true;
+        window.addEventListener("scroll", scheduleSave, { passive: true });
+      });
+    });
+    window.addEventListener("pagehide", save);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.cancelAnimationFrame(innerFrame);
+      window.removeEventListener("scroll", scheduleSave);
+      window.removeEventListener("pagehide", save);
+      if (saveTimer !== null) window.clearTimeout(saveTimer);
+      save();
+    };
+  }, [scrollReady, scrollStateKey]);
   useEffect(() => { setPage(1); }, [filter, mode, search, pageSize]);
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
   const allChecked = displayRows.length > 0 && displayRows.every((o) => selectedIds.has(o.id));
@@ -2488,6 +2534,10 @@ function OurRecordCard({ history }: { history: HistoryOrder[]; total?: number; s
     setBusyId(null);
     if (error) { toast.error(error.message); return; }
     toast.success("অর্ডারটি ক্যানসেল হয়েছে");
+    patchCachedOrderStatus(qc, id, "cancelled");
+    qc.setQueriesData<HistoryOrder[]>({ queryKey: ["customer-history"] }, (rows) =>
+      (rows ?? []).map((order) => order.id === id ? { ...order, status: "cancelled" } : order),
+    );
     qc.invalidateQueries({ queryKey: ["customer-history"] });
     qc.invalidateQueries({ queryKey: ["new-order-history"] });
     qc.invalidateQueries({ queryKey: ["admin-orders"] });
@@ -2753,6 +2803,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
       qc.setQueryData<DetailOrder | null>(["order-detail", detail.id], (old) =>
         old ? { ...old, status: nextStatus, updated_at: updatedAt } : old,
       );
+      patchCachedOrderStatus(qc, detail.id, nextStatus);
       scheduleOrderStatusCountRefresh(qc);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "স্ট্যাটাস আপডেট ব্যর্থ");
