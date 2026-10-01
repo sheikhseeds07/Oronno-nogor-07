@@ -32,7 +32,7 @@ const LANDING_CACHE_KEYS = ["landing", "landing-clean", "landing-all-product", "
 
 // Short server-side cache for anonymous landing-page SSR. A 10s TTL cuts repeated
 // identical reads during ad bursts while keeping admin edits visible quickly.
-const LANDING_SERVER_CACHE_TTL_MS = 5 * 60_000;
+const LANDING_SERVER_CACHE_TTL_MS = 10_000;
 type LandingServerCacheEntry = { expiresAt: number; page: unknown };
 const landingServerCache = new Map<string, LandingServerCacheEntry>();
 
@@ -192,7 +192,7 @@ function LandingPage() {
   const compact = COMPACT_SLUGS.has(behaviorSlug);
   // The route loader already seeded this key with server-fresh data, so no extra
   // browser round-trip is needed before the template renders.
-  const { data, isLoading } = useQuery({ enabled: !isLegacySlug && !isSeedCombo, staleTime: 5 * 60_000, gcTime:5*60_000, queryKey:["landing-template",slug], queryFn:async() => (await supabase.from("landing_pages").select("planting_steps").eq("slug",slug).maybeSingle()).data ?? null });
+  const { data, isLoading } = useQuery({ enabled: !isLegacySlug && !isSeedCombo, staleTime: 10_000, gcTime:5*60_000, refetchOnWindowFocus: true, queryKey:["landing-template",slug], queryFn:async() => (await supabase.from("landing_pages").select("planting_steps").eq("slug",slug).maybeSingle()).data ?? null });
   const popupBehaviorEnabled = isSeedCombo || behaviorSlug === "seeds-combo-24";
   const resolvedTemplate = mergeContent(data?.planting_steps).template as string;
   const karalaStyle = isKaralaStyle(slug) || resolvedTemplate === "all-product";
