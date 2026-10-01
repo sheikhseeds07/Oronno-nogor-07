@@ -6,7 +6,7 @@ import { attachSupabaseAuth } from "@/lib/personal-supabase/auth-attacher";
 
 const NO_STORE = "private, no-store";
 const PUBLIC_CACHE = "public, max-age=60, s-maxage=300, stale-while-revalidate=600";
-const LANDING_CACHE = "public, max-age=15, s-maxage=60, stale-while-revalidate=300, stale-if-error=86400";
+const LANDING_CACHE = "public, max-age=0, must-revalidate, s-maxage=10, stale-while-revalidate=0, stale-if-error=300";
 
 const errorMiddleware = createMiddleware().server(async ({ next }) => {
   try {
@@ -59,7 +59,7 @@ const dynamicCacheMiddleware = createMiddleware().server(async ({ request, next 
       pathname.startsWith("/category/"));
 
   // Landing pages get a short edge TTL: ad traffic is served from Cloudflare,
-  // while admin edits still propagate within about a minute.
+  // while admin edits propagate in about 10 seconds.
   const isLandingPage = method === "GET" && pathname.startsWith("/landing/");
 
   if (isLandingPage && !hasAuth && !hasSessionCookie) {
