@@ -1,22 +1,31 @@
 import { useState, type ComponentPropsWithRef } from "react";
 import { IMAGE_PLACEHOLDER, safeImageSrcSet, toImg } from "@/lib/img";
 
-export function SafeImage({ src, srcSet, onError: _legacyErrorHandler, ...props }: ComponentPropsWithRef<"img">) {
+type SafeImageProps = ComponentPropsWithRef<"img"> & { fallbackSrc?: string | null };
+
+export function SafeImage({ src, srcSet, fallbackSrc, onError: _legacyErrorHandler, ...props }: SafeImageProps) {
   const source = toImg(src);
-  const [failedSource, setFailedSource] = useState<string | null>(null);
-  const failed = failedSource === source;
+  const fallback = toImg(fallbackSrc);
+  const sourceKey = `${source}|${fallback}`;
+  const [fallbackKey, setFallbackKey] = useState<string | null>(null);
+  const [failedKey, setFailedKey] = useState<string | null>(null);
+  const canFallback = fallback !== IMAGE_PLACEHOLDER && fallback !== source;
+  const usingFallback = canFallback && fallbackKey === sourceKey;
+  const failed = failedKey === sourceKey;
   return (
     <img
       {...props}
-      src={failed ? IMAGE_PLACEHOLDER : source}
-      srcSet={failed ? undefined : safeImageSrcSet(srcSet)}
+      src={failed ? IMAGE_PLACEHOLDER : usingFallback ? fallback : source}
+      srcSet={failed || usingFallback ? undefined : safeImageSrcSet(srcSet)}
       onError={(event) => {
         const image = event.currentTarget;
-        if (failed || source === IMAGE_PLACEHOLDER || image.getAttribute("src") === IMAGE_PLACEHOLDER) return;
+        if (failed || image.getAttribute("src") === IMAGE_PLACEHOLDER) return;
         image.removeAttribute("srcset");
-        image.onerror = null;
-        image.src = IMAGE_PLACEHOLDER;
-        setFailedSource(source);
+        if (!usingFallback && canFallback) {
+          setFallbackKey(sourceKey);
+          return;
+        }
+        setFailedKey(sourceKey);
       }}
     />
   );
