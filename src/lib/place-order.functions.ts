@@ -124,6 +124,7 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   // landing configuration so a generic checkout fallback (e.g. ৳50) can never
   // overwrite an explicitly configured free-delivery offer.
   let effectiveDeliveryFee = data.delivery_fee;
+  let landingOwnsDeliveryFee = false;
   try {
     const source = data.source_url ? new URL(data.source_url) : null;
     const match = source?.pathname.match(/^\/landing\/([^/]+)\/?$/);
@@ -144,6 +145,7 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
         effectiveDeliveryFee = addon
           ? Number(addon.delivery_fee ?? landing.main_delivery_fee ?? landing.delivery_inside ?? 70)
           : Number(landing.main_delivery_fee ?? landing.delivery_inside ?? 70);
+        landingOwnsDeliveryFee = Number.isFinite(effectiveDeliveryFee) && effectiveDeliveryFee >= 0;
       }
     }
   } catch {
@@ -175,6 +177,15 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
     throw new Error(rpcMessage || "Order create failed");
   }
   if (!orderId || typeof orderId !== "string") throw new Error("Order create failed");
+
+  // place_public_order recomputes delivery from the site-wide rules (e.g. ৳50
+  // for ৳300+). Landing pages own their delivery charge, so restore it here.
+  if (landingOwnsDeliveryFee) {
+    const { data: saved } = await supabaseAdmin.from("orders").select("subtotal,delivery_fee").eq("id", orderId).maybeSingle();
+    if (saved && Number(saved.delivery_fee) !== effectiveDeliveryFee) {
+      await supabaseAdmin.from("orders").update({ delivery_fee: effectiveDeliveryFee, total: Number(saved.subtotal ?? 0) + effectiveDeliveryFee }).eq("id", orderId);
+    }
+  }
 
   const total = data.items.reduce((sum, item) => sum + item.price * item.quantity, 0) + effectiveDeliveryFee;
   try {
