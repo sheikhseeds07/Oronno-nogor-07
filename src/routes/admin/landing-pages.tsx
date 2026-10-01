@@ -230,7 +230,14 @@ function LandingPagesAdmin() {
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
         {data?.map((p) => (
           <div key={p.id} className="bg-card border rounded-xl overflow-hidden">
-            {p.hero_image && <SafeImage src={p.hero_image} className="w-full h-32 object-cover" alt="" />}
+            {(p.hero_image || products?.find((product) => product.id === p.product_id)?.images?.[0]) && (
+              <SafeImage
+                src={p.hero_image || products?.find((product) => product.id === p.product_id)?.images?.[0]}
+                fallbackSrc={products?.find((product) => product.id === p.product_id)?.images?.[0]}
+                className="w-full h-32 object-cover"
+                alt=""
+              />
+            )}
             <div className="p-4">
               <div className="font-bold">{p.title}</div>
               <div className="text-xs text-muted-foreground">/landing/{p.slug}</div>
