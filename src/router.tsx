@@ -74,7 +74,8 @@ export const getRouter = () => {
   const router = createRouter({
     routeTree,
     context: { queryClient },
-    scrollRestoration: true,
+    // Orders restore their scroll only after cached rows are rendered.
+    scrollRestoration: false,
     defaultPreload: "intent",
     defaultPreloadStaleTime: 60_000,
     defaultPreloadGcTime: 5 * 60_000,
