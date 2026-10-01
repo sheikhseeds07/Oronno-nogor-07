@@ -120,6 +120,36 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   const customerPhone = data.customer_phone;
   const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
 
+  // Landing pages own their delivery charge. Resolve it server-side from the
+  // landing configuration so a generic checkout fallback (e.g. ৳50) can never
+  // overwrite an explicitly configured free-delivery offer.
+  let effectiveDeliveryFee = data.delivery_fee;
+  try {
+    const source = data.source_url ? new URL(data.source_url) : null;
+    const match = source?.pathname.match(/^\/landing\/([^/]+)\/?$/);
+    if (match) {
+      const slug = decodeURIComponent(match[1]);
+      const { data: landing } = await supabaseAdmin
+        .from("landing_pages")
+        .select("main_delivery_fee,delivery_inside,addons")
+        .eq("slug", slug)
+        .eq("is_published", true)
+        .maybeSingle();
+      if (landing) {
+        const addons = Array.isArray(landing.addons) ? landing.addons as LandingAddon[] : [];
+        const requested = data.items[0];
+        const addon = requested
+          ? addons.find((item) => item.product_id === requested.id || item.name === requested.name)
+          : undefined;
+        effectiveDeliveryFee = addon
+          ? Number(addon.delivery_fee ?? landing.main_delivery_fee ?? landing.delivery_inside ?? 70)
+          : Number(landing.main_delivery_fee ?? landing.delivery_inside ?? 70);
+      }
+    }
+  } catch {
+    // Keep the submitted fee if the landing configuration cannot be resolved.
+  }
+
   // Checkout runs through the server, so use the server/admin client for both
   // RPCs. This avoids the browser client's RLS/session state from turning a
   // valid checkout submission into a failed server action/navigation.
@@ -133,7 +163,7 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
     p_customer_name: data.customer_name.trim(),
     p_customer_phone: customerPhone,
     p_customer_address: data.customer_address.trim(),
-    p_delivery_fee: data.delivery_fee,
+    p_delivery_fee: effectiveDeliveryFee,
     p_items: data.items,
     p_notes: data.notes ?? null,
     p_client_ip: clientIp,
@@ -146,7 +176,7 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   }
   if (!orderId || typeof orderId !== "string") throw new Error("Order create failed");
 
-  const total = data.items.reduce((sum, item) => sum + item.price * item.quantity, 0) + data.delivery_fee;
+  const total = data.items.reduce((sum, item) => sum + item.price * item.quantity, 0) + effectiveDeliveryFee;
   try {
     const userAgent = getRequestHeader("user-agent") ?? null;
     await sendPurchaseEvent({ orderId, value: total, currency: "BDT", phone: customerPhone, name: data.customer_name, city: data.district ?? data.thana ?? null, country: "bd", contents: data.items.map((i) => ({ id: i.id, quantity: i.quantity, price: i.price })), clientIp, userAgent, fbp: data.fbp ?? null, fbc: data.fbc ?? null, eventSourceUrl: data.source_url ?? null } as never);
