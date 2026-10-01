@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { supabase } from "@/lib/personal-supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
@@ -6,15 +6,12 @@ import { ShoppingBag, X } from "lucide-react";
 
 export function NewOrderNotifier() {
   const navigate = useNavigate();
-  const startedAt = useRef<number>(Date.now());
 
   useEffect(() => {
     if ("Notification" in window && Notification.permission === "default") Notification.requestPermission().catch(() => {});
 
-    // Lightweight polling (no realtime): one tiny query every 30s, only while the tab is visible.
-    let lastSeen = new Date(startedAt.current - 5000).toISOString();
+    // Realtime: instant popup on every new order INSERT (no polling cost).
     const seen = new Set<string>();
-    let stopped = false;
     const show = async (row: any) => {
         
 
@@ -77,22 +74,16 @@ export function NewOrderNotifier() {
           } catch {}
         }
       };
-    const poll = async () => {
-      if (stopped || document.visibilityState !== "visible") return;
-      try {
-        const { data } = await supabase.from("orders").select("id,created_at,customer_name,customer_phone,total").gt("created_at", lastSeen).order("created_at", { ascending: true }).limit(10);
-        for (const row of data ?? []) {
-          if (row.created_at > lastSeen) lastSeen = row.created_at;
-          if (seen.has(row.id)) continue;
-          seen.add(row.id);
-          show(row);
-        }
-      } catch {}
-    };
-    const timer = window.setInterval(poll, 30000);
-    const onVis = () => { if (document.visibilityState === "visible") poll(); };
-    document.addEventListener("visibilitychange", onVis);
-    return () => { stopped = true; window.clearInterval(timer); document.removeEventListener("visibilitychange", onVis); };
+    const channel = supabase
+      .channel("new-order-notifier")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, (payload: any) => {
+        const row = payload?.new;
+        if (!row?.id || seen.has(row.id)) return;
+        seen.add(row.id);
+        show(row);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [navigate]);
 
   return null;
