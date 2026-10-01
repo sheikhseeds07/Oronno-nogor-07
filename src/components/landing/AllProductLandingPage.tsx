@@ -145,7 +145,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
       goOrder();
       return;
     }
-    if (!selected) {
+    if (C.product_selection_popup_enabled !== false && !selected) {
       setOfferPopupOpen(true);
       return;
     }
