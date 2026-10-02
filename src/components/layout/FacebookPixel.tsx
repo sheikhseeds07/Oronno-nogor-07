@@ -54,8 +54,21 @@ export function FacebookPixel({ eager = true }: Props) {
       if (runtime.__oronnoFacebookPixelOwner) return;
       runtime.__oronnoFacebookPixelOwner = true;
 
+      const pageView = () => {
+        const path = window.location.pathname + window.location.search;
+        if (window.location.pathname.startsWith("/admin") || path === lastPath) return;
+        lastPath = path;
+        trackPageView();
+      };
+
       const cached = getCachedPixelId();
-      if (cached) initPixel(cached);
+      if (cached) {
+        // Cached config is enough to record the first PageView immediately.
+        // Do not wait for the public config request: an ad visitor must not
+        // lose the landing-page PageView when that request is slow/fails.
+        initPixel(cached);
+        pageView();
+      }
 
       const response = await fetch("/api/public/fb-pixel", { headers: { Accept: "application/json" } }).catch(() => null);
       const config = response?.ok ? await response.json().catch(() => null) : null;
@@ -67,13 +80,8 @@ export function FacebookPixel({ eager = true }: Props) {
       if (!pixelId) return;
       setCachedPixelId(pixelId);
       initPixel(pixelId);
-
-      const pageView = () => {
-        const path = window.location.pathname + window.location.search;
-        if (window.location.pathname.startsWith("/admin") || path === lastPath) return;
-        lastPath = path;
-        trackPageView();
-      };
+      // For first-time visitors there is no cached pixel id, so this is the
+      // first safe point at which the browser PageView can be emitted.
       pageView();
 
       const originalPushState = history.pushState;
