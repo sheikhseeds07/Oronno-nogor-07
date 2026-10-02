@@ -6,7 +6,6 @@ import { Activity, AlertTriangle, CheckCircle2, ChevronDown, Clock3, Package, Re
 import { useAuth } from "@/lib/auth";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { taka, enDigits } from "@/lib/format";
-import { supabase } from "@/lib/personal-supabase/client";
 import { getOptimizedDashboardReport, getWebProcessingOrderCount, getEmployeeLiveProcessingCounts, getEmployeeMetricOrders, bulkUpdateEmployeeMetricOrders, getEmployeeMonthlyBonusProgress } from "@/lib/dashboard-optimized.functions";
 import { DashboardTimeFilter, getDashboardPresetRange, type DashboardPreset, type DashboardRange } from "@/components/admin/DashboardTimeFilter";
 import { MetaAdsResultCard } from "@/components/admin/MetaAdsResultCard";
@@ -14,7 +13,7 @@ import { toast } from "sonner";
 
 function Card({title,value,hint,icon:Icon,tone}:{title:string;value:string;hint:string;icon:any;tone:string}){return <div className={`group relative isolate flex min-h-[156px] h-full min-w-0 flex-col overflow-hidden rounded-[22px] border bg-white/95 p-4 shadow-[0_8px_30px_rgba(15,23,42,0.06)] backdrop-blur transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_18px_45px_rgba(15,23,42,0.12)] ${tone}`}><div className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full bg-slate-100/70 blur-2xl transition-transform duration-700 group-hover:scale-150"/><div className="relative flex items-center justify-between"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-50 ring-1 ring-slate-100 transition-all duration-500 group-hover:rotate-6 group-hover:scale-110"><Icon className="h-5 w-5"/></div><Activity className="h-4 w-4 text-slate-300 transition-all duration-500 group-hover:animate-pulse group-hover:text-slate-500"/></div><div className="relative mt-4 text-[11px] font-semibold text-slate-500">{title}</div><div className="relative mt-1 text-[27px] font-black tracking-tight text-slate-950 transition-transform duration-300 group-hover:translate-x-0.5">{value}</div><div className="relative mt-auto pt-2 text-[10px] font-medium text-slate-400">{hint}</div></div>}
 
-function Section({title,children,right}:{title:string;children:any;right?:any}){return <section className={`mb-4 overflow-hidden rounded-[22px] border border-slate-200/80 bg-white/95 shadow-[0_8px_30px_rgba(15,23,42,0.05)] transition-shadow duration-300 hover:shadow-[0_14px_38px_rgba(15,23,42,0.08)] ${title.includes("Employee Confirmation") ? "employee-performance-section" : ""}`}><div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-gradient-to-r from-white to-slate-50/70 px-4 py-3.5 sm:px-5"><div className="flex min-w-0 items-center gap-2.5"><span className="h-5 w-1 rounded-full bg-slate-900"/><h2 className="truncate text-[13px] font-black tracking-tight text-slate-900">{title}</h2></div>{right}</div>{children}</section>}
+function Section({title,children,right}:{title:string;children:any;right?:any}){return <section className={`dashboard-section mb-4 overflow-hidden rounded-[22px] border border-slate-200/80 bg-white/95 shadow-[0_8px_30px_rgba(15,23,42,0.05)] transition-shadow duration-300 hover:shadow-[0_14px_38px_rgba(15,23,42,0.08)] ${title.includes("Employee Confirmation") ? "employee-performance-section" : ""}`}><div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-gradient-to-r from-white to-slate-50/70 px-4 py-3.5 sm:px-5"><div className="flex min-w-0 items-center gap-2.5"><span className="h-5 w-1 rounded-full bg-slate-900"/><h2 className="truncate text-[13px] font-black tracking-tight text-slate-900">{title}</h2></div>{right}</div>{children}</section>}
 
 function PipelineCard({data,title="Web Orders",accent="indigo"}:{data:any;title?:string;accent?:"indigo"|"violet"}){const [open,setOpen]=useState(false);const total=Number(data?.total??0),confirmed=Number(data?.confirmed??0),processing=Number(data?.processing??0),cancelled=Number(data?.cancelled??0),active=Number(data?.active??0);const indigo=accent==="indigo";const stats=[{label:"Confirmed",value:confirmed,icon:CheckCircle2,tone:"text-emerald-700 bg-emerald-50 border-emerald-100"},{label:"Processing",value:processing,icon:Clock3,tone:"text-amber-700 bg-amber-50 border-amber-100"},{label:"Cancelled",value:cancelled,icon:XCircle,tone:"text-rose-700 bg-rose-50 border-rose-100"}];return <div className="min-w-0"><div onClick={()=>setOpen(v=>!v)} role="button" tabIndex={0} onKeyDown={e=>{if(e.key==="Enter"||e.key===" ")setOpen(v=>!v)}} className={`group relative flex h-full min-h-[156px] min-w-0 cursor-pointer flex-col overflow-hidden rounded-[22px] border bg-white/95 p-4 shadow-[0_8px_30px_rgba(15,23,42,0.06)] transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_18px_45px_rgba(15,23,42,0.12)] ${open?(indigo?"border-indigo-300 ring-4 ring-indigo-50":"border-violet-300 ring-4 ring-violet-50"):(indigo?"border-indigo-100":"border-violet-100")}`}><div className={`pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full blur-2xl transition-transform duration-700 group-hover:scale-150 ${indigo?"bg-indigo-100/50":"bg-violet-100/50"}`}/><div className="relative flex items-start justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 ${open?(indigo?"bg-indigo-100":"bg-violet-100"):(indigo?"bg-indigo-50":"bg-violet-50")}`}><ShoppingCart className={`h-5 w-5 ${indigo?"text-indigo-600":"text-violet-600"}`}/></div><div className="min-w-0"><div className="text-[11px] font-bold text-slate-500">{title}</div><div className="mt-0.5 text-[27px] font-black tracking-tight text-slate-950">{enDigits(total)}</div><div className="truncate text-[9px] font-medium text-slate-400">{title === "Incomplete Orders" ? "Incomplete source · selected range" : "Real web orders · selected range"}</div>{title === "Incomplete Orders" && active > 0 && <div className="mt-1 text-[9px] font-bold text-violet-600">Active incomplete: {enDigits(active)}</div>}</div></div><div className="flex shrink-0 items-center gap-1"><span className={`rounded-full px-2 py-1 text-[8px] font-black tracking-wide transition-all duration-300 ${open?(indigo?"bg-indigo-600":"bg-violet-600")+" text-white":"bg-slate-100 text-slate-500"}`}>{open?"CLOSE":"DETAILS"}</span><ChevronDown className={`h-5 w-5 text-slate-400 transition-transform duration-500 ${open?"rotate-180":""}`}/></div></div><div className={`relative grid transition-all duration-500 ease-out ${open?"mt-4 max-h-40 translate-y-0 opacity-100":"mt-0 max-h-0 translate-y-2 overflow-hidden opacity-0"}`}><div className="grid grid-cols-3 gap-2 border-t border-slate-100 pt-3">{stats.map(s=>{const Icon=s.icon;return <div key={s.label} className={`rounded-2xl border p-2.5 text-center transition duration-300 hover:-translate-y-0.5 ${s.tone}`}><Icon className="mx-auto h-4 w-4"/><div className="mt-1 text-lg font-black">{enDigits(s.value)}</div><div className="text-[8px] font-bold opacity-70">{s.label}</div></div>})}</div></div><div className={`relative mt-auto flex items-center justify-center gap-1 pt-2 text-[9px] font-semibold text-slate-400 transition-opacity duration-300 ${open?"opacity-0":"opacity-100"}`}>Confirmed + Processing + Cancelled <ChevronDown className="h-3 w-3"/></div></div></div>}
 
@@ -261,10 +260,11 @@ function statusLabel(status: string) {
 export function PremiumDashboard(){const {isSuperAdmin,isAdmin,permissions,user,role}=useAuth();const can=(k:string)=>isSuperAdmin||isAdmin||(permissions as any)?.[k]!==false;const [employeeMetric,setEmployeeMetric]=useState<{employee:any;metric:EmployeeMetric}|null>(null);const fetchReport=useServerFn(getOptimizedDashboardReport);const fetchProcessing=useServerFn(getWebProcessingOrderCount);const fetchEmployeeLiveProcessing=useServerFn(getEmployeeLiveProcessingCounts);const qc=useQueryClient();const [preset,setPreset]=useState<DashboardPreset>("today");const [range,setRange]=useState<DashboardRange>(()=>getDashboardPresetRange("today")!);const [refreshing,setRefreshing]=useState(false);useEffect(()=>{try{const raw=window.localStorage.getItem("business-dashboard-filter-v1");if(!raw)return;const saved=JSON.parse(raw);if(saved?.preset&&saved?.range?.from&&saved?.range?.to){setPreset(saved.preset);setRange(saved.range)}}catch{}},[]);const {data,isFetching,refetch}=useQuery({queryKey:["business-dashboard",range.from,range.to],queryFn:()=>fetchReport({data:range}),staleTime:300000,refetchOnWindowFocus:false});const {data:processingCount=0}=useQuery({queryKey:["live-web-processing"],queryFn:()=>fetchProcessing(),staleTime: 5 * 60_000,refetchOnWindowFocus:false,refetchInterval: false,refetchIntervalInBackground:false});const {data:employeeLiveProcessing=[]}=useQuery({queryKey:["employee-live-processing"],queryFn:()=>fetchEmployeeLiveProcessing(),staleTime: 5 * 60_000,refetchOnWindowFocus:false,refetchInterval: false,refetchIntervalInBackground:false});const employeeLiveMap=new Map((employeeLiveProcessing as any[]).map((x:any)=>[String(x.user_id),Number(x.live_processing??0)]));const r:any=data??{real:{revenue:0},profit:{grossSales:0,netProfit:0,productCost:0,adSpendUsd:0,adSpendBdt:0,dollarRate:122,confirmedOrders:0,courierCost:0,courierCostPerOrder:50,cancelRate:20,cancellationAdjustment:0,netProfitMargin:0},webOrders:{total:0,confirmed:0,processing:0,cancelled:0},incompleteOrders:{total:0,confirmed:0,processing:0,cancelled:0,active:0},daily:[],hourly:[],bestSelling:[],lowStock:[],stockSummary:{out:0,low:0,total:0},todayVisitors:0,employeePerformance:[]};const refresh=async()=>{setRefreshing(true);await refetch();setRefreshing(false)};const onFilterChange=(next:DashboardPreset,nextRange:DashboardRange|null)=>{if(!nextRange)return;setPreset(next);setRange(nextRange);try{window.localStorage.setItem("business-dashboard-filter-v1",JSON.stringify({preset:next,range:nextRange}))}catch{}};return <AdminLayout><div className="dashboard-premium-shell relative min-h-full overflow-x-hidden px-2 pb-10 sm:px-3"><style>{`
 .dashboard-premium-shell{
   background:
-    radial-gradient(900px 420px at 100% -5%,rgba(99,102,241,.13),transparent 62%),
-    radial-gradient(760px 420px at -8% 42%,rgba(16,185,129,.10),transparent 62%),
-    radial-gradient(620px 360px at 85% 82%,rgba(14,165,233,.08),transparent 62%),
-    linear-gradient(180deg,#f8fafc 0%,#f4f7fb 100%);
+    radial-gradient(900px 420px at 100% -5%,rgba(79,70,229,.12),transparent 62%),
+    radial-gradient(760px 420px at -8% 42%,rgba(5,150,105,.09),transparent 62%),
+    radial-gradient(620px 360px at 85% 82%,rgba(2,132,199,.07),transparent 62%),
+    linear-gradient(180deg,#f8fafc 0%,#f1f5f9 100%);
+  contain:paint;
 }
 .dashboard-premium-shell:before{
   content:"";position:absolute;inset:0;pointer-events:none;opacity:.32;
@@ -276,7 +276,21 @@ export function PremiumDashboard(){const {isSuperAdmin,isAdmin,permissions,user,
   content:"";position:absolute;left:8%;right:8%;bottom:-1px;height:1px;
   background:linear-gradient(90deg,transparent,rgba(16,185,129,.45),rgba(99,102,241,.45),transparent);
 }
-.dashboard-kpi-grid{position:relative}
+.dashboard-kpi-grid{position:relative;contain:layout paint}
+.dashboard-kpi-grid>*{will-change:transform}
+.dashboard-premium-shell .dashboard-section{contain:layout paint}
+.dashboard-premium-shell .dashboard-section,
+.dashboard-premium-shell .dashboard-kpi-grid>*>div{
+  -webkit-backface-visibility:hidden;
+  backface-visibility:hidden;
+}
+.dashboard-premium-shell .dashboard-section h2{letter-spacing:-.02em}
+.dashboard-premium-shell .dashboard-section>div:first-child h2:after{
+  content:"";display:block;width:28px;height:2px;margin-top:4px;border-radius:999px;
+  background:linear-gradient(90deg,#4f46e5,#10b981);
+  transform-origin:left;transform:scaleX(.55);transition:transform .35s ease;
+}
+.dashboard-premium-shell .dashboard-section:hover>div:first-child h2:after{transform:scaleX(1)}
 .dashboard-kpi-grid>*{animation:dashboardCardIn .55s cubic-bezier(.2,.8,.2,1) both}
 .dashboard-kpi-grid>*:nth-child(2){animation-delay:.04s}
 .dashboard-kpi-grid>*:nth-child(3){animation-delay:.08s}
@@ -298,6 +312,11 @@ export function PremiumDashboard(){const {isSuperAdmin,isAdmin,permissions,user,
 @keyframes dashboardCardIn{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
 @keyframes dashboardHeaderIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:639px){
+  .dashboard-kpi-grid{gap:10px}
+  .dashboard-kpi-grid>*>div{border-radius:18px}
+  .dashboard-premium-shell .dashboard-section{margin-bottom:12px}
+  .dashboard-premium-header{box-shadow:0 8px 26px rgba(15,23,42,.07)}
+
   .dashboard-premium-shell{padding-bottom:5rem}
   .dashboard-premium-header{margin-left:0;margin-right:0;border-radius:18px}
   .dashboard-kpi-grid>*:first-child{grid-column:span 2}
