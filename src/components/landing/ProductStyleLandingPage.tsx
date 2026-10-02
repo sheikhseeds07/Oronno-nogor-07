@@ -40,7 +40,7 @@ export function ProductStyleLandingPage({ slug, karala }: Props) {
   const settings = (settingsRow?.settings as { site_name?: string; tagline?: string; logo_url?: string }) ?? {};
   const C = mergeContent(page?.planting_steps);
   const product = page?.products ?? null;
-  const addons = Array.isArray(page?.addons) ? page.addons : [];
+  const addons = landingBaseSlug(slug)==="seedcombo" ? [] : (Array.isArray(page?.addons) ? page.addons : []);
   const features = page?.features?.length ? page.features : DEFAULT_FEATURES;
   const why = page?.why_choose_us?.length ? page.why_choose_us : DEFAULT_WHY;
   const reviews = page?.reviews?.length ? page.reviews : DEFAULT_REVIEWS;
