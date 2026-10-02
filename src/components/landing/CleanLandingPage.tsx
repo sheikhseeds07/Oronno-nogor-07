@@ -195,7 +195,7 @@ export function CleanLandingPage({slug}:{slug:string}){
   
  const isSeedCombo=landingBaseSlug(slug)==="seedcombo";
  return <div className={`lp-root min-h-screen text-slate-700 ${isSeedCombo?"lp-agri-bg seed-combo-page":"bg-white"}`} style={{["--lp" as string]:themeColor}}><FacebookPixel eager/><style>{LANDING_CHECKOUT_GROUP_STYLE}</style><style>{REF_STYLE}</style><LandingVisitTracker slug={slug}/>
- {C.show_popup&&<WelcomePopup themeColor={themeColor} logo={brandLogo} brand={brandName} title={C.popup_title} text={C.popup_text} cta={C.popup_cta} mode={landingBaseSlug(slug) === "seedcombo"?C.popup_mode:"text"} image={landingBaseSlug(slug) === "seedcombo"?C.popup_image:""} delay={Number(C.popup_delay)||0} onCta={scrollToOrder}/>} 
+ {C.show_popup&&<WelcomePopup themeColor={themeColor} logo={brandLogo} brand={brandName} title={C.popup_title} text={C.popup_text} cta={C.popup_cta} mode={landingBaseSlug(slug) === "seedcombo"?C.popup_mode:"text"} image={landingBaseSlug(slug) === "seedcombo"?C.popup_image:""} delay={Number(C.popup_delay)||0} countdownHours={landingBaseSlug(slug) === "seedcombo"?2:undefined} onCta={scrollToOrder}/>} 
 
   <header className="lp-premium-header sticky top-0 z-30"><div className="container mx-auto px-3 max-w-xl py-1 flex items-center justify-between gap-2"><div className="flex min-w-0 items-center gap-2"><span className="seed-brand-mark"><SafeImage src={toImg(brandLogo)} alt={brandName} width={28} height={28} decoding="async" className="h-7 w-7 shrink-0 rounded-full object-cover bg-white"/></span><div className="leading-tight min-w-0"><div className="font-extrabold text-[14px] text-slate-900 tracking-tight truncate">{brandName}</div>{settings.tagline&&<div className="text-[9px] text-slate-500 truncate">{settings.tagline}</div>}</div></div>{C.show_countdown!==false&&<Countdown themeColor={themeColor} hours={C.countdown_hours} title={C.countdown_title} compact/>}</div></header>
   <div className="container mx-auto px-4 pt-0 pb-2 max-w-xl space-y-3">
@@ -239,14 +239,23 @@ function Reveal({children}:{children:React.ReactNode}){const ref=useRef<HTMLDivE
 function Countdown({themeColor,hours=3,title,compact}:{themeColor:string;hours?:number;title?:string;compact?:boolean}){const secs=Math.max(1,Math.round((Number(hours)||3)*3600));const[left,setLeft]=useState(secs);useEffect(()=>{const KEY="lp-offer-deadline";let deadline=Number(localStorage.getItem(KEY)||0);if(!deadline||deadline<Date.now()){deadline=Date.now()+secs*1000;localStorage.setItem(KEY,String(deadline))}const tick=()=>setLeft(Math.max(0,Math.round((deadline-Date.now())/1000)));tick();const id=setInterval(tick,1000);return()=>clearInterval(id)},[secs]);const pad=(n:number)=>String(n).padStart(2,"0");const parts=[{v:pad(Math.floor(left/3600)),l:"ঘণ্টা"},{v:pad(Math.floor((left%3600)/60)),l:"মিনিট"},{v:pad(left%60),l:"সেকেন্ড"}];if(compact)return <div className="lp-hdr-timer shrink-0"><span className="lp-hdr-timer-note">⏳ অফার শেষ হতে বাকি</span><div className="lp-hdr-timer-row">{parts.map((p,i)=><div key={p.l} className="flex items-center gap-1">{i>0&&<i>:</i>}<div><b>{p.v}</b><em>{p.l}</em></div></div>)}</div></div>;
  return <div className="cute-timer-container"><p className="timer-label">{title||"অফারটি শেষ হতে আর মাত্র..."}</p><div className="timer-display">{parts.map((p,i)=><div key={p.l} className="flex items-start" style={{gap:"8px"}}>{i>0&&<div className="time-separator">:</div>}<div className="time-part"><span>{p.v}</span><label>{p.l}</label></div></div>)}</div></div>}
 function LandingVisitTracker({slug}:{slug:string}){useEffect(()=>{trackVisit(`/landing/${slug}`)},[slug]);return null}
-function WelcomePopup({themeColor,logo,brand,title,text,cta,mode,image,delay,onCta}:{themeColor:string;logo:string;brand:string;title:string;text:string;cta:string;mode:"text"|"image";image:string;delay:number;onCta?:()=>void}){
- const[open,setOpen]=useState(false);
+function WelcomePopup({themeColor,logo,brand,title,text,cta,mode,image,delay,countdownHours,onCta}:{themeColor:string;logo:string;brand:string;title:string;text:string;cta:string;mode:"text"|"image";image:string;delay:number;countdownHours?:number;onCta?:()=>void}){
+ const[open,setOpen]=useState(false); const[offerLeft,setOfferLeft]=useState(0);
  const close=useCallback(()=>{setOpen(false)},[]);
  useEffect(()=>{
   const wait=Math.max(Number(delay)||0,1800);
   const t=setTimeout(()=>setOpen(true),wait);
   return()=>clearTimeout(t);
  },[delay]);
+ useEffect(()=>{
+  if(!open||!countdownHours)return;
+  const key="seedcombo-welcome-offer-deadline";
+  const duration=Math.max(1,Math.round(Number(countdownHours)*3600));
+  let deadline=Number(localStorage.getItem(key)||0);
+  if(!deadline||deadline<Date.now()){deadline=Date.now()+duration*1000;localStorage.setItem(key,String(deadline))}
+  const tick=()=>setOfferLeft(Math.max(0,Math.round((deadline-Date.now())/1000)));
+  tick(); const id=setInterval(tick,1000); return()=>clearInterval(id);
+ },[open,countdownHours]);
  useEffect(()=>{
   if(!open)return;
   const onKey=(e:KeyboardEvent)=>{if(e.key==="Escape")close()};
@@ -259,7 +268,7 @@ function WelcomePopup({themeColor,logo,brand,title,text,cta,mode,image,delay,onC
    return <div className="seed-popup fixed inset-0 z-[60] flex items-center justify-center p-4" role="dialog" aria-modal="true">
     <button aria-label="বন্ধ করুন" onClick={close} className="seed-popup-backdrop absolute inset-0 animate-fade-in"/>
    {imageMode
-     ?<div className="seed-popup-panel seed-popup-image relative w-full max-w-sm animate-scale-in"><CloseBtn dark/><SafeImage src={toImg(image)} alt={title||brand} className="block max-h-[72vh] w-full object-contain"/></div>
+     ?<div className="seed-popup-panel seed-popup-image relative w-full max-w-sm animate-scale-in"><CloseBtn dark/><SafeImage src={toImg(image)} alt={title||brand} className="block max-h-[72vh] w-full object-contain"/>{countdownHours&&<div className="mx-3 mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-center shadow-sm"><div className="text-[11px] font-bold text-emerald-800">⏳ অফারটি শেষ হতে বাকি</div><div className="mt-0.5 text-[20px] font-black tracking-[.08em] text-emerald-700 tabular-nums">{String(Math.floor(offerLeft/3600)).padStart(2,"0")} : {String(Math.floor((offerLeft%3600)/60)).padStart(2,"0")} : {String(offerLeft%60).padStart(2,"0")}</div><div className="text-[8px] font-semibold text-slate-500">ঘণ্টা : মিনিট : সেকেন্ড</div></div>}</div>
      :<div className="seed-popup-panel relative w-full max-w-sm p-6 pt-8 text-center animate-scale-in overflow-hidden" style={{["--popup-theme" as string]:themeColor}}><Leaf className="absolute -left-4 -top-4 w-24 h-24 opacity-10"/><Sprout className="absolute -right-5 -bottom-6 w-28 h-28 opacity-10"/><CloseBtn/><div className="relative flex flex-col items-center gap-3"><span className="seed-popup-logo grid place-items-center w-16 h-16 rounded-full"><SafeImage src={toImg(logo)} alt={brand} className="w-12 h-12 rounded-full object-cover"/></span><h3 className="seed-popup-title text-[22px] font-extrabold tracking-tight">{title}</h3><p className="seed-popup-copy text-[14px] leading-relaxed">{text}</p><button onClick={()=>{onCta?.();close()}} className="seed-popup-cta mt-1 w-full px-6 py-3 font-extrabold text-[16px] transition">{cta}</button><div className="seed-popup-proof inline-flex items-center gap-1.5 text-[11px] font-semibold"><ShieldCheck className="w-3.5 h-3.5"/> ১০০% অরিজিনাল বীজের নিশ্চয়তা</div></div></div>}
   </div>
 }
