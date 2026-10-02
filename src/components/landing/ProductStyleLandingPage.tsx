@@ -40,7 +40,7 @@ export function ProductStyleLandingPage({ slug, karala }: Props) {
   const settings = (settingsRow?.settings as { site_name?: string; tagline?: string; logo_url?: string }) ?? {};
   const C = mergeContent(page?.planting_steps);
   const product = page?.products ?? null;
-  const addons = landingBaseSlug(slug)==="seedcombo" ? [] : (Array.isArray(page?.addons) ? page.addons : []);
+  const addons = Array.isArray(page?.addons) ? page.addons : [];
   const features = page?.features?.length ? page.features : DEFAULT_FEATURES;
   const why = page?.why_choose_us?.length ? page.why_choose_us : DEFAULT_WHY;
   const reviews = page?.reviews?.length ? page.reviews : DEFAULT_REVIEWS;
@@ -48,7 +48,7 @@ export function ProductStyleLandingPage({ slug, karala }: Props) {
   const basePrice = Number(page?.sale_price ?? product?.sale_price ?? page?.regular_price ?? product?.price ?? 0);
   const regularPrice = Number(page?.regular_price ?? product?.price ?? 0) || null;
   const delivery = Number(page?.main_delivery_fee ?? 70);
-  const packages = useMemo(() => { const main = product ? [{ name: product.name, price: basePrice, old: regularPrice, image: heroImage, product_id: product.id, delivery_fee: delivery }] : []; return [...main, ...addons.map(a => ({ name: a.name, price: Number(a.price), old: a.old_price, image: a.image, product_id: a.product_id, delivery_fee: a.delivery_fee == null ? delivery : Number(a.delivery_fee) }))]; }, [product, addons, basePrice, regularPrice, heroImage, delivery]);
+  const packages = useMemo(() => { const main = landingBaseSlug(slug)==="seedcombo" ? [] : (product ? [{ name: product.name, price: basePrice, old: regularPrice, image: heroImage, product_id: product.id, delivery_fee: delivery }] : []); return [...main, ...addons.map(a => ({ name: a.name, price: Number(a.price), old: a.old_price, image: a.image, product_id: a.product_id, delivery_fee: a.delivery_fee == null ? delivery : Number(a.delivery_fee) }))]; }, [slug, product, addons, basePrice, regularPrice, heroImage, delivery]);
   const selectedPackage = packages[selected] || packages[0];
   const subtotal = selectedPackage ? selectedPackage.price : 0;
   const shipping = selectedPackage ? selectedPackage.delivery_fee : delivery;
