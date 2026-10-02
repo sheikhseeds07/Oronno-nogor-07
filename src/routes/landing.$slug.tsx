@@ -30,11 +30,13 @@ function LandingTemplateBoundary({ children }: { children: React.ReactNode }) {
 const LANDING_CACHE_KEYS = ["landing", "landing-clean", "landing-all-product", "landing-professional", "landing-product-style", "landing-template"] as const;
 
 
-// Short server-side cache for anonymous landing-page SSR. A 10s TTL cuts repeated
-// identical reads during ad bursts while keeping admin edits visible quickly.
-const LANDING_SERVER_CACHE_TTL_MS = 10_000;
+// Short server-side cache for anonymous landing-page SSR. A 60s TTL cuts repeated
+// identical reads during ad bursts while keeping admin edits visible shortly after edits.
+const LANDING_SERVER_CACHE_TTL_MS = 60_000;
 type LandingServerCacheEntry = { expiresAt: number; page: unknown };
 const landingServerCache = new Map<string, LandingServerCacheEntry>();
+const SITE_SETTINGS_CACHE_TTL_MS = 300_000;
+let siteSettingsServerCache: { expiresAt: number; settings: unknown } | null = null;
 
 function getCachedLandingPage(slug: string): unknown | undefined {
   const hit = landingServerCache.get(slug);
@@ -67,7 +69,14 @@ export const Route = createFileRoute("/landing/$slug")({
           setCachedLandingPage(params.slug, page);
           return page;
         });
-    const settingsPromise = hasSettings ? Promise.resolve(null) : supabase.from("site_settings").select("settings").maybeSingle();
+    const settingsPromise = hasSettings
+      ? Promise.resolve(null)
+      : siteSettingsServerCache && siteSettingsServerCache.expiresAt > Date.now()
+        ? Promise.resolve({ data: siteSettingsServerCache.settings })
+        : supabase.from("site_settings").select("settings").maybeSingle().then((res) => {
+            if (res.data) siteSettingsServerCache = { expiresAt: Date.now() + SITE_SETTINGS_CACHE_TTL_MS, settings: res.data };
+            return res;
+          });
     const [page, settingsRes] = await Promise.all([pagePromise, settingsPromise]);
     for (const key of LANDING_CACHE_KEYS) queryClient.setQueryData([key, params.slug], page);
     if (settingsRes?.data) queryClient.setQueryData(["site-settings-public"], settingsRes.data);
@@ -192,7 +201,7 @@ function LandingPage() {
   const compact = COMPACT_SLUGS.has(behaviorSlug);
   // The route loader already seeded this key with server-fresh data, so no extra
   // browser round-trip is needed before the template renders.
-  const { data, isLoading } = useQuery({ enabled: !isLegacySlug && !isSeedCombo, staleTime: 10_000, gcTime:5*60_000, refetchOnWindowFocus: true, queryKey:["landing-template",slug], queryFn:async() => (await supabase.from("landing_pages").select("planting_steps").eq("slug",slug).maybeSingle()).data ?? null });
+  const { data, isLoading } = useQuery({ enabled: !isLegacySlug && !isSeedCombo, staleTime: 5*60_000, gcTime:10*60_000, refetchOnWindowFocus: false, queryKey:["landing-template",slug], queryFn:async() => (await supabase.from("landing_pages").select("planting_steps").eq("slug",slug).maybeSingle()).data ?? null });
   const popupBehaviorEnabled = isSeedCombo || behaviorSlug === "seeds-combo-24";
   const resolvedTemplate = mergeContent(data?.planting_steps).template as string;
   const karalaStyle = isKaralaStyle(slug) || resolvedTemplate === "all-product";
