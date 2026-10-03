@@ -56,12 +56,15 @@ async function loadFbConfig(): Promise<FbConfig | null> {
   const fastToken = asRecord(dbTokenRaw);
   const hasFastConfig = typeof fastToken["pixel_id"] === "string" && String(fastToken["pixel_id"]).length > 0
     && typeof fastToken["access_token"] === "string" && String(fastToken["access_token"]).length > 0;
-  const [{ data: integ }, { data: site }] = hasFastConfig
-    ? [{ data: null as any }, { data: null as any }]
-    : await Promise.all([
-        supabaseAdmin.from("integrations").select("config,is_active").eq("name", "facebook_capi").maybeSingle(),
-        supabaseAdmin.from("site_settings").select("settings").limit(1).maybeSingle(),
-      ]);
+  // The privileged token fast path intentionally avoids reading the full integration row
+  // (which contains the secret). Still read only the non-secret integration config so
+  // test_event_code can be applied to the server CAPI payload when configured.
+  const [{ data: integ }, { data: site }] = await Promise.all([
+    supabaseAdmin.from("integrations").select("config,is_active").eq("name", "facebook_capi").maybeSingle(),
+    hasFastConfig
+      ? Promise.resolve({ data: null as any })
+      : supabaseAdmin.from("site_settings").select("settings").limit(1).maybeSingle(),
+  ]);
   const privilegedStatus = asRecord(dbStatus);
   const tokenCfg = asRecord(dbTokenRaw);
   databaseDispatcherReady = privilegedStatus.server_events_ready === true;
