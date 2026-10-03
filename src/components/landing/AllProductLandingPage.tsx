@@ -61,11 +61,26 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   useEffect(() => { setHeroImageIndex(0); }, [page?.id, heroImages.length]);
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!isNutrimix || !C.audio_url || !audio) { setAudioPlaying(false); return; }
-    audio.pause(); audio.currentTime = 0; setAudioPlaying(false);
-    const timer = window.setTimeout(() => { audio.play().then(() => setAudioPlaying(true)).catch(() => setAudioPlaying(false)); }, 2000);
-    return () => { window.clearTimeout(timer); audio.pause(); };
+    if (!isNutrimix || !C.audio_url) { setAudioPlaying(false); return; }
+    let timer: number | undefined;
+    const start = () => {
+      const audio = audioRef.current;
+      if (!audio) {
+        timer = window.setTimeout(start, 100);
+        return;
+      }
+      audio.pause();
+      audio.currentTime = 0;
+      audio.load();
+      timer = window.setTimeout(() => {
+        audio.play().then(() => setAudioPlaying(true)).catch(() => setAudioPlaying(false));
+      }, 2000);
+    };
+    start();
+    return () => {
+      if (timer !== undefined) window.clearTimeout(timer);
+      audioRef.current?.pause();
+    };
   }, [isNutrimix, C.audio_url]);
   const toggleLandingAudio = async () => {
     const audio = audioRef.current;
