@@ -3156,26 +3156,23 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
                   Order Action History
                 </button>
                 {actionHistoryOpen && (
-                  <div className="absolute right-0 z-[80] mt-2 w-[360px] max-w-[calc(100vw-32px)] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
-                    <div className="flex items-center justify-between border-b bg-slate-50 px-3 py-2.5">
-                      <div>
-                        <div className="text-[12px] font-black text-slate-800">Order Action History</div>
-                        <div className="mt-0.5 text-[9px] text-slate-500">অর্ডার আসা, Assign ও Status পরিবর্তনের সম্পূর্ণ হিস্ট্রি</div>
-                      </div>
-                      <button type="button" onClick={() => setActionHistoryOpen(false)} className="rounded-md p-1 text-slate-400 hover:bg-white hover:text-slate-700" aria-label="Close history">
-                        <X className="h-3.5 w-3.5" />
+                  <div className="absolute right-0 z-[80] mt-1.5 w-[300px] max-w-[calc(100vw-24px)] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl">
+                    <div className="flex items-center justify-between border-b bg-slate-50 px-2.5 py-2">
+                      <div className="text-[11px] font-black text-slate-800">Order Action History</div>
+                      <button type="button" onClick={() => setActionHistoryOpen(false)} className="rounded p-0.5 text-slate-400 hover:bg-white hover:text-slate-700" aria-label="Close history">
+                        <X className="h-3 w-3" />
                       </button>
                     </div>
-                    <div className="max-h-[360px] overflow-y-auto p-2.5">
+                    <div className="max-h-[280px] overflow-y-auto px-2 py-1.5">
                       {actionHistoryLoading ? (
-                        <div className="flex items-center justify-center gap-2 py-8 text-[11px] text-slate-500">
-                          <Loader2 className="h-4 w-4 animate-spin" /> হিস্ট্রি লোড হচ্ছে...
+                        <div className="flex items-center justify-center gap-1.5 py-6 text-[10px] text-slate-500">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" /> লোড হচ্ছে...
                         </div>
                       ) : actionHistoryRows.length === 0 ? (
-                        <div className="py-8 text-center text-[11px] text-slate-500">কোনো action history পাওয়া যায়নি</div>
+                        <div className="py-6 text-center text-[10px] text-slate-500">কোনো action history পাওয়া যায়নি</div>
                       ) : (
-                        <div className="space-y-2">
-                          {actionHistoryRows.map((event) => {
+                        <div className="relative">
+                          {actionHistoryRows.map((event, index) => {
                             const actor = event.actor_id ? (actionHistoryNames.get(event.actor_id) || "Staff") : "System";
                             const assignedFrom = event.from_assigned_to ? (actionHistoryNames.get(event.from_assigned_to) || "Unknown") : "—";
                             const assignedTo = event.to_assigned_to ? (actionHistoryNames.get(event.to_assigned_to) || "Unknown") : "—";
@@ -3183,29 +3180,30 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
                             let detailText = "";
                             if (event.action === "created") {
                               title = "অর্ডার এসেছে";
-                              detailText = `অর্ডার তৈরি হয়েছে · ${event.to_status ? (statusEn[event.to_status] ?? event.to_status) : "—"}`;
+                              detailText = event.to_status ? (statusEn[event.to_status] ?? event.to_status) : "Order created";
                             } else if (event.action === "assigned") {
-                              title = "অ্যাসাইন করা হয়েছে";
-                              detailText = assignedTo === "—" ? "Assignment সরানো হয়েছে" : `নাম: ${assignedTo}${assignedFrom !== "—" ? ` · আগে: ${assignedFrom}` : ""}`;
+                              title = assignedTo === "—" ? "অ্যাসাইনমেন্ট সরানো হয়েছে" : "অ্যাসাইন করা হয়েছে";
+                              detailText = assignedTo === "—" ? "" : assignedFrom !== "—" ? `${assignedFrom} → ${assignedTo}` : assignedTo;
                             } else if (event.action === "confirm") {
                               title = "অর্ডার কনফার্ম";
-                              detailText = "অর্ডার কনফার্ম করা হয়েছে";
+                              detailText = "Confirmed";
                             } else if (event.action === "cancel") {
                               title = "অর্ডার ক্যানসেল";
-                              detailText = "অর্ডার ক্যানসেল করা হয়েছে";
+                              detailText = "Cancelled";
                             } else {
                               title = "স্ট্যাটাস পরিবর্তন";
                               detailText = `${event.from_status ? (statusEn[event.from_status] ?? event.from_status) : "—"} → ${event.to_status ? (statusEn[event.to_status] ?? event.to_status) : "—"}`;
                             }
                             return (
-                              <div key={event.id} className="rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2.5">
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="min-w-0">
-                                    <div className="text-[11px] font-extrabold text-slate-800">{title}</div>
-                                    <div className="mt-0.5 text-[10px] font-semibold text-slate-600">{detailText}</div>
-                                    <div className="mt-1 text-[9px] text-slate-400">কার দ্বারা: <b className="text-slate-600">{actor}</b></div>
+                              <div key={event.id} className="relative flex gap-2 px-1 py-1.5">
+                                {index < actionHistoryRows.length - 1 && <span className="absolute left-[5px] top-4 bottom-[-2px] w-px bg-slate-200" />}
+                                <span className="relative z-10 mt-1 h-2.5 w-2.5 shrink-0 rounded-full border-2 border-white bg-brand shadow-sm" />
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-baseline justify-between gap-2">
+                                    <span className="truncate text-[10px] font-extrabold text-slate-800">{title}</span>
+                                    <span className="shrink-0 text-[8px] text-slate-400">{format(new Date(event.created_at), "dd MMM, hh:mm a")}</span>
                                   </div>
-                                  <div className="shrink-0 text-right text-[9px] text-slate-400">{format(new Date(event.created_at), "dd MMM yyyy")}<br />{format(new Date(event.created_at), "hh:mm a")}</div>
+                                  <div className="truncate text-[9px] font-semibold text-slate-500">{detailText}{detailText ? " · " : ""}<span className="text-slate-600">{actor}</span></div>
                                 </div>
                               </div>
                             );
