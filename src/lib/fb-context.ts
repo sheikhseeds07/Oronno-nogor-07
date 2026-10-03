@@ -27,18 +27,20 @@ function ensureFbp(): string | null {
 
 function ensureFbc(): string | null {
   const existing = readCookie("_fbc");
-  if (existing) return existing;
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined") return existing;
   try {
     const params = new URLSearchParams(window.location.search);
     const fbclid = params.get("fbclid");
-    if (!fbclid) return null;
+    // A fresh ad click must replace an older click id, otherwise Meta
+    // attributes the purchase to a stale (often expired) click.
+    if (!fbclid) return existing;
+    if (existing && existing.endsWith(`.${fbclid}`)) return existing;
     // Format: fb.1.<ts_ms>.<fbclid>
     const value = `fb.1.${Date.now()}.${fbclid}`;
     writeCookie("_fbc", value);
     return value;
   } catch {
-    return null;
+    return existing;
   }
 }
 
