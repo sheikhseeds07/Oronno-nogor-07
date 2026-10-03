@@ -1990,7 +1990,6 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
             <div className="text-emerald-700">Success: <b>{rate}%</b></div>
             <div className="text-muted-foreground">Order: <b>{success}/{total}</b></div>
             <div className="text-rose-600">Cancel: <b>{cancelled}</b></div>
-            {sfLine}
           </div>
         </div>
       );
