@@ -292,7 +292,7 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
       }
 
       return normalized;
-    })().then((r) => withSteadfast(phone, r));
+    })();
 
     inFlight.set(cacheKey, request);
     try {
