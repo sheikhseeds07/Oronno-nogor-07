@@ -170,7 +170,11 @@ async function steadfastScore(phone: string): Promise<SteadfastScore | null> {
 async function withSteadfast(phone: string, result: CourierHistoryResult): Promise<CourierHistoryResult> {
   if (!result.configured || result.steadfast) return result;
   const existing = result.stats.find((s) => s.name.toLowerCase() === "steadfast");
-  if (existing && existing.total > 0) return result;
+  if (existing && existing.total > 0) {
+    // Hoorin may return a correct Steadfast row but a stale/partial Overall.
+    // Always derive Overall from the courier rows so Steadfast is included.
+    return { ...result, overall: aggregateOverall(result.stats) };
+  }
   // Older cached results may still contain estimated Steadfast rows. Drop them
   // and recompute Overall so only real courier counts remain.
   const estimated = result.stats.filter((s) => s.name.includes("আনুমানিক"));
