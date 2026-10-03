@@ -634,6 +634,12 @@ function NutrimixNutrients() {
               ))}
             </div>
             <div className="mt-4 flex items-center justify-center gap-2 rounded-xl border border-emerald-100 bg-white/75 px-3 py-2.5 text-center shadow-sm"><Leaf className="h-4 w-4 shrink-0 text-emerald-600" /><p className="text-[9.5px] font-bold leading-4 text-all-product-muted sm:text-[10px]"><span className="font-black text-emerald-700">৬ উপাদান, একসাথে:</span> গাছের প্রয়োজনীয় পুষ্টি ব্যবস্থাপনাকে আরও সম্পূর্ণভাবে সাপোর্ট করার জন্য তৈরি।</p></div>
+            <button type="button" onClick={() => document.getElementById("lp-order")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="group relative mt-3 flex min-h-[50px] w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-all-product-primary px-5 py-3.5 text-[15px] font-black text-white shadow-[0_14px_30px_-14px_rgba(16,185,129,.7)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_36px_-14px_rgba(16,185,129,.8)] active:scale-[.99]">
+              <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+              <ShoppingBag className="relative h-5 w-5" />
+              <span className="relative">{C.red_cta_text || page?.cta_text || "এখনই অর্ডার করুন"}</span>
+              <span className="relative text-lg leading-none transition-transform duration-300 group-hover:translate-x-1">→</span>
+            </button>
           </div>
         </div>
       </div>
