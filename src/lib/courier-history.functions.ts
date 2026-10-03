@@ -274,30 +274,53 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
 
       let value: Partial<CourierHistoryResult> = {};
       try {
-        const admin = supabaseAdmin as any;
-        const { data: integration, error: integrationError } = await admin
-          .from("integrations")
-          .select("config,is_active")
-          .eq("name", "all_api_hoorin")
-          .maybeSingle();
-        if (integrationError) throw new Error(integrationError.message);
-        const cfg = (integration?.config ?? {}) as Record<string, unknown>;
-        const apiKey = String(cfg.api_key ?? "").trim();
-        if (!integration?.is_active || !apiKey) {
-          return { configured: false, stats: [], error: null };
+        // Use the dedicated Hoorin bridge as the single live provider path.
+        // It has the current response parser, persistent cache and provider
+        // throttling. This avoids the order page using an older parser directly.
+        const { getRequest } = await import("@tanstack/react-start/server");
+        const request = getRequest();
+        const auth = request?.headers.get("authorization") ?? "";
+        if (!auth.startsWith("Bearer ")) throw new Error("Unauthorized: Hoorin bridge token missing");
+        const bridgeUrl = `${LIVE_DATABASE_URL}/functions/v1/courier-history-bridge`;
+        const bridgeResponse = await fetch(bridgeUrl, {
+          method: "POST",
+          headers: {
+            Authorization: auth,
+            apikey: LIVE_DATABASE_KEY,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ phone }),
+        });
+        const bridgeText = await bridgeResponse.text();
+        let bridgePayload: any = null;
+        try { bridgePayload = JSON.parse(bridgeText); } catch { bridgePayload = null; }
+        if (!bridgeResponse.ok) {
+          throw new Error(
+            bridgePayload?.error
+              ? String(bridgePayload.error)
+              : `Hoorin bridge HTTP ${bridgeResponse.status}`,
+          );
         }
-        const endpoint = "https://plugin.hoorin.com/courier/api/v1/search";
-        const response = await fetch(
-          `${endpoint}?apiKey=${encodeURIComponent(apiKey)}&searchTerm=${encodeURIComponent(phone)}&view=full&cache=off`,
-          { method: "GET", headers: { Accept: "application/json", "Cache-Control": "no-cache" } },
-        );
-        const text = await response.text();
-        let payload: any = null;
-        try { payload = JSON.parse(text); } catch { payload = null; }
-        if (!response.ok) throw new Error(`Hoorin HTTP ${response.status}`);
-        const stats = parseHoorinStats(payload);
-        const overall = aggregateOverall(stats);
-        value = { configured: true, stats, overall, error: null, source: "hoorin" };
+        if (!bridgePayload || typeof bridgePayload !== "object") {
+          throw new Error("Hoorin bridge returned invalid data");
+        }
+        value = {
+          configured: Boolean(bridgePayload.configured),
+          stats: normalizeStats(bridgePayload.stats),
+          overall: bridgePayload.overall ? {
+            name: String(bridgePayload.overall.name ?? "Overall"),
+            total: Number(bridgePayload.overall.total) || 0,
+            success: Number(bridgePayload.overall.success) || 0,
+            cancelled: Number(bridgePayload.overall.cancelled) || 0,
+          } : undefined,
+          error: typeof bridgePayload.error === "string" ? bridgePayload.error : null,
+          stale: bridgePayload.stale === true,
+          source: typeof bridgePayload.source === "string" ? bridgePayload.source : "hoorin",
+        };
+        if (!value.configured && !value.error) {
+          throw new Error("Hoorin API is not configured");
+        }
       } catch (directError) {
         const stale = beforeInvoke ?? persistent;
         if (stale?.result.configured && !stale.result.error) return { ...stale.result, stale: true };
