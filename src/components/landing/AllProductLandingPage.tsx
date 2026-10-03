@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useRef, type ReactElement, type ReactNode
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Check, ChevronDown, Leaf, MapPin, PackageCheck, Phone, ShieldCheck, ShoppingBag, Sparkles, Truck, User, Wallet, X } from "lucide-react";
+import { Check, ChevronDown, Leaf, MapPin, PackageCheck, Phone, ShieldCheck, ShoppingBag, Sparkles, Truck, User, Volume2, VolumeX, Wallet, X } from "lucide-react";
 import { supabase } from "@/lib/personal-supabase/client";
 import { createLandingCheckoutIntent, finalizeLandingCheckoutIntent, placeOrder } from "@/lib/place-order.functions";
 import { useCheckoutAutofill } from "@/lib/useCheckoutAutofill";
@@ -57,7 +57,22 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   const configuredHeroImages = Array.isArray(C.hero_gallery_images) ? C.hero_gallery_images.filter(Boolean) : [];
   const heroImages = isNutrimix ? Array.from(new Set([heroImage, ...configuredHeroImages])) : [heroImage];
   const [heroImageIndex, setHeroImageIndex] = useState(0);
+  const [audioPlaying, setAudioPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   useEffect(() => { setHeroImageIndex(0); }, [page?.id, heroImages.length]);
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!isNutrimix || !C.audio_url || !audio) { setAudioPlaying(false); return; }
+    audio.pause(); audio.currentTime = 0; setAudioPlaying(false);
+    const timer = window.setTimeout(() => { audio.play().then(() => setAudioPlaying(true)).catch(() => setAudioPlaying(false)); }, 2000);
+    return () => { window.clearTimeout(timer); audio.pause(); };
+  }, [isNutrimix, C.audio_url]);
+  const toggleLandingAudio = async () => {
+    const audio = audioRef.current;
+    if (!audio || !C.audio_url) return;
+    if (!audio.paused) { audio.pause(); setAudioPlaying(false); return; }
+    try { await audio.play(); setAudioPlaying(true); } catch { setAudioPlaying(false); }
+  };
   useEffect(() => {
     if (!isNutrimix || heroImages.length < 2) return;
     const timer = window.setInterval(() => setHeroImageIndex((current) => (current + 1) % heroImages.length), 5000);
@@ -390,7 +405,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
                 {!isNutrimix && <span className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-all-product-surface/95 px-3 py-2 text-xs font-black text-all-product-primary shadow-lg"><Leaf className="h-4 w-4" /> ১০০% অরিজিনাল</span>}
                 {isNutrimix && heroImages.length > 1 && <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5 rounded-full bg-black/25 px-2.5 py-1.5 backdrop-blur-md">{heroImages.map((_, index) => <button key={index} type="button" onClick={() => setHeroImageIndex(index)} aria-label={`ইমেজ ${index + 1}`} className={`h-1.5 rounded-full transition-all duration-500 ${index === heroImageIndex ? "w-7 bg-white" : "w-1.5 bg-white/55"}`} />)}</div>}
               </div>           <div className="border-t-2 border-all-product-gold/35 bg-gradient-to-r from-all-product-primary/10 via-all-product-gold/15 to-all-product-primary/10 px-4 py-3.5 sm:px-5 sm:py-4">
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center justify-between gap-2 sm:gap-3">
                   <div className="min-w-0">
                     <span className="block text-[11px] font-black tracking-wide text-all-product-primary">আজকের অফার মূল্য</span>
                     <div className="mt-0.5 flex items-end gap-2.5">
@@ -398,11 +413,22 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
                       {regularPrice && regularPrice > basePrice && <del className="pb-0.5 text-sm font-bold text-all-product-muted sm:text-base">{taka(regularPrice)}</del>}
                     </div>
                   </div>
+                  {isNutrimix && C.audio_url && (
+                    <>
+                      <audio ref={audioRef} src={C.audio_url} preload="auto" onPlay={() => setAudioPlaying(true)} onPause={() => setAudioPlaying(false)} onEnded={() => setAudioPlaying(false)} className="hidden" />
+                      <button type="button" onClick={toggleLandingAudio} aria-label={audioPlaying ? "ভয়েস বন্ধ করুন" : "ভয়েস চালু করুন"} title={audioPlaying ? "ভয়েস বন্ধ করুন" : "ভয়েস চালু করুন"} className="ap-landing-audio group relative grid h-11 w-11 shrink-0 place-items-center rounded-full border border-all-product-gold/45 bg-white/90 text-all-product-primary shadow-[0_10px_28px_-14px_rgba(20,83,45,.65)] transition-all duration-300 hover:scale-105 hover:border-all-product-primary hover:bg-white active:scale-95">
+                        <span className="absolute inset-0 rounded-full border border-all-product-gold/35 ap-audio-ring" aria-hidden="true" />
+                        <span className="absolute inset-[-4px] rounded-full bg-all-product-gold/15 ap-audio-glow" aria-hidden="true" />
+                        {audioPlaying ? <Volume2 className="relative h-5 w-5" /> : <VolumeX className="relative h-5 w-5" />}
+                      </button>
+                    </>
+                  )}
                   <div className="shrink-0 text-right">
                     {discount > 0 && <span className="inline-flex rounded-full bg-all-product-alert px-3 py-1.5 text-xs font-black text-white shadow-md">{discount}% ছাড়</span>}
                     {savings > 0 && <span className="mt-1 block text-[11px] font-black text-all-product-success">সাশ্রয় {taka(savings)}</span>}
                   </div>
                 </div>
+                {isNutrimix && C.audio_url && <style>{"@keyframes apAudioRing { 0%,100% { transform: scale(1); opacity:.35; } 50% { transform: scale(1.22); opacity:.9; } } @keyframes apAudioGlow { 0%,100% { transform: scale(.92); opacity:.25; } 50% { transform: scale(1.18); opacity:.65; } } .ap-audio-ring { animation: apAudioRing 1.25s ease-in-out infinite; } .ap-audio-glow { animation: apAudioGlow 1.55s ease-in-out infinite; } @media (prefers-reduced-motion:reduce) { .ap-audio-ring,.ap-audio-glow { animation:none!important; } }"}</style>}
               </div>
             </div>
           </div>
