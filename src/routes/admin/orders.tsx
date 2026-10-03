@@ -3172,7 +3172,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
                         <div className="py-6 text-center text-[10px] text-slate-500">কোনো action history পাওয়া যায়নি</div>
                       ) : (
                         <div className="relative">
-                          {actionHistoryRows.map((event, index) => {
+                          {actionHistoryRows.filter((event) => !(event.action === "status_changed" && !event.from_status)).map((event, index) => {
                             const actor = event.actor_id ? (actionHistoryNames.get(event.actor_id) || "Staff") : "System";
                             const assignedFrom = event.from_assigned_to ? (actionHistoryNames.get(event.from_assigned_to) || "Unknown") : "—";
                             const assignedTo = event.to_assigned_to ? (actionHistoryNames.get(event.to_assigned_to) || "Unknown") : "—";
