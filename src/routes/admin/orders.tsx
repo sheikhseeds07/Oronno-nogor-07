@@ -1968,11 +1968,6 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
     const success = displayData.overall?.success ?? displayData.stats.reduce((sum: number, stat: any) => sum + stat.success, 0);
     const cancelled = displayData.overall?.cancelled ?? displayData.stats.reduce((sum: number, stat: any) => sum + stat.cancelled, 0);
     const sf = displayData.steadfast as { deliveryRatio: number; cancellationRatio: number; volumeBand: string | null } | undefined;
-    const sfLine = sf ? (
-      <div className="text-sky-700" title="Steadfast থেকে সরাসরি (পুরো Steadfast-এর হিসাব)">
-        Steadfast: <b>{sf.deliveryRatio}%</b> সফল · <b>{sf.cancellationRatio}%</b> বাতিল
-      </div>
-    ) : null;
     if (!total && sf) {
       const rate = Math.round(sf.deliveryRatio);
       const ring = rate >= 80 ? "border-emerald-500 text-emerald-700" : rate >= 50 ? "border-amber-500 text-amber-700" : "border-rose-500 text-rose-700";
@@ -1981,7 +1976,6 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
           <div className={`w-9 h-9 rounded-full border-[3px] ${ring} flex items-center justify-center text-[10px] font-bold`}>{rate}%</div>
           <div className="text-[11px] leading-tight">
             <div className="font-bold text-slate-700">Steadfast</div>
-            {sfLine}
           </div>
         </div>
       );
