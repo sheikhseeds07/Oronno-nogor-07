@@ -194,6 +194,7 @@ export function CleanLandingPage({slug}:{slug:string}){
  const fieldLabel=(value:string)=>value.replace(/\s*\*+\s*$/,"");
   
  const isSeedCombo=landingBaseSlug(slug)==="seedcombo";
+ const toggleLandingAudio=async()=>{const audio=audioRef.current;if(!audio||!C.audio_url)return;if(!audio.paused){audio.pause();setAudioPlaying(false);return;}try{await audio.play();setAudioPlaying(true);}catch{setAudioPlaying(false);}};
  return <div className={`lp-root min-h-screen text-slate-700 ${isSeedCombo?"lp-agri-bg seed-combo-page":"bg-white"}`} style={{["--lp" as string]:themeColor}}><FacebookPixel eager/>{isSeedCombo&&C.audio_url&&<audio ref={audioRef} src={C.audio_url} preload="auto" onPlay={()=>setAudioPlaying(true)} onPause={()=>setAudioPlaying(false)} onEnded={()=>setAudioPlaying(false)} className="hidden"/>}<style>{LANDING_CHECKOUT_GROUP_STYLE}</style><style>{REF_STYLE}</style>{isSeedCombo&&C.audio_url&&<style>{"@keyframes lpAudioRing{0%,100%{transform:scale(1);opacity:.35}50%{transform:scale(1.22);opacity:.9}}.lp-audio-ring{animation:lpAudioRing 1.25s ease-in-out infinite}"}</style>}<LandingVisitTracker slug={slug}/>
  {C.show_popup&&<WelcomePopup themeColor={themeColor} logo={brandLogo} brand={brandName} title={C.popup_title} text={C.popup_text} cta={C.popup_cta} mode={landingBaseSlug(slug) === "seedcombo"?C.popup_mode:"text"} image={landingBaseSlug(slug) === "seedcombo"?C.popup_image:""} delay={Number(C.popup_delay)||0} countdownHours={landingBaseSlug(slug) === "seedcombo"?2:undefined} onCta={scrollToOrder}/>} 
 
