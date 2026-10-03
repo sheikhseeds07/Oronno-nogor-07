@@ -201,13 +201,6 @@ async function queuePurchaseForRetry(body: AnyRecord, eventId: string) {
 /** Send any supported website event to Meta CAPI with a direct server request and a durable Purchase retry fallback. */
 export async function sendServerEvent(payload: ServerEventPayload): Promise<{ ok: boolean }> {
   const cfg = await loadFbConfig();
-  if (!cfg?.enabled || !cfg.pixel_id) {
-    if (payload.event_name === "Purchase") {
-      const queued = await queuePurchaseForRetry({ data: [{ event_name: payload.event_name, event_id: payload.event_id }] }, payload.event_id);
-      return { ok: queued };
-    }
-    return { ok: false };
-  }
 
   const now = Math.floor(Date.now() / 1000);
   const eventTime = payload.event_time && payload.event_time <= now + 60 && payload.event_time > now - 6 * 24 * 3600 ? payload.event_time : now;
@@ -222,10 +215,15 @@ export async function sendServerEvent(payload: ServerEventPayload): Promise<{ ok
       user_data: buildUserData(payload),
       ...(payload.custom_data ? { custom_data: payload.custom_data } : {}),
     }],
-    ...(cfg.test_event_code ? { test_event_code: cfg.test_event_code } : {}),
+    ...(cfg?.test_event_code ? { test_event_code: cfg.test_event_code } : {}),
   };
 
   const queueRetry = async () => queuePurchaseForRetry(body, payload.event_id);
+
+  if (!cfg?.enabled || !cfg.pixel_id) {
+    if (payload.event_name === "Purchase") return (await queueRetry()) ? { ok: true } : { ok: false };
+    return { ok: false };
+  }
 
   const dispatchFallback = async () => {
     try {
