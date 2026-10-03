@@ -34,6 +34,8 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   const runCreateLandingIntent = useServerFn(createLandingCheckoutIntent);
   const runFinalizeLandingIntent = useServerFn(finalizeLandingCheckoutIntent);
   const isNutrimix = slug === "nutrimix";
+  const isSeedCombo = slug === "seedcombo";
+  const isAudioLanding = isNutrimix || isSeedCombo;
   const [selected, setSelected] = useState<string | null>(null);
   const [offerPopupOpen, setOfferPopupOpen] = useState(false);
   const [nutrimixOpen, setNutrimixOpen] = useState(false);
@@ -61,7 +63,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   useEffect(() => { setHeroImageIndex(0); }, [page?.id, heroImages.length]);
   useEffect(() => {
-    if (!isNutrimix || !C.audio_url) { setAudioPlaying(false); return; }
+    if (!isAudioLanding || !C.audio_url) { setAudioPlaying(false); return; }
     let timer: number | undefined;
     const start = () => {
       const audio = audioRef.current;
@@ -81,7 +83,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
       if (timer !== undefined) window.clearTimeout(timer);
       audioRef.current?.pause();
     };
-  }, [isNutrimix, C.audio_url]);
+  }, [isAudioLanding, C.audio_url]);
   const toggleLandingAudio = async () => {
     const audio = audioRef.current;
     if (!audio || !C.audio_url) return;
@@ -315,7 +317,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   if (!page) return <div className="min-h-screen grid place-items-center bg-all-product-surface text-all-product-ink">পেজ পাওয়া যায়নি</div>;
 
   return <div className="all-product-landing min-h-screen bg-all-product-surface text-all-product-ink">
-    <FacebookPixel eager />
+
     <GuaranteePopup slug={slug} logo={logo} brand={brand} nutrimix={isNutrimix} />
     {page.top_bar_text && <div className="bg-all-product-alert px-3 py-0.5 text-center text-[10px] font-bold leading-4 text-all-product-alert-foreground sm:text-[11px]">{page.top_bar_text}</div>}
     <div role="banner" className="sticky top-0 z-40 bg-all-product-surface/92 shadow-[0_2px_14px_-6px_rgba(0,0,0,0.35)] backdrop-blur-xl">
@@ -430,7 +432,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
                   </div>
                   {isNutrimix && C.audio_url && (
                     <>
-                      <audio ref={audioRef} src={C.audio_url} preload="auto" onPlay={() => setAudioPlaying(true)} onPause={() => setAudioPlaying(false)} onEnded={() => setAudioPlaying(false)} className="hidden" />
+
                       <button type="button" onClick={toggleLandingAudio} aria-label={audioPlaying ? "ভয়েস বন্ধ করুন" : "ভয়েস চালু করুন"} title={audioPlaying ? "ভয়েস বন্ধ করুন" : "ভয়েস চালু করুন"} className="ap-landing-audio group relative grid h-11 w-11 shrink-0 place-items-center rounded-full border border-all-product-gold/45 bg-white/90 text-all-product-primary shadow-[0_10px_28px_-14px_rgba(20,83,45,.65)] transition-all duration-300 hover:scale-105 hover:border-all-product-primary hover:bg-white active:scale-95">
                         <span className="absolute inset-0 rounded-full border border-all-product-gold/35 ap-audio-ring" aria-hidden="true" />
                         <span className="absolute inset-[-4px] rounded-full bg-all-product-gold/15 ap-audio-glow" aria-hidden="true" />
@@ -443,7 +445,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
                     {savings > 0 && <span className="mt-1 block text-[11px] font-black text-all-product-success">সাশ্রয় {taka(savings)}</span>}
                   </div>
                 </div>
-                {isNutrimix && C.audio_url && <style>{"@keyframes apAudioRing { 0%,100% { transform: scale(1); opacity:.35; } 50% { transform: scale(1.22); opacity:.9; } } @keyframes apAudioGlow { 0%,100% { transform: scale(.92); opacity:.25; } 50% { transform: scale(1.18); opacity:.65; } } .ap-audio-ring { animation: apAudioRing 1.25s ease-in-out infinite; } .ap-audio-glow { animation: apAudioGlow 1.55s ease-in-out infinite; } @media (prefers-reduced-motion:reduce) { .ap-audio-ring,.ap-audio-glow { animation:none!important; } }"}</style>}
+                {isAudioLanding && C.audio_url && <style>{"@keyframes apAudioRing { 0%,100% { transform: scale(1); opacity:.35; } 50% { transform: scale(1.22); opacity:.9; } } @keyframes apAudioGlow { 0%,100% { transform: scale(.92); opacity:.25; } 50% { transform: scale(1.18); opacity:.65; } } .ap-audio-ring { animation: apAudioRing 1.25s ease-in-out infinite; } .ap-audio-glow { animation: apAudioGlow 1.55s ease-in-out infinite; } @media (prefers-reduced-motion:reduce) { .ap-audio-ring,.ap-audio-glow { animation:none!important; } }"}</style>}
               </div>
             </div>
           </div>
@@ -634,7 +636,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
 
     </main>
     <div role="contentinfo" className="bg-all-product-hero px-4 py-6 text-center text-xs text-all-product-hero-muted">© {new Date().getFullYear()} {brand} — বিশ্বস্ত বীজ, সুন্দর ভবিষ্যৎ</div>
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-all-product-line bg-all-product-surface/95 p-2 backdrop-blur-lg"><div className="mx-auto max-w-3xl">{formInView ? <Button type="submit" form="all-product-order-form" disabled={submitting} className="all-product-primary-cta h-12 w-full font-black"><ShieldCheck />{submitting ? "অর্ডার হচ্ছে..." : `অর্ডার টি কনফার্ম করুন — ${taka(total)}`}</Button> : <Button onClick={handleCta} className="all-product-primary-cta h-12 w-full font-black"><ShoppingBag />{page.cta_text || "এখনই অর্ডার করুন"}{selected ? ` — ${taka(total)}` : ""}</Button>}</div></div>
+     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-all-product-line bg-all-product-surface/95 p-2 backdrop-blur-lg"><div className="mx-auto flex max-w-3xl items-center gap-2">{isSeedCombo && C.audio_url && <button type="button" onClick={toggleLandingAudio} aria-label={audioPlaying ? "ভয়েস বন্ধ করুন" : "ভয়েস চালু করুন"} title={audioPlaying ? "ভয়েস বন্ধ করুন" : "ভয়েস চালু করুন"} className="ap-landing-audio group relative grid h-11 w-11 shrink-0 place-items-center rounded-full border border-all-product-gold/45 bg-white/90 text-all-product-primary shadow-[0_10px_28px_-14px_rgba(20,83,45,.65)] transition-all duration-300 hover:scale-105 hover:border-all-product-primary hover:bg-white active:scale-95"><span className="absolute inset-0 rounded-full border border-all-product-gold/35 ap-audio-ring" aria-hidden="true" /><span className="absolute inset-[-4px] rounded-full bg-all-product-gold/15 ap-audio-glow" aria-hidden="true" />{audioPlaying ? <Volume2 className="relative h-5 w-5" /> : <VolumeX className="relative h-5 w-5" />}</button>}{formInView ? <Button type="submit" form="all-product-order-form" disabled={submitting} className="all-product-primary-cta h-12 flex-1 font-black"><ShieldCheck />{submitting ? "অর্ডার হচ্ছে..." : `অর্ডার টি কনফার্ম করুন — ${taka(total)}`}</Button> : <Button onClick={handleCta} className="all-product-primary-cta h-12 flex-1 font-black"><ShoppingBag />{page.cta_text || "এখনই অর্ডার করুন"}{selected ? ` — ${taka(total)}` : ""}</Button>}</div></div>
   </div>;
 }
 
