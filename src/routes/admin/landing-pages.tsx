@@ -315,11 +315,11 @@ function LandingPagesAdmin() {
                   </Field>
                   <div className="pt-3 border-t"><Field label="থিম কালার"><input type="color" value={editing.theme_color ?? "#16a34a"} onChange={(e) => set({ theme_color: e.target.value })} className="w-full h-10 border rounded-lg" /></Field></div>
                   <label className="flex items-center gap-2 pt-3 border-t"><input type="checkbox" checked={editing.is_published ?? false} onChange={(e) => set({ is_published: e.target.checked })} /><span className="font-semibold">পাবলিশ করুন</span></label>
-                  {editing.slug === "nutrimix" && (
+                  {(editing.slug === "nutrimix" || editing.slug === "seedcombo") && (
                     <div className="mt-3 rounded-xl border-2 border-emerald-200 bg-emerald-50/50 p-3">
                       <div className="mb-2">
                         <div className="font-bold text-sm text-emerald-900">🎙️ ভয়েস / অডিও</div>
-                        <div className="text-[11px] leading-4 text-emerald-800/80">অডিও আপলোড করে সংরক্ষণ/পাবলিশ করলে NUTRIMIX landing page-এ ভিজিটের ২ সেকেন্ড পর ভয়েস চালু হওয়ার চেষ্টা করবে।</div>
+                        <div className="text-[11px] leading-4 text-emerald-800/80">অডিও আপলোড করে সংরক্ষণ/পাবলিশ করলে এই landing page-এ ভিজিটের ২ সেকেন্ড পর ভয়েস চালু হওয়ার চেষ্টা করবে।</div>
                       </div>
                       <div className="flex items-center gap-2">
                         <input
