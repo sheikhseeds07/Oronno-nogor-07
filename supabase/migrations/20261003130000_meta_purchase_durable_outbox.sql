@@ -50,6 +50,7 @@ declare
   r record;
   v_ok boolean;
   v_count integer := 0;
+  v_delay integer;
 begin
   for r in
     select id, event_id, payload, attempts
@@ -67,9 +68,10 @@ begin
       delete from public.meta_capi_purchase_outbox where id = r.id;
       v_count := v_count + 1;
     else
+      v_delay := least(3600, greatest(60, (2 ^ least(r.attempts + 1, 6)) * 60));
       update public.meta_capi_purchase_outbox
         set attempts = r.attempts + 1,
-            next_attempt_at = now() + make_interval(secs => least(3600, greatest(60, (2 ^ least(r.attempts + 1, 6)) * 60))),
+            next_attempt_at = now() + make_interval(secs => v_delay),
             last_error = 'Meta CAPI dispatch failed'
         where id = r.id;
     end if;
