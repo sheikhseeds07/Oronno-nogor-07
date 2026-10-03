@@ -239,8 +239,16 @@ export async function sendServerEvent(payload: ServerEventPayload): Promise<{ ok
     return false;
   };
 
+  // Purchase is the conversion event we must not lose. Send it through the
+  // privileged database dispatcher first so delivery does not depend on the
+  // app runtime's token/cache state. The dispatcher also applies the current
+  // integration test_event_code when one is configured.
+  if (payload.event_name === "Purchase") {
+    if (await dispatchFallback()) return { ok: true };
+  }
+
   const accessToken = cfg.access_token;
-  if (!accessToken || accessToken === "database-managed") return (await dispatchFallback()) ? { ok: true } : { ok: false };
+  if (!accessToken || accessToken === "database-managed") return { ok: false };
 
   const url = `https://graph.facebook.com/v23.0/${cfg.pixel_id}/events?access_token=${encodeURIComponent(accessToken)}`;
   let lastError = "";
