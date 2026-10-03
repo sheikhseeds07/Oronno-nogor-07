@@ -2782,7 +2782,48 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
   const [nextStatus, setNextStatus] = useState<OrderStatus | "">("");
   const [statusSaving, setStatusSaving] = useState(false);
   const [actionOpen, setActionOpen] = useState(false);
+  const [actionHistoryOpen, setActionHistoryOpen] = useState(false);
   const ensureInvoicesFn = useServerFn(ensureOrderInvoices);
+
+  type OrderActionHistoryRow = {
+    id: string;
+    actor_id: string | null;
+    action: "created" | "assigned" | "status_changed";
+    from_status: OrderStatus | null;
+    to_status: OrderStatus | null;
+    from_assigned_to: string | null;
+    to_assigned_to: string | null;
+    created_at: string;
+  };
+
+  const { data: orderActionHistory = [], isFetching: actionHistoryLoading } = useQuery({
+    queryKey: ["order-action-history", id],
+    enabled: !isDraft && lockState === "ok" && !!detail?.id,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const [historyResult, employeesResult] = await Promise.all([
+        supabase
+          .from("order_action_history" as any)
+          .select("id,actor_id,action,from_status,to_status,from_assigned_to,to_assigned_to,created_at")
+          .eq("order_id", id)
+          .order("created_at", { ascending: true })
+          .order("id", { ascending: true })
+          .limit(100),
+        supabase.from("employees").select("user_id,name").eq("is_active", true),
+      ]);
+      if (historyResult.error) throw new Error(historyResult.error.message);
+      const rows = (historyResult.data ?? []) as unknown as OrderActionHistoryRow[];
+      const names = new Map<string, string>();
+      for (const e of employeesResult.data ?? []) {
+        if (e.user_id) names.set(e.user_id, e.name || "Staff");
+      }
+      return { rows, names };
+    },
+  });
+
+  const actionHistoryRows = orderActionHistory?.rows ?? [];
+  const actionHistoryNames = orderActionHistory?.names ?? new Map<string, string>();
 
   const applyStatusChange = async () => {
     if (!detail || !nextStatus || nextStatus === detail.status) return;
@@ -3085,8 +3126,71 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
               <span className="font-bold">New Order</span>
               <span className="text-xs text-muted-foreground">#{(detail.invoice_no ?? detail.id.slice(0, 8)).toUpperCase()}</span>
             </div>
-            <div className="flex items-center gap-3">
-              <a className="text-blue-600 text-sm hover:underline hidden sm:inline" href="#">How to Take New Order?</a>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setActionHistoryOpen((v) => !v)}
+                  className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-extrabold transition ${actionHistoryOpen ? "border-brand bg-brand/5 text-brand-dark" : "border-slate-200 bg-white text-slate-700 hover:border-brand/40 hover:text-brand-dark"}`}
+                >
+                  <ListOrdered className="h-3.5 w-3.5" />
+                  Order Action History
+                </button>
+                {actionHistoryOpen && (
+                  <div className="absolute right-0 z-[80] mt-2 w-[360px] max-w-[calc(100vw-32px)] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
+                    <div className="flex items-center justify-between border-b bg-slate-50 px-3 py-2.5">
+                      <div>
+                        <div className="text-[12px] font-black text-slate-800">Order Action History</div>
+                        <div className="mt-0.5 text-[9px] text-slate-500">অর্ডার আসা, Assign ও Status পরিবর্তনের সম্পূর্ণ হিস্ট্রি</div>
+                      </div>
+                      <button type="button" onClick={() => setActionHistoryOpen(false)} className="rounded-md p-1 text-slate-400 hover:bg-white hover:text-slate-700" aria-label="Close history">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <div className="max-h-[360px] overflow-y-auto p-2.5">
+                      {actionHistoryLoading ? (
+                        <div className="flex items-center justify-center gap-2 py-8 text-[11px] text-slate-500">
+                          <Loader2 className="h-4 w-4 animate-spin" /> হিস্ট্রি লোড হচ্ছে...
+                        </div>
+                      ) : actionHistoryRows.length === 0 ? (
+                        <div className="py-8 text-center text-[11px] text-slate-500">কোনো action history পাওয়া যায়নি</div>
+                      ) : (
+                        <div className="space-y-2">
+                          {actionHistoryRows.map((event) => {
+                            const actor = event.actor_id ? (actionHistoryNames.get(event.actor_id) || "Staff") : "System";
+                            const assignedFrom = event.from_assigned_to ? (actionHistoryNames.get(event.from_assigned_to) || "Unknown") : "—";
+                            const assignedTo = event.to_assigned_to ? (actionHistoryNames.get(event.to_assigned_to) || "Unknown") : "—";
+                            let title = "Action";
+                            let detailText = "";
+                            if (event.action === "created") {
+                              title = "অর্ডার এসেছে";
+                              detailText = `অর্ডার তৈরি হয়েছে · ${event.to_status ? (statusEn[event.to_status] ?? event.to_status) : "—"}`;
+                            } else if (event.action === "assigned") {
+                              title = "অ্যাসাইন করা হয়েছে";
+                              detailText = assignedTo === "—" ? "Assignment সরানো হয়েছে" : `নাম: ${assignedTo}${assignedFrom !== "—" ? ` · আগে: ${assignedFrom}` : ""}`;
+                            } else {
+                              title = "স্ট্যাটাস পরিবর্তন";
+                              detailText = `${event.from_status ? (statusEn[event.from_status] ?? event.from_status) : "—"} → ${event.to_status ? (statusEn[event.to_status] ?? event.to_status) : "—"}`;
+                            }
+                            return (
+                              <div key={event.id} className="rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2.5">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <div className="text-[11px] font-extrabold text-slate-800">{title}</div>
+                                    <div className="mt-0.5 text-[10px] font-semibold text-slate-600">{detailText}</div>
+                                    <div className="mt-1 text-[9px] text-slate-400">কার দ্বারা: <b className="text-slate-600">{actor}</b></div>
+                                  </div>
+                                  <div className="shrink-0 text-right text-[9px] text-slate-400">{format(new Date(event.created_at), "dd MMM yyyy")}<br />{format(new Date(event.created_at), "hh:mm a")}</div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
               <button onClick={onClose} className="text-2xl leading-none">×</button>
             </div>
           </div>
