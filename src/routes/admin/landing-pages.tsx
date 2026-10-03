@@ -188,7 +188,7 @@ function LandingPagesAdmin() {
 
   const uploadImage = async (file: File): Promise<string | null> => {
     try {
-      return await uploadToBucket("site-assets", `landing-${safeFileName(file.name)}`, file);
+      return await uploadToBucket("site-assets", `landing-audio-${Date.now()}-${safeFileName(file.name)}`, file);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "আপলোড হয়নি");
       return null;
@@ -329,7 +329,10 @@ function LandingPagesAdmin() {
                             const f = e.target.files?.[0];
                             if (!f) return;
                             const url = await uploadImage(f);
-                            if (url) setC({ audio_url: url });
+                            if (url) {
+                              setC({ audio_url: url });
+                              toast.success("অডিও আপলোড হয়েছে — এখন আপডেট/সংরক্ষণ করুন");
+                            }
                             e.target.value = "";
                           }}
                           className="w-full rounded-lg border bg-white px-3 py-2 text-xs"
