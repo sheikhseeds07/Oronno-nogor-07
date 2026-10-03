@@ -3,12 +3,12 @@
 create table if not exists public.order_action_history (
   id uuid primary key default gen_random_uuid(),
   order_id uuid not null references public.orders(id) on delete cascade,
-  actor_id uuid references auth.users(id) on delete set null,
+  actor_id uuid,
   action text not null check (action in ('created','assigned','status_changed')),
   from_status public.order_status,
   to_status public.order_status,
-  from_assigned_to uuid references auth.users(id) on delete set null,
-  to_assigned_to uuid references auth.users(id) on delete set null,
+  from_assigned_to uuid,
+  to_assigned_to uuid,
   created_at timestamptz not null default now()
 );
 
