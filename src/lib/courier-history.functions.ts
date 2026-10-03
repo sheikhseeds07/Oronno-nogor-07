@@ -188,9 +188,30 @@ async function withSteadfast(phone: string, result: CourierHistoryResult): Promi
       : undefined;
     cleaned = { ...result, stats, overall };
   }
-  // Steadfast exposes only real ratios now — show them as-is, no estimated counts.
+  // Steadfast's live API returns real counts/ratios. Treat it exactly like
+  // every other courier: add its row to stats and recompute Overall from all
+  // courier rows. Never keep Steadfast only in the separate score field,
+  // otherwise Overall incorrectly excludes it.
   const score = await steadfastScore(phone).catch(() => null);
-  return score ? { ...cleaned, steadfast: score } : cleaned;
+  if (!score) return cleaned;
+
+  const withoutSteadfast = cleaned.stats.filter(
+    (s) => s.name.toLowerCase() !== "steadfast",
+  );
+  const steadfastRow = {
+    name: "Steadfast",
+    total: Math.max(0, Number(score.total) || 0),
+    success: Math.max(0, Number(score.success) || 0),
+    cancelled: Math.max(0, Number(score.cancelled) || 0),
+  };
+  const stats = [...withoutSteadfast, steadfastRow];
+  const overall = {
+    name: "Overall",
+    total: stats.reduce((sum, s) => sum + (Number(s.total) || 0), 0),
+    success: stats.reduce((sum, s) => sum + (Number(s.success) || 0), 0),
+    cancelled: stats.reduce((sum, s) => sum + (Number(s.cancelled) || 0), 0),
+  };
+  return { ...cleaned, stats, overall, steadfast: score };
 }
 
 async function readPersistentCache(phone: string): Promise<PersistentHit | null> {
