@@ -315,6 +315,39 @@ function LandingPagesAdmin() {
                   </Field>
                   <div className="pt-3 border-t"><Field label="থিম কালার"><input type="color" value={editing.theme_color ?? "#16a34a"} onChange={(e) => set({ theme_color: e.target.value })} className="w-full h-10 border rounded-lg" /></Field></div>
                   <label className="flex items-center gap-2 pt-3 border-t"><input type="checkbox" checked={editing.is_published ?? false} onChange={(e) => set({ is_published: e.target.checked })} /><span className="font-semibold">পাবলিশ করুন</span></label>
+                  {editing.slug === "nutrimix" && (
+                    <div className="mt-3 rounded-xl border-2 border-emerald-200 bg-emerald-50/50 p-3">
+                      <div className="mb-2">
+                        <div className="font-bold text-sm text-emerald-900">🎙️ ভয়েস / অডিও</div>
+                        <div className="text-[11px] leading-4 text-emerald-800/80">অডিও আপলোড করে সংরক্ষণ/পাবলিশ করলে NUTRIMIX landing page-এ ভিজিটের ২ সেকেন্ড পর ভয়েস চালু হওয়ার চেষ্টা করবে।</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="file"
+                          accept="audio/*"
+                          onChange={async (e) => {
+                            const f = e.target.files?.[0];
+                            if (!f) return;
+                            const url = await uploadImage(f);
+                            if (url) setC({ audio_url: url });
+                            e.target.value = "";
+                          }}
+                          className="w-full rounded-lg border bg-white px-3 py-2 text-xs"
+                        />
+                        {C.audio_url && (
+                          <button type="button" onClick={() => setC({ audio_url: "" })} className="shrink-0 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50">
+                            সরান
+                          </button>
+                        )}
+                      </div>
+                      {C.audio_url && (
+                        <div className="mt-2 rounded-lg border bg-white px-3 py-2">
+                          <div className="mb-1 text-[10px] font-bold text-slate-500">বর্তমান অডিও</div>
+                          <audio controls preload="metadata" src={C.audio_url} className="h-9 w-full" />
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {(editing.slug !== "nutrimix" && (editing.slug === "seedcombo" || C.template === "all-product")) && (
                     <div className="mt-3 rounded-xl border-2 border-emerald-200 bg-emerald-50/50 p-3 space-y-3">
                       {editing.slug !== "nutrimix" && (
