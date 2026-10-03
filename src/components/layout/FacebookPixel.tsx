@@ -4,18 +4,18 @@ import { getCachedPixelId, setCachedPixelId, flushFbqQueue, trackPageView } from
 type Props = { eager?: boolean };
 
 function loadScript() {
-  if (typeof window === "undefined" || document.querySelector('script[data-oronno-fb-pixel="1"]')) return;
+  if (typeof window === "undefined") return;
+  const existing = document.querySelector('script[data-oronno-fb-pixel="1"]');
+  if (existing) return;
   const inject = () => {
     if (document.querySelector('script[data-oronno-fb-pixel="1"]')) return;
     const script = document.createElement("script");
     script.async = true;
     script.dataset.oronnoFbPixel = "1";
     script.src = "https://connect.facebook.net/en_US/fbevents.js";
+    script.addEventListener("load", () => window.dispatchEvent(new Event("oronno:fb-pixel-ready")), { once: true });
     document.head.appendChild(script);
   };
-  // Speed: fbevents.js is ~110KB and must never compete with first paint.
-  // Events fired before it loads stay in the fbq queue and flush on load,
-  // so tracking accuracy is unchanged.
   const idle = (window as unknown as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
   if (typeof idle === "function") idle(inject, { timeout: 2500 });
   else window.setTimeout(inject, 1200);
@@ -48,7 +48,6 @@ export function FacebookPixel({ eager = true }: Props) {
     let cleanup: (() => void) | undefined;
 
     const start = async () => {
-      // Track only the customer-facing website. Admin activity must never pollute ad data.
       if (window.location.pathname.startsWith("/admin")) return;
       const runtime = window as unknown as Record<string, unknown>;
       if (runtime.__oronnoFacebookPixelOwner) return;
@@ -61,11 +60,11 @@ export function FacebookPixel({ eager = true }: Props) {
         trackPageView();
       };
 
+      const onPixelReady = () => flushFbqQueue();
+      window.addEventListener("oronno:fb-pixel-ready", onPixelReady);
+
       const cached = getCachedPixelId();
       if (cached) {
-        // Cached config is enough to record the first PageView immediately.
-        // Do not wait for the public config request: an ad visitor must not
-        // lose the landing-page PageView when that request is slow/fails.
         initPixel(cached);
         pageView();
       }
@@ -74,14 +73,16 @@ export function FacebookPixel({ eager = true }: Props) {
       const config = response?.ok ? await response.json().catch(() => null) : null;
       if (cancelled || typeof window === "undefined") {
         runtime.__oronnoFacebookPixelOwner = false;
+        window.removeEventListener("oronno:fb-pixel-ready", onPixelReady);
         return;
       }
       const pixelId = typeof config?.pixel_id === "string" && config.enabled !== false ? config.pixel_id : null;
-      if (!pixelId) return;
+      if (!pixelId) {
+        window.removeEventListener("oronno:fb-pixel-ready", onPixelReady);
+        return;
+      }
       setCachedPixelId(pixelId);
       initPixel(pixelId);
-      // For first-time visitors there is no cached pixel id, so this is the
-      // first safe point at which the browser PageView can be emitted.
       pageView();
 
       const originalPushState = history.pushState;
@@ -93,6 +94,7 @@ export function FacebookPixel({ eager = true }: Props) {
       window.addEventListener("oronno:route-change", onRoute);
       cleanup = () => {
         runtime.__oronnoFacebookPixelOwner = false;
+        window.removeEventListener("oronno:fb-pixel-ready", onPixelReady);
         history.pushState = originalPushState;
         history.replaceState = originalReplaceState;
         window.removeEventListener("popstate", onRoute);
