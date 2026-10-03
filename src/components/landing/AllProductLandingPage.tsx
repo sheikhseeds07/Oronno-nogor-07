@@ -317,6 +317,8 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   if (!page) return <div className="min-h-screen grid place-items-center bg-all-product-surface text-all-product-ink">পেজ পাওয়া যায়নি</div>;
 
   return <div className="all-product-landing min-h-screen bg-all-product-surface text-all-product-ink">
+    <FacebookPixel eager />
+    {isAudioLanding && C.audio_url && <audio ref={audioRef} src={C.audio_url} preload="auto" onPlay={() => setAudioPlaying(true)} onPause={() => setAudioPlaying(false)} onEnded={() => setAudioPlaying(false)} className="hidden" />}
 
     <GuaranteePopup slug={slug} logo={logo} brand={brand} nutrimix={isNutrimix} />
     {page.top_bar_text && <div className="bg-all-product-alert px-3 py-0.5 text-center text-[10px] font-bold leading-4 text-all-product-alert-foreground sm:text-[11px]">{page.top_bar_text}</div>}
