@@ -183,9 +183,31 @@ function buildUserData(payload: ServerEventPayload) {
 }
 
 /** Send any supported website event to Meta CAPI with a direct server request and a database fallback. */
+async function queuePurchaseForRetry(body: AnyRecord, eventId: string) {
+  if (!eventId) return false;
+  try {
+    const { data, error } = await (supabaseAdmin as any).rpc("queue_meta_capi_purchase", {
+      p_event_id: eventId,
+      p_body: body,
+    });
+    if (!error && data === true) return true;
+    logger.error("[FB CAPI purchase outbox failed]", { eventId, error: error?.message ?? "queue unavailable" });
+  } catch (error) {
+    logger.error("[FB CAPI purchase outbox exception]", { eventId, error: error instanceof Error ? error.message : String(error) });
+  }
+  return false;
+}
+
+/** Send any supported website event to Meta CAPI with a direct server request and a durable Purchase retry fallback. */
 export async function sendServerEvent(payload: ServerEventPayload): Promise<{ ok: boolean }> {
   const cfg = await loadFbConfig();
-  if (!cfg?.enabled || !cfg.pixel_id) return { ok: false };
+  if (!cfg?.enabled || !cfg.pixel_id) {
+    if (payload.event_name === "Purchase") {
+      const queued = await queuePurchaseForRetry({ data: [{ event_name: payload.event_name, event_id: payload.event_id }] }, payload.event_id);
+      return { ok: queued };
+    }
+    return { ok: false };
+  }
 
   const now = Math.floor(Date.now() / 1000);
   const eventTime = payload.event_time && payload.event_time <= now + 60 && payload.event_time > now - 6 * 24 * 3600 ? payload.event_time : now;
@@ -202,6 +224,8 @@ export async function sendServerEvent(payload: ServerEventPayload): Promise<{ ok
     }],
     ...(cfg.test_event_code ? { test_event_code: cfg.test_event_code } : {}),
   };
+
+  const queueRetry = async () => queuePurchaseForRetry(body, payload.event_id);
 
   const dispatchFallback = async () => {
     try {
@@ -238,7 +262,9 @@ export async function sendServerEvent(payload: ServerEventPayload): Promise<{ ok
   }
 
   logger.error("[FB CAPI direct delivery failed]", { event: payload.event_name, eventId: payload.event_id, error: lastError });
-  return (await dispatchFallback()) ? { ok: true } : { ok: false };
+  if (await dispatchFallback()) return { ok: true };
+  if (payload.event_name === "Purchase" && await queueRetry()) return { ok: true };
+  return { ok: false };
 }
 
 export type PurchaseEventPayload = {
