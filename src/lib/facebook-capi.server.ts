@@ -223,6 +223,12 @@ export async function sendServerEvent(payload: ServerEventPayload): Promise<{ ok
 
   const queueRetry = async () => queuePurchaseForRetry(body, payload.event_id);
 
+  // Persist Purchase before delivery. This guarantees a durable retry record
+  // even when the app process/network fails after the order is created.
+  if (payload.event_name === "Purchase") {
+    await queueRetry();
+  }
+
   if (!cfg?.enabled || !cfg.pixel_id) {
     if (payload.event_name === "Purchase") return (await queueRetry()) ? { ok: true } : { ok: false };
     return { ok: false };
@@ -238,14 +244,6 @@ export async function sendServerEvent(payload: ServerEventPayload): Promise<{ ok
     }
     return false;
   };
-
-  // Purchase is the conversion event we must not lose. Send it through the
-  // privileged database dispatcher first so delivery does not depend on the
-  // app runtime's token/cache state. The dispatcher also applies the current
-  // integration test_event_code when one is configured.
-  if (payload.event_name === "Purchase") {
-    if (await dispatchFallback()) return { ok: true };
-  }
 
   const accessToken = cfg.access_token;
   if (!accessToken || accessToken === "database-managed") return { ok: false };
