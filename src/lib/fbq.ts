@@ -18,14 +18,15 @@ const MAX_SENT_IDS = 200;
 const DUPLICATE_WINDOW_MS = 750;
 let memoryQueue: QueuedEvent[] = [];
 let mirrorEnabled = true;
-/** Guards against the same event id being sent twice inside one page session (StrictMode / re-renders). */
 const inFlight = new Set<string>();
 const recentEvents = new Map<string, { id: string; at: number }>();
 
 function getFbq(): Fbq | null {
   if (typeof window === "undefined") return null;
-  const fbq = (window as unknown as { fbq?: Fbq }).fbq;
-  return typeof fbq === "function" ? fbq : null;
+  const fbq = (window as unknown as { fbq?: Fbq & { callMethod?: unknown } }).fbq;
+  // The bootstrap stub also exposes window.fbq, but it is not Meta's loaded
+  // library. Never treat the stub as a successful browser delivery.
+  return typeof fbq === "function" && typeof fbq.callMethod === "function" ? fbq : null;
 }
 
 function readQueue(): QueuedEvent[] {
@@ -44,10 +45,6 @@ function writeQueue(queue: QueuedEvent[]) {
   try { localStorage.setItem(QUEUE_KEY, JSON.stringify(memoryQueue)); } catch { /* ignore */ }
 }
 
-/**
- * Durable "already counted" ledger, keyed by event id. Used for one-per-order
- * events so a page refresh, back-navigation, or restored tab never re-counts.
- */
 function readSentIds(): string[] {
   if (typeof window === "undefined") return [];
   try {
@@ -89,12 +86,6 @@ export function setCachedPixelId(pixelId: string | null) {
 
 export function setCapiMirrorEnabled(enabled: boolean) { mirrorEnabled = enabled; }
 
-/**
- * Server-side (Conversions API) copy of a browser event, sent with the SAME
- * event_id so Meta deduplicates browser + server into a single event.
- * Purchase is skipped here: the order server function sends it with the order
- * id as event_id, which keeps exactly one Purchase per order.
- */
 function mirrorToCapi(item: QueuedEvent) {
   if (!mirrorEnabled || typeof window === "undefined" || item.event === "Purchase") return;
   const ctx = getFbContext();
@@ -138,7 +129,6 @@ export function flushFbqQueue() {
   if (!fbq) return;
   const queue = readQueue();
   const remaining: QueuedEvent[] = [];
-  // Keep failed browser deliveries in the durable queue instead of dropping them.
   queue.forEach((item) => {
     if (sendBrowser(item, fbq)) markSent(item.eventID);
     else remaining.push(item);
@@ -161,7 +151,6 @@ export function fbqTrack(event: string, params?: Record<string, unknown>, eventI
   const fbq = getFbq();
   if (fbq) sendBrowser(item, fbq);
   else enqueue(item);
-  // Always fire the server copy, even if the browser pixel is blocked or still loading.
   mirrorToCapi(item);
   return id;
 }
@@ -188,7 +177,8 @@ export function trackLead(params?: Record<string, unknown>) { return fbqTrack("L
 /**
  * Purchase: exactly one per order.
  * - event_id is the order id, shared with the server-side Conversions API copy.
- * - a durable ledger stops refreshes / back-navigation from re-counting it.
+ * - browser delivery is marked sent only after the real Meta fbq library is loaded.
+ * - if the browser library is unavailable, the event remains in a durable queue.
  */
 export function trackPurchase(items: PixelItem[], value: number, eventID?: string) {
   const id = eventID ?? uuid();
