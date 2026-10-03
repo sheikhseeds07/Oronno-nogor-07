@@ -2328,7 +2328,7 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
             {courierLoading && null}
             {!courierLoading && hoorinError && <div className="min-w-[220px] rounded-lg border border-dashed p-2.5 bg-amber-50 text-xs text-amber-800 self-center">Hoorin error: {hoorinError}</div>}
             {!courierLoading && !hoorinError && hoorinReady && courierStats.length === 0 && <div className="min-w-[200px] rounded-lg border border-dashed p-2.5 bg-muted/40 text-xs text-muted-foreground self-center">এই নাম্বারে কোনো কুরিয়ার রেকর্ড নেই</div>}
-            {!courierLoading && !hoorinError && !hoorinReady && <div className="min-w-[220px] rounded-lg border border-dashed p-2.5 bg-amber-50 text-xs text-amber-800 self-center">Hoorin API কানেক্ট নেই — All API তে কী বসান</div>}
+            {enabled && inView && !courierLoading && !hoorinError && !hoorinReady && <div className="min-w-[220px] rounded-lg border border-dashed p-2.5 bg-amber-50 text-xs text-amber-800 self-center">Hoorin API কানেক্ট নেই — All API তে কী বসান</div>}
           </div>
         </div>
       )}
