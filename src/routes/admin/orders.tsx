@@ -2788,7 +2788,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
   type OrderActionHistoryRow = {
     id: string;
     actor_id: string | null;
-    action: "created" | "assigned" | "status_changed";
+    action: "created" | "assigned" | "status_changed" | "confirm" | "cancel";
     from_status: OrderStatus | null;
     to_status: OrderStatus | null;
     from_assigned_to: string | null;
@@ -2802,7 +2802,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
     staleTime: 60_000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const [historyResult, employeesResult] = await Promise.all([
+      const [historyResult, eventResult, employeesResult] = await Promise.all([
         supabase
           .from("order_action_history" as any)
           .select("id,actor_id,action,from_status,to_status,from_assigned_to,to_assigned_to,created_at")
@@ -2810,10 +2810,29 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
           .order("created_at", { ascending: true })
           .order("id", { ascending: true })
           .limit(100),
+        supabase
+          .from("order_action_events")
+          .select("id,actor_id,action,created_at")
+          .eq("order_id", id)
+          .order("created_at", { ascending: true })
+          .limit(20),
         supabase.from("employees").select("user_id,name").eq("is_active", true),
       ]);
       if (historyResult.error) throw new Error(historyResult.error.message);
       const rows = (historyResult.data ?? []) as unknown as OrderActionHistoryRow[];
+      for (const e of eventResult.data ?? []) {
+        rows.push({
+          id: `event-${e.id}`,
+          actor_id: e.actor_id,
+          action: e.action as OrderActionHistoryRow["action"],
+          from_status: null,
+          to_status: null,
+          from_assigned_to: null,
+          to_assigned_to: null,
+          created_at: e.created_at,
+        });
+      }
+      rows.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
       const names = new Map<string, string>();
       for (const e of employeesResult.data ?? []) {
         if (e.user_id) names.set(e.user_id, e.name || "Staff");
@@ -3168,6 +3187,12 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
                             } else if (event.action === "assigned") {
                               title = "অ্যাসাইন করা হয়েছে";
                               detailText = assignedTo === "—" ? "Assignment সরানো হয়েছে" : `নাম: ${assignedTo}${assignedFrom !== "—" ? ` · আগে: ${assignedFrom}` : ""}`;
+                            } else if (event.action === "confirm") {
+                              title = "অর্ডার কনফার্ম";
+                              detailText = "অর্ডার কনফার্ম করা হয়েছে";
+                            } else if (event.action === "cancel") {
+                              title = "অর্ডার ক্যানসেল";
+                              detailText = "অর্ডার ক্যানসেল করা হয়েছে";
                             } else {
                               title = "স্ট্যাটাস পরিবর্তন";
                               detailText = `${event.from_status ? (statusEn[event.from_status] ?? event.from_status) : "—"} → ${event.to_status ? (statusEn[event.to_status] ?? event.to_status) : "—"}`;
