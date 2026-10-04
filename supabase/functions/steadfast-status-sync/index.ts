@@ -2,7 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
 type R = Record<string, unknown>;
-const COOLDOWN_MS = 12 * 60 * 60 * 1000;
+const COOLDOWN_MS = 20 * 60 * 1000;
 const PAGE_SIZE = 400;
 const RETRY_BATCH = 100;
 const LOCK_MS = 3 * 60 * 1000;
@@ -39,7 +39,7 @@ async function call(c: string, cfg: R) {
         `${base.replace(/\/$/, "")}/status_by_cid/${encodeURIComponent(c)}`,
         {
           headers: { "Api-Key": ak, "Secret-Key": sk, "Content-Type": "application/json" },
-          signal: AbortSignal.timeout(2500),
+          signal: AbortSignal.timeout(8000),
         },
       );
       if (r.ok) {
@@ -211,8 +211,8 @@ Deno.serve(async (req) => {
 
     let query = a.from("orders")
       .select("id,status,courier_consignment,courier_display_name,courier_status,courier_synced_at")
-      .in("status", ["shipped", "delivered", "partial", "pending_return", "returned"])
       .not("courier_consignment", "is", null)
+      .or("courier_status.is.null,courier_status.not.in.(delivered,cancelled,partial_delivered)")
       .order("id", { ascending: true }).limit(PAGE_SIZE);
     if (lastId) query = query.gt("id", lastId);
 
@@ -221,8 +221,8 @@ Deno.serve(async (req) => {
 
     let checked = retryChecked, updated = retryUpdated, failed = retryFailed, skipped = 0;
 
-    for (let i = 0; i < orders.length; i += 50) {
-      const rs = await Promise.all(orders.slice(i, i + 50).map((o) => syncOne(a, o as R, byDisplay, cfgs)));
+    for (let i = 0; i < orders.length; i += 10) {
+      const rs = await Promise.all(orders.slice(i, i + 10).map((o) => syncOne(a, o as R, byDisplay, cfgs)));
       checked += rs.length;
       updated += rs.filter((x) => x.updated).length;
       failed += rs.filter((x) => !x.ok).length;
