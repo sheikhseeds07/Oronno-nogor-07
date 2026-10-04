@@ -59,8 +59,8 @@ async function serveMedia(request: Request): Promise<Response> {
   if (!delivered) {
     const bucket = getCloudflareR2Bucket<R2BucketLike>();
     if (!bucket) return placeholderResponse();
-    const object = await readR2Image(() => readR2(bucket, key));
-    delivered = object === R2_IMAGE_PLACEHOLDER
+    const object = key.includes("/thank-you-audio/") ? await readR2(bucket, key) : await readR2Image(() => readR2(bucket, key));
+    delivered = object === null || object === R2_IMAGE_PLACEHOLDER
       ? placeholderResponse()
       : response(object.body, 200, "public, max-age=31536000, s-maxage=31536000, immutable", object.headers);
     delivered.headers.set("X-Oronno-Media-Cache", "MISS");
