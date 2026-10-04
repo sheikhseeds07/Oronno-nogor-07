@@ -3445,3 +3445,5 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
     </div>
   );
 }
+
+// Deploy sync: courier-history server function now includes direct Steadfast score cache.
