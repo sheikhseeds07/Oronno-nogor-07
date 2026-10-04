@@ -160,11 +160,26 @@ async function steadfastScore(phone: string): Promise<SteadfastScore | null> {
   if (p.length < 11) return null;
 
   const admin = supabaseAdmin as any;
-  const { data: cachedRow } = await admin
+  let { data: cachedRow } = await admin
     .from("courier_history_cache")
     .select("steadfast_score")
     .eq("phone", phone)
     .maybeSingle();
+
+  // Ensure the persistent row exists before claiming the single Steadfast request.
+  // This is important for a brand-new phone that has never had courier cache data.
+  if (!cachedRow) {
+    await admin.from("courier_history_cache").upsert(
+      { phone, configured: true, stats: [], error: null, steadfast_score: null },
+      { onConflict: "phone", ignoreDuplicates: true },
+    );
+    const reread = await admin
+      .from("courier_history_cache")
+      .select("steadfast_score")
+      .eq("phone", phone)
+      .maybeSingle();
+    cachedRow = reread.data;
+  }
 
   const cached = parseSteadfastScore(cachedRow?.steadfast_score);
   if (cached) {
