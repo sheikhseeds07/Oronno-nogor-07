@@ -343,6 +343,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
         popupDescription={C.nutrimix_popup_description}
         popupAcceptText={C.nutrimix_popup_accept_text}
         popupDeclineText={C.nutrimix_popup_decline_text}
+        popupAudioUrl={C.nutrimix_popup_audio_url || ""}
       />
     )}
 
