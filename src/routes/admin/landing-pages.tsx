@@ -349,6 +349,19 @@ function LandingPagesAdmin() {
                           <audio controls preload="metadata" src={C.audio_url} className="h-9 w-full" />
                         </div>
                       )}
+                      {editing.slug === "seedcombo" && (
+                        <div className="mt-3 rounded-lg border border-emerald-200 bg-white p-3">
+                          <div className="mb-2">
+                            <div className="font-bold text-xs text-emerald-900">🎙️ NUTRIMIX Popup-এর আলাদা ভয়েস</div>
+                            <div className="text-[10px] leading-4 text-emerald-800/80">Place Order চাপলে যে NUTRIMIX popup আসে, শুধু সেই popup-এর জন্য আলাদা অডিও।</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <input type="file" accept="audio/*" onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; const url = await uploadImage(f); if (url) { setC({ nutrimix_popup_audio_url: url }); toast.success("NUTRIMIX popup-এর অডিও আপলোড হয়েছে — এখন আপডেট/সংরক্ষণ করুন"); } e.target.value = ""; }} className="w-full rounded-lg border bg-white px-3 py-2 text-xs" />
+                            {C.nutrimix_popup_audio_url && <button type="button" onClick={() => setC({ nutrimix_popup_audio_url: "" })} className="shrink-0 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50">সরান</button>}
+                          </div>
+                          {C.nutrimix_popup_audio_url && <div className="mt-2 rounded-lg border bg-slate-50 px-3 py-2"><div className="mb-1 text-[10px] font-bold text-slate-500">Popup-এর বর্তমান অডিও</div><audio controls preload="metadata" src={C.nutrimix_popup_audio_url} className="h-9 w-full" /></div>}
+                        </div>
+                      )}
                     </div>
                   )}
                   {(editing.slug !== "nutrimix" && (editing.slug === "seedcombo" || C.template === "all-product")) && (
