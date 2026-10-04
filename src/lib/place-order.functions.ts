@@ -1,12 +1,18 @@
 import { logger } from "@/lib/logger";
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeader, getRequestIP } from "@tanstack/react-start/server";
+import { getCookie, getRequestHeader, getRequestIP } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 import { sendPurchaseEvent } from "@/lib/facebook-capi.server";
 import { BLOCKED_ORDER_CODE, BLOCKED_ORDER_MESSAGE } from "@/lib/order-block";
 
 const PHONE_RE = /^01[3-9][0-9]{8}$/;
+const ORDER_DEVICE_COOKIE = "hng-device-id";
+
+function getOrderDeviceId(): string | null {
+  const value = getCookie(ORDER_DEVICE_COOKIE)?.trim() ?? "";
+  return value.length >= 6 && value.length <= 80 ? value : null;
+}
 const ItemSchema = z.object({ id: z.string().min(1).max(64), name: z.string().min(1).max(500), price: z.number().min(0).max(10_000_000), quantity: z.number().int().min(1).max(1000) });
 const InputSchema = z.object({ customer_name: z.string().min(1).max(255), customer_phone: z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number. Use 01XXXXXXXXX."), customer_address: z.string().min(1).max(1000), district: z.string().max(100).optional().nullable(), thana: z.string().max(100).optional().nullable(), notes: z.string().max(2000).optional().nullable(), delivery_fee: z.number().min(0).max(10000).default(50), items: z.array(ItemSchema).min(1).max(100), created_by: z.string().uuid().optional().nullable(), fbp: z.string().max(200).optional().nullable(), fbc: z.string().max(500).optional().nullable(), source_url: z.string().max(2000).optional().nullable(), checkout_session_id: z.string().max(200).optional().nullable() });
 type Input = z.infer<typeof InputSchema>;
@@ -57,6 +63,7 @@ export const saveIncompleteCheckout = createServerFn({ method: "POST" }).inputVa
 
 export const createLandingCheckoutIntent = createServerFn({ method: "POST" }).inputValidator((input) => LandingIntentInputSchema.parse(input)).handler(async ({ data }) => {
   const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
+  const deviceId = getOrderDeviceId();
   const { data: intentId, error } = await supabaseAdmin.rpc("create_landing_checkout_intent", {
     p_checkout_session_id: data.checkout_session_id,
     p_customer_name: data.customer_name,
@@ -67,6 +74,7 @@ export const createLandingCheckoutIntent = createServerFn({ method: "POST" }).in
     p_nutrimix_item: data.nutrimix_item ?? null,
     p_notes: data.notes ?? null,
     p_client_ip: clientIp,
+    p_device_id: deviceId,
   } as never);
   if (error) {
     if (/blocked/i.test(error.message ?? "")) throw new Error(BLOCKED_ORDER_MESSAGE);
@@ -119,6 +127,7 @@ export const finalizeLandingCheckoutIntent = createServerFn({ method: "POST" }).
 export const placeOrder = createServerFn({ method: "POST" }).inputValidator((input: Input) => InputSchema.parse(input)).handler(async ({ data }) => {
   const customerPhone = data.customer_phone;
   const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
+  const deviceId = getOrderDeviceId();
 
   // Landing pages own their delivery charge. Resolve it server-side from the
   // landing configuration so a generic checkout fallback (e.g. ৳50) can never
@@ -169,6 +178,7 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
     p_items: data.items,
     p_notes: data.notes ?? null,
     p_client_ip: clientIp,
+    p_device_id: deviceId,
   } as never);
 
   if (orderError) {
