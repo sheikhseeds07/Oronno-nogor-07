@@ -223,12 +223,6 @@ export async function sendServerEvent(payload: ServerEventPayload): Promise<{ ok
 
   const queueRetry = async () => queuePurchaseForRetry(body, payload.event_id);
 
-  // Persist Purchase before delivery. This guarantees a durable retry record
-  // even when the app process/network fails after the order is created.
-  if (payload.event_name === "Purchase") {
-    await queueRetry();
-  }
-
   if (!cfg?.enabled || !cfg.pixel_id) {
     if (payload.event_name === "Purchase") return (await queueRetry()) ? { ok: true } : { ok: false };
     return { ok: false };
