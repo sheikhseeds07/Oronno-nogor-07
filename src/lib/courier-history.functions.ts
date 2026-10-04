@@ -144,6 +144,7 @@ export type SteadfastScore = {
   fetchedAt?: string;
 };
 
+// Deploy sync: Steadfast fraud-check endpoint/parser is live-code critical; keep this marker in the app bundle.
 const STEADFAST_SCORE_TTL_MS = 24 * 60 * 60 * 1000;
 
 function parseSteadfastScore(value: unknown): SteadfastScore | null {
