@@ -30,7 +30,7 @@ type PersistentHit = { result: CourierHistoryResult; fresh: boolean; fetchedAtMs
 const SUCCESS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const FAILURE_CACHE_TTL_MS = 15 * 1000;
 const STALE_CACHE_TTL_MS = 30 * 60 * 1000;
-const CACHE_VERSION = "courier-history-v13-real-steadfast-ratios";
+const CACHE_VERSION = "courier-history-v14-steadfast-score-api";
 const MAX_CACHE_ENTRIES = 3000;
 
 const courierCache = new Map<string, CacheEntry>();
@@ -238,35 +238,29 @@ async function steadfastScore(phone: string): Promise<SteadfastScore | null> {
     }
 
     const res = await fetch(
-      `https://portal.packzy.com/api/v1/fraud_check/${p}`,
+      `https://portal.packzy.com/api/v1/fraud_check/score/${p}`,
       {
-        headers: {
-          "Api-Key": apiKey,
-          "Secret-Key": secretKey,
-          Accept: "application/json",
-        },
+        headers: { "Api-Key": apiKey, "Secret-Key": secretKey, Accept: "application/json" },
         signal: AbortSignal.timeout(8000),
       },
     );
 
     if (!res.ok) throw new Error(`Steadfast HTTP ${res.status}`);
     const j = (await res.json()) as Record<string, unknown>;
-    const total = Number(j.Total_parcels ?? j.total_parcels ?? j.total_orders ?? j.total);
-    const success = Number(j.total_delivered ?? j.delivered ?? j.success);
-    const cancelled = Number(j.total_cancelled ?? j.cancelled ?? j.cancel);
-    if (!Number.isFinite(total) || !Number.isFinite(success) || !Number.isFinite(cancelled)) {
-      throw new Error("Invalid Steadfast fraud response");
-    }
-    const safeTotal = Math.max(0, total);
-    const safeSuccess = Math.max(0, success);
-    const safeCancelled = Math.max(0, cancelled);
-    const deliveryRatio = safeTotal > 0 ? (safeSuccess / safeTotal) * 100 : 0;
-    const cancellationRatio = safeTotal > 0 ? (safeCancelled / safeTotal) * 100 : 0;
+    // Steadfast only returns ratios + a volume range (counts were sunset 27 Sep 2026).
+    const deliveryRatio = Number(j.delivery_ratio);
+    const cancellationRatio = Number(j.cancellation_ratio ?? j.return_ratio) || 0;
+    if (!Number.isFinite(deliveryRatio)) throw new Error("Invalid Steadfast score response");
+    const range = typeof j.volume_range === "string" ? j.volume_range : "";
+    const nums = (range.match(/\d+/g) ?? []).map(Number);
+    const safeTotal = nums.length ? Math.round(nums.reduce((x, y) => x + y, 0) / nums.length) : 0;
+    const safeSuccess = Math.round((safeTotal * deliveryRatio) / 100);
+    const safeCancelled = Math.round((safeTotal * cancellationRatio) / 100);
 
     const score: SteadfastScore = {
       deliveryRatio,
       cancellationRatio,
-      volumeBand: typeof j.volume_band === "string" ? j.volume_band : null,
+      volumeBand: range || (typeof j.volume_band === "string" ? j.volume_band : null),
       total: safeTotal,
       success: safeSuccess,
       cancelled: safeCancelled,
