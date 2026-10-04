@@ -130,9 +130,139 @@ function aggregateOverall(stats: CourierStat[]): CourierOverall {
 }
 
 
-// Hoorin first. Since 27 Sep 2026 Steadfast no longer exposes parcel counts
-// (Hoorin returns 0 for Steadfast). When that happens, ask Steadfast's own
-// fraud_check/score API for the customer's network-wide delivery ratio.
+// Hoorin supplies every courier except Steadfast.
+// Steadfast success/cancellation ratios are read directly from our
+// Steadfast merchant API and persisted per phone so refreshes do not
+// create another provider request.
+export type SteadfastScore = {
+  deliveryRatio: number;
+  cancellationRatio: number;
+  volumeBand: string | null;
+  fetchedAt?: string;
+};
+
+const STEADFAST_SCORE_TTL_MS = 24 * 60 * 60 * 1000;
+
+function parseSteadfastScore(value: unknown): SteadfastScore | null {
+  if (!value || typeof value !== "object") return null;
+  const row = value as Record<string, unknown>;
+  if (row.status !== "ok" || !Number.isFinite(Number(row.deliveryRatio))) return null;
+  return {
+    deliveryRatio: Number(row.deliveryRatio),
+    cancellationRatio: Number(row.cancellationRatio) || 0,
+    volumeBand: typeof row.volumeBand === "string" ? row.volumeBand : null,
+    fetchedAt: typeof row.fetchedAt === "string" ? row.fetchedAt : undefined,
+  };
+}
+
+async function steadfastScore(phone: string): Promise<SteadfastScore | null> {
+  const p = phone.slice(-11);
+  if (p.length < 11) return null;
+
+  const admin = supabaseAdmin as any;
+  const { data: cachedRow } = await admin
+    .from("courier_history_cache")
+    .select("steadfast_score")
+    .eq("phone", phone)
+    .maybeSingle();
+
+  const cached = parseSteadfastScore(cachedRow?.steadfast_score);
+  if (cached) {
+    const age = cached.fetchedAt ? Date.now() - new Date(cached.fetchedAt).getTime() : Infinity;
+    if (age >= 0 && age < STEADFAST_SCORE_TTL_MS) return cached;
+  }
+
+  // Atomically claim the single provider request for this phone.
+  // A refresh/concurrent request that cannot claim it must never call Steadfast again.
+  const claim = await admin
+    .from("courier_history_cache")
+    .update({
+      steadfast_score: {
+        status: "fetching",
+        claimedAt: new Date().toISOString(),
+      },
+    })
+    .eq("phone", phone)
+    .is("steadfast_score", null)
+    .select("phone")
+    .maybeSingle();
+
+  if (!claim.data) {
+    // Another request owns the fetch. Re-read once; do not call the provider.
+    const { data: waitingRow } = await admin
+      .from("courier_history_cache")
+      .select("steadfast_score")
+      .eq("phone", phone)
+      .maybeSingle();
+    const waiting = parseSteadfastScore(waitingRow?.steadfast_score);
+    return waiting ?? null;
+  }
+
+  try {
+    const { data: integration } = await admin
+      .from("integrations")
+      .select("config,is_active")
+      .eq("name", "all_api_steadfast")
+      .maybeSingle();
+    const cfg = (integration?.config ?? {}) as Record<string, unknown>;
+    const apiKey = String(cfg.api_key ?? "").trim();
+    const secretKey = String(cfg.secret_key ?? "").trim();
+
+    if (!integration?.is_active || !apiKey || !secretKey) {
+      await admin.from("courier_history_cache").update({
+        steadfast_score: { status: "failed", fetchedAt: new Date().toISOString() },
+      }).eq("phone", phone);
+      return null;
+    }
+
+    const res = await fetch(
+      `https://portal.packzy.com/api/v1/fraud_check/score/${p}`,
+      {
+        headers: {
+          "Api-Key": apiKey,
+          "Secret-Key": secretKey,
+          Accept: "application/json",
+        },
+        signal: AbortSignal.timeout(8000),
+      },
+    );
+
+    if (!res.ok) throw new Error(`Steadfast HTTP ${res.status}`);
+    const j = (await res.json()) as Record<string, unknown>;
+    const band = typeof j.volume_band === "string" ? j.volume_band : null;
+    const deliveryRatio = Number(j.delivery_ratio);
+    const cancellationRatio = Number(j.cancellation_ratio) || 0;
+
+    if (!band || band === "none" || !Number.isFinite(deliveryRatio)) throw new Error("Invalid Steadfast score");
+
+    const score: SteadfastScore = {
+      deliveryRatio,
+      cancellationRatio,
+      volumeBand: band,
+      fetchedAt: new Date().toISOString(),
+    };
+
+    await admin.from("courier_history_cache").update({
+      steadfast_score: { status: "ok", ...score },
+    }).eq("phone", phone);
+
+    return score;
+  } catch {
+    await admin.from("courier_history_cache").update({
+      steadfast_score: { status: "failed", fetchedAt: new Date().toISOString() },
+    }).eq("phone", phone);
+    return null;
+  }
+}
+
+async function withSteadfast(phone: string, result: CourierHistoryResult): Promise<CourierHistoryResult> {
+  if (!result.configured) return result;
+  const stats = result.stats.filter((s) => s.name.toLowerCase() !== "steadfast");
+  const overall = aggregateOverall(stats);
+  const cleaned = { ...result, stats, overall };
+  const score = await steadfastScore(phone).catch(() => null);
+  return score ? { ...cleaned, steadfast: score } : cleaned;
+}
 
 async function readPersistentCache(phone: string): Promise<PersistentHit | null> {
   const cached = persistentReadCache.get(phone);
@@ -146,7 +276,7 @@ async function readPersistentCache(phone: string): Promise<PersistentHit | null>
   const admin = supabaseAdmin as any;
   const { data, error } = await admin
     .from("courier_history_cache")
-    .select("configured,stats,error,expires_at,fetched_at")
+     .select("configured,stats,error,expires_at,fetched_at,steadfast_score")
     .eq("phone", phone)
     .maybeSingle();
   if (error || !data) return null;
@@ -162,6 +292,7 @@ async function readPersistentCache(phone: string): Promise<PersistentHit | null>
     overall: cachedOverall,
     error: typeof data.error === "string" ? data.error : null,
     source: "cache",
+    steadfast: parseSteadfastScore(data.steadfast_score) ?? undefined,
   };
   const expiresAt = new Date(String(data.expires_at ?? "")).getTime();
   const fetchedAtMs = new Date(String(data.fetched_at ?? "")).getTime();
@@ -211,7 +342,7 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
       // records, not when a new local shop order is created. Reuse the persisted
       // 24-hour result instead of forcing another Edge/provider round-trip.
       if (beforeInvoke?.fresh && beforeInvoke.result.configured && !beforeInvoke.result.error) {
-        return beforeInvoke.result;
+        return withSteadfast(phone, beforeInvoke.result);
       }
 
       let value: Partial<CourierHistoryResult> = {};
@@ -292,7 +423,7 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
       }
 
       return normalized;
-    })();
+    })().then((r) => withSteadfast(phone, r));
 
     inFlight.set(cacheKey, request);
     try {
