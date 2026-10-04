@@ -11,13 +11,11 @@ const DEVICE_KEY = "hng-device-id";
 
 function readDeviceId(): string | null {
   try {
-    let id = localStorage.getItem(DEVICE_KEY);
-    if (!id) {
-      id = safeUUID();
-      localStorage.setItem(DEVICE_KEY, id);
-      document.cookie = `${DEVICE_KEY}=${encodeURIComponent(id)}; Path=/; Max-Age=31536000; SameSite=Lax`;
-    }
-    if (id) document.cookie = `${DEVICE_KEY}=${encodeURIComponent(id)}; Path=/; Max-Age=31536000; SameSite=Lax`;
+    const cookieMatch = document.cookie.match(new RegExp("(?:^|;\\s*)" + DEVICE_KEY + "=([^;]+)"));
+    let id = cookieMatch?.[1] ? decodeURIComponent(cookieMatch[1]) : localStorage.getItem(DEVICE_KEY);
+    if (!id || id.length < 6 || id.length > 80) id = safeUUID();
+    localStorage.setItem(DEVICE_KEY, id);
+    document.cookie = `${DEVICE_KEY}=${encodeURIComponent(id)}; Path=/; Max-Age=31536000; SameSite=Lax`;
     return id;
   } catch {
     return null;
