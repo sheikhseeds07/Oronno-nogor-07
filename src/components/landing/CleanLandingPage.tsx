@@ -153,7 +153,7 @@ export function CleanLandingPage({slug}:{slug:string}){
  const scrollToOrder=()=>{const el=orderSectionRef.current;if(!el)return;const target=(el.querySelector(".lp-order-note") as HTMLElement|null)??el;const stickyHeader=document.querySelector<HTMLElement>(".sticky.top-0");const headerOffset=stickyHeader?.offsetHeight??0;const top=target.getBoundingClientRect().top+window.scrollY-headerOffset-12;window.scrollTo({top:Math.max(top,0),behavior:"smooth"})};
  const firedICRef=useRef(false); useEffect(()=>{const el=orderSectionRef.current;if(!el||typeof IntersectionObserver==="undefined")return;const obs=new IntersectionObserver(([entry])=>{const visible=entry.isIntersecting&&entry.intersectionRatio>0.15;setFormInView(visible);if(visible&&!firedICRef.current&&selected?.product_id){firedICRef.current=true;trackInitiateCheckout([{id:selected.product_id,name:selected.name,price:selected.price,quantity:1}],total)}},{threshold:[0,0.15,0.5,1]});obs.observe(el);return()=>obs.disconnect()},[selected?.product_id,selected?.name,selected?.price,total]);
  useCheckoutAutofill({form,setForm:updater=>setForm(f=>updater(f) as typeof f),items:selected?[{id:selected.product_id||`addon-${selectedPkg}`,name:selected.name,price:selected.price,quantity:1}]:[],subtotal,total,deliveryFee});
- const openNutrimix=async()=>{
+ const openNutrimix=async()=>{audioRef.current?.pause();setAudioPlaying(false);
   if(!((C.template as string)==="all-product"||landingBaseSlug(slug)==="seedcombo")||C.nutrimix_popup_enabled===false||submitting)return;
   if(!selected?.product_id){toast.error("এই অফারের product ID পাওয়া যায়নি");return;}
   if(!form.name||!form.address){toast.error("সব তথ্য পূরণ করুন");return;}
