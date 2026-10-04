@@ -3,11 +3,13 @@ import { logger } from "@/lib/logger";
 import { createFileRoute, useParams, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getPublicOrder } from "@/lib/public-order.functions";
 import { taka, bnDigits } from "@/lib/format";
-import { CheckCircle2, Facebook, Download, ShoppingBag, User, ArrowRight, Sparkles, MapPin, X, Share2, Smartphone } from "lucide-react";
+import { CheckCircle2, Facebook, Download, ShoppingBag, User, ArrowRight, Sparkles, MapPin, X, Share2, Smartphone, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/lib/personal-supabase/client";
+import { SITE_SETTINGS_COLUMNS } from "@/lib/read-columns";
 
 export const Route = createFileRoute("/order/$id")({ component: OrderPage, head: () => ({ meta: [{ title: "অর্ডার সফল — Sheikh Seeds" }, { name: "robots", content: "noindex, nofollow" }] }) });
 
@@ -78,8 +80,12 @@ async function saveBlobToDevice(blob: Blob, filename: string) {
 function OrderPage() {
   const { id } = useParams({ from: "/order/$id" }); const fetchOrder = useServerFn(getPublicOrder); const { data: order, isLoading } = useQuery({ queryKey:["order",id], queryFn:()=>fetchOrder({data:{id}}) });
   const [invoicePreviewUrl, setInvoicePreviewUrl] = useState<string | null>(null);
+  const [thankYouAudioUrl, setThankYouAudioUrl] = useState(""); const [audioPlaying, setAudioPlaying] = useState(false); const audioRef = useRef<HTMLAudioElement | null>(null);
   const [invoiceBlob, setInvoiceBlob] = useState<Blob | null>(null);
   const [invoiceFilename, setInvoiceFilename] = useState("sheikh-seeds-invoice.png");
+  useEffect(()=>{let alive=true;(async()=>{const {data}=await supabase.from("site_settings").select(SITE_SETTINGS_COLUMNS).maybeSingle();if(alive)setThankYouAudioUrl(String((data?.settings as any)?.thank_you_audio_url||""));})();return()=>{alive=false}},[]);
+  useEffect(()=>{if(!thankYouAudioUrl)return;const audio=audioRef.current;if(!audio)return;audio.src=thankYouAudioUrl;audio.load();const timer=window.setTimeout(()=>{audio.play().then(()=>setAudioPlaying(true)).catch(()=>setAudioPlaying(false));},120);return()=>{window.clearTimeout(timer);audio.pause()}},[thankYouAudioUrl]);
+  const toggleThankYouAudio=()=>{const audio=audioRef.current;if(!audio)return;if(audio.paused){audio.play().then(()=>setAudioPlaying(true)).catch(()=>setAudioPlaying(false));}else{audio.pause();setAudioPlaying(false)}};
 
   useEffect(() => () => { if(invoicePreviewUrl) URL.revokeObjectURL(invoicePreviewUrl); }, [invoicePreviewUrl]);
 
@@ -126,6 +132,7 @@ function OrderPage() {
   `}</style>
   return <main className="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,#dcfce7_0%,#f7fbf8_34%,#f8faf9_100%)] px-3 py-5 sm:px-5 sm:py-10">
   <div className="pointer-events-none fixed inset-0 overflow-hidden"><div className="absolute -left-24 top-20 h-56 w-56 rounded-full bg-emerald-300/15 blur-3xl"/><div className="absolute -right-24 top-52 h-72 w-72 rounded-full bg-lime-300/10 blur-3xl"/></div>
+  {thankYouAudioUrl&&<><audio ref={audioRef} preload="auto" onPlay={()=>setAudioPlaying(true)} onPause={()=>setAudioPlaying(false)} onEnded={()=>setAudioPlaying(false)} className="hidden"/><button type="button" aria-label={audioPlaying?"Thank You অডিও বন্ধ করুন":"Thank You অডিও চালু করুন"} onClick={toggleThankYouAudio} className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full border border-emerald-200 bg-white/95 text-emerald-700 shadow-[0_10px_35px_rgba(16,185,129,.25)] backdrop-blur transition-transform hover:scale-105 active:scale-95"><span className={`absolute inset-0 rounded-full border-2 border-emerald-400/40 ${audioPlaying?"animate-ping":""}`}/>{audioPlaying?<Volume2 className="relative h-6 w-6"/>:<VolumeX className="relative h-6 w-6"/>}</button></>}
   <div className="relative mx-auto w-full max-w-xl">
     <section className="overflow-hidden rounded-[30px] border border-emerald-100 bg-white/95 text-center shadow-[0_20px_70px_rgba(20,83,45,.13)] backdrop-blur">
       <div className="bg-gradient-to-br from-emerald-50 via-white to-white px-5 pb-5 pt-7 sm:px-8 sm:pt-9">
