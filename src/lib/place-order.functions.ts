@@ -209,6 +209,7 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
 export const placeLandingOrder = createServerFn({ method: "POST" }).inputValidator((input) => LandingOrderInputSchema.parse(input)).handler(async ({ data }) => {
   const customerPhone = data.customer_phone;
   const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
+  const deviceId = getOrderDeviceId();
   const { data: blocked, error: blockCheckError } = await supabaseAdmin.rpc("is_blocked_visitor", { p_ip: clientIp ?? undefined, p_phone: customerPhone });
   if (!blockCheckError && blocked === true) throw new Error(`${BLOCKED_ORDER_CODE}: ${BLOCKED_ORDER_MESSAGE}`);
 
@@ -248,6 +249,7 @@ export const placeLandingOrder = createServerFn({ method: "POST" }).inputValidat
     p_nutrimix_item: null,
     p_notes: data.notes ?? null,
     p_client_ip: clientIp,
+    p_device_id: deviceId,
   } as never);
   if (intentError || !intentId || typeof intentId !== "string") {
     const rpcMessage = intentError?.message ?? "";
