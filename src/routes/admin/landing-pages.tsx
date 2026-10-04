@@ -349,7 +349,7 @@ function LandingPagesAdmin() {
                           <audio controls preload="metadata" src={C.audio_url} className="h-9 w-full" />
                         </div>
                       )}
-                      {editing.slug === "seedcombo" || C.template === "all-product" ? (
+                      {editing.slug !== "nutrimix" && (editing.slug === "seedcombo" || C.template === "all-product") && (
                         <div className="mt-3 rounded-lg border border-emerald-200 bg-white p-3">
                           <div className="mb-2">
                             <div className="font-bold text-xs text-emerald-900">🎙️ NUTRIMIX Popup-এর আলাদা ভয়েস</div>
