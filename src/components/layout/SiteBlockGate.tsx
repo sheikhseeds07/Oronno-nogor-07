@@ -15,7 +15,9 @@ function readDeviceId(): string | null {
     if (!id) {
       id = safeUUID();
       localStorage.setItem(DEVICE_KEY, id);
+      document.cookie = `${DEVICE_KEY}=${encodeURIComponent(id)}; Path=/; Max-Age=31536000; SameSite=Lax`;
     }
+    if (id) document.cookie = `${DEVICE_KEY}=${encodeURIComponent(id)}; Path=/; Max-Age=31536000; SameSite=Lax`;
     return id;
   } catch {
     return null;
