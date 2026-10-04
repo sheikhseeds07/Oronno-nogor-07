@@ -138,6 +138,9 @@ export type SteadfastScore = {
   deliveryRatio: number;
   cancellationRatio: number;
   volumeBand: string | null;
+  total: number;
+  success: number;
+  cancelled: number;
   fetchedAt?: string;
 };
 
@@ -151,6 +154,9 @@ function parseSteadfastScore(value: unknown): SteadfastScore | null {
     deliveryRatio: Number(row.deliveryRatio),
     cancellationRatio: Number(row.cancellationRatio) || 0,
     volumeBand: typeof row.volumeBand === "string" ? row.volumeBand : null,
+    total: Number(row.total) || 0,
+    success: Number(row.success) || 0,
+    cancelled: Number(row.cancelled) || 0,
     fetchedAt: typeof row.fetchedAt === "string" ? row.fetchedAt : undefined,
   };
 }
@@ -231,7 +237,7 @@ async function steadfastScore(phone: string): Promise<SteadfastScore | null> {
     }
 
     const res = await fetch(
-      `https://portal.packzy.com/api/v1/fraud_check/score/${p}`,
+      `https://portal.packzy.com/api/v1/fraud_check/${p}`,
       {
         headers: {
           "Api-Key": apiKey,
@@ -244,16 +250,25 @@ async function steadfastScore(phone: string): Promise<SteadfastScore | null> {
 
     if (!res.ok) throw new Error(`Steadfast HTTP ${res.status}`);
     const j = (await res.json()) as Record<string, unknown>;
-    const band = typeof j.volume_band === "string" ? j.volume_band : null;
-    const deliveryRatio = Number(j.delivery_ratio);
-    const cancellationRatio = Number(j.cancellation_ratio) || 0;
-
-    if (!band || band === "none" || !Number.isFinite(deliveryRatio)) throw new Error("Invalid Steadfast score");
+    const total = Number(j.Total_parcels ?? j.total_parcels ?? j.total_orders ?? j.total);
+    const success = Number(j.total_delivered ?? j.delivered ?? j.success);
+    const cancelled = Number(j.total_cancelled ?? j.cancelled ?? j.cancel);
+    if (!Number.isFinite(total) || !Number.isFinite(success) || !Number.isFinite(cancelled)) {
+      throw new Error("Invalid Steadfast fraud response");
+    }
+    const safeTotal = Math.max(0, total);
+    const safeSuccess = Math.max(0, success);
+    const safeCancelled = Math.max(0, cancelled);
+    const deliveryRatio = safeTotal > 0 ? (safeSuccess / safeTotal) * 100 : 0;
+    const cancellationRatio = safeTotal > 0 ? (safeCancelled / safeTotal) * 100 : 0;
 
     const score: SteadfastScore = {
       deliveryRatio,
       cancellationRatio,
-      volumeBand: band,
+      volumeBand: typeof j.volume_band === "string" ? j.volume_band : null,
+      total: safeTotal,
+      success: safeSuccess,
+      cancelled: safeCancelled,
       fetchedAt: new Date().toISOString(),
     };
 
@@ -276,7 +291,9 @@ async function withSteadfast(phone: string, result: CourierHistoryResult): Promi
   const overall = aggregateOverall(stats);
   const cleaned = { ...result, stats, overall };
   const score = await steadfastScore(phone).catch(() => null);
-  return score ? { ...cleaned, steadfast: score } : cleaned;
+  if (!score) return cleaned;
+  const combined = { name: "Overall", total: overall.total + score.total, success: overall.success + score.success, cancelled: overall.cancelled + score.cancelled };
+  return { ...cleaned, overall: combined, steadfast: score };
 }
 
 async function readPersistentCache(phone: string): Promise<PersistentHit | null> {
