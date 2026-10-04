@@ -23,6 +23,8 @@ export type LandingContent = {
   hero_gallery_images?: string[];
   /** NUTRIMIX-only voice/audio URL uploaded from the landing-page editor. */
   audio_url?: string;
+  /** Seed Combo-only voice/audio URL for the NUTRIMIX upsell popup. */
+  nutrimix_popup_audio_url?: string;
   gift_cta_text: string;
   gift_title_1: string;
   gift_title_2: string;
@@ -119,6 +121,7 @@ export const DEFAULT_CONTENT: LandingContent = {
   hero_image_2: "",
   hero_gallery_images: [],
   audio_url: "",
+  nutrimix_popup_audio_url: "",
   gift_cta_text: "১ প্যাকেট বিদেশি বীজ ফ্রী নিন!",
   gift_title_1: "১ প্যাকেট",
   gift_title_2: "বিদেশি বীজ ফ্রী",
