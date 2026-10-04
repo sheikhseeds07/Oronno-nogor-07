@@ -84,7 +84,7 @@ function OrderPage() {
   const [invoiceBlob, setInvoiceBlob] = useState<Blob | null>(null);
   const [invoiceFilename, setInvoiceFilename] = useState("sheikh-seeds-invoice.png");
   useEffect(()=>{let alive=true;(async()=>{const {data}=await supabase.from("site_settings").select(SITE_SETTINGS_COLUMNS).maybeSingle();if(alive)setThankYouAudioUrl(String((data?.settings as any)?.thank_you_audio_url||""));})();return()=>{alive=false}},[]);
-  useEffect(()=>{if(!thankYouAudioUrl)return;const audio=audioRef.current;if(!audio)return;audio.pause();audio.currentTime=0;audio.muted=false;audio.load();const tryPlay=async()=>{try{await audio.play();setAudioPlaying(true)}catch{setAudioPlaying(false)}};audio.addEventListener("canplay",tryPlay,{once:true});const timer=window.setTimeout(tryPlay,300);return()=>{window.clearTimeout(timer);audio.removeEventListener("canplay",tryPlay);audio.pause()}},[thankYouAudioUrl]);
+  useEffect(()=>{if(!thankYouAudioUrl)return;const audio=audioRef.current;if(!audio)return;audio.pause();audio.currentTime=0;audio.load();const timer=window.setTimeout(()=>{audio.play().then(()=>setAudioPlaying(true)).catch(()=>setAudioPlaying(false));},300);return()=>{window.clearTimeout(timer);audio.pause()}},[thankYouAudioUrl]);
   const toggleThankYouAudio=async()=>{const audio=audioRef.current;if(!audio||!thankYouAudioUrl)return;if(!audio.paused){audio.pause();setAudioPlaying(false);return;}try{if(audio.readyState===0)audio.load();await audio.play();setAudioPlaying(true)}catch{setAudioPlaying(false)}};
 
   useEffect(() => () => { if(invoicePreviewUrl) URL.revokeObjectURL(invoicePreviewUrl); }, [invoicePreviewUrl]);
