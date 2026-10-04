@@ -1,6 +1,6 @@
 import { logger } from "@/lib/logger";
 import { createServerFn } from "@tanstack/react-start";
-import { getCookie, getRequestHeader, getRequestIP } from "@tanstack/react-start/server";
+import { getCookie, getRequestHeader, getRequestIP, setCookie } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 import { sendPurchaseEvent } from "@/lib/facebook-capi.server";
@@ -11,7 +11,10 @@ const ORDER_DEVICE_COOKIE = "hng-device-id";
 
 function getOrderDeviceId(): string | null {
   const value = getCookie(ORDER_DEVICE_COOKIE)?.trim() ?? "";
-  return value.length >= 6 && value.length <= 80 ? value : null;
+  if (value.length >= 6 && value.length <= 80) return value;
+  const id = crypto.randomUUID();
+  setCookie(ORDER_DEVICE_COOKIE, id, { path: "/", maxAge: 31536000, sameSite: "lax" });
+  return id;
 }
 const ItemSchema = z.object({ id: z.string().min(1).max(64), name: z.string().min(1).max(500), price: z.number().min(0).max(10_000_000), quantity: z.number().int().min(1).max(1000) });
 const InputSchema = z.object({ customer_name: z.string().min(1).max(255), customer_phone: z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number. Use 01XXXXXXXXX."), customer_address: z.string().min(1).max(1000), district: z.string().max(100).optional().nullable(), thana: z.string().max(100).optional().nullable(), notes: z.string().max(2000).optional().nullable(), delivery_fee: z.number().min(0).max(10000).default(50), items: z.array(ItemSchema).min(1).max(100), created_by: z.string().uuid().optional().nullable(), fbp: z.string().max(200).optional().nullable(), fbc: z.string().max(500).optional().nullable(), source_url: z.string().max(2000).optional().nullable(), checkout_session_id: z.string().max(200).optional().nullable() });
