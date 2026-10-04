@@ -205,7 +205,7 @@ async function steadfastScore(phone: string): Promise<SteadfastScore | null> {
       },
     })
     .eq("phone", phone)
-    .is("steadfast_score", null)
+    .or("steadfast_score.is.null,steadfast_score->>status.eq.failed")
     .select("phone")
     .maybeSingle();
 
@@ -287,7 +287,6 @@ async function steadfastScore(phone: string): Promise<SteadfastScore | null> {
 }
 
 async function withSteadfast(phone: string, result: CourierHistoryResult): Promise<CourierHistoryResult> {
-  if (!result.configured) return result;
   const stats = result.stats.filter((s) => s.name.toLowerCase() !== "steadfast");
   const overall = aggregateOverall(stats);
   const cleaned = { ...result, stats, overall };
