@@ -87,6 +87,15 @@ function waNumber(phone: string) {
   if (digits.startsWith("0")) return "88" + digits;
   return "88" + digits;
 }
+
+async function copyPhoneNumber(phone: string) {
+  try {
+    await navigator.clipboard.writeText(phone);
+    toast.success("নাম্বার কপি হয়েছে");
+  } catch {
+    toast.error("নাম্বার কপি করা যায়নি");
+  }
+}
 // Confirmed order list statuses
 const LIST_STATUSES: OrderStatus[] = [
   "pending", "rts", "shipped", "delivered",
@@ -2099,7 +2108,13 @@ function OrdersTableRows({
                 <td className="p-3 min-w-[220px]">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono">{o.customer_phone}</span>
+                      <span
+                        className="text-xs font-mono cursor-pointer select-text"
+                        onClick={(e) => { e.stopPropagation(); void copyPhoneNumber(o.customer_phone); }}
+                        title="নাম্বার কপি করুন"
+                        role="button"
+                        tabIndex={0}
+                      >{o.customer_phone}</span>
                       <a href={`tel:${o.customer_phone}`} className="p-1 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100" title="কল"><Phone className="w-3 h-3" /></a>
                       {wa && <a href={`https://wa.me/${wa}`} target="_blank" rel="noreferrer" className="p-1 rounded-full bg-green-50 text-green-600 hover:bg-green-100" title="WhatsApp"><MessageCircle className="w-3 h-3" /></a>}
                     </div>
