@@ -256,7 +256,7 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
     </aside>
     <NewOrderNotifier /><AdminOrderStability />
     <div className="flex-1 min-w-0 transition-all duration-500">
-      <header className="admin-header-shell sticky top-0 z-30 px-4 py-2.5 flex items-center gap-3 flex-nowrap shadow-sm">
+      <header className="admin-header-shell sticky top-0 z-30 px-4 py-2.5 flex items-center gap-3 flex-wrap shadow-sm">
         <button onClick={() => setOpen(true)} className="lg:hidden w-9 h-9 rounded-xl border bg-white hover:bg-slate-50 flex items-center justify-center transition-transform active:scale-95"><Menu className="w-5 h-5" /></button>
         <button onClick={() => setCollapsed(!collapsed)} className="hidden lg:flex items-center justify-center w-9 h-9 rounded-xl border bg-slate-50 hover:bg-slate-100 transition-all duration-300 hover:scale-105" title={collapsed ? "Open Sidebar" : "Close Sidebar"}>{collapsed ? <PanelLeftOpen className="w-5 h-5 text-gray-600" /> : <PanelLeftClose className="w-5 h-5 text-gray-600" />}</button>
         <div className="admin-header-title font-extrabold whitespace-nowrap shrink-0 text-sm sm:text-base">{isAdmin ? "Admin Panel" : "Employee Panel"}</div>
