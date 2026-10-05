@@ -10,7 +10,7 @@ import { NewOrderNotifier } from "@/components/admin/NewOrderNotifier";
 import { AdminOrderStability } from "@/components/admin/AdminOrderStability";
 import { PresswayyCard } from "@/components/admin/PresswayyCard";
 
-type SiteSettings = { site_name?: string; logo_url?: string; admin_header_announcement?: string };
+type SiteSettings = { site_name?: string; logo_url?: string; admin_header_announcement?: string; admin_header_announcement_enabled?: boolean };
 type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }>; exact?: boolean; perm: keyof Permissions; tone: string };
 const NAV: NavItem[] = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true, perm: "dashboard", tone: "from-emerald-400 to-cyan-500" },
@@ -205,7 +205,8 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
   const brand = (brandRow?.settings as SiteSettings) ?? {};
   const brandLogo = brand.logo_url;
   const brandName = brand.site_name;
-  const adminAnnouncement = (brand.admin_header_announcement || "আসসালামু আলাইকুম। গতকালের তুলনায় আজ আমাদের অর্ডারের সংখ্যা কিছুটা বেশি। তাই দয়া করে ধীরে, মনোযোগ দিয়ে অর্ডার কনফার্ম করুন। প্রয়োজনে একসাথে বেশি অর্ডার না নিয়ে কম সংখ্যক অর্ডার করে প্রতিটি কাস্টমারের সঙ্গে সুন্দরভাবে কথা বলে, বিস্তারিত বুঝিয়ে তারপর কনফার্ম করুন।").trim();
+  const adminAnnouncement = brand.admin_header_announcement ?? "আসসালামু আলাইকুম। গতকালের তুলনায় আজ আমাদের অর্ডারের সংখ্যা কিছুটা বেশি। তাই দয়া করে ধীরে, মনোযোগ দিয়ে অর্ডার কনফার্ম করুন। প্রয়োজনে একসাথে বেশি অর্ডার না নিয়ে কম সংখ্যক অর্ডার করে প্রতিটি কাস্টমারের সঙ্গে সুন্দরভাবে কথা বলে, বিস্তারিত বুঝিয়ে তারপর কনফার্ম করুন।";
+  const adminAnnouncementEnabled = brand.admin_header_announcement_enabled !== false;
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => {
     try {
@@ -260,7 +261,7 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
         <button onClick={() => setOpen(true)} className="lg:hidden w-9 h-9 rounded-xl border bg-white hover:bg-slate-50 flex items-center justify-center transition-transform active:scale-95"><Menu className="w-5 h-5" /></button>
         <button onClick={() => setCollapsed(!collapsed)} className="hidden lg:flex items-center justify-center w-9 h-9 rounded-xl border bg-slate-50 hover:bg-slate-100 transition-all duration-300 hover:scale-105" title={collapsed ? "Open Sidebar" : "Close Sidebar"}>{collapsed ? <PanelLeftOpen className="w-5 h-5 text-gray-600" /> : <PanelLeftClose className="w-5 h-5 text-gray-600" />}</button>
         <div className="admin-header-title font-extrabold whitespace-nowrap shrink-0 text-sm sm:text-base">{isAdmin ? "Admin Panel" : "Employee Panel"}</div>
-        <div className="admin-header-announcement flex-1 min-w-0" title={adminAnnouncement}><div className="admin-header-announcement-track"><span className="admin-header-announcement-text"><i className="admin-header-announcement-dot" />{adminAnnouncement}</span><span className="admin-header-announcement-text" aria-hidden="true"><i className="admin-header-announcement-dot" />{adminAnnouncement}</span></div></div>
+        {adminAnnouncementEnabled && <div className="admin-header-announcement flex-1 min-w-0" title={adminAnnouncement}><div className="admin-header-announcement-track"><span className="admin-header-announcement-text"><i className="admin-header-announcement-dot" />{adminAnnouncement}</span><span className="admin-header-announcement-text" aria-hidden="true"><i className="admin-header-announcement-dot" />{adminAnnouncement}</span></div></div>}
         <div className="ml-auto text-sm text-white/95 font-semibold hidden sm:block truncate max-w-[200px] shrink-0">{user?.email ?? ""}</div>
         {headerExtra && <div className={`w-full basis-full flex items-center gap-2 overflow-x-auto pt-2 ${loc.pathname === "/admin/orders" ? "order-extra-shell" : ""}`}>{headerExtra}</div>}
       </header>
