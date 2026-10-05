@@ -74,6 +74,13 @@ async function syncOne(a: ReturnType<typeof createClient>, o: R, byDisplay: Map<
   const id = s(o.id), consignment = s(o.courier_consignment);
   if (!id || !consignment) return { ok: true, updated: false, skipped: true };
 
+  // Pending and RTS orders are manual-only. Courier sync must never
+  // change their business status until an admin explicitly moves them to Shipped.
+  const currentStatus = s(o.status);
+  if (currentStatus === "pending" || currentStatus === "rts") {
+    return { ok: true, updated: false, skipped: true };
+  }
+
   let cfg = byDisplay.get(s(o.courier_display_name));
   let cs: string | null = null;
 
