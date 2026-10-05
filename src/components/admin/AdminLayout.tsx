@@ -10,7 +10,7 @@ import { NewOrderNotifier } from "@/components/admin/NewOrderNotifier";
 import { AdminOrderStability } from "@/components/admin/AdminOrderStability";
 import { PresswayyCard } from "@/components/admin/PresswayyCard";
 
-type SiteSettings = { site_name?: string; logo_url?: string };
+type SiteSettings = { site_name?: string; logo_url?: string; admin_header_announcement?: string };
 type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }>; exact?: boolean; perm: keyof Permissions; tone: string };
 const NAV: NavItem[] = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true, perm: "dashboard", tone: "from-emerald-400 to-cyan-500" },
@@ -141,6 +141,7 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
   const brand = (brandRow?.settings as SiteSettings) ?? {};
   const brandLogo = brand.logo_url;
   const brandName = brand.site_name;
+  const adminAnnouncement = (brand.admin_header_announcement || "আসসালামু আলাইকুম। গতকালের তুলনায় আজ আমাদের অর্ডারের সংখ্যা কিছুটা বেশি। তাই দয়া করে ধীরে, মনোযোগ দিয়ে অর্ডার কনফার্ম করুন। প্রয়োজনে একসাথে বেশি অর্ডার না নিয়ে কম সংখ্যক অর্ডার করে প্রতিটি কাস্টমারের সঙ্গে সুন্দরভাবে কথা বলে, বিস্তারিত বুঝিয়ে তারপর কনফার্ম করুন।").trim();
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => {
     try {
@@ -194,8 +195,9 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-xl border-b px-4 py-3 flex items-center gap-3 flex-wrap shadow-sm">
         <button onClick={() => setOpen(true)} className="lg:hidden w-9 h-9 rounded-xl border bg-white hover:bg-slate-50 flex items-center justify-center transition-transform active:scale-95"><Menu className="w-5 h-5" /></button>
         <button onClick={() => setCollapsed(!collapsed)} className="hidden lg:flex items-center justify-center w-9 h-9 rounded-xl border bg-slate-50 hover:bg-slate-100 transition-all duration-300 hover:scale-105" title={collapsed ? "Open Sidebar" : "Close Sidebar"}>{collapsed ? <PanelLeftOpen className="w-5 h-5 text-gray-600" /> : <PanelLeftClose className="w-5 h-5 text-gray-600" />}</button>
-        <div className="font-bold whitespace-nowrap">{isAdmin ? "Admin Panel" : "Employee Panel"}</div>
-        <div className="ml-auto text-sm text-muted-foreground hidden sm:block truncate max-w-[200px]">{user?.email ?? ""}</div>
+        <div className="font-bold whitespace-nowrap shrink-0">{isAdmin ? "Admin Panel" : "Employee Panel"}</div>
+        <div className="min-w-0 flex-1 overflow-hidden whitespace-nowrap text-xs sm:text-sm font-extrabold text-slate-700" title={adminAnnouncement}>{adminAnnouncement}</div>
+        <div className="ml-auto text-sm text-muted-foreground hidden sm:block truncate max-w-[200px] shrink-0">{user?.email ?? ""}</div>
         {headerExtra && <div className={`w-full basis-full flex items-center gap-2 overflow-x-auto pt-2 ${loc.pathname === "/admin/orders" ? "order-extra-shell" : ""}`}>{headerExtra}</div>}
       </header>
       <div className="p-4 lg:p-6">{children}{loc.pathname === "/admin/all-api" && <div className="mt-6"><PresswayyCard /></div>}</div>
