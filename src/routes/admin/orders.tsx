@@ -96,6 +96,22 @@ async function copyPhoneNumber(phone: string) {
     toast.error("নাম্বার কপি করা যায়নি");
   }
 }
+
+async function copyCustomerInfo(order: Pick<OrderRow, "customer_name" | "customer_phone" | "customer_address" | "thana" | "district">) {
+  const address = [order.customer_address, order.thana, order.district].filter(Boolean).join(", ");
+  const text = [
+    `নাম: ${order.customer_name || ""}`,
+    `নাম্বার: ${order.customer_phone || ""}`,
+    `ঠিকানা: ${address || ""}`,
+  ].join("\n");
+
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success("কাস্টমারের তথ্য কপি হয়েছে");
+  } catch {
+    toast.error("কাস্টমারের তথ্য কপি করা যায়নি");
+  }
+}
 // Confirmed order list statuses
 const LIST_STATUSES: OrderStatus[] = [
   "pending", "rts", "shipped", "delivered",
@@ -2117,6 +2133,13 @@ function OrdersTableRows({
                       >{o.customer_phone}</span>
                       <a href={`tel:${o.customer_phone}`} className="p-1 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100" title="কল"><Phone className="w-3 h-3" /></a>
                       {wa && <a href={`https://wa.me/${wa}`} target="_blank" rel="noreferrer" className="p-1 rounded-full bg-green-50 text-green-600 hover:bg-green-100" title="WhatsApp"><MessageCircle className="w-3 h-3" /></a>}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); void copyCustomerInfo(o); }}
+                        className="p-1 rounded-full bg-slate-50 text-slate-600 hover:bg-slate-100"
+                        title="নাম, নাম্বার ও ঠিকানা কপি করুন"
+                        aria-label="কাস্টমারের তথ্য কপি করুন"
+                      ><Copy className="w-3 h-3" /></button>
                     </div>
                     <div className="font-semibold">{o.customer_name}</div>
                     <div className="text-xs text-muted-foreground break-words leading-relaxed">
