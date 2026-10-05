@@ -100,9 +100,9 @@ async function copyPhoneNumber(phone: string) {
 async function copyCustomerInfo(order: Pick<OrderRow, "customer_name" | "customer_phone" | "customer_address" | "thana" | "district">) {
   const address = [order.customer_address, order.thana, order.district].filter(Boolean).join(", ");
   const text = [
-    `নাম: ${order.customer_name || ""}`,
-    `নাম্বার: ${order.customer_phone || ""}`,
-    `ঠিকানা: ${address || ""}`,
+    order.customer_phone || "",
+    order.customer_name || "",
+    address || "",
   ].join("\n");
 
   try {
