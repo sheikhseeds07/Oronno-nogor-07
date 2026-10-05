@@ -118,6 +118,70 @@ const orderUiCss = `
 }
 `;
 
+const adminHeaderAnnouncementCss = `
+@keyframes admin-announcement-marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.admin-header-shell {
+  background: linear-gradient(105deg,#052e2b 0%,#064e3b 38%,#0f766e 72%,#164e63 100%);
+  border-bottom: 1px solid rgba(20,184,166,.35);
+  box-shadow: 0 5px 22px rgba(6,78,59,.18);
+}
+.admin-header-title {
+  color:#ffffff;
+  text-shadow:0 1px 8px rgba(0,0,0,.18);
+}
+.admin-header-announcement {
+  position:relative;
+  min-width:0;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.18);
+  background:linear-gradient(90deg,rgba(255,255,255,.13),rgba(255,255,255,.07),rgba(255,255,255,.13));
+  border-radius:12px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 4px 14px rgba(0,0,0,.10);
+}
+.admin-header-announcement::before {
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:2;
+  pointer-events:none;
+  background:linear-gradient(90deg,#064e3b 0%,transparent 7%,transparent 93%,#164e63 100%);
+}
+.admin-header-announcement-track {
+  display:flex;
+  width:max-content;
+  min-width:200%;
+  align-items:center;
+  white-space:nowrap;
+  animation:admin-announcement-marquee 34s linear infinite;
+  will-change:transform;
+}
+.admin-header-announcement-text {
+  display:inline-flex;
+  align-items:center;
+  padding:7px 34px 7px 18px;
+  color:#f0fdfa;
+  font-weight:800;
+  letter-spacing:.01em;
+  text-shadow:0 1px 5px rgba(0,0,0,.22);
+}
+.admin-header-announcement-dot {
+  display:inline-block;
+  width:7px;
+  height:7px;
+  margin-right:9px;
+  border-radius:999px;
+  background:#facc15;
+  box-shadow:0 0 0 4px rgba(250,204,21,.14),0 0 12px rgba(250,204,21,.55);
+  flex:none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-header-announcement-track { animation:none; transform:none; }
+}
+`;
+
 const SIDEBAR_COLLAPSED_KEY = "admin-sidebar-collapsed";
 
 export function AdminLayout({ children, headerExtra }: { children: React.ReactNode; headerExtra?: React.ReactNode }) {
@@ -168,7 +232,7 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
   if (!pageAllowed) return <div className="min-h-screen flex items-center justify-center bg-muted px-4">{firstAllowed ? <div className="text-sm text-muted-foreground">এক মুহূর্ত…</div> : <div className="max-w-md rounded-xl border bg-card p-6 text-center shadow-sm"><h1 className="text-xl font-bold text-brand-dark">কোনো অনুমতি দেওয়া হয়নি</h1><p className="mt-2 text-sm text-muted-foreground">আপনার জন্য এখনো কোনো অংশের অনুমতি দেওয়া হয়নি। CEO-কে জানান।</p><button onClick={() => navigate({ to: "/" })} className="mt-5 rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-primary-foreground">হোমে যান</button></div>}</div>;
   const logout = async () => { await supabase.auth.signOut(); navigate({ to: "/" }); };
   return <div data-admin-route={loc.pathname} className="flex min-h-screen bg-muted">
-    {loc.pathname === "/admin/orders" && <style>{orderUiCss}</style>}
+    {<style>{adminHeaderAnnouncementCss}</style>}{loc.pathname === "/admin/orders" && <style>{orderUiCss}</style>}
     <aside className={`fixed lg:sticky lg:top-0 top-0 left-0 h-screen z-50 overflow-hidden bg-[#101827] border-r border-white/10 shadow-2xl shadow-slate-950/30 transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)] ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} ${collapsed ? "w-20" : "w-72"}`}>
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_15%_5%,rgba(16,185,129,.22),transparent_32%),radial-gradient(circle_at_90%_18%,rgba(59,130,246,.20),transparent_30%),radial-gradient(circle_at_70%_78%,rgba(139,92,246,.18),transparent_34%),radial-gradient(circle_at_10%_95%,rgba(6,182,212,.14),transparent_28%)]" />
       <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(135deg,rgba(255,255,255,.055),transparent_28%,rgba(255,255,255,.015)_60%,rgba(255,255,255,.04))]" />
@@ -192,11 +256,11 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
     </aside>
     <NewOrderNotifier /><AdminOrderStability />
     <div className="flex-1 min-w-0 transition-all duration-500">
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-xl border-b px-4 py-3 flex items-center gap-3 flex-wrap shadow-sm">
+      <header className="admin-header-shell sticky top-0 z-30 px-4 py-2.5 flex items-center gap-3 flex-nowrap shadow-sm">
         <button onClick={() => setOpen(true)} className="lg:hidden w-9 h-9 rounded-xl border bg-white hover:bg-slate-50 flex items-center justify-center transition-transform active:scale-95"><Menu className="w-5 h-5" /></button>
         <button onClick={() => setCollapsed(!collapsed)} className="hidden lg:flex items-center justify-center w-9 h-9 rounded-xl border bg-slate-50 hover:bg-slate-100 transition-all duration-300 hover:scale-105" title={collapsed ? "Open Sidebar" : "Close Sidebar"}>{collapsed ? <PanelLeftOpen className="w-5 h-5 text-gray-600" /> : <PanelLeftClose className="w-5 h-5 text-gray-600" />}</button>
-        <div className="font-bold whitespace-nowrap shrink-0">{isAdmin ? "Admin Panel" : "Employee Panel"}</div>
-        <div className="min-w-0 flex-1 overflow-hidden whitespace-nowrap text-xs sm:text-sm font-extrabold text-slate-700" title={adminAnnouncement}>{adminAnnouncement}</div>
+        <div className="admin-header-title font-extrabold whitespace-nowrap shrink-0 text-sm sm:text-base">{isAdmin ? "Admin Panel" : "Employee Panel"}</div>
+        <div className="admin-header-announcement flex-1 min-w-0" title={adminAnnouncement}><div className="admin-header-announcement-track"><span className="admin-header-announcement-text"><i className="admin-header-announcement-dot" />{adminAnnouncement}</span><span className="admin-header-announcement-text" aria-hidden="true"><i className="admin-header-announcement-dot" />{adminAnnouncement}</span></div></div>
         <div className="ml-auto text-sm text-muted-foreground hidden sm:block truncate max-w-[200px] shrink-0">{user?.email ?? ""}</div>
         {headerExtra && <div className={`w-full basis-full flex items-center gap-2 overflow-x-auto pt-2 ${loc.pathname === "/admin/orders" ? "order-extra-shell" : ""}`}>{headerExtra}</div>}
       </header>
