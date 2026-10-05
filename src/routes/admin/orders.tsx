@@ -222,10 +222,11 @@ function SearchPanel({ onOpen }: { onOpen: (id: string) => void }) {
     enabled: !!submitted,
     queryFn: async () => {
       const term = submitted.trim();
-      const orQuery = `customer_phone.ilike.%${term}%,invoice_no.ilike.%${term}%,customer_name.ilike.%${term}%`;
+      const escaped = term.replace(/[%_,]/g, "\\const orQuery = `customer_phone.ilike.%${term}%,invoice_no.ilike.%${term}%,customer_name.ilike.%${term}%`;");
+      const orQuery = `customer_phone.ilike.%${escaped}%,invoice_no.ilike.%${escaped}%,customer_name.ilike.%${escaped}%,courier_consignment.ilike.%${escaped}%`;
       const { data } = await supabase
         .from("orders")
-        .select("id,invoice_no,customer_name,customer_phone,total,status,created_at,order_items(id,product_name,quantity,price,product_id)")
+        .select("id,invoice_no,customer_name,customer_phone,total,status,created_at,courier_consignment,order_items(id,product_name,quantity,price,product_id)")
         .or(orQuery)
         .order("created_at", { ascending: false })
         .limit(100);
@@ -269,7 +270,7 @@ function SearchPanel({ onOpen }: { onOpen: (id: string) => void }) {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="ফোন নাম্বার / ইনভয়েস / নাম দিন"
+            placeholder="ফোন নাম্বার / ইনভয়েস / কুরিয়ার ID / নাম দিন"
             className="w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
           />
         </div>
