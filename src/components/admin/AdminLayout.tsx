@@ -261,7 +261,7 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
         <button onClick={() => setCollapsed(!collapsed)} className="hidden lg:flex items-center justify-center w-9 h-9 rounded-xl border bg-slate-50 hover:bg-slate-100 transition-all duration-300 hover:scale-105" title={collapsed ? "Open Sidebar" : "Close Sidebar"}>{collapsed ? <PanelLeftOpen className="w-5 h-5 text-gray-600" /> : <PanelLeftClose className="w-5 h-5 text-gray-600" />}</button>
         <div className="admin-header-title font-extrabold whitespace-nowrap shrink-0 text-sm sm:text-base">{isAdmin ? "Admin Panel" : "Employee Panel"}</div>
         <div className="admin-header-announcement flex-1 min-w-0" title={adminAnnouncement}><div className="admin-header-announcement-track"><span className="admin-header-announcement-text"><i className="admin-header-announcement-dot" />{adminAnnouncement}</span><span className="admin-header-announcement-text" aria-hidden="true"><i className="admin-header-announcement-dot" />{adminAnnouncement}</span></div></div>
-        <div className="ml-auto text-sm text-muted-foreground hidden sm:block truncate max-w-[200px] shrink-0">{user?.email ?? ""}</div>
+        <div className="ml-auto text-sm text-white/95 font-semibold hidden sm:block truncate max-w-[200px] shrink-0">{user?.email ?? ""}</div>
         {headerExtra && <div className={`w-full basis-full flex items-center gap-2 overflow-x-auto pt-2 ${loc.pathname === "/admin/orders" ? "order-extra-shell" : ""}`}>{headerExtra}</div>}
       </header>
       <div className="p-4 lg:p-6">{children}{loc.pathname === "/admin/all-api" && <div className="mt-6"><PresswayyCard /></div>}</div>
