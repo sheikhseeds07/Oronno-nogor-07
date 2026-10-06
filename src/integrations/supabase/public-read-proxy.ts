@@ -64,7 +64,7 @@ export function publicReadProxyUrl(
 
   const proxy = new URL("/api/public/pg", window.location.origin);
   proxy.searchParams.set("path", target.pathname + target.search);
-  if (target.pathname === "/rest/v1/landing_pages") proxy.searchParams.set("v", "landing-v2");
+  if (target.pathname === "/rest/v1/landing_pages") proxy.searchParams.set("v", "landing-v3");
   if (method !== "GET") proxy.searchParams.set("m", method);
   if (method === "POST" && body) proxy.searchParams.set("b", body);
   const href = proxy.toString();
