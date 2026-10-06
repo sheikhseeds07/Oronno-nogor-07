@@ -2,10 +2,13 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
 type R = Record<string, unknown>;
-const COOLDOWN_MS = 20 * 60 * 1000;
+// One full sync cycle per day. Cron wakes hourly only to resume an unfinished
+// cycle or retry failed orders, so no shipped order is ever skipped.
+const COOLDOWN_MS = 23 * 60 * 60 * 1000;
+const RUN_BUDGET_MS = 100 * 1000;
 const PAGE_SIZE = 400;
 const RETRY_BATCH = 100;
-const LOCK_MS = 3 * 60 * 1000;
+const LOCK_MS = 4 * 60 * 1000;
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
@@ -216,28 +219,39 @@ Deno.serve(async (req) => {
     const cycleStartedAt = resetCycle ? nowIso : cursor!.cycle_started_at;
     const lastId = resetCycle ? null : s(cursor?.last_id) || null;
 
-    let query = a.from("orders")
-      .select("id,status,courier_consignment,courier_display_name,courier_status,courier_synced_at")
-      .not("courier_consignment", "is", null)
-      .or("courier_status.is.null,courier_status.not.in.(delivered,cancelled,partial_delivered)")
-      .order("id", { ascending: true }).limit(PAGE_SIZE);
-    if (lastId) query = query.gt("id", lastId);
-
-    const { data: orders, error } = await query;
-    if (error) return json({ error: error.message }, 500);
-
     let checked = retryChecked, updated = retryUpdated, failed = retryFailed, skipped = 0;
+    let selected = 0;
+    let cursorId: string | null = lastId;
+    let reachedEnd = false;
+    const startedMs = Date.now();
 
-    for (let i = 0; i < orders.length; i += 10) {
-      const rs = await Promise.all(orders.slice(i, i + 10).map((o) => syncOne(a, o as R, byDisplay, cfgs)));
-      checked += rs.length;
-      updated += rs.filter((x) => x.updated).length;
-      failed += rs.filter((x) => !x.ok).length;
-      skipped += rs.filter((x) => x.skipped).length;
+    // Process pages until done or the time budget is used; the cursor resumes next hour.
+    while (!reachedEnd && Date.now() - startedMs < RUN_BUDGET_MS) {
+      let query = a.from("orders")
+        .select("id,status,courier_consignment,courier_display_name,courier_status,courier_synced_at")
+        .not("courier_consignment", "is", null)
+        // Pending/RTS are manual-only: never even read them for sync.
+        .not("status", "in", "(pending,rts,web_pending)")
+        .or("courier_status.is.null,courier_status.not.in.(delivered,cancelled,partial_delivered)")
+        .order("id", { ascending: true }).limit(PAGE_SIZE);
+      if (cursorId) query = query.gt("id", cursorId);
+
+      const { data: orders, error } = await query;
+      if (error) return json({ error: error.message }, 500);
+
+      for (let i = 0; i < orders.length; i += 10) {
+        const rs = await Promise.all(orders.slice(i, i + 10).map((o) => syncOne(a, o as R, byDisplay, cfgs)));
+        checked += rs.length;
+        updated += rs.filter((x) => x.updated).length;
+        failed += rs.filter((x) => !x.ok).length;
+        skipped += rs.filter((x) => x.skipped).length;
+      }
+
+      selected += orders.length;
+      reachedEnd = orders.length < PAGE_SIZE;
+      if (orders.length) cursorId = s(orders[orders.length - 1].id);
     }
-
-    const reachedEnd = orders.length < PAGE_SIZE;
-    const nextCursor = orders.length ? orders[orders.length - 1].id : lastId;
+    const nextCursor = cursorId;
 
     const updatePayload: R = {
       last_id: reachedEnd ? null : nextCursor,
@@ -253,7 +267,7 @@ Deno.serve(async (req) => {
     return json({
       status: "success",
       cycle: reachedEnd ? "completed" : "in_progress",
-      selected: orders.length,
+      selected,
       checked, updated, failed, skipped,
       retry_pending: retryIds.length,
     });
