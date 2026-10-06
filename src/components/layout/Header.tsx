@@ -63,7 +63,8 @@ export function Header() {
   }, [closing]);
   const submit = (e: React.FormEvent) => { e.preventDefault(); navigate({ to: "/shop", search: { q } as never }); closeDrawer(); };
   useEffect(() => { if (!drawer) return; const prev = document.body.style.overflow; document.body.style.overflow = "hidden"; return () => { document.body.style.overflow = prev; }; }, [drawer]);
-  useLayoutEffect(() => { const t = getStoredTheme(); setTheme(t); applyTheme(t); }, []);\n  useEffect(() => { void hydrateCartStore(); }, []);
+  useLayoutEffect(() => { const t = getStoredTheme(); setTheme(t); applyTheme(t); }, []);
+  useEffect(() => { void hydrateCartStore(); }, []);
 
   const logoNode = brandLogo ? (
     <SafeImage src={brandLogo} alt={brandName} width={40} height={40} loading="eager" fetchPriority="high" decoding="async"  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover ring-2 ring-brand/30 shadow-md group-hover:ring-brand group-hover:scale-110 group-hover:rotate-3 transition-all duration-300" />
