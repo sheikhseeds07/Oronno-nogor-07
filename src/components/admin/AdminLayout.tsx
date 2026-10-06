@@ -1,7 +1,7 @@
 import { SafeImage } from "@/components/SafeImage";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth, type Permissions } from "@/lib/auth";
 import { supabase } from "@/lib/personal-supabase/client";
 import { readPublicSettingsCache, writePublicSettingsCache } from "@/lib/public-settings-cache";
@@ -186,6 +186,7 @@ const SIDEBAR_COLLAPSED_KEY = "admin-sidebar-collapsed";
 
 export function AdminLayout({ children, headerExtra }: { children: React.ReactNode; headerExtra?: React.ReactNode }) {
   const { user, isStaff, isAdmin, isSuperAdmin, permissions, loading, initialized, role } = useAuth();
+  const queryClient = useQueryClient();
   const navigate = useNavigate(); const loc = useLocation();
   const [open, setOpen] = useState(false); const [mounted, setMounted] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -203,6 +204,14 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
     staleTime: 5 * 60_000,
   });
   const brand = (brandRow?.settings as SiteSettings) ?? {};
+  useEffect(() => {
+    const channel = supabase.channel("admin-header-announcement-settings")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "site_settings" }, () => {
+        void queryClient.invalidateQueries({ queryKey: ["site-settings-public"] });
+      })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, []);
   const brandLogo = brand.logo_url;
   const brandName = brand.site_name;
   const adminAnnouncement = brand.admin_header_announcement ?? "আসসালামু আলাইকুম। গতকালের তুলনায় আজ আমাদের অর্ডারের সংখ্যা কিছুটা বেশি। তাই দয়া করে ধীরে, মনোযোগ দিয়ে অর্ডার কনফার্ম করুন। প্রয়োজনে একসাথে বেশি অর্ডার না নিয়ে কম সংখ্যক অর্ডার করে প্রতিটি কাস্টমারের সঙ্গে সুন্দরভাবে কথা বলে, বিস্তারিত বুঝিয়ে তারপর কনফার্ম করুন।";
