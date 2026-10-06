@@ -190,7 +190,7 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
   const navigate = useNavigate(); const loc = useLocation();
   const [open, setOpen] = useState(false); const [mounted, setMounted] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const { data: brandRow } = useQuery({
+  const { data: brandRow, isFetched: brandSettingsFetched } = useQuery({
     queryKey: ["site-settings-public"],
     queryFn: async () => {
       const { data, error } = await supabase.from("site_settings").select("settings").maybeSingle();
@@ -220,7 +220,7 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
   const brandLogo = brand.logo_url;
   const brandName = brand.site_name;
   const adminAnnouncement = brand.admin_header_announcement ?? "আসসালামু আলাইকুম। গতকালের তুলনায় আজ আমাদের অর্ডারের সংখ্যা কিছুটা বেশি। তাই দয়া করে ধীরে, মনোযোগ দিয়ে অর্ডার কনফার্ম করুন। প্রয়োজনে একসাথে বেশি অর্ডার না নিয়ে কম সংখ্যক অর্ডার করে প্রতিটি কাস্টমারের সঙ্গে সুন্দরভাবে কথা বলে, বিস্তারিত বুঝিয়ে তারপর কনফার্ম করুন।";
-  const adminAnnouncementEnabled = brand.admin_header_announcement_enabled !== false;
+  const adminAnnouncementEnabled = brandSettingsFetched && brandRow?.settings != null && brand.admin_header_announcement_enabled === true;
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => {
     try {
