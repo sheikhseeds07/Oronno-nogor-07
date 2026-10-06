@@ -17,7 +17,7 @@ const VISITOR_BEAT_KEY_PREFIX = "site-visitor-beat:";
 // One presence write per visitor per path per window. Live-visitor accuracy
 // stays useful while request volume (and its egress) stops scaling with how
 // often a visitor navigates back and forth.
-const BEAT_WINDOW_MS = 1_800_000;
+const BEAT_WINDOW_MS = 3_600_000;
 
 function shouldRecordBeat(path: string): boolean {
   try {
