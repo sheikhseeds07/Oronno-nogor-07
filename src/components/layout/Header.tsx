@@ -2,7 +2,7 @@ import { SafeImage } from "@/components/SafeImage";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ShoppingCart, Search, X, ChevronRight, Home, Grid3x3, Phone, ArrowRight, Palette, Leaf, Sprout, Flower2, TreePine, Wheat, Sun, UserRound, BadgePercent } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { hydrateCartStore, useCart } from "@/lib/cart-store";
 import { bnDigits } from "@/lib/format";
 import { supabase } from "@/lib/personal-supabase/client";
@@ -22,7 +22,7 @@ export function Header() {
   const [cartOpen, setCartOpen] = useState(false);
   const [bump, setBump] = useState(false);
   const [q, setQ] = useState("");
-  const [theme, setTheme] = useState("default");
+  const [theme, setTheme] = useState(() => getStoredTheme());
   const navigate = useNavigate();
 
   const { data: brandRow } = useQuery(publicSiteSettingsQuery);
@@ -63,7 +63,7 @@ export function Header() {
   }, [closing]);
   const submit = (e: React.FormEvent) => { e.preventDefault(); navigate({ to: "/shop", search: { q } as never }); closeDrawer(); };
   useEffect(() => { if (!drawer) return; const prev = document.body.style.overflow; document.body.style.overflow = "hidden"; return () => { document.body.style.overflow = prev; }; }, [drawer]);
-  useEffect(() => { void hydrateCartStore(); const t = getStoredTheme(); setTheme(t); applyTheme(t); }, []);
+  useLayoutEffect(() => { const t = getStoredTheme(); setTheme(t); applyTheme(t); }, []);\n  useEffect(() => { void hydrateCartStore(); }, []);
 
   const logoNode = brandLogo ? (
     <SafeImage src={brandLogo} alt={brandName} width={40} height={40} loading="eager" fetchPriority="high" decoding="async"  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full object-cover ring-2 ring-brand/30 shadow-md group-hover:ring-brand group-hover:scale-110 group-hover:rotate-3 transition-all duration-300" />
