@@ -28,7 +28,7 @@ const PUBLIC_RPCS = new Set(["get_home_data_v1"]);
 // Keep it cached briefly for egress protection without making admin changes stale for minutes.
 const HOME_RPC_TTL_SECONDS = 3600;
 const EDGE_TTL_SECONDS = 3600;
-const LANDING_TTL_SECONDS = 10;
+const LANDING_TTL_SECONDS = 60;
 const STALE_SECONDS = 86400;
 const BROWSER_TTL_SECONDS = 300;
 
@@ -88,7 +88,7 @@ export const Route = createFileRoute("/api/public/pg")({
         if (body) cacheKeyUrl.searchParams.set("b", body);
         cacheKeyUrl.searchParams.set("a", accept);
         const isLandingRead = path.split("?")[0] === "/rest/v1/landing_pages";
-        if (isLandingRead) cacheKeyUrl.searchParams.set("v", "landing-v2");
+        if (isLandingRead) cacheKeyUrl.searchParams.set("v", "landing-v3");
         if (range) cacheKeyUrl.searchParams.set("r", range);
         const cacheKey = new Request(cacheKeyUrl.toString(), { method: "GET" });
 
