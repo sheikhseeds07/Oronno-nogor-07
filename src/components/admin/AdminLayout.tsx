@@ -192,16 +192,15 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
   const [collapsed, setCollapsed] = useState(false);
   const { data: brandRow } = useQuery({
     queryKey: ["site-settings-public"],
-    initialData: () => {
-      const cached = readPublicSettingsCache<SiteSettings>();
-      return cached ? { settings: cached } : undefined;
-    },
     queryFn: async () => {
-      const { data } = await supabase.from("site_settings").select("settings").maybeSingle();
+      const { data, error } = await supabase.from("site_settings").select("settings").maybeSingle();
+      if (error) throw error;
       if (data?.settings) writePublicSettingsCache(data.settings as SiteSettings);
       return data;
     },
-    staleTime: 5 * 60_000,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
   const brand = (brandRow?.settings as SiteSettings) ?? {};
   useEffect(() => {
