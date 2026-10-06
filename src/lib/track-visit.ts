@@ -2,7 +2,8 @@
 // Raw page-view logging was removed: it stored hundreds of thousands of rows
 // that no screen ever read. Visitor stats come from site_visitors instead.
 import { supabase } from "@/lib/personal-supabase/client";
-import { toImg } from "@/lib/img";
+import { toImg, IMAGE_PLACEHOLDER } from "@/lib/img";
+import { cachedRequest } from "@/lib/egress-optimization";
 
 
 type Seed = { name: string; qty: string; image?: string };
@@ -37,7 +38,7 @@ async function ensureSeedComboItems() {
   const table = document.querySelector(".combo-table");
   if (!table) return;
   addSeedGridStyles();
-  const { data } = await supabase.from("landing_pages").select("planting_steps").eq("slug", "seedcombo").eq("is_published", true).maybeSingle();
+  const { data } = await cachedRequest("seedcombo-items:landing-page", async () => supabase.from("landing_pages").select("planting_steps").eq("slug", "seedcombo").eq("is_published", true).maybeSingle(), 900_000);
   const raw = (data?.planting_steps as { seed_table?: unknown } | null)?.seed_table;
   const seeds: Seed[] = Array.isArray(raw) ? raw.filter((x): x is Seed => !!x && typeof x === "object" && typeof (x as Seed).name === "string").slice(0, 24) : [];
   if (!seeds.length) return;
@@ -66,10 +67,9 @@ async function ensureSeedComboItems() {
       image.height = 115;
       image.alt = `${seed.name} — ${seed.qty}`;
       image.src = toImg(seed.image);
-      let retried = false;
       image.onerror = () => {
-        if (!retried && seed.image) { retried = true; image.src = seed.image; return; }
-        wrap.innerHTML = `<div class="seedcombo-item-placeholder">🌱</div>`;
+        image.onerror = null;
+        image.src = IMAGE_PLACEHOLDER;
       };
       wrap.appendChild(image);
     } else {
