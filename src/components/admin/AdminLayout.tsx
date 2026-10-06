@@ -206,12 +206,18 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
   const brand = (brandRow?.settings as SiteSettings) ?? {};
   useEffect(() => {
     const channel = supabase.channel("admin-header-announcement-settings")
+      .on("broadcast", { event: "settings-updated" }, ({ payload }) => {
+        const nextSettings = payload?.settings as SiteSettings | undefined;
+        if (!nextSettings) return;
+        writePublicSettingsCache(nextSettings);
+        queryClient.setQueryData(["site-settings-public"], { settings: nextSettings });
+      })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "site_settings" }, () => {
         void queryClient.invalidateQueries({ queryKey: ["site-settings-public"] });
       })
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
-  }, []);
+  }, [queryClient]);
   const brandLogo = brand.logo_url;
   const brandName = brand.site_name;
   const adminAnnouncement = brand.admin_header_announcement ?? "আসসালামু আলাইকুম। গতকালের তুলনায় আজ আমাদের অর্ডারের সংখ্যা কিছুটা বেশি। তাই দয়া করে ধীরে, মনোযোগ দিয়ে অর্ডার কনফার্ম করুন। প্রয়োজনে একসাথে বেশি অর্ডার না নিয়ে কম সংখ্যক অর্ডার করে প্রতিটি কাস্টমারের সঙ্গে সুন্দরভাবে কথা বলে, বিস্তারিত বুঝিয়ে তারপর কনফার্ম করুন।";
