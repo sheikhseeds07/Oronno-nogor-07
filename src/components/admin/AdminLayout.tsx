@@ -198,9 +198,9 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
       if (data?.settings) writePublicSettingsCache(data.settings as SiteSettings);
       return data;
     },
-    staleTime: 0,
-    refetchOnMount: "always",
-    refetchOnWindowFocus: true,
+    staleTime: 5 * 60_000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
   const brand = (brandRow?.settings as SiteSettings) ?? {};
   useEffect(() => {
