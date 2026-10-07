@@ -287,9 +287,9 @@ export type PurchaseEventPayload = {
 /** Purchase uses the order id as the shared browser/CAPI event_id for deduplication. */
 export async function sendPurchaseEvent(payload: PurchaseEventPayload): Promise<void> {
   const userData: Record<string, unknown> = { external_id: [sha256(payload.orderId)], country: [sha256(payload.country ?? "bd")] };
-  if (payload.phone) { const digits = payload.phone.replace(/\D/g, ""); if (digits) { const e164 = digits.startsWith("880") ? digits : digits.replace(/^0/, "880"); userData.ph = [sha256(e164)]; } }
+  if (payload.phone) { const digits = payload.phone.replace(/\D/g, ""); if (digits) { const e164 = digits.startsWith("880") ? digits : digits.replace(/^0/, "880"); userData.ph = [sha256(e164)]; userData.external_id = [sha256(e164), sha256(payload.orderId)]; } }
   if (payload.name) { const parts = payload.name.trim().split(/\s+/); if (parts[0]) userData.fn = [sha256(parts[0])]; if (parts.length > 1) userData.ln = [sha256(parts.slice(1).join(" "))]; }
-  if (payload.city) userData.ct = [sha256(payload.city.replace(/\s+/, ""))];
+  if (payload.city) userData.ct = [sha256(payload.city.replace(/[^a-zA-Z\u0980-\u09FF]/g, ""))];
 
   await sendServerEvent({
     event_name: "Purchase",
