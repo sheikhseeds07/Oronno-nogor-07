@@ -100,7 +100,7 @@ export const finalizeLandingCheckoutIntent = createServerFn({ method: "POST" }).
 
   if (data.emit_purchase !== false) try {
     const [{ data: order }, { data: rows }] = await Promise.all([
-      supabaseAdmin.from("orders").select("customer_phone,customer_name,total,client_ip").eq("id", orderId).maybeSingle(),
+      supabaseAdmin.from("orders").select("customer_phone,customer_name,total,client_ip,district,thana").eq("id", orderId).maybeSingle(),
       supabaseAdmin.from("order_items").select("product_id,quantity,price").eq("order_id", orderId),
     ]);
     if (order) {
@@ -111,6 +111,7 @@ export const finalizeLandingCheckoutIntent = createServerFn({ method: "POST" }).
         currency: "BDT",
         phone: order.customer_phone,
         name: order.customer_name,
+        city: (order as any).district ?? (order as any).thana ?? null,
         country: "bd",
         contents: (rows ?? []).map((i) => ({ id: i.product_id ?? "landing-popup-nutrimix", quantity: i.quantity, price: Number(i.price) || 0 })),
         clientIp: order.client_ip ?? null,
@@ -274,7 +275,7 @@ export const placeLandingOrder = createServerFn({ method: "POST" }).inputValidat
   const subtotal = offer.price * requested.quantity;
   try {
     const userAgent = getRequestHeader("user-agent") ?? null;
-    await sendPurchaseEvent({ orderId, value: subtotal + offer.deliveryFee, currency: "BDT", phone: customerPhone, name: data.customer_name, country: "bd", contents: items.map((item) => ({ id: item.id, quantity: item.quantity, price: item.price })), clientIp, userAgent, fbp: data.fbp ?? null, fbc: data.fbc ?? null, eventSourceUrl: data.source_url ?? null } as never);
+    await sendPurchaseEvent({ orderId, value: subtotal + offer.deliveryFee, currency: "BDT", phone: customerPhone, name: data.customer_name, city: (data as any).district ?? (data as any).thana ?? null, country: "bd", contents: items.map((item) => ({ id: item.id, quantity: item.quantity, price: item.price })), clientIp, userAgent, fbp: data.fbp ?? null, fbc: data.fbc ?? null, eventSourceUrl: data.source_url ?? null } as never);
   } catch (e) { logger.error("[placeLandingOrder] CAPI dispatch failed:", e); }
 
   return { id: orderId };
