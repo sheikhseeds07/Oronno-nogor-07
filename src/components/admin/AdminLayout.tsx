@@ -241,7 +241,7 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
     if (!initialized || !isStaff || pageAllowed || !firstAllowed) return;
     navigate({ to: firstAllowed as any, replace: true });
   }, [initialized, isStaff, pageAllowed, firstAllowed, navigate]);
-  if (!mounted || (loading && !role)) return <div className="min-h-screen flex items-center justify-center">Please wait...</div>;
+  if (!mounted || !initialized || !user || (loading && !role)) return <div className="min-h-screen flex items-center justify-center">Please wait...</div>;
   if (!isStaff) return <div className="min-h-screen flex items-center justify-center bg-muted px-4"><div className="max-w-md rounded-xl border bg-card p-6 text-center shadow-sm"><h1 className="text-xl font-bold text-brand-dark">Access Denied</h1><p className="mt-2 text-sm text-muted-foreground">You do not have permission to view this page.</p><button onClick={() => navigate({ to: "/" })} className="mt-5 rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-primary-foreground">Go Home</button></div></div>;
   const visibleNav = allowedNav;
   if (!pageAllowed) return <div className="min-h-screen flex items-center justify-center bg-muted px-4">{firstAllowed ? <div className="text-sm text-muted-foreground">এক মুহূর্ত…</div> : <div className="max-w-md rounded-xl border bg-card p-6 text-center shadow-sm"><h1 className="text-xl font-bold text-brand-dark">কোনো অনুমতি দেওয়া হয়নি</h1><p className="mt-2 text-sm text-muted-foreground">আপনার জন্য এখনো কোনো অংশের অনুমতি দেওয়া হয়নি। CEO-কে জানান।</p><button onClick={() => navigate({ to: "/" })} className="mt-5 rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-primary-foreground">হোমে যান</button></div>}</div>;
