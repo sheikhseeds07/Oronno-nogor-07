@@ -247,6 +247,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
           seed_items: [seedItem],
           nutrimix_item: nutrimixItem,
           notes: null,
+          ...getFbContext(),
         },
       });
       landingIntentIdRef.current = intent.id;
