@@ -1,0 +1,41 @@
+name: Apply landing free delivery fix
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-landing-free-delivery.yml'
+      - 'supabase/migrations/20261008120000_landing_free_delivery_restore.sql'
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply and verify
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SHEIKH }}
+          PROJECT_REF: frtzlibogmethppqmhtr
+        run: |
+          python3 - <<'PYCODE'
+          import json, os, urllib.request
+          from pathlib import Path
+          def q(sql):
+              req = urllib.request.Request(
+                  f"https://api.supabase.com/v1/projects/{os.environ['PROJECT_REF']}/database/query",
+                  data=json.dumps({'query': sql}).encode(),
+                  headers={'Authorization': f"Bearer {os.environ['SUPABASE_ACCESS_TOKEN']}", 'Content-Type': 'application/json', 'User-Agent': 'GitHub-Actions-LandingFreeDelivery/1.0'},
+                  method='POST')
+              with urllib.request.urlopen(req, timeout=120) as r:
+                  return r.read().decode()
+          q(Path('supabase/migrations/20261008120000_landing_free_delivery_restore.sql').read_text())
+          out = q("select position('Landing-page offers own' in pg_get_functiondef('public.place_public_order(text,text,text,numeric,jsonb,text,text,text)'::regprocedure)) > 0 as ok")
+          print(out)
+          if '"ok":true' not in out.replace(' ', ''):
+              raise SystemExit('Verification failed')
+          print(q("select slug, main_delivery_fee, delivery_inside, jsonb_path_query_array(addons,'$[*].delivery_fee') fees from public.landing_pages where slug='nutrimix'"))
+          PYCODE
