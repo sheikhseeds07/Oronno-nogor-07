@@ -203,6 +203,19 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
     refetchOnWindowFocus: false,
   });
   const brand = (brandRow?.settings as SiteSettings) ?? {};
+  // Tiny announcement-only query (only 2 fields) so ON/OFF/text changes reach every admin/employee quickly.
+  const { data: announcementRow, isFetched: announcementFetched } = useQuery({
+    queryKey: ["admin-header-announcement"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("site_settings").select("text:settings->>admin_header_announcement, enabled:settings->admin_header_announcement_enabled").maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as { text: string | null; enabled: boolean | null } | null;
+    },
+    staleTime: 0,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+  });
   useEffect(() => {
     const channel = supabase.channel("admin-header-announcement-settings")
       .on("broadcast", { event: "settings-updated" }, ({ payload }) => {
@@ -210,17 +223,27 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
         if (!nextSettings) return;
         writePublicSettingsCache(nextSettings);
         queryClient.setQueryData(["site-settings-public"], { settings: nextSettings });
+        queryClient.setQueryData(["admin-header-announcement"], { text: nextSettings.admin_header_announcement ?? null, enabled: nextSettings.admin_header_announcement_enabled ?? null });
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "site_settings" }, () => {
         void queryClient.invalidateQueries({ queryKey: ["site-settings-public"] });
+        void queryClient.invalidateQueries({ queryKey: ["admin-header-announcement"] });
       })
       .subscribe();
-    return () => { void supabase.removeChannel(channel); };
+    // Settings page asks this (single) channel to broadcast, instead of opening a duplicate channel that would kill this listener.
+    const onSaved = (e: Event) => {
+      const settings = (e as CustomEvent).detail as SiteSettings;
+      queryClient.setQueryData(["admin-header-announcement"], { text: settings.admin_header_announcement ?? null, enabled: settings.admin_header_announcement_enabled ?? null });
+      void channel.send({ type: "broadcast", event: "settings-updated", payload: { settings } });
+    };
+    window.addEventListener("admin-settings-saved", onSaved);
+    return () => { window.removeEventListener("admin-settings-saved", onSaved); void supabase.removeChannel(channel); };
   }, [queryClient]);
   const brandLogo = brand.logo_url;
   const brandName = brand.site_name;
-  const adminAnnouncement = brand.admin_header_announcement ?? "আসসালামু আলাইকুম। গতকালের তুলনায় আজ আমাদের অর্ডারের সংখ্যা কিছুটা বেশি। তাই দয়া করে ধীরে, মনোযোগ দিয়ে অর্ডার কনফার্ম করুন। প্রয়োজনে একসাথে বেশি অর্ডার না নিয়ে কম সংখ্যক অর্ডার করে প্রতিটি কাস্টমারের সঙ্গে সুন্দরভাবে কথা বলে, বিস্তারিত বুঝিয়ে তারপর কনফার্ম করুন।";
-  const adminAnnouncementEnabled = brandSettingsFetched && brandRow?.settings != null && brand.admin_header_announcement_enabled === true;
+  const adminAnnouncement = (announcementRow?.text ?? brand.admin_header_announcement) ?? "আসসালামু আলাইকুম। গতকালের তুলনায় আজ আমাদের অর্ডারের সংখ্যা কিছুটা বেশি। তাই দয়া করে ধীরে, মনোযোগ দিয়ে অর্ডার কনফার্ম করুন। প্রয়োজনে একসাথে বেশি অর্ডার না নিয়ে কম সংখ্যক অর্ডার করে প্রতিটি কাস্টমারের সঙ্গে সুন্দরভাবে কথা বলে, বিস্তারিত বুঝিয়ে তারপর কনফার্ম করুন।";
+  const adminAnnouncementEnabled = announcementFetched && announcementRow != null && announcementRow.enabled !== false && String(announcementRow.enabled) !== "false" && !!adminAnnouncement.trim();
+  void brandSettingsFetched;
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => {
     try {
