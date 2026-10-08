@@ -32,6 +32,9 @@ const LandingIntentInputSchema = z.object({
   seed_items: z.array(ItemSchema).min(1).max(100),
   nutrimix_item: ItemSchema.optional().nullable(),
   notes: z.string().max(2000).optional().nullable(),
+  fbp: z.string().max(200).optional().nullable(),
+  fbc: z.string().max(500).optional().nullable(),
+  source_url: z.string().max(2000).optional().nullable(),
 });
 const LandingFinalizeInputSchema = z.object({
   intent_id: z.string().uuid(),
@@ -84,6 +87,18 @@ export const createLandingCheckoutIntent = createServerFn({ method: "POST" }).in
     throw new Error(error.message || "Checkout intent create failed");
   }
   if (!intentId || typeof intentId !== "string") throw new Error("Checkout intent create failed");
+  // Keep ad-click details so a timer-finalized order still sends an attributable Purchase.
+  try {
+    await supabaseAdmin.rpc("set_landing_intent_tracking", {
+      p_intent_id: intentId,
+      p_fbp: data.fbp ?? null,
+      p_fbc: data.fbc ?? null,
+      p_user_agent: getRequestHeader("user-agent") ?? null,
+      p_source_url: data.source_url ?? null,
+    } as never);
+  } catch (e) {
+    logger.error("[createLandingCheckoutIntent] tracking save failed:", e);
+  }
   return { id: intentId };
 });
 
