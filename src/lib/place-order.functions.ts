@@ -89,7 +89,7 @@ export const createLandingCheckoutIntent = createServerFn({ method: "POST" }).in
   if (!intentId || typeof intentId !== "string") throw new Error("Checkout intent create failed");
   // Keep ad-click details so a timer-finalized order still sends an attributable Purchase.
   try {
-    await supabaseAdmin.rpc("set_landing_intent_tracking", {
+    await supabaseAdmin.rpc("set_landing_intent_tracking" as never, {
       p_intent_id: intentId,
       p_fbp: data.fbp ?? null,
       p_fbc: data.fbc ?? null,
