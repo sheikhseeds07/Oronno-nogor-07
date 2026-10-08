@@ -936,6 +936,12 @@ function OrdersTable({
   const toggleAll = () => {
     setSelectedIds(() => allChecked ? new Set() : new Set(displayRows.map((o) => o.id)));
   };
+  const [amountInput, setAmountInput] = useState("");
+  const selectByAmount = (dir: "gte" | "lt") => {
+    const amt = Number(amountInput);
+    if (!amt || amt <= 0) return;
+    setSelectedIds(new Set(displayRows.filter((o) => (dir === "gte" ? Number(o.total) >= amt : Number(o.total) < amt)).map((o) => o.id)));
+  };
   const toggleOne = (id: string) => {
     setSelectedIds((prev) => {
       const n = new Set(prev);
@@ -1250,6 +1256,22 @@ function OrdersTable({
           );
         })}
       </div>
+
+      {isPendingFilter && (
+        <div className="mb-3 flex w-fit items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+          <span className="text-xs font-semibold text-slate-600">টাকা অনুযায়ী সিলেক্ট:</span>
+          <input
+            type="number"
+            min={1}
+            value={amountInput}
+            onChange={(e) => setAmountInput(e.target.value)}
+            placeholder="যেমন ৩০০"
+            className="w-24 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand/30"
+          />
+          <button onClick={() => selectByAmount("gte")} className="rounded-lg bg-brand/10 px-2.5 py-1.5 text-xs font-bold text-brand-dark hover:bg-brand/20">এর বেশি</button>
+          <button onClick={() => selectByAmount("lt")} className="rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-200">এর কম</button>
+        </div>
+      )}
 
       {selectedIds.size > 0 && (
         <div className="mb-3 flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-gradient-to-r from-white via-slate-50 to-white px-3 py-2.5 text-sm flex-wrap overflow-visible shadow-sm">
