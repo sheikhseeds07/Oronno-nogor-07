@@ -39,7 +39,7 @@ try {
   let adminLayout = await readFile(adminLayoutPath, "utf8");
   const productsNav = '{ to: "/admin/products", label: "Products", icon: Package, perm: "products", tone: "from-amber-400 to-orange-500" },';
   const offersNav = '{ to: "/admin/offers", label: "Offers", icon: Sparkles, perm: "products", tone: "from-emerald-400 to-teal-500" },';
-  if (adminLayout.includes(productsNav) && !adminLayout.includes(offersNav)) { adminLayout = adminLayout.replace(productsNav, productsNav + "\n  " + offersNav); await writeFile(adminLayoutPath, adminLayout, "utf8"); console.log("Added Offers to admin navigation."); }
+  if (adminLayout.includes(productsNav) && !adminLayout.includes(offersNav) && !adminLayout.includes('to: "/admin/offers"')) { adminLayout = adminLayout.replace(productsNav, productsNav + "\n  " + offersNav); await writeFile(adminLayoutPath, adminLayout, "utf8"); console.log("Added Offers to admin navigation."); }
 } catch (error) { console.warn("Offer admin navigation patch skipped:", error instanceof Error ? error.message : error); }
 
 const headerPath = path.resolve(here, "../src/components/layout/Header.tsx");
