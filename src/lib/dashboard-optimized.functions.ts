@@ -562,7 +562,12 @@ export const getOptimizedDashboardReport = createServerFn({ method: "POST" })
       ? Number(confirmedResult.data ?? 0)
       : null;
     const real = s.real ?? { ...empty, created: 0, revenue: 0, allRevenue: 0, approved: 0, pending: 0 };
-    const web = s.webOrders ?? empty;
+    const webRaw = s.webOrders ?? empty;
+    // Web Orders → Processing = selected range web orders minus confirmed and cancelled.
+    const web = {
+      ...webRaw,
+      processing: Math.max(0, Number(webRaw.total ?? 0) - Number(webRaw.confirmed ?? 0) - Number(webRaw.cancelled ?? 0)),
+    };
     const incomplete = s.incompleteOrders ?? { ...empty, active: 0 };
     const daily = Array.isArray(s.daily) ? s.daily : [];
     const hourlyRaw = Array.isArray(s.hourly) ? s.hourly : [];
