@@ -1856,8 +1856,10 @@ function buildInvoicesHTML(orders: InvoiceOrder[]) {
     .invtitle .num{color:#8b0000}
     .invtitle .courier{display:block;font-size:11px;font-weight:700;letter-spacing:.5px;color:#64748b;margin-top:6px;text-transform:none}
     .invspacer{width:90px}
-    .meta{display:flex;justify-content:space-between;font-size:13px;margin-bottom:14px;color:#334155}
+    .meta{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:24px;font-size:13px;margin-bottom:14px;color:#334155;line-height:1.6}
     .meta b{color:#0f172a}
+    .customer-details{min-width:0;overflow-wrap:anywhere}
+    .courier-details{text-align:right;white-space:nowrap}
     .cust{border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.6}
     .cust .name{font-size:17px;font-weight:800;color:#0f172a}
     table.items{width:100%;border-collapse:collapse;margin-top:6px;font-size:14px}
@@ -1880,6 +1882,8 @@ function buildInvoicesHTML(orders: InvoiceOrder[]) {
     const subtotal = items.length ? items.reduce((a, i) => a + Number(i.price) * i.quantity, 0) : Number(o.total);
     const delivery = Math.max(0, Number(o.total) - subtotal);
     const tracking = o.courier_consignment ?? "";
+    const address = [o.customer_address, o.thana, o.district]
+      .map((part) => part?.trim()).filter(Boolean).join(", ");
     return `
       <div class="inv">
         <div class="head">
@@ -1888,8 +1892,15 @@ function buildInvoicesHTML(orders: InvoiceOrder[]) {
           <div class="invspacer"></div>
         </div>
         <div class="meta">
-          <div><b>তারিখ:</b> ${format(new Date(o.created_at), "dd MMM yyyy")}</div>
-          <div><b>কুরিয়ার:</b> Steadfast${tracking ? ` · ${escapeHtml(tracking)}` : ""}</div>
+          <div class="customer-details">
+            <div><b>কাস্টমার:</b> ${escapeHtml(o.customer_name)}</div>
+            <div><b>ফোন:</b> ${escapeHtml(o.customer_phone)}</div>
+            ${address ? `<div><b>ঠিকানা:</b> ${escapeHtml(address)}</div>` : ""}
+          </div>
+          <div class="courier-details">
+            <div><b>কুরিয়ার:</b> Steadfast${tracking ? ` · ${escapeHtml(tracking)}` : ""}</div>
+            <div><b>তারিখ:</b> ${format(new Date(o.created_at), "dd MMM yyyy")}</div>
+          </div>
         </div>
         <table class="items">
           <thead><tr><th>প্রোডাক্ট</th><th>কোয়ান্টিটি</th></tr></thead>
