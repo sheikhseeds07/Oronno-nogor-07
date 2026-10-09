@@ -1663,7 +1663,7 @@ function toR2MediaUrl(raw: string): string {
  *  1) by product_id, 2) by product name from the products table,
  *  3) by product name from landing page packages/addons (custom landing offers). */
 const PRODUCT_IMAGE_CACHE_TTL = 30 * 60_000; // ৩০ মিনিট — ডেটা খরচ কমাতে
-const PRODUCT_IMAGE_CACHE_KEY = "admin-product-image-cache-v1";
+const PRODUCT_IMAGE_CACHE_KEY = "admin-product-image-cache-v2";
 let productImageCache: { expiresAt: number; idMap: Record<string, string>; nameMap: Record<string, string>; comboImageMap: Record<string, string> } | null = null;
 let productImageCachePromise: Promise<typeof productImageCache> | null = null;
 
