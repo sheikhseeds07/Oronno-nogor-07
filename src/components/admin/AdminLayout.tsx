@@ -210,8 +210,8 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
       if (error) throw error;
       return (data ?? null) as { text: string | null; enabled: boolean | null } | null;
     },
-    staleTime: 0,
-    refetchInterval: 60_000,
+    staleTime: 60_000,
+    refetchInterval: 10 * 60_000,
     refetchOnWindowFocus: true,
     refetchOnMount: true,
   });
