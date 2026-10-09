@@ -1762,10 +1762,6 @@ async function loadProductImageCache() {
       return best;
     };
 
-    const expiresAt = Date.now() + PRODUCT_IMAGE_CACHE_TTL;
-    productImageCache = { expiresAt, idMap, nameMap, comboImageMap };
-    try { window.localStorage.setItem(PRODUCT_IMAGE_CACHE_KEY, JSON.stringify(productImageCache)); } catch {}
-
     // Prefer permanent R2 asset links over legacy signed links. The same add-on
     // name can exist on several landing pages; keeping the first match could
     // leave old orders pointing at an expired/deleted image even after an admin
@@ -1782,6 +1778,12 @@ async function loadProductImageCache() {
         nameMap[candidate.name] = candidate.image;
       }
     }
+
+    // Persist only after landing-page add-ons and popup offers are merged.
+    // Saving earlier left Nutrimix absent after a refresh until the cache expired.
+    const expiresAt = Date.now() + PRODUCT_IMAGE_CACHE_TTL;
+    productImageCache = { expiresAt, idMap, nameMap, comboImageMap };
+    try { window.localStorage.setItem(PRODUCT_IMAGE_CACHE_KEY, JSON.stringify(productImageCache)); } catch {}
 
     return productImageCache;
   })().finally(() => {
