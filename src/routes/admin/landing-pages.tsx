@@ -138,6 +138,20 @@ function LandingPagesAdmin() {
     if (!editing?.title || !editing?.slug) return toast.error("টাইটেল ও slug দিন");
     const payload = { ...editing };
     delete payload.id;
+    // যে অতিরিক্ত প্রডাক্টে product ID নেই, সেগুলোর জন্য স্বয়ংক্রিয়ভাবে প্রডাক্ট তৈরি করা হয় ("নতুন" বাটনের মতোই),
+    // যাতে অর্ডারের সময় "product ID পাওয়া যায়নি" এরর না আসে।
+    if (Array.isArray(payload.addons) && payload.addons.some((a) => !a.product_id)) {
+      const fixed: Addon[] = [];
+      for (const a of payload.addons) {
+        if (a.product_id) { fixed.push(a); continue; }
+        if (!a.name?.trim()) return toast.error("অতিরিক্ত প্রডাক্টের নাম দিন");
+        const created = await quickCreateProduct({ name: a.name.trim(), price: Number(a.price) || 0, image: a.image });
+        if (!created) return;
+        fixed.push({ ...a, product_id: created.id });
+      }
+      payload.addons = fixed;
+      setEditing((prev) => (prev ? { ...prev, addons: fixed } : prev));
+    }
     const { error } = editing.id
       ? await supabase.from("landing_pages").update(payload).eq("id", editing.id)
       : await supabase.from("landing_pages").insert(payload);
