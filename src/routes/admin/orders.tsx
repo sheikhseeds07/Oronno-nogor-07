@@ -1662,13 +1662,20 @@ function toR2MediaUrl(raw: string): string {
 /** Resolve a thumbnail for every order item:
  *  1) by product_id, 2) by product name from the products table,
  *  3) by product name from landing page packages/addons (custom landing offers). */
-const PRODUCT_IMAGE_CACHE_TTL = 30_000;
+const PRODUCT_IMAGE_CACHE_TTL = 30 * 60_000; // ৩০ মিনিট — ডেটা খরচ কমাতে
+const PRODUCT_IMAGE_CACHE_KEY = "admin-product-image-cache-v1";
 let productImageCache: { expiresAt: number; idMap: Record<string, string>; nameMap: Record<string, string>; comboImageMap: Record<string, string> } | null = null;
 let productImageCachePromise: Promise<typeof productImageCache> | null = null;
 
 async function loadProductImageCache() {
   const now = Date.now();
   if (productImageCache && productImageCache.expiresAt > now) return productImageCache;
+  if (!productImageCache && typeof window !== "undefined") {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(PRODUCT_IMAGE_CACHE_KEY) || "null");
+      if (saved && saved.expiresAt > now && saved.idMap) { productImageCache = saved; return saved; }
+    } catch {}
+  }
   if (productImageCachePromise) return productImageCachePromise;
 
   productImageCachePromise = (async () => {
@@ -1757,6 +1764,7 @@ async function loadProductImageCache() {
 
     const expiresAt = Date.now() + PRODUCT_IMAGE_CACHE_TTL;
     productImageCache = { expiresAt, idMap, nameMap, comboImageMap };
+    try { window.localStorage.setItem(PRODUCT_IMAGE_CACHE_KEY, JSON.stringify(productImageCache)); } catch {}
 
     // Prefer permanent R2 asset links over legacy signed links. The same add-on
     // name can exist on several landing pages; keeping the first match could
