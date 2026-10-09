@@ -140,10 +140,22 @@ function LandingPagesAdmin() {
     delete payload.id;
     // যে অতিরিক্ত প্রডাক্টে product ID নেই, সেগুলোর জন্য স্বয়ংক্রিয়ভাবে প্রডাক্ট তৈরি করা হয় ("নতুন" বাটনের মতোই),
     // যাতে অর্ডারের সময় "product ID পাওয়া যায়নি" এরর না আসে।
-    if (Array.isArray(payload.addons) && payload.addons.some((a) => !a.product_id)) {
+    if (Array.isArray(payload.addons)) {
       const fixed: Addon[] = [];
       for (const a of payload.addons) {
-        if (a.product_id) { fixed.push(a); continue; }
+        const id = String(a.product_id ?? "");
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+        let productExists = false;
+        if (isUuid) {
+          const { data: existingProduct, error: productCheckError } = await supabase
+            .from("products")
+            .select("id")
+            .eq("id", id)
+            .maybeSingle();
+          if (productCheckError) return toast.error(`প্রডাক্ট যাচাই করা যায়নি: ${productCheckError.message}`);
+          productExists = !!existingProduct;
+        }
+        if (productExists) { fixed.push(a); continue; }
         if (!a.name?.trim()) return toast.error("অতিরিক্ত প্রডাক্টের নাম দিন");
         const created = await quickCreateProduct({ name: a.name.trim(), price: Number(a.price) || 0, image: a.image });
         if (!created) return;
