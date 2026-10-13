@@ -241,7 +241,7 @@ async function fetchHoorin(admin: ReturnType<typeof createClient>, phone: string
         // Steadfast is intentionally excluded from Hoorin.
         // Its customer success ratio is fetched separately from our Steadfast API.
         const stats = parseStats(payload).filter(
-          (row) => row.name.toLowerCase() !== "steadfast",
+          (row) => row.name.toLowerCase() !== "steadfast" || row.total > 0 || row.success > 0 || row.cancelled > 0,
         );
         // Keep Overall consistent with the couriers actually supplied by Hoorin.
         // Steadfast ratio has no parcel count, so it is displayed separately.
