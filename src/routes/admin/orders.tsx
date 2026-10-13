@@ -988,13 +988,19 @@ function OrdersTable({
         return bInvoice.localeCompare(aInvoice, undefined, { numeric: true, sensitivity: "base" });
       });
     if (!picked.length) return;
-    const html = buildInvoicesHTML(picked);
+    const ids = picked.map((p) => p.id);
+    const html = buildInvoicesHTML(picked, ids);
     const w = window.open("", "_blank");
     if (w) { w.document.write(html); w.document.close(); }
-    try {
-      await markPrinted({ data: { ids: picked.map((p) => p.id) } });
-      qc.invalidateQueries({ queryKey: ["admin-orders"] });
-    } catch { /* non-fatal */ }
+    const onMsg = (ev: MessageEvent) => {
+      const d = ev.data as { type?: string; ids?: unknown } | null;
+      if (!d || d.type !== "invoices-printed" || !Array.isArray(d.ids)) return;
+      window.removeEventListener("message", onMsg);
+      markPrinted({ data: { ids: d.ids as string[] } })
+        .then(() => qc.invalidateQueries({ queryKey: ["admin-orders"] }))
+        .catch(() => { /* non-fatal */ });
+    };
+    window.addEventListener("message", onMsg);
   };
 
   const bulkDuplicateCheck = async () => {
@@ -1854,7 +1860,7 @@ async function attachProductImages(orders: OrderRow[]): Promise<OrderRow[]> {
 /* ───────────── Invoice HTML Builder (clean, minimal) ───────────── */
 type InvoiceOrder = OrderRow & { courier_consignment?: string | null; courier_display_name?: string | null };
 const LOGO_URL = (typeof window !== "undefined" ? window.location.origin : "") + logoUrl;
-function buildInvoicesHTML(orders: InvoiceOrder[]) {
+function buildInvoicesHTML(orders: InvoiceOrder[], ids: string[]) {
   const css = `
     *{box-sizing:border-box}
     @page{size:A4;margin:12mm}
@@ -1926,8 +1932,24 @@ function buildInvoicesHTML(orders: InvoiceOrder[]) {
         <div class="footer">ধন্যবাদ — Sheikh Seeds থেকে কেনাকাটার জন্য</div>
       </div>`;
   }).join("");
-  return `<!doctype html><html><head><meta charset="utf-8"/><title>Invoices</title><style>${css}</style></head>
-    <body>${body}<script>window.onload=()=>{setTimeout(()=>window.print(),300)}</script></body></html>`;
+  const confirmOverlay = `
+    <div id="pc" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;align-items:center;justify-content:center">
+      <div style="background:#fff;border-radius:12px;padding:24px;max-width:340px;text-align:center">
+        <div style="font-size:17px;font-weight:800;margin-bottom:6px">সব ইনভয়েস ঠিকমতো প্রিন্ট হয়েছে?</div>
+        <div style="font-size:13px;color:#64748b;margin-bottom:16px">প্রিন্ট বাতিল হলে বা কোনো ইনভয়েস বের না হলে "না" চাপুন</div>
+        <button id="py" style="background:#16a34a;color:#fff;border:0;border-radius:8px;padding:10px 18px;font-size:15px;font-weight:700;cursor:pointer;margin-right:8px">হ্যাঁ, প্রিন্ট হয়েছে</button>
+        <button id="pn" style="background:#e2e8f0;color:#0f172a;border:0;border-radius:8px;padding:10px 18px;font-size:15px;font-weight:700;cursor:pointer">না</button>
+      </div>
+    </div>`;
+  const printScript = `<script>
+    var IDS=${JSON.stringify(ids)};
+    window.onload=function(){setTimeout(function(){window.print()},300)};
+    window.onafterprint=function(){document.getElementById('pc').style.display='flex'};
+    document.getElementById('py').onclick=function(){if(window.opener){window.opener.postMessage({type:'invoices-printed',ids:IDS},location.origin)}window.close()};
+    document.getElementById('pn').onclick=function(){window.close()};
+  </script>`;
+  return `<!doctype html><html><head><meta charset="utf-8"/><title>Invoices</title><style>${css}@media print{#pc{display:none!important}}</style></head>
+    <body>${body}${confirmOverlay}${printScript}</body></html>`;
 }
 
 function escapeHtml(s: string) {
