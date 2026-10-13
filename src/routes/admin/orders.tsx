@@ -1944,7 +1944,7 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
   const digits = normalizePhone(phone);
   const enabled = digits.length >= 10;
   const clientCacheKey = useMemo(
-    () => `hoorin-courier-history-v6:${digits}`,
+    () => `hoorin-courier-history-v7:${digits}`,
     [digits],
   );
 
@@ -1992,7 +1992,7 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
   }, [cachedClientResult, enabled, inView]);
 
   const { data, isFetching } = useQuery({
-    queryKey: ["hoorin-courier-history-v6", digits],
+    queryKey: ["hoorin-courier-history-v7", digits],
     enabled: enabled && inView && !cachedClientResult,
     queryFn: () => fn({ data: { phone: digits, orderCreatedAt } }),
     initialData: cachedClientResult ?? undefined,
