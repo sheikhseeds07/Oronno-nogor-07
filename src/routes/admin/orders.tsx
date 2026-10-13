@@ -1944,7 +1944,7 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
   const digits = normalizePhone(phone);
   const enabled = digits.length >= 10;
   const clientCacheKey = useMemo(
-    () => `hoorin-courier-history-v7:${digits}`,
+    () => `hoorin-courier-history-v6:${digits}`,
     [digits],
   );
 
@@ -1992,7 +1992,7 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
   }, [cachedClientResult, enabled, inView]);
 
   const { data, isFetching } = useQuery({
-    queryKey: ["hoorin-courier-history-v7", digits],
+    queryKey: ["hoorin-courier-history-v6", digits],
     enabled: enabled && inView && !cachedClientResult,
     queryFn: () => fn({ data: { phone: digits, orderCreatedAt } }),
     initialData: cachedClientResult ?? undefined,
@@ -2022,25 +2022,14 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
     const success = displayData.overall?.success ?? displayData.stats.reduce((sum: number, stat: any) => sum + stat.success, 0);
     const cancelled = displayData.overall?.cancelled ?? displayData.stats.reduce((sum: number, stat: any) => sum + stat.cancelled, 0);
     const sf = displayData.steadfast as { deliveryRatio: number; cancellationRatio: number; volumeBand: string | null } | undefined;
-    const sfCount = displayData.stats?.find((stat: any) => String(stat.name).toLowerCase() === "steadfast");
-    if (!total && (sf || sfCount)) {
-      const rate = sfCount && sfCount.total > 0
-        ? Math.round((sfCount.success / sfCount.total) * 100)
-        : Math.round(sf?.deliveryRatio ?? 0);
+    if (!total && sf) {
+      const rate = Math.round(sf.deliveryRatio);
       const ring = rate >= 80 ? "border-emerald-500 text-emerald-700" : rate >= 50 ? "border-amber-500 text-amber-700" : "border-rose-500 text-rose-700";
       content = (
         <div className="flex items-center gap-2">
           <div className={`w-9 h-9 rounded-full border-[3px] ${ring} flex items-center justify-center text-[10px] font-bold`}>{rate}%</div>
           <div className="text-[11px] leading-tight">
             <div className="font-bold text-slate-700">Steadfast</div>
-            {sfCount && sfCount.total > 0 ? (
-              <>
-                <div>মোট: <b>{sfCount.total}</b> · ডেলিভারি: <b>{sfCount.success}</b></div>
-                <div className="text-rose-600">ক্যানসেল: <b>{sfCount.cancelled}</b></div>
-              </>
-            ) : (
-              <div className="text-muted-foreground">{sf?.volumeBand ? `ভলিউম ${sf.volumeBand} · ` : ""}সঠিক সংখ্যা পাওয়া যায়নি</div>
-            )}
           </div>
         </div>
       );
@@ -2055,17 +2044,6 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
             <div className="text-emerald-700">Success: <b>{rate}%</b></div>
             <div className="text-muted-foreground">Order: <b>{success}/{total}</b></div>
             <div className="text-rose-600">Cancel: <b>{cancelled}</b></div>
-            {sfCount && sfCount.total > 0 ? (
-              <>
-                <div className="mt-1 border-t border-slate-200 pt-1 font-bold text-slate-700">Steadfast</div>
-                <div>মোট: <b>{sfCount.total}</b> · ডেলিভারি: <b>{sfCount.success}</b></div>
-                <div className="text-rose-600">ক্যানসেল: <b>{sfCount.cancelled}</b></div>
-              </>
-            ) : sf ? (
-              <div className="mt-1 border-t border-slate-200 pt-1 text-slate-600">
-                <b>Steadfast:</b> {sf.deliveryRatio}% · {sf.volumeBand ? `ভলিউম ${sf.volumeBand} · ` : ""}সঠিক সংখ্যা পাওয়া যায়নি
-              </div>
-            ) : null}
           </div>
         </div>
       );
