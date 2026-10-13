@@ -30,7 +30,7 @@ type PersistentHit = { result: CourierHistoryResult; fresh: boolean; fetchedAtMs
 const SUCCESS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const FAILURE_CACHE_TTL_MS = 15 * 1000;
 const STALE_CACHE_TTL_MS = 30 * 60 * 1000;
-const CACHE_VERSION = "courier-history-v15-exact-steadfast-counts";
+const CACHE_VERSION = "courier-history-v14-steadfast-score-api";
 const MAX_CACHE_ENTRIES = 3000;
 
 const courierCache = new Map<string, CacheEntry>();
@@ -281,23 +281,13 @@ async function steadfastScore(phone: string): Promise<SteadfastScore | null> {
 }
 
 async function withSteadfast(phone: string, result: CourierHistoryResult): Promise<CourierHistoryResult> {
-  // Prefer exact Steadfast parcel counts if the Hoorin response includes them.
-  // Ratio/volume-band responses must never be converted into invented parcel counts.
-  const exactSteadfast = result.stats.find((s) =>
-    s.name.toLowerCase() === "steadfast" && (s.total > 0 || s.success > 0 || s.cancelled > 0)
-  );
-  if (exactSteadfast) {
-    const stats = result.stats;
-    return { ...result, stats, overall: aggregateOverall(stats), steadfast: undefined };
-  }
-
   const stats = result.stats.filter((s) => s.name.toLowerCase() !== "steadfast");
-  const cleaned = { ...result, stats, overall: aggregateOverall(stats) };
+  const overall = aggregateOverall(stats);
+  const cleaned = { ...result, stats, overall };
   const score = await steadfastScore(phone).catch(() => null);
-  // Steadfast's current score endpoint may return only a ratio and volume band.
-  // Keep that as a separate signal; do not add estimated counts to verified totals.
   if (!score) return cleaned;
-  return { ...cleaned, steadfast: score };
+  const combined = { name: "Overall", total: overall.total + score.total, success: overall.success + score.success, cancelled: overall.cancelled + score.cancelled };
+  return { ...cleaned, overall: combined, steadfast: score };
 }
 
 async function readPersistentCache(phone: string): Promise<PersistentHit | null> {
