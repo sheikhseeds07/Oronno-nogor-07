@@ -167,7 +167,7 @@ async function readPersistent(admin: ReturnType<typeof createClient>, phone: str
   if (existing) return existing;
 
   const request = (async (): Promise<PersistentHit | null> => {
-    const { data, error } = await admin.from("courier_history_cache").select("configured,stats,error,expires_at,steadfast_source").eq("phone", phone).maybeSingle();
+    const { data, error } = await admin.from("courier_history_cache").select("configured,stats,error,expires_at").eq("phone", phone).maybeSingle();
     if (error || !data) return null;
     const rawStats = Array.isArray(data.stats) ? data.stats as CourierStat[] : [];
     const courierStats = rawStats.filter((row) => String(row.name).toLowerCase() !== "overall");
@@ -182,7 +182,7 @@ async function readPersistent(admin: ReturnType<typeof createClient>, phone: str
       source: "cache",
     };
     const expiresAt = new Date(String(data.expires_at ?? "")).getTime();
-    return { result, fresh: data.steadfast_source === "hoorin-v2" && Number.isFinite(expiresAt) && expiresAt > Date.now() };
+    return { result, fresh: Number.isFinite(expiresAt) && expiresAt > Date.now() };
   })();
 
   persistentReadInFlight.set(phone, request);
@@ -201,7 +201,7 @@ async function writePersistent(admin: ReturnType<typeof createClient>, phone: st
   const courierStats = result.stats.filter((row) => String(row.name).toLowerCase() !== "overall");
   const overall = result.overall ?? aggregateOverall(courierStats);
   const persistedStats = [...courierStats, overall];
-  await admin.from("courier_history_cache").upsert({ phone, configured: true, stats: persistedStats, error: null, steadfast_source: "hoorin-v2", fetched_at: new Date(now).toISOString(), expires_at: new Date(now + SUCCESS_CACHE_TTL_MS).toISOString() }, { onConflict: "phone" });
+  await admin.from("courier_history_cache").upsert({ phone, configured: true, stats: persistedStats, error: null, steadfast_source: "hoorin", fetched_at: new Date(now).toISOString(), expires_at: new Date(now + SUCCESS_CACHE_TTL_MS).toISOString() }, { onConflict: "phone" });
 }
 
 async function reserveProviderSlot(admin: ReturnType<typeof createClient>) {
@@ -241,7 +241,7 @@ async function fetchHoorin(admin: ReturnType<typeof createClient>, phone: string
         // Steadfast is intentionally excluded from Hoorin.
         // Its customer success ratio is fetched separately from our Steadfast API.
         const stats = parseStats(payload).filter(
-          (row) => row.name.toLowerCase() !== "steadfast" || row.total > 0 || row.success > 0 || row.cancelled > 0,
+          (row) => row.name.toLowerCase() !== "steadfast",
         );
         // Keep Overall consistent with the couriers actually supplied by Hoorin.
         // Steadfast ratio has no parcel count, so it is displayed separately.
