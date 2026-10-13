@@ -988,13 +988,53 @@ function OrdersTable({
         return bInvoice.localeCompare(aInvoice, undefined, { numeric: true, sensitivity: "base" });
       });
     if (!picked.length) return;
-    const html = buildInvoicesHTML(picked);
+
+    // A browser print dialog cannot confirm which pages physically came out.
+    // Ask the operator to confirm invoice numbers after the dialog closes and
+    // mark only those confirmed invoices as printed.
+    const printJobId = `rts-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const html = buildInvoicesHTML(picked, printJobId);
     const w = window.open("", "_blank");
-    if (w) { w.document.write(html); w.document.close(); }
-    try {
-      await markPrinted({ data: { ids: picked.map((p) => p.id) } });
-      qc.invalidateQueries({ queryKey: ["admin-orders"] });
-    } catch { /* non-fatal */ }
+    if (!w) {
+      toast.error("প্রিন্ট উইন্ডো খোলা যায়নি। Pop-up অনুমতি দিয়ে আবার চেষ্টা করুন।");
+      return;
+    }
+
+    const onPrintConfirmation = (event: MessageEvent) => {
+      if (
+        event.source !== w ||
+        event.origin !== window.location.origin ||
+        event.data?.type !== "rts-invoice-print-confirmation" ||
+        event.data?.jobId !== printJobId
+      ) return;
+      window.removeEventListener("message", onPrintConfirmation);
+
+      const confirmedNumbers = new Set(
+        (Array.isArray(event.data.invoices) ? event.data.invoices : [])
+          .filter((value: unknown): value is string => typeof value === "string")
+          .map((value: string) => value.trim().toUpperCase())
+          .filter(Boolean),
+      );
+      const confirmedOrders = picked.filter((order) =>
+        confirmedNumbers.has((order.invoice_no ?? order.id.slice(0, 8)).toUpperCase()),
+      );
+      if (!confirmedOrders.length) {
+        toast.info("কোনো ইনভয়েস Printed করা হয়নি। প্রয়োজন হলে আবার প্রিন্ট করুন।");
+        return;
+      }
+
+      void markPrinted({ data: { ids: confirmedOrders.map((order) => order.id) } })
+        .then(() => {
+          qc.invalidateQueries({ queryKey: ["admin-orders"] });
+          toast.success(`${confirmedOrders.length}টি নিশ্চিত করা ইনভয়েস Printed হয়েছে।`);
+        })
+        .catch(() => {
+          toast.error("Printed স্ট্যাটাস আপডেট হয়নি। আবার চেষ্টা করুন।");
+        });
+    };
+    window.addEventListener("message", onPrintConfirmation);
+    w.document.write(html);
+    w.document.close();
   };
 
   const bulkDuplicateCheck = async () => {
@@ -1854,7 +1894,10 @@ async function attachProductImages(orders: OrderRow[]): Promise<OrderRow[]> {
 /* ───────────── Invoice HTML Builder (clean, minimal) ───────────── */
 type InvoiceOrder = OrderRow & { courier_consignment?: string | null; courier_display_name?: string | null };
 const LOGO_URL = (typeof window !== "undefined" ? window.location.origin : "") + logoUrl;
-function buildInvoicesHTML(orders: InvoiceOrder[]) {
+function buildInvoicesHTML(orders: InvoiceOrder[], printJobId: string) {
+  const printInvoiceNumbers = orders.map((o) => (o.invoice_no ?? o.id.slice(0, 8)).toUpperCase());
+  const safePrintInvoiceNumbers = JSON.stringify(printInvoiceNumbers).replace(/</g, "\\u003c");
+  const safePrintJobId = JSON.stringify(printJobId).replace(/</g, "\\u003c");
   const css = `
     *{box-sizing:border-box}
     @page{size:A4;margin:12mm}
@@ -1927,7 +1970,27 @@ function buildInvoicesHTML(orders: InvoiceOrder[]) {
       </div>`;
   }).join("");
   return `<!doctype html><html><head><meta charset="utf-8"/><title>Invoices</title><style>${css}</style></head>
-    <body>${body}<script>window.onload=()=>{setTimeout(()=>window.print(),300)}</script></body></html>`;
+    <body>${body}<script>
+      const PRINT_JOB_ID = ${safePrintJobId};
+      const PRINT_INVOICES = ${safePrintInvoiceNumbers};
+      window.addEventListener("afterprint", () => {
+        const entered = window.prompt(
+          "প্রিন্টার থেকে বাস্তবে যে ইনভয়েসগুলো বের হয়েছে, শুধু সেগুলোর Invoice Number কমা দিয়ে লিখুন। সবগুলো বের হলে ALL লিখুন; কোনোটি না বের হলে ফাঁকা রাখুন।\\n\\nইনভয়েস: " + PRINT_INVOICES.join(", "),
+          ""
+        );
+        const invoices = entered === null ? [] : entered.trim().toUpperCase() === "ALL"
+          ? PRINT_INVOICES
+          : entered.split(",").map((value) => value.trim().toUpperCase()).filter(Boolean);
+        if (window.opener) {
+          window.opener.postMessage({
+            type: "rts-invoice-print-confirmation",
+            jobId: PRINT_JOB_ID,
+            invoices
+          }, window.location.origin);
+        }
+      }, { once: true });
+      window.onload = () => { setTimeout(() => window.print(), 300); };
+    </script></body></html>`;
 }
 
 function escapeHtml(s: string) {
