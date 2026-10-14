@@ -1,0 +1,67 @@
+name: Fix landing item price mismatch
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-landing-item-price.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply and verify
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SHEIKH }}
+          PROJECT_REF: frtzlibogmethppqmhtr
+        run: |
+          python3 - <<'PYCODE'
+          import json, os, urllib.request
+          def q(sql):
+              req = urllib.request.Request(
+                  f"https://api.supabase.com/v1/projects/{os.environ['PROJECT_REF']}/database/query",
+                  data=json.dumps({'query': sql}).encode(),
+                  headers={'Authorization': f"Bearer {os.environ['SUPABASE_ACCESS_TOKEN']}", 'Content-Type': 'application/json', 'User-Agent': 'GitHub-Actions-LandingItemPrice/1.0'},
+                  method='POST')
+              with urllib.request.urlopen(req, timeout=120) as r:
+                  return json.loads(r.read().decode())
+          sig = "public.finalize_landing_checkout_intent(uuid,boolean)"
+          d = q(f"select pg_get_functiondef('{sig}'::regprocedure) as d")[0]['d']
+          marker = "LANDING_ITEM_PRICE_SYNC"
+          if marker not in d:
+              anchor = "UPDATE public.landing_checkout_intents"
+              assert anchor in d, "anchor missing"
+              block = ("-- " + marker + ": keep item prices equal to the landing offer price\n"
+                "  UPDATE public.order_items oi\n"
+                "     SET price = (x->>'price')::numeric, subtotal = (x->>'price')::numeric * oi.quantity\n"
+                "    FROM jsonb_array_elements(v_items) x\n"
+                "   WHERE oi.order_id = v_order_id\n"
+                "     AND trim(oi.product_name) = trim(left(coalesce(x->>'name',''),500))\n"
+                "     AND oi.price IS DISTINCT FROM (x->>'price')::numeric;\n\n  ")
+              d = d.replace(anchor, block + anchor, 1)
+              q(d)
+          d2 = q(f"select pg_get_functiondef('{sig}'::regprocedure) as d")[0]['d']
+          if marker not in d2: raise SystemExit('Verification failed')
+          print("function patched OK")
+          fix = """
+          with src as (
+            select i.final_order_id oid, x from public.landing_checkout_intents i, jsonb_array_elements(coalesce(i.seed_items,'[]'::jsonb)) x where i.final_order_id is not null
+            union all
+            select i.final_order_id, i.nutrimix_item from public.landing_checkout_intents i where i.final_order_id is not null and i.nutrimix_item is not null
+          )
+          update public.order_items oi
+             set price = (s.x->>'price')::numeric, subtotal = (s.x->>'price')::numeric * oi.quantity
+            from src s
+           where oi.order_id = s.oid
+             and trim(oi.product_name) = trim(s.x->>'name')
+             and (s.x->>'price') is not null
+             and oi.price is distinct from (s.x->>'price')::numeric
+          returning oi.order_id"""
+          print("fixed items:", len(q(fix)))
+          print(q("""select count(*) remaining from public.orders o where o.source='web' and o.created_at > now() - interval '30 days'
+                     and o.subtotal <> (select coalesce(sum(subtotal),0) from public.order_items where order_id=o.id)"""))
+          PYCODE
