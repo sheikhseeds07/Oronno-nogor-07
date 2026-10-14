@@ -6,6 +6,25 @@ import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 import { sendPurchaseEvent } from "@/lib/facebook-capi.server";
 import { BLOCKED_ORDER_CODE, BLOCKED_ORDER_MESSAGE } from "@/lib/order-block";
 
+// Landing offers can link to a catalogue product whose own price differs from
+// the offer price; keep order_items equal to the offer price the customer saw.
+async function syncLandingItemPrices(intentId: string, orderId: string) {
+  try {
+    const { data: intent } = await supabaseAdmin.from("landing_checkout_intents" as never).select("seed_items,nutrimix_item").eq("id", intentId).maybeSingle();
+    const it = intent as { seed_items?: unknown; nutrimix_item?: unknown } | null;
+    const list = [...(Array.isArray(it?.seed_items) ? it!.seed_items as any[] : []), ...(it?.nutrimix_item ? [it.nutrimix_item as any] : [])];
+    const { data: rows } = await supabaseAdmin.from("order_items").select("id,product_name,price,quantity").eq("order_id", orderId);
+    for (const row of (rows ?? []) as any[]) {
+      const match = list.find((x) => String(x?.name ?? "").trim() === String(row.product_name ?? "").trim());
+      const price = Number(match?.price);
+      if (!match || !Number.isFinite(price) || price < 0 || Number(row.price) === price) continue;
+      await supabaseAdmin.from("order_items").update({ price, subtotal: price * Number(row.quantity || 1) } as never).eq("id", row.id);
+    }
+  } catch (err) {
+    logger.error("[syncLandingItemPrices] failed:", err);
+  }
+}
+
 const PHONE_RE = /^01[3-9][0-9]{8}$/;
 const ORDER_DEVICE_COOKIE = "hng-device-id";
 
@@ -112,6 +131,7 @@ export const finalizeLandingCheckoutIntent = createServerFn({ method: "POST" }).
     throw new Error(error.message || "Order create failed");
   }
   if (!orderId || typeof orderId !== "string") throw new Error("Order create failed");
+  await syncLandingItemPrices(data.intent_id, orderId);
 
   if (data.emit_purchase !== false) try {
     const [{ data: order }, { data: rows }] = await Promise.all([
@@ -286,6 +306,7 @@ export const placeLandingOrder = createServerFn({ method: "POST" }).inputValidat
     throw new Error(rpcMessage || "Order create failed");
   }
   if (!orderId || typeof orderId !== "string") throw new Error("Order create failed");
+  await syncLandingItemPrices(intentId as string, orderId);
 
   const subtotal = offer.price * requested.quantity;
   try {
