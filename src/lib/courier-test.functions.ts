@@ -41,6 +41,10 @@ export const sendOrdersToSteadfast = createServerFn({ method: "POST" })
     const cfg = await loadSteadfastCfg(account);
     if (!cfg.api_key || !cfg.secret_key) return { results: [], error: `Steadfast ${account} এর API key/secret সেভ করা নেই` };
 
+    const { data: siteSettingsRow } = await supabaseAdmin.from("site_settings").select("settings").maybeSingle();
+    const siteSettings = (siteSettingsRow?.settings ?? {}) as Record<string, unknown>;
+    const deliveryNote = typeof siteSettings.delivery_note === "string" ? siteSettings.delivery_note : "";
+
     const { data: orders } = await supabaseAdmin.from("orders")
       .select("id,invoice_no,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment")
       .in("id", data.orderIds);
@@ -106,8 +110,7 @@ export const sendOrdersToSteadfast = createServerFn({ method: "POST" })
       let r: Awaited<ReturnType<typeof callSteadfast>>;
       try {
         const itemDescription = buildNote(o.id);
-        r = await callSteadfast("create_order", cfg, { ...basePayload, item_description: itemDescription, note: itemDescription });
-        if (!r.ok) r = await callSteadfast("create_order", cfg, { ...basePayload, item_description: itemDescription });
+        r = await callSteadfast("create_order", cfg, { ...basePayload, item_description: itemDescription, note: deliveryNote.slice(0, 110) });
       } catch (e) {
         results.push({ id: o.id, ok: false, message: e instanceof Error ? e.message : "Steadfast network error" });
         continue;
