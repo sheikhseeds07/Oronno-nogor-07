@@ -251,7 +251,7 @@ function WelcomePopup({themeColor,logo,brand,title,text,cta,mode,image,delay,cou
  },[delay]);
  useEffect(()=>{
   if(!open||!countdownHours)return;
-  const autoCloseTimer=window.setTimeout(()=>setOpen(false),30000);
+  const autoCloseTimer=window.setTimeout(()=>setOpen(false),20000);
   return()=>window.clearTimeout(autoCloseTimer);
  },[open,countdownHours]);
  useEffect(()=>{
