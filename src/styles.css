@@ -900,3 +900,14 @@ html.texture-mesh::before {
 @media(prefers-reduced-motion:reduce){
   .seed-combo-page .seed-quality-note,.seed-combo-page .seed-quality-note::before,.seed-combo-page .seed-quality-note::after{animation:none}
 }
+
+
+/* Seed Combo popup: compact inline offer countdown */
+.seed-popup-countdown{padding:7px 10px;border:1px solid #c9e8d2;border-radius:12px;background:linear-gradient(110deg,#effcf3,#f8fff9);box-shadow:0 4px 12px -10px rgba(6,78,59,.35)}
+.seed-popup-countdown-title{margin-bottom:4px;text-align:center;color:#17623f;font-size:11px;font-weight:850;line-height:1.25}
+.seed-popup-countdown-time{display:flex;align-items:center;justify-content:center;gap:7px;font-variant-numeric:tabular-nums}
+.seed-popup-countdown-time>span{display:flex;align-items:baseline;gap:3px;white-space:nowrap}
+.seed-popup-countdown-time b{color:#087443;font-size:17px;font-weight:950;line-height:1.15;letter-spacing:.025em}
+.seed-popup-countdown-time small{color:#5d7868;font-size:9px;font-weight:750}
+.seed-popup-countdown-time i{font-style:normal;color:#b58a28;font-size:15px;font-weight:900;line-height:1}
+@media(max-width:380px){.seed-popup-countdown{padding:6px 8px}.seed-popup-countdown-time{gap:5px}.seed-popup-countdown-time b{font-size:16px}.seed-popup-countdown-time small{font-size:8px}}
