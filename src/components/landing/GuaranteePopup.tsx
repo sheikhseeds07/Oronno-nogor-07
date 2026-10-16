@@ -5,14 +5,14 @@ import { useEffect, useState } from "react";
  * Guarantee card + growing-instruction popup for landing page templates.
  *
  * Same logic as before: shows once per session per slug, stays visible for
- * 10 seconds, then closes itself. The CTA button only dismisses the popup —
+ * 20 seconds, then closes itself. The CTA button only dismisses the popup —
  * it never scrolls the page.
  *
  * Animations are intentionally calm (no opacity flicker / shimmer sweeps) so
  * the card never looks like it is flashing on mobile.
  */
 
-const POPUP_DURATION = 10000;
+const POPUP_DURATION = 20000;
 
 export const GUARANTEE_POPUP_STYLE = `
 @keyframes gpFade{from{opacity:0}to{opacity:1}}
