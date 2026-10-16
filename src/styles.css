@@ -691,7 +691,7 @@ html.texture-mesh::before {
 .seed-popup-proof{color:color-mix(in oklab,var(--seed-deep) 80%,var(--seed-gold))}
 
 /* Seed Combo guarantee popup: balanced near-square card, readable text, respectful order reminder */
-.seed-popup-guarantee{aspect-ratio: .91 / 1;min-height:0;max-height:calc(100dvh - 24px);display:flex;flex-direction:column;justify-content:center;border-radius:24px;background:linear-gradient(155deg,#fffef9 0%,#f7fff8 56%,#fff8e9 100%);}
+.seed-popup-guarantee{aspect-ratio: .84 / 1;min-height:0;max-height:calc(100dvh - 24px);overflow-x:hidden;overflow-y:auto;display:flex;flex-direction:column;justify-content:center;border-radius:24px;background:linear-gradient(155deg,#fffef9 0%,#f7fff8 56%,#fff8e9 100%);}
 .seed-popup-guarantee .seed-popup-title{line-height:1.28;max-width:100%;padding-inline:2px;}
 .seed-popup-guarantee .seed-popup-copy{font-size:14px;line-height:1.55;}
 .seed-popup-fake-order-note{border:1px solid #e5c987;background:linear-gradient(135deg,#fff8e8,#fffdf7);color:#5d4315;box-shadow:0 5px 14px -12px rgba(99,70,16,.45);}
