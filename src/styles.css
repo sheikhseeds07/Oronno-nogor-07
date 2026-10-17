@@ -691,13 +691,11 @@ html.texture-mesh::before {
 .seed-popup-proof{color:color-mix(in oklab,var(--seed-deep) 80%,var(--seed-gold))}
 
 /* Seed Combo guarantee popup: balanced near-square card, readable text, respectful order reminder */
-.seed-popup-guarantee{aspect-ratio: .84 / 1;min-height:0;max-height:calc(100dvh - 24px);overflow-x:hidden;overflow-y:auto;display:flex;flex-direction:column;justify-content:center;border-radius:24px;background:linear-gradient(155deg,#fffef9 0%,#f7fff8 56%,#fff8e9 100%);}
+.seed-popup-guarantee{aspect-ratio:1/1;width:min(350px,calc(100vw - 24px),calc(100dvh - 24px));max-width:none;min-height:0;max-height:calc(100dvh - 24px);overflow:hidden;display:flex;flex-direction:column;justify-content:center;border-radius:24px;background:linear-gradient(155deg,#fffef9 0%,#f7fff8 56%,#fff8e9 100%);}
 .seed-popup-guarantee .seed-popup-title{line-height:1.28;max-width:100%;padding-inline:2px;}
 .seed-popup-guarantee .seed-popup-copy{font-size:14px;line-height:1.55;}
-.seed-popup-fake-order-note{border:1px solid #e5c987;background:linear-gradient(135deg,#fff8e8,#fffdf7);color:#5d4315;box-shadow:0 5px 14px -12px rgba(99,70,16,.45);}
-.seed-popup-fake-order-note p{margin:0;text-align:center;}
-@media(max-width:380px){.seed-popup-guarantee{aspect-ratio:auto;max-height:calc(100dvh - 16px);padding:14px 12px 12px!important;gap:8px!important}.seed-popup-guarantee .seed-popup-title{font-size:21px}.seed-popup-guarantee .seed-popup-copy{font-size:14px}.seed-popup-fake-order-note{padding:8px 9px}.seed-popup-fake-order-note p{font-size:12px}}
-@media(max-height:720px){.seed-popup-guarantee{aspect-ratio:auto;max-height:calc(100dvh - 16px);overflow-y:auto;justify-content:flex-start}.seed-popup-guarantee .seed-popup-logo{flex-shrink:0}}
+@media(max-width:380px){.seed-popup-guarantee{padding:13px 11px 11px!important;gap:7px!important}.seed-popup-guarantee .seed-popup-title{font-size:20px}.seed-popup-guarantee .seed-popup-copy{font-size:12.5px;line-height:1.42}}
+@media(max-height:720px){.seed-popup-guarantee{padding:12px 10px 10px!important;gap:6px!important}.seed-popup-guarantee .seed-popup-logo{width:44px;height:44px;flex-shrink:0}.seed-popup-guarantee .seed-popup-logo img{width:32px;height:32px}.seed-popup-guarantee .seed-popup-title{font-size:19px;margin-top:0}.seed-popup-guarantee .seed-popup-copy{font-size:12px;line-height:1.38}.seed-popup-guarantee .seed-popup-countdown{padding:5px!important}.seed-popup-guarantee .seed-popup-cta{padding-top:9px;padding-bottom:9px}}
 
 /* motion */
 .seed-combo-page .lp-reveal{opacity:1;transform:none}
