@@ -762,6 +762,30 @@ function OfferSelectionPopup({
 }) {
   const popupRef = useRef<HTMLDivElement | null>(null);
 
+  // Preview lower packages when the popup opens, then return to the top.
+  // Keep the scroll animation inside the popup so the page behind it never jumps.
+  useEffect(() => {
+    const el = popupRef.current;
+    if (!el || typeof window === "undefined" || el.scrollHeight <= el.clientHeight + 8) return;
+
+    let backTimer: number | undefined;
+    const upTimer = window.setTimeout(() => {
+      const max = el.scrollHeight - el.clientHeight;
+      if (max <= 8) return;
+
+      const previewTop = Math.min(max, Math.max(180, Math.round(max * 0.8)));
+      el.scrollTo({ top: previewTop, behavior: "smooth" });
+      backTimer = window.setTimeout(() => {
+        el.scrollTo({ top: 0, behavior: "smooth" });
+      }, 1200);
+    }, 500);
+
+    return () => {
+      window.clearTimeout(upTimer);
+      if (backTimer !== undefined) window.clearTimeout(backTimer);
+    };
+  }, [offers.length, comboOffers.length]);
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => event.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
