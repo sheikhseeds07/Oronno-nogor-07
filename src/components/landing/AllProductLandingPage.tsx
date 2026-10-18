@@ -478,6 +478,14 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
 
       {isNutrimix && <NutrimixNutrients />}
 
+      {isNutrimix && C.extra_image && (
+        <section className="bg-all-product-surface px-4 pt-3 pb-1" aria-label="NUTRIMIX অতিরিক্ত ছবি">
+          <div className="mx-auto max-w-3xl">
+            <SafeImage src={toImg(C.extra_image, { w: 1100, q: 88 })} alt="NUTRIMIX ব্যবহারের উপকারিতা" loading="lazy" className="h-auto w-full rounded-xl border border-all-product-line object-contain shadow-all-product" />
+          </div>
+        </section>
+      )}
+
       <section className="bg-all-product-surface py-7"><div className="mx-auto max-w-3xl px-4">
         <div className="overflow-hidden rounded-xl border border-all-product-line bg-all-product-surface shadow-all-product">
           <div className="flex items-center justify-center gap-2 border-b border-all-product-line bg-all-product-soft px-4 py-2.5 text-center"><Sparkles className="h-4 w-4 shrink-0 text-all-product-primary" /><h2 className="text-[13.5px] font-black leading-5">{isNutrimix ? "ব্যবহারের উপকারিতা" : "প্রোডাক্ট বৈশিষ্ট্য"}</h2></div>
