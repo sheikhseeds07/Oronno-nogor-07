@@ -21,6 +21,8 @@ export type LandingContent = {
   hero_image_2?: string;
   /** Nutrimix-only hero image rotation list. */
   hero_gallery_images?: string[];
+  /** NUTRIMIX-only image shown above the usage benefits section. */
+  extra_image?: string;
   /** NUTRIMIX-only voice/audio URL uploaded from the landing-page editor. */
   audio_url?: string;
   /** Seed Combo-only voice/audio URL for the NUTRIMIX upsell popup. */
@@ -120,6 +122,7 @@ export const DEFAULT_CONTENT: LandingContent = {
   red_cta_text: "অর্ডার করতে ক্লিক করুন",
   hero_image_2: "",
   hero_gallery_images: [],
+  extra_image: "",
   audio_url: "",
   nutrimix_popup_audio_url: "",
   gift_cta_text: "১ প্যাকেট বিদেশি বীজ ফ্রী নিন!",
