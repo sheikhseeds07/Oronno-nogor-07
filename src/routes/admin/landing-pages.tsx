@@ -449,6 +449,14 @@ function LandingPagesAdmin() {
                     {editing.hero_image && <SafeImage src={editing.hero_image} className="mt-2 w-full max-h-48 object-cover rounded" alt="" />}
                   </Field>
                   {editing.slug === "nutrimix" && (
+                    <Field label="Extra Image — ব্যবহারের উপকারিতার উপরে">
+                      <input type="file" accept="image/*" onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; const url = await uploadImage(f); if (url) { setC({ extra_image: url }); toast.success("Extra Image আপলোড হয়েছে — এখন আপডেট/সংরক্ষণ করুন"); } e.target.value = ""; }} className="w-full text-sm" />
+                      <input value={C.extra_image ?? ""} onChange={(e) => setC({ extra_image: e.target.value })} placeholder="অথবা Image URL পেস্ট করুন" className="mt-2 w-full rounded-lg border px-3 py-2 text-sm" />
+                      {C.extra_image && <div className="mt-2 space-y-2"><SafeImage src={C.extra_image} alt="NUTRIMIX Extra Image preview" className="max-h-64 w-full rounded-lg border bg-white object-contain" /><button type="button" onClick={() => setC({ extra_image: "" })} className="text-xs font-semibold text-destructive hover:underline">ইমেজ সরান</button></div>}
+                      <div className="mt-1 text-xs text-muted-foreground">এই ইমেজটি শুধু /landing/nutrimix পেজে “ব্যবহারের উপকারিতা” সেকশনের ঠিক উপরে দেখাবে।</div>
+                    </Field>
+                  )}
+                  {editing.slug === "nutrimix" && (
                     <div className="rounded-xl border-2 border-emerald-200 bg-emerald-50/40 p-3">
                       <div className="mb-2">
                         <div className="font-bold text-sm">NUTRIMIX — অতিরিক্ত হিরো ইমেজ</div>
