@@ -50,7 +50,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   const [form, setForm] = useState({ name: "", phone: "", address: "" });
   // The route loader already fetched this row fresh on the server for this very
   // request, so hydration must not spend the visitor's bandwidth re-fetching it.
-  const { data: page, isLoading } = useQuery({ queryKey: ["landing-all-product", slug], staleTime: 5 * 60_000, refetchOnWindowFocus: false, queryFn: async () => (await supabase.from("landing_pages").select(`${LANDING_PAGES_COLUMNS}, products(id,name,price,sale_price,images)`).eq("slug", slug).eq("is_published", true).maybeSingle()).data as Page | null });
+  const { data: page, isLoading } = useQuery({ queryKey: ["landing-all-product", slug], staleTime: 0, refetchOnWindowFocus: true, queryFn: async () => (await supabase.from("landing_pages").select(`${LANDING_PAGES_COLUMNS}, products(id,name,price,sale_price,images)`).eq("slug", slug).eq("is_published", true).maybeSingle()).data as Page | null });
   const { data: settingsRow } = useQuery({ queryKey: ["site-settings-public"], staleTime: 300_000, queryFn: async () => (await supabase.from("site_settings").select("settings").maybeSingle()).data });
   const settings = (settingsRow?.settings as { site_name?: string; tagline?: string; logo_url?: string }) ?? {};
   const product = page?.products ?? null;
@@ -481,7 +481,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
       {isNutrimix && C.extra_image && (
         <section className="bg-all-product-surface px-4 pt-3 pb-1" aria-label="NUTRIMIX অতিরিক্ত ছবি">
           <div className="mx-auto max-w-3xl">
-            <SafeImage src={toImg(C.extra_image, { w: 1100, q: 88 })} alt="NUTRIMIX ব্যবহারের উপকারিতা" loading="lazy" className="h-auto w-full rounded-xl border border-all-product-line object-contain shadow-all-product" />
+            <SafeImage src={C.extra_image} alt="NUTRIMIX ব্যবহারের উপকারিতা" loading="eager" className="block h-auto w-full rounded-xl border border-all-product-line object-contain shadow-all-product" />
           </div>
         </section>
       )}
@@ -664,31 +664,31 @@ function NutrimixNutrients() {
     { symbol: "Zn", name: "Zinc", bn: "জিংক", role: "এনজাইম ও স্বাভাবিক বৃদ্ধি", benefit: "বিভিন্ন এনজাইমের কার্যক্রম ও উদ্ভিদের স্বাভাবিক বৃদ্ধি নিয়ন্ত্রণকারী প্রক্রিয়াকে সমর্থন করে।", tone: "from-teal-50 via-white to-emerald-50", ring: "border-teal-100", accent: "text-teal-700", icon: "🍃" },
   ];
   return (
-    <section className="bg-all-product-muted-surface px-3 pb-3 pt-2 sm:px-4 sm:pb-5">
+    <section className="bg-all-product-muted-surface px-3 pb-2 pt-1 sm:px-4 sm:pb-3">
       <style>{`@keyframes apNutriFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}@keyframes apNutriGlow{0%,100%{opacity:.35;transform:scale(1)}50%{opacity:.75;transform:scale(1.08)}}@keyframes apNutriShine{0%{transform:translateX(-130%)}55%,100%{transform:translateX(130%)}}.ap-nutri-float{animation:apNutriFloat 3.8s ease-in-out infinite}.ap-nutri-glow{animation:apNutriGlow 3s ease-in-out infinite}.ap-nutri-shine{animation:apNutriShine 5.5s ease-in-out infinite}@media (prefers-reduced-motion:reduce){.ap-nutri-float,.ap-nutri-glow,.ap-nutri-shine{animation:none!important}}`}</style>
       <div className="mx-auto max-w-4xl">
-        <div className="relative overflow-hidden rounded-[24px] border border-all-product-gold/25 bg-gradient-to-br from-white via-all-product-soft to-all-product-gold/[0.10] p-4 shadow-[0_18px_55px_-28px_rgba(20,83,45,.55)] sm:p-5">
+        <div className="relative overflow-hidden rounded-[20px] border border-all-product-gold/25 bg-gradient-to-br from-white via-all-product-soft to-all-product-gold/[0.10] p-3 shadow-[0_14px_38px_-26px_rgba(20,83,45,.45)] sm:rounded-[22px] sm:p-4">
           <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-emerald-300/20 blur-3xl ap-nutri-glow" />
           <div className="pointer-events-none absolute -bottom-20 -left-10 h-40 w-40 rounded-full bg-all-product-gold/15 blur-3xl ap-nutri-glow" />
           <div className="relative">
-            <div className="mb-4 text-center">
+            <div className="mb-3 text-center">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-all-product-gold/30 bg-white/80 px-3 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-all-product-gold-foreground shadow-sm"><Sparkles className="h-3 w-3" /> Premium Nutrient Blend</span>
-              <h2 className="mt-2 text-lg font-black tracking-tight text-all-product-ink sm:text-2xl">NUTRIMIX-এ রয়েছে ৬টি প্রয়োজনীয় পুষ্টি উপাদান</h2>
-              <p className="mx-auto mt-1.5 max-w-2xl text-[10.5px] font-semibold leading-5 text-all-product-muted sm:text-xs">গাছের সবুজভাব, নতুন বৃদ্ধি, ফুল ও সামগ্রিক পুষ্টি ব্যবস্থাপনায় প্রয়োজনীয় বিভিন্ন উপাদানের সমন্বিত ব্লেন্ড।</p>
+              <h2 className="mt-1.5 text-xl font-black tracking-tight text-all-product-ink sm:text-2xl">NUTRIMIX-এ রয়েছে ৬টি প্রয়োজনীয় পুষ্টি উপাদান</h2>
+              <p className="mx-auto mt-1 max-w-2xl text-[12px] font-semibold leading-[1.45] text-all-product-muted sm:text-sm">গাছের সবুজভাব, নতুন বৃদ্ধি, ফুল ও সামগ্রিক পুষ্টি ব্যবস্থাপনায় প্রয়োজনীয় বিভিন্ন উপাদানের সমন্বিত ব্লেন্ড।</p>
             </div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
+            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 sm:gap-2.5">
               {nutrients.map((item) => (
-                <article key={item.symbol} className={"ap-nutri-float group relative overflow-hidden rounded-2xl border " + item.ring + " bg-gradient-to-br " + item.tone + " p-3 shadow-[0_10px_26px_-20px_rgba(15,23,42,.55)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_34px_-20px_rgba(15,23,42,.42)]"}>
+                <article key={item.symbol} className={"group relative overflow-hidden rounded-xl border " + item.ring + " bg-gradient-to-br " + item.tone + " p-2.5 shadow-[0_8px_18px_-15px_rgba(15,23,42,.45)] transition-shadow duration-200 hover:shadow-md sm:rounded-2xl sm:p-3"}>
                   <div className="pointer-events-none absolute inset-y-0 left-0 w-1/3 -translate-x-full bg-gradient-to-r from-transparent via-white/70 to-transparent ap-nutri-shine" />
                   <div className="relative flex items-start gap-2.5">
-                    <div className="relative shrink-0"><div className="absolute inset-0 rounded-xl bg-white/70 blur-md ap-nutri-glow" /><div className="relative grid h-11 w-11 place-items-center rounded-xl border border-white/80 bg-white/90 text-lg shadow-sm">{item.icon}</div><span className={"absolute -right-1.5 -top-1.5 grid h-6 min-w-6 place-items-center rounded-full bg-white px-1 text-[9px] font-black shadow ring-1 ring-black/5 " + item.accent}>{item.symbol}</span></div>
+                    <div className="relative shrink-0"><div className="absolute inset-0 rounded-xl bg-white/70 blur-md ap-nutri-glow" /><div className="relative grid h-10 w-10 place-items-center rounded-lg border border-white/80 bg-white/90 text-lg shadow-sm sm:h-11 sm:w-11 sm:rounded-xl">{item.icon}</div><span className={"absolute -right-1.5 -top-1.5 grid h-6 min-w-6 place-items-center rounded-full bg-white px-1 text-[9px] font-black shadow ring-1 ring-black/5 " + item.accent}>{item.symbol}</span></div>
                     <div className="min-w-0"><h3 className="text-[13px] font-black leading-4 text-all-product-ink sm:text-sm">{item.bn}</h3><p className={"mt-0.5 text-[9px] font-extrabold uppercase tracking-wide " + item.accent}>{item.name}</p></div>
                   </div>
-                  <div className="relative mt-2.5 rounded-xl border border-white/80 bg-white/65 px-2.5 py-2"><p className="text-[9.5px] font-black leading-4 text-all-product-ink">✦ {item.role}</p><p className="mt-1 text-[9.5px] font-semibold leading-[1.55] text-all-product-muted">{item.benefit}</p></div>
+                  <div className="relative mt-2 rounded-lg border border-white/80 bg-white/65 px-2 py-1.5 sm:rounded-xl sm:px-2.5 sm:py-2"><p className="text-[11px] font-black leading-[1.4] text-all-product-ink sm:text-xs">✦ {item.role}</p><p className="mt-0.5 text-[11px] font-semibold leading-[1.4] text-all-product-muted sm:text-xs sm:leading-[1.45]">{item.benefit}</p></div>
                 </article>
               ))}
             </div>
-            <div className="mt-4 flex items-center justify-center gap-2 rounded-xl border border-emerald-100 bg-white/75 px-3 py-2.5 text-center shadow-sm"><Leaf className="h-4 w-4 shrink-0 text-emerald-600" /><p className="text-[9.5px] font-bold leading-4 text-all-product-muted sm:text-[10px]"><span className="font-black text-emerald-700">৬ উপাদান, একসাথে:</span> গাছের প্রয়োজনীয় পুষ্টি ব্যবস্থাপনাকে আরও সম্পূর্ণভাবে সাপোর্ট করার জন্য তৈরি।</p></div>
+            <div className="mt-3 flex items-center justify-center gap-2 rounded-lg border border-emerald-100 bg-white/75 px-3 py-2 text-center shadow-sm"><Leaf className="h-4 w-4 shrink-0 text-emerald-600" /><p className="text-[11px] font-bold leading-[1.4] text-all-product-muted sm:text-xs"><span className="font-black text-emerald-700">৬ উপাদান, একসাথে:</span> গাছের প্রয়োজনীয় পুষ্টি ব্যবস্থাপনাকে আরও সম্পূর্ণভাবে সাপোর্ট করার জন্য তৈরি।</p></div>
             <button type="button" onClick={() => document.getElementById("all-product-order-form")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="group relative mt-3 flex min-h-[50px] w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-all-product-primary px-5 py-3.5 text-[15px] font-black text-white shadow-[0_14px_30px_-14px_rgba(16,185,129,.7)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_36px_-14px_rgba(16,185,129,.8)] active:scale-[.99]">
               <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
               <ShoppingBag className="relative h-5 w-5" />
@@ -761,30 +761,6 @@ function OfferSelectionPopup({
   onClose: () => void;
 }) {
   const popupRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const el = popupRef.current;
-    if (!el || typeof window === "undefined" || el.scrollHeight <= el.clientHeight + 8) return;
-
-    let backTimer: number | undefined;
-    const upTimer = window.setTimeout(() => {
-      const max = el.scrollHeight - el.clientHeight;
-      if (max <= 8) return;
-
-      // Give the visitor a clear preview of the lower packages, then return
-      // smoothly to the top. Keep this animation contained inside the popup.
-      const previewTop = Math.min(max, Math.max(180, Math.round(max * 0.8)));
-      el.scrollTo({ top: previewTop, behavior: "smooth" });
-      backTimer = window.setTimeout(() => {
-        el.scrollTo({ top: 0, behavior: "smooth" });
-      }, 1200);
-    }, 500);
-
-    return () => {
-      window.clearTimeout(upTimer);
-      if (backTimer !== undefined) window.clearTimeout(backTimer);
-    };
-  }, [offers.length, comboOffers.length]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => event.key === "Escape" && onClose();
