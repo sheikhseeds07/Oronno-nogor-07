@@ -1,11 +1,11 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { supabase } from "@/lib/personal-supabase/client";
 import { toast } from "sonner";
-import { Loader2, LogIn } from "lucide-react";
+import { MechanicalLogin } from "@/components/login/MechanicalLogin";
 
-export const Route = createFileRoute("/login")({ component: Login, head: () => ({ meta: [{ title: "লগইন — Sheikh Seeds" }, { name: "robots", content: "noindex, nofollow" }] }) });
+export const Route = createFileRoute("/login")({ component: Login, head: () => ({ meta: [{ title: "এডমিন লগইন — Sheikh Seeds" }, { name: "description", content: "Sheikh Seeds এডমিন ও কর্মীদের নিরাপদ প্রবেশ।" }, { property: "og:title", content: "এডমিন লগইন — Sheikh Seeds" }, { property: "og:description", content: "Sheikh Seeds এডমিন ও কর্মীদের নিরাপদ প্রবেশ।" }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }, { name: "robots", content: "noindex, nofollow" }] }) });
 
 function Login() {
   const navigate = useNavigate();
@@ -42,53 +42,7 @@ function Login() {
 
   return (
     <SiteLayout>
-      <div className="container mx-auto px-3 py-12 max-w-md">
-        <div className="bg-white border rounded-2xl p-7 shadow-sm">
-          <div className="flex flex-col items-center mb-5">
-            <div className="w-12 h-12 rounded-full bg-brand/10 flex items-center justify-center mb-3">
-              <LogIn className="w-6 h-6 text-brand" />
-            </div>
-            <h1 className="text-xl font-bold">লগইন করুন</h1>
-            <p className="text-xs text-muted-foreground mt-1">এডমিন বা কর্মী একাউন্ট দিয়ে প্রবেশ করুন</p>
-          </div>
-
-          <form onSubmit={submit} className="space-y-3">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">ইমেইল</label>
-              <input
-                required
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full mt-1 border rounded-lg px-3 py-2.5 text-sm"
-                autoComplete="email"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">পাসওয়ার্ড</label>
-              <input
-                required
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full mt-1 border rounded-lg px-3 py-2.5 text-sm"
-                autoComplete="current-password"
-              />
-            </div>
-            <button
-              disabled={loading}
-              className="w-full bg-brand text-white py-3 rounded-lg font-bold disabled:opacity-50 inline-flex items-center justify-center gap-2"
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogIn className="w-4 h-4" />}
-              {loading ? "অপেক্ষা করুন..." : "লগইন করুন"}
-            </button>
-          </form>
-
-          <Link to="/" className="block text-center text-sm text-muted-foreground mt-5">← হোমে ফিরে যান</Link>
-        </div>
-      </div>
+      <MechanicalLogin email={email} password={password} loading={loading} onEmailChange={setEmail} onPasswordChange={setPassword} onSubmit={submit} />
     </SiteLayout>
   );
 }
