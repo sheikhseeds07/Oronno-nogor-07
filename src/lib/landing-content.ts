@@ -19,7 +19,7 @@ export type LandingContent = {
   hero_note: string;
   red_cta_text: string;
   hero_image_2?: string;
-  /** Nutrimix-only hero image rotation list. */
+  /** Additional hero images rotated by the shared All Product landing template. */
   hero_gallery_images?: string[];
   /** NUTRIMIX-only image shown above the usage benefits section. */
   extra_image?: string;
