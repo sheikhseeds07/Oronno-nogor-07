@@ -189,20 +189,26 @@ check('static PNG placeholder exists and logger is silent in every environment',
   for (const method of Object.values(logger)) assert.equal(method('failed image'), undefined);
 });
 check('SafeImage immediately stops repeated errors and parent rerender retries', () => {
-  let failedSource = null, assignments = 0, nativeSource = canonical;
+  let failedSource = null;
   const l = loader({ imports: {
     react: { useState: () => [failedSource, next => { failedSource = next; }] },
     'react/jsx-runtime': { jsx: (_tag, props) => props },
   } });
   const { SafeImage } = l.load('src/components/SafeImage.tsx');
+  let nativeSource = canonical;
   const image = {
-    onerror: () => {}, removeAttribute() {}, getAttribute: () => nativeSource,
-    set src(value) { nativeSource = value; assignments++; },
+    removeAttribute() {},
+    getAttribute: () => nativeSource,
   };
   const first = SafeImage({ src: old });
-  for (let i = 0; i < 20; i++) first.onError({ currentTarget: image });
-  assert.equal(assignments, 1); assert.equal(image.onerror, null);
-  assert.equal(SafeImage({ src: old }).src, '/placeholder.png');
+  first.onError({ currentTarget: image });
+  assert.ok(failedSource, 'image failure should be recorded in component state');
+  const retry = SafeImage({ src: old });
+  assert.equal(retry.src, '/placeholder.png');
+  nativeSource = '/placeholder.png';
+  const failedBeforePlaceholderError = failedSource;
+  retry.onError({ currentTarget: image });
+  assert.equal(failedSource, failedBeforePlaceholderError, 'placeholder errors must not trigger another fallback');
   assert.equal(SafeImage({ src: '/media?asset=product-images%2Fnew.webp' }).src, '/media?asset=product-images%2Fnew.webp');
 });
 
