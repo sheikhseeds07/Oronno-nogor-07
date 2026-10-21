@@ -140,12 +140,11 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   // Keep this scoped to the All Product template and leave NUTRIMIX's existing
   // default-selection behavior unchanged.
   useEffect(() => {
-    if (isNutrimix || isLoading || C.product_selection_popup_enabled !== false) return;
-    if (offers.length > 0) {
-      if (selected !== "offer-0") setSelected("offer-0");
-    } else if (comboOffers.length > 0) {
-      if (selected !== "combo-0") setSelected("combo-0");
-    }
+    // Preselect the primary offer only when nothing has been selected yet.
+    // Never override a customer's explicit choice with offer-0 on re-render.
+    if (isNutrimix || isLoading || C.product_selection_popup_enabled !== false || selected) return;
+    if (offers.length > 0) setSelected("offer-0");
+    else if (comboOffers.length > 0) setSelected("combo-0");
   }, [isNutrimix, isLoading, C.product_selection_popup_enabled, offers.length, comboOffers.length, selected]);
 
   const current = useMemo(() => {
