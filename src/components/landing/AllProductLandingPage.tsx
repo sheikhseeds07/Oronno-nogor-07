@@ -134,6 +134,19 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
     else if (comboOffers.length > 0) setSelected("combo-0");
   }, [isNutrimix, isLoading, offers.length, comboOffers.length, selected]);
 
+  // When the product-selection popup is disabled, preselect the primary product
+  // so CTA clicks can go straight to checkout with a valid item selected.
+  // Keep this scoped to the All Product template and leave NUTRIMIX's existing
+  // default-selection behavior unchanged.
+  useEffect(() => {
+    if (isNutrimix || isLoading || C.product_selection_popup_enabled !== false) return;
+    if (offers.length > 0) {
+      if (selected !== "offer-0") setSelected("offer-0");
+    } else if (comboOffers.length > 0) {
+      if (selected !== "combo-0") setSelected("combo-0");
+    }
+  }, [isNutrimix, isLoading, C.product_selection_popup_enabled, offers.length, comboOffers.length, selected]);
+
   const current = useMemo(() => {
     if (!selected) return null;
     if (selected.startsWith("combo-")) return comboOffers[Number(selected.slice(6))] ?? null;
