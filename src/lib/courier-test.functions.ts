@@ -131,7 +131,7 @@ export const sendOrdersToSteadfast = createServerFn({ method: "POST" })
       const explicitlyNotFound = Boolean(
         postCheck?.ok &&
         !deepFind(postCheck.json, ["consignment_id", "tracking_code"]) &&
-        /not[_\\s-]?found|no data|no record|invalid invoice/i.test(postCheck.body),
+        /not[_\s-]?found|no data|no record|invalid invoice/i.test(postCheck.body),
       );
       if (!consignment && r.status >= 500 && explicitlyNotFound) {
         await new Promise((resolve) => setTimeout(resolve, 600));
