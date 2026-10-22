@@ -49,11 +49,11 @@ jobs:
               s = s.replace(old, new, 1)
           old = 'courier_consignment: existing || invoice, courier_status: dstatus || "in_review"'
           new = 'courier_consignment: existing || invoice, courier_status: dstatus || "in_review", courier_display_name: (cfg.display_name || "").trim() || `Courier ${account}`'
-          if old in s:
+          if old in s and new not in s:
               s = s.replace(old, new, 1)
           old = 'courier_consignment: consignment, courier_status: "in_review"'
           new = 'courier_consignment: consignment, courier_status: "in_review", courier_display_name: (cfg.display_name || "").trim() || `Courier ${account}`'
-          if old in s:
+          if old in s and new not in s:
               s = s.replace(old, new, 1)
           p.write_text(s)
 
