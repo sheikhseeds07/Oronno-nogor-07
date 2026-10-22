@@ -94,7 +94,7 @@ export const sendOrdersToSteadfast = createServerFn({ method: "POST" })
         const dstatus = deepFind(chk.json, ["delivery_status", "status_text"]);
         const known = dstatus && !/not[_\s-]?found|invalid|unknown/i.test(dstatus);
         if (chk.ok && (existing || known)) {
-          await supabaseAdmin.from("orders").update({ courier_consignment: existing || invoice, courier_status: dstatus || "in_review", courier_display_name: (cfg.display_name || "").trim() || `Courier ${account}`, courier_display_name: (cfg.display_name || "").trim() || `Courier ${account}`, courier_display_name: (cfg.display_name || "").trim() || `Courier ${account}` }).eq("id", o.id);
+          await supabaseAdmin.from("orders").update({ courier_consignment: existing || invoice, courier_status: dstatus || "in_review", courier_display_name: (cfg.display_name || "").trim() || `Courier ${account}` }).eq("id", o.id);
           results.push({ id: o.id, ok: false, already: true, consignment: existing, message: "ইতিমধ্যে এন্ট্রি হয়েছে (Already entry)" });
           continue;
         }
