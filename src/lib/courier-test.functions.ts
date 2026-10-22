@@ -12,7 +12,7 @@ async function callSteadfast(path: string, cfg: Record<string, string>, body?: u
   if (!apiKey || !secretKey) return { ok: false, status: 0, body: "API Key এবং Secret Key দুটোই দিতে হবে", json: null as unknown };
   const res = await fetch(`${base.replace(/\/$/, "")}/${path}`, {
     method: body ? "POST" : "GET", signal: AbortSignal.timeout(12000),
-    headers: { "Api-Key": apiKey, "Secret-Key": secretKey, "Content-Type": "application/json" },
+    headers: { "Api-Key": apiKey, "Secret-Key": secretKey, "Content-Type": "application/json", "Accept": "application/json" },
     body: body ? JSON.stringify(body) : undefined,
   });
   const text = await res.text();
@@ -173,8 +173,18 @@ export const testCourierConnection = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertIsAdmin(context.userId);
     try {
-      const r = await callSteadfast("get_balance", data.config);
-      return { success: r.ok, status: r.status, message: r.ok ? "Steadfast এর সাথে কানেকশন সফল" : `ব্যর্থ (HTTP ${r.status}) — ${r.body}`, detail: r.body };
+      let r = await callSteadfast("get_balance", data.config);
+      // Balance is a read-only endpoint, so one bounded retry is safe for transient provider 5xx errors.
+      if (r.status >= 500) {
+        await new Promise((resolve) => setTimeout(resolve, 700));
+        r = await callSteadfast("get_balance", data.config);
+      }
+      if (r.ok) return { success: true, status: r.status, message: "Steadfast এর সাথে কানেকশন সফল", detail: r.body };
+      const htmlError = /<!doctype html|<html/i.test(r.body);
+      const message = r.status >= 500 && htmlError
+        ? `Steadfast API সার্ভার HTTP ${r.status} দিচ্ছে। একবার পুনরায় পরীক্ষা করেও সার্ভার রেসপন্স ঠিক হয়নি; API সার্ভারের সমস্যা বা অ্যাকাউন্ট-সাইড ত্রুটি যাচাই প্রয়োজন।`
+        : `ব্যর্থ (HTTP ${r.status}) — ${r.body}`;
+      return { success: false, status: r.status, message, detail: r.body };
     } catch (e) {
       return { success: false, status: 0, message: e instanceof Error ? e.message : "Network error", detail: "" };
     }
