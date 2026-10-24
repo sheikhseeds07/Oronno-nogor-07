@@ -34,8 +34,8 @@ export const GUARANTEE_POPUP_STYLE = `
 .gp-divider{display:flex;align-items:center;gap:7px;margin:2px 0 10px;color:#fde68a}
 .gp-divider::before,.gp-divider::after{content:"";height:1px;width:34px;background:linear-gradient(90deg,transparent,rgba(253,230,138,.75));}
 .gp-divider::after{background:linear-gradient(90deg,rgba(253,230,138,.75),transparent)}
-.gp-card p{margin:0;color:#d1fae5;font-size:13px;line-height:1.75;max-width:296px}
-.gp-card p strong{color:#fde68a;font-weight:900}
+.gp-card p{margin:0;color:#f0fdf4;font-family:"Noto Serif Bengali","Hind Siliguri",serif;font-size:14px;font-weight:800;line-height:1.62;letter-spacing:.05px;max-width:296px;text-shadow:0 1px 10px rgba(0,0,0,.28)}
+.gp-card p strong{color:#fff1a6;font-weight:900;text-shadow:0 0 12px rgba(253,230,138,.22);text-decoration:underline;text-decoration-color:rgba(253,230,138,.55);text-decoration-thickness:1px;text-underline-offset:3px}
 .gp-cta{position:relative;overflow:hidden;width:100%;max-width:280px;margin-top:18px;padding:13px 16px;border:1px solid rgba(134,239,172,.55);border-radius:15px;background:linear-gradient(135deg,#22c55e 0%,#166534 55%,#14532d 100%);color:#fff;font-size:15px;font-weight:900;letter-spacing:.2px;display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 14px 34px rgba(5,46,22,.45),inset 0 1px 0 rgba(255,255,255,.24);cursor:pointer;transition:transform .2s cubic-bezier(.22,1,.36,1),box-shadow .2s}
 .gp-cta:hover{transform:translateY(-1px);box-shadow:0 18px 44px rgba(5,46,22,.55)}
 .gp-cta:active{transform:scale(.985)}
@@ -44,7 +44,7 @@ export const GUARANTEE_POPUP_STYLE = `
 .gp-closing .gp-popup{animation:none!important}
 .gp-closing .gp-backdrop{opacity:0;transition:opacity .22s ease}
 .gp-closing .gp-card{animation:none!important;opacity:0;transform:scale(.96) translateY(4px);transition:opacity .22s ease,transform .22s ease}
-@media (max-width:400px){.gp-card{padding:22px 16px 18px}.gp-title{font-size:21px;margin:12px 0 4px}.gp-card p{font-size:12px}.gp-logo-wrap{width:82px;height:82px}.gp-logo{width:60px;height:60px}}
+@media (max-width:400px){.gp-card{padding:22px 16px 18px}.gp-title{font-size:21px;margin:12px 0 4px}.gp-card p{font-size:12.5px;line-height:1.58}.gp-logo-wrap{width:82px;height:82px}.gp-logo{width:60px;height:60px}}
 @media (max-height:560px){.gp-card{aspect-ratio:auto;height:auto}}
 @media (prefers-reduced-motion:reduce){.gp-popup,.gp-card,.gp-logo,.gp-logo-aura,.gp-cta{animation:none!important}}
 `;
