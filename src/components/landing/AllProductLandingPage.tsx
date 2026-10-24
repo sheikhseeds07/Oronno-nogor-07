@@ -334,7 +334,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
     <FacebookPixel eager />
     {isAudioLanding && C.audio_url && <audio ref={audioRef} src={C.audio_url} preload="auto" onPlay={() => setAudioPlaying(true)} onPause={() => setAudioPlaying(false)} onEnded={() => setAudioPlaying(false)} className="hidden" />}
 
-    <GuaranteePopup slug={slug} logo={logo} brand={brand} nutrimix={isNutrimix} />
+    <GuaranteePopup slug={slug} logo={logo} brand={brand} nutrimix={isNutrimix} onCta={handleCta} />
     {page.top_bar_text && <div className="bg-all-product-alert px-3 py-0.5 text-center text-[10px] font-bold leading-4 text-all-product-alert-foreground sm:text-[11px]">{page.top_bar_text}</div>}
     <div role="banner" className="sticky top-0 z-40 bg-all-product-surface/92 shadow-[0_2px_14px_-6px_rgba(0,0,0,0.35)] backdrop-blur-xl">
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-all-product-gold/70 to-transparent" />
