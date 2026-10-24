@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 /**
  * Guarantee card + growing-instruction popup for landing page templates.
  *
- * Same logic as before: shows once per session per slug, stays visible for
- * 10 seconds, then closes itself. The CTA button only dismisses the popup —
- * it never scrolls the page.
+ * Shows once per session per slug and closes automatically after 10 seconds.
+ * The CTA delegates to the landing template's normal order action, then dismisses
+ * the popup.
  *
  * Animations are intentionally calm (no opacity flicker / shimmer sweeps) so
  * the card never looks like it is flashing on mobile.
