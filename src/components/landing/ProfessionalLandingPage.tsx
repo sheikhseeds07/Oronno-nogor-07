@@ -104,7 +104,7 @@ export function ProfessionalLandingPage({ slug, variant }: Props) {
         <div className="order-2 md:order-1">
           <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-black mb-3" style={{ background: `${theme}14`, color: theme }}><Sparkles className="w-3.5 h-3.5"/>{C.offer_badge_text || "বিশেষ অফার"}</div>
           <h1 className="text-3xl sm:text-5xl font-black leading-tight tracking-tight">{page.hero_title || page.title}</h1>
-          {page.hero_subtitle && <p className="mt-3 text-slate-500 leading-relaxed">{page.hero_subtitle}</p>}
+          {page.hero_subtitle && <p className="mt-3 font-extrabold text-emerald-700 leading-relaxed">{page.hero_subtitle}</p>}
           <div className="mt-5 flex items-end gap-3"><span className="text-4xl font-black" style={{ color: theme }}>{taka(basePrice)}</span>{regularPrice && regularPrice > basePrice && <span className="text-lg text-slate-400 line-through">{taka(regularPrice)}</span>}</div>
           {discount > 0 && <div className="mt-2 inline-flex rounded-lg bg-red-50 text-red-600 px-2.5 py-1 text-xs font-black">{discount}% {C.discount_suffix || "ছাড়"}</div>}
           <p className="mt-4 text-sm text-slate-600 flex items-center gap-2"><Truck className="w-4 h-4" style={{ color: theme }}/>{C.hero_note || "সারা দেশে ক্যাশ অন ডেলিভারি"}</p>
