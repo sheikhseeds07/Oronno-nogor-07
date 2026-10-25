@@ -97,7 +97,7 @@ export function ProfessionalLandingPage({ slug, variant }: Props) {
         <LpHeaderCountdown hours={Number(C.countdown_hours) || 3} />
       </div>
     </div>
-    {page.top_bar_text && <div className="text-white text-center text-xs font-bold py-2 px-3" style={{ background: theme }}>{page.top_bar_text}</div>}
+    {page.top_bar_text && <div className="text-white text-center text-sm sm:text-base font-extrabold leading-5 py-2 px-3 whitespace-nowrap overflow-hidden text-ellipsis" style={{ background: theme, fontFamily: '"Noto Serif Bengali", "Hind Siliguri", serif' }}>{page.top_bar_text}</div>}
 
     <main className="max-w-5xl mx-auto px-4 py-5 sm:py-8 space-y-6">
       <section className={variant === "premium" ? "grid md:grid-cols-2 gap-6 items-center rounded-[30px] bg-white border border-emerald-100 p-5 sm:p-8 shadow-xl" : "grid md:grid-cols-2 gap-6 items-center rounded-[30px] bg-white p-4 sm:p-7 shadow-[0_20px_60px_-35px_rgba(15,118,110,.55)]"}>
