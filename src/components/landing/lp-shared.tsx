@@ -70,7 +70,7 @@ export function LpPackageSelector({ packages, selected, onSelect, themeColor, ti
     const active = selected === i;
     return <button type="button" key={i} onClick={() => onSelect(i)} className="lp-inline-option w-full flex items-center gap-2 border text-left transition bg-white" style={active ? { borderColor: themeColor, background: themeBg05, boxShadow: `0 0 0 1px ${themeColor}` } : { borderColor: "#dcece0" }}>
       {p.image && <SafeImage src={toImg(p.image)} alt="" width={34} height={34} loading="lazy" decoding="async" className="shrink-0 object-cover bg-slate-50" />}
-      <div className="flex-1 min-w-0"><div className="lp-option-name min-w-0 break-words whitespace-normal text-[11px] leading-[1.25] font-semibold text-slate-900">{p.label || p.name}</div>{p.badge && <span className="inline-block mt-0.5 text-[9px] px-1.5 py-0.5 rounded font-semibold" style={{ background: themeBg10, color: themeColor }}>{p.badge}</span>}</div>
+      <div className="flex-1 min-w-0"><div className="lp-option-name block min-w-0 text-[11px] leading-[1.2] font-semibold text-slate-900" style={{ whiteSpace: "normal", overflowWrap: "anywhere", wordBreak: "normal" }}>{p.label || p.name}</div>{p.badge && <span className="inline-block mt-0.5 text-[9px] px-1.5 py-0.5 rounded font-semibold" style={{ background: themeBg10, color: themeColor }}>{p.badge}</span>}</div>
       <div className="lp-option-price text-right font-bold text-slate-900 shrink-0">{taka(p.price)}</div>
       <span className="grid place-items-center w-4 h-4 rounded-full border-2 shrink-0" style={active ? { background: themeColor, borderColor: themeColor } : { borderColor: "#cbd5e1" }}>{active && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}</span>
     </button>;
@@ -82,7 +82,7 @@ export function LpFloatingCta({ formInView, formId, submitting, total, subtotal,
     <div className="container mx-auto max-w-2xl">
       {!formInView ? <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
         <div className="leading-tight min-w-0">
-          <div className="text-[11px] font-bold leading-tight text-slate-900 line-clamp-2 break-words">{productName}</div>
+          <div className="text-[11px] font-bold leading-tight text-slate-900 break-words" style={{ display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2, overflow: "hidden", overflowWrap: "anywhere", whiteSpace: "normal" }}>{productName}</div>
           <div className="flex items-baseline gap-1.5">{regular && regular > subtotal && <span className="text-[12px] line-through text-slate-400">{bnTaka(regular)}</span>}<span className="font-extrabold text-[17px]" style={{ color: themeColor }}>{bnTaka(subtotal)}</span></div>
         </div>
         <button onClick={onScrollToOrder} style={{ background: themeColor }} className="lp-pulse shrink-0 text-white px-6 py-3 rounded-xl font-extrabold text-[15px] flex items-center justify-center gap-2 transition hover:brightness-95"><ShoppingCart className="w-[18px] h-[18px]" />{ctaText}</button>
