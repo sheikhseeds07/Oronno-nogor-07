@@ -476,7 +476,6 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
 
           <div className="mx-auto mt-4 max-w-xl text-center">
             <Button size="lg" onClick={handleCta} className="all-product-primary-cta h-13 w-full text-base font-black shadow-xl sm:h-14"><ShoppingBag className="h-5 w-5" />{isNutrimix ? "২৪ প্রকার বীজ ফ্রী নিন" : (page.cta_text || "এখনই অর্ডার করুন")}<span aria-hidden="true">→</span></Button>
-            <p className="mt-2 text-[11px] font-bold text-all-product-hero-muted">ক্যাশ অন ডেলিভারি • সারা দেশে হোম ডেলিভারি</p>
           </div>
         </div>
         <ChevronDown className="absolute bottom-2 left-1/2 h-5 w-5 -translate-x-1/2 animate-bounce text-all-product-gold" />
@@ -508,7 +507,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
       </div></section>
 
       <div className="bg-all-product-surface px-4 pb-2 text-center">
-        <div className="mx-auto max-w-md"><Button size="lg" onClick={handleCta} className="all-product-primary-cta h-12 w-full text-base font-black"><ShoppingBag className="h-5 w-5" />{page.cta_text || "এখনই অর্ডার করুন"}<span aria-hidden="true">→</span></Button><p className="mt-2 text-[11px] font-bold text-all-product-muted">ক্যাশ অন ডেলিভারি • সারা দেশে হোম ডেলিভারি</p></div>
+        <div className="mx-auto max-w-md"><Button size="lg" onClick={handleCta} className="all-product-primary-cta h-12 w-full text-base font-black"><ShoppingBag className="h-5 w-5" />{page.cta_text || "এখনই অর্ডার করুন"}<span aria-hidden="true">→</span></Button></div>
       </div>
 
       <section className="bg-all-product-muted-surface py-7"><div className="mx-auto max-w-3xl px-4">
@@ -524,7 +523,6 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
             <Button size="lg" onClick={handleCta} className="all-product-primary-cta h-12 w-full text-base font-black shadow-lg">
               <ShoppingBag className="h-5 w-5" />ফ্রী ডেলিভারিতে অর্ডার করুন<span aria-hidden="true">→</span>
             </Button>
-            <p className="mt-2 text-[11px] font-bold text-all-product-muted">সারা দেশে হোম ডেলিভারি • ক্যাশ অন ডেলিভারি</p>
           </div>
         </div>
       )}
