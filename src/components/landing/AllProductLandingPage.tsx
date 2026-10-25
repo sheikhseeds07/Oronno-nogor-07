@@ -580,14 +580,14 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
                         <SafeImage src={toImg(offer.image || "/placeholder.svg", { w: 180, q: 82 })} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block min-w-0 text-[11px] font-black leading-[1.2] text-all-product-ink sm:text-[11.5px]" style={{ whiteSpace: "normal", overflowWrap: "anywhere", wordBreak: "normal" }}>{offer.name}</span>
+                        <span className="block min-w-0 text-[12.5px] font-black leading-[1.25] text-all-product-ink sm:text-[13px]" style={{ fontFamily: "'Noto Serif Bengali', 'Hind Siliguri', serif", whiteSpace: "normal", overflowWrap: "anywhere", wordBreak: "normal" }}>{offer.name}</span>
                         <span className="mt-0.5 flex items-center gap-1.5">
                           <span className="text-[13px] font-black leading-4 text-all-product-primary">{taka(offer.price)}</span>
                           {offer.old && offer.old > offer.price && <del className="text-[9px] font-semibold text-all-product-muted">{taka(offer.old)}</del>}
                         </span>
                       </span>
                       <span className="flex shrink-0 flex-col items-end gap-1">
-                        <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-bold leading-none ${offer.delivery_fee === 0 ? "bg-all-product-success/10 text-all-product-success" : "bg-all-product-soft text-all-product-muted"}`}>
+                        <span className="rounded-full bg-red-50 px-1.5 py-0.5 text-[8px] font-extrabold leading-none text-red-600 ring-1 ring-red-200/80">
                           {offer.delivery_fee === 0 ? "ফ্রি ডেলিভারি" : `ডেলিভারি ${taka(offer.delivery_fee)}`}
                         </span>
                         <span className={`grid h-5 w-5 place-items-center rounded-full border ${active ? "border-all-product-primary bg-all-product-primary text-all-product-primary-foreground" : "border-all-product-line bg-all-product-soft text-transparent"}`}>
@@ -623,13 +623,13 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
                             <SafeImage src={toImg(offer.image || "/placeholder.svg", { w: 420, q: 80 })} alt={offer.name} loading="lazy" className="aspect-square w-full object-cover" />
                           </div>
                           <div className="px-0.5 pb-1 pt-1.5">
-                            <div className="text-[11px] font-black leading-[1.25] text-all-product-ink" style={{ whiteSpace: "normal", overflowWrap: "anywhere", wordBreak: "normal" }}>{offer.name}</div>
+                            <div className="text-[12.5px] font-black leading-[1.25] text-all-product-ink" style={{ fontFamily: "'Noto Serif Bengali', 'Hind Siliguri', serif", whiteSpace: "normal", overflowWrap: "anywhere", wordBreak: "normal" }}>{offer.name}</div>
                             <div className="mt-1 flex items-center justify-between gap-1.5">
                               <span className="min-w-0 truncate rounded-full bg-all-product-primary/10 px-1.5 py-0.5 text-[9px] font-black text-all-product-primary">{offer.quantity || "১ পিস"}</span>
                               <span className="shrink-0 text-[16px] font-black leading-none text-all-product-primary">{taka(offer.price)}</span>
                             </div>
                             {offer.old && offer.old > offer.price && <del className="mt-0.5 block text-[9px] text-all-product-muted">{taka(offer.old)}</del>}
-                            <div className="mt-0.5 text-[9px] font-bold text-all-product-muted">{offer.delivery_fee === 0 ? "ফ্রি ডেলিভারি" : `ডেলিভারি ${taka(offer.delivery_fee)}`}</div>
+                            <div className="mt-0.5 text-[9px] font-extrabold text-red-600">{offer.delivery_fee === 0 ? "ফ্রি ডেলিভারি" : `ডেলিভারি ${taka(offer.delivery_fee)}`}</div>
                           </div>
                         </button>
                       );
@@ -854,12 +854,12 @@ function OfferSelectionPopup({
                         <SafeImage src={toImg(offer.image || "/placeholder.svg", { w: 520, q: 84 })} alt={offer.name} loading="lazy" className="aspect-[1.08/1] w-full object-cover transition-transform duration-300 group-hover:scale-[1.025]" />
                       </div>
                       <div className="px-0.5 pb-0.5 pt-1">
-                        <div className="min-h-[30px] text-[11px] font-black leading-[1.2] text-all-product-ink" style={{ whiteSpace: "normal", overflowWrap: "anywhere", wordBreak: "normal" }}>{offer.name}</div>
+                        <div className="min-h-[30px] text-[12.5px] font-black leading-[1.25] text-all-product-ink" style={{ fontFamily: "'Noto Serif Bengali', 'Hind Siliguri', serif", whiteSpace: "normal", overflowWrap: "anywhere", wordBreak: "normal" }}>{offer.name}</div>
                         <div className="mt-1 flex items-baseline justify-center gap-1.5">
                           <span className="text-[17px] font-black leading-none text-all-product-primary">{taka(offer.price)}</span>
                           {offer.old && offer.old > offer.price && <del className="text-[10px] font-semibold leading-none text-all-product-muted">{taka(offer.old)}</del>}
                         </div>
-                        <div className="mt-1 text-[10px] font-bold leading-none text-all-product-success">{offer.delivery_fee === 0 ? "ডেলিভারি ফ্রি" : `ডেলিভারি ${taka(offer.delivery_fee)}`}</div>
+                        <div className="mt-1 text-[10px] font-extrabold leading-none text-red-600">{offer.delivery_fee === 0 ? "ডেলিভারি ফ্রি" : `ডেলিভারি ${taka(offer.delivery_fee)}`}</div>
                       </div>
                     </button>
                   );
@@ -886,7 +886,7 @@ function OfferSelectionPopup({
                         <SafeImage src={toImg(offer.image || "/placeholder.svg", { w: 520, q: 82 })} alt={offer.name} loading="lazy" className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-[1.025]" />
                       </div>
                       <div className="px-0.5 pb-0.5 pt-1">
-                        <div className="min-h-[30px] text-[11px] font-black leading-[1.2] text-all-product-ink" style={{ whiteSpace: "normal", overflowWrap: "anywhere", wordBreak: "normal" }}>{offer.name}</div>
+                        <div className="min-h-[30px] text-[12.5px] font-black leading-[1.25] text-all-product-ink" style={{ fontFamily: "'Noto Serif Bengali', 'Hind Siliguri', serif", whiteSpace: "normal", overflowWrap: "anywhere", wordBreak: "normal" }}>{offer.name}</div>
                         <div className="mt-1 flex items-center justify-between gap-1.5">
                           <span className="min-w-0 truncate rounded-full bg-all-product-primary/10 px-1.5 py-0.5 text-[9px] font-black leading-none text-all-product-primary">{offer.quantity || "১ পিস"}</span>
                           <div className="flex items-baseline gap-1.5">
@@ -894,7 +894,7 @@ function OfferSelectionPopup({
                             {offer.old && offer.old > offer.price && <del className="text-[10px] font-semibold leading-none text-all-product-muted">{taka(offer.old)}</del>}
                           </div>
                         </div>
-                        <div className="mt-1 text-[10px] font-bold leading-none text-all-product-success">{offer.delivery_fee === 0 ? "ডেলিভারি ফ্রি" : `ডেলিভারি ${taka(offer.delivery_fee)}`}</div>
+                        <div className="mt-1 text-[10px] font-extrabold leading-none text-red-600">{offer.delivery_fee === 0 ? "ডেলিভারি ফ্রি" : `ডেলিভারি ${taka(offer.delivery_fee)}`}</div>
                       </div>
                     </button>
                   );
