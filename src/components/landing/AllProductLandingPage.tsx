@@ -742,7 +742,7 @@ function OfferCountdown() {
       <style>{AP_COUNTDOWN_STYLE}</style>
       <div className="flex shrink-0 items-center gap-1 text-[9px] font-black text-all-product-alert sm:gap-1.5 sm:text-[10px]" aria-label="অফার শেষ হওয়ার কাউন্টডাউন">
         <span className="ap-cd-dot h-1.5 w-1.5 shrink-0 rounded-full bg-all-product-alert" aria-hidden="true" />
-        <span className="whitespace-nowrap">অফার শেষ হতে বাকি</span>
+        <span className="whitespace-nowrap text-[11px] font-extrabold tracking-tight sm:text-xs" style={{ fontFamily: '"Noto Serif Bengali", "Hind Siliguri", serif' }}>অফার শেষ হতে বাকি</span>
         <span className="flex shrink-0 items-center gap-0.5 sm:gap-1">{units.map((unit, i) => (
           <span key={i} className="flex items-center gap-1">
             {i > 0 && <span className="text-all-product-muted">:</span>}
