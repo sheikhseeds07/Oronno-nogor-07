@@ -12,7 +12,7 @@ export const bnTaka = (n: number) => "৳" + bnNum(Math.round(Number(n) || 0).to
 export const LP_SHARED_STYLE = `
 .lp-hdr-timer{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
 .lp-hdr-timer-row{display:flex;align-items:center;gap:4px}
-.lp-hdr-timer-note{font-size:9px;font-weight:800;color:#d97706;letter-spacing:.02em;line-height:1}
+.lp-hdr-timer-note{font-size:11px;font-weight:900;font-family:"Noto Serif Bengali","Hind Siliguri",serif;color:#b45309;letter-spacing:0;line-height:1.1;white-space:nowrap}
 .lp-hdr-timer b{background:#1a8944;color:#fff;font-size:13px;font-weight:800;padding:3px 6px;border-radius:6px;min-width:28px;text-align:center;font-variant-numeric:tabular-nums;line-height:1.2;display:block}
 .lp-hdr-timer i{font-style:normal;color:#1a8944;font-weight:800;font-size:13px}
 .lp-hdr-timer em{font-style:normal;display:block;font-size:9px;color:#64748b;font-weight:700;text-align:center;margin-top:2px}
