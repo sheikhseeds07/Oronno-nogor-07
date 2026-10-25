@@ -469,9 +469,9 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
           </div>
 
           <div className="mx-auto mt-5 grid max-w-xl grid-cols-3 overflow-hidden rounded-xl border border-white/10 bg-white/[0.06] backdrop-blur-sm">
-            <div className="px-2.5 py-3 text-center"><ShieldCheck className="mx-auto mb-1.5 h-5 w-5 text-all-product-success" /><span className="block text-[11px] font-bold leading-4 text-all-product-hero-muted">পরীক্ষিত বীজ</span></div>
-            <div className="border-x border-white/10 px-2.5 py-3 text-center"><Truck className="mx-auto mb-1.5 h-5 w-5 text-all-product-success" /><span className="block text-[11px] font-bold leading-4 text-all-product-hero-muted">সারা দেশে ডেলিভারি</span></div>
-            <div className="px-2.5 py-3 text-center"><Wallet className="mx-auto mb-1.5 h-5 w-5 text-all-product-success" /><span className="block text-[11px] font-bold leading-4 text-all-product-hero-muted">ক্যাশ অন ডেলিভারি</span></div>
+            <div className="px-2.5 py-3 text-center"><ShieldCheck className="mx-auto mb-1.5 h-5 w-5 text-all-product-success" /><span className="block text-[11px] font-bold leading-4 text-all-product-hero-muted">{isNutrimix ? "২৪ প্রকার বীজ ফ্রী" : "পরীক্ষিত বীজ"}</span></div>
+            <div className="border-x border-white/10 px-2.5 py-3 text-center"><Truck className="mx-auto mb-1.5 h-5 w-5 text-all-product-success" /><span className="block text-[11px] font-bold leading-4 text-all-product-hero-muted">{isNutrimix ? "সারাদেশে হোম ডেলিভারি চার্জ ফ্রী" : "সারা দেশে ডেলিভারি"}</span></div>
+            <div className="px-2.5 py-3 text-center"><Wallet className="mx-auto mb-1.5 h-5 w-5 text-all-product-success" /><span className="block text-[11px] font-bold leading-4 text-all-product-hero-muted">{isNutrimix ? "গ্যারান্টি কার্ড সহকারে" : "ক্যাশ অন ডেলিভারি"}</span></div>
           </div>
 
           <div className="mx-auto mt-4 max-w-xl text-center">
