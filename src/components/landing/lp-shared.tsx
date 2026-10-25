@@ -82,7 +82,7 @@ export function LpFloatingCta({ formInView, formId, submitting, total, subtotal,
     <div className="container mx-auto max-w-2xl">
       {!formInView ? <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
         <div className="leading-tight min-w-0">
-          <div className="text-[11px] font-bold leading-tight text-slate-900 break-words" style={{ display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 2, overflow: "hidden", overflowWrap: "anywhere", whiteSpace: "normal" }}>{productName}</div>
+          <div className="text-[11px] font-bold leading-tight text-slate-900 break-words" style={{ overflowWrap: "anywhere", whiteSpace: "normal" }}>{productName}</div>
           <div className="flex items-baseline gap-1.5">{regular && regular > subtotal && <span className="text-[12px] line-through text-slate-400">{bnTaka(regular)}</span>}<span className="font-extrabold text-[17px]" style={{ color: themeColor }}>{bnTaka(subtotal)}</span></div>
         </div>
         <button onClick={onScrollToOrder} style={{ background: themeColor }} className="lp-pulse shrink-0 text-white px-6 py-3 rounded-xl font-extrabold text-[15px] flex items-center justify-center gap-2 transition hover:brightness-95"><ShoppingCart className="w-[18px] h-[18px]" />{ctaText}</button>
