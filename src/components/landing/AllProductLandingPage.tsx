@@ -580,7 +580,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
                         <SafeImage src={toImg(offer.image || "/placeholder.svg", { w: 180, q: 82 })} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block min-w-0 break-words whitespace-normal text-[11px] font-black leading-[1.2] text-all-product-ink sm:text-[11.5px]">{offer.name}</span>
+                        <span className="block min-w-0 text-[11px] font-black leading-[1.2] text-all-product-ink sm:text-[11.5px]" style={{ whiteSpace: "normal", overflowWrap: "anywhere", wordBreak: "normal" }}>{offer.name}</span>
                         <span className="mt-0.5 flex items-center gap-1.5">
                           <span className="text-[13px] font-black leading-4 text-all-product-primary">{taka(offer.price)}</span>
                           {offer.old && offer.old > offer.price && <del className="text-[9px] font-semibold text-all-product-muted">{taka(offer.old)}</del>}
@@ -623,7 +623,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
                             <SafeImage src={toImg(offer.image || "/placeholder.svg", { w: 420, q: 80 })} alt={offer.name} loading="lazy" className="aspect-square w-full object-cover" />
                           </div>
                           <div className="px-0.5 pb-1 pt-1.5">
-                            <div className="text-[12px] font-black leading-[1.35] text-all-product-ink break-words">{offer.name}</div>
+                            <div className="text-[11px] font-black leading-[1.25] text-all-product-ink" style={{ whiteSpace: "normal", overflowWrap: "anywhere", wordBreak: "normal" }}>{offer.name}</div>
                             <div className="mt-1 flex items-center justify-between gap-1.5">
                               <span className="min-w-0 truncate rounded-full bg-all-product-primary/10 px-1.5 py-0.5 text-[9px] font-black text-all-product-primary">{offer.quantity || "১ পিস"}</span>
                               <span className="shrink-0 text-[16px] font-black leading-none text-all-product-primary">{taka(offer.price)}</span>
@@ -854,7 +854,7 @@ function OfferSelectionPopup({
                         <SafeImage src={toImg(offer.image || "/placeholder.svg", { w: 520, q: 84 })} alt={offer.name} loading="lazy" className="aspect-[1.08/1] w-full object-cover transition-transform duration-300 group-hover:scale-[1.025]" />
                       </div>
                       <div className="px-0.5 pb-0.5 pt-1">
-                        <div className="min-h-[30px] break-words whitespace-normal text-[11.5px] font-black leading-[1.25] text-all-product-ink">{offer.name}</div>
+                        <div className="min-h-[30px] text-[11px] font-black leading-[1.2] text-all-product-ink" style={{ whiteSpace: "normal", overflowWrap: "anywhere", wordBreak: "normal" }}>{offer.name}</div>
                         <div className="mt-1 flex items-baseline justify-center gap-1.5">
                           <span className="text-[17px] font-black leading-none text-all-product-primary">{taka(offer.price)}</span>
                           {offer.old && offer.old > offer.price && <del className="text-[10px] font-semibold leading-none text-all-product-muted">{taka(offer.old)}</del>}
@@ -886,7 +886,7 @@ function OfferSelectionPopup({
                         <SafeImage src={toImg(offer.image || "/placeholder.svg", { w: 520, q: 82 })} alt={offer.name} loading="lazy" className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-[1.025]" />
                       </div>
                       <div className="px-0.5 pb-0.5 pt-1">
-                        <div className="min-h-[30px] break-words text-[12.5px] font-black leading-[1.3] text-all-product-ink">{offer.name}</div>
+                        <div className="min-h-[30px] text-[11px] font-black leading-[1.2] text-all-product-ink" style={{ whiteSpace: "normal", overflowWrap: "anywhere", wordBreak: "normal" }}>{offer.name}</div>
                         <div className="mt-1 flex items-center justify-between gap-1.5">
                           <span className="min-w-0 truncate rounded-full bg-all-product-primary/10 px-1.5 py-0.5 text-[9px] font-black leading-none text-all-product-primary">{offer.quantity || "১ পিস"}</span>
                           <div className="flex items-baseline gap-1.5">
