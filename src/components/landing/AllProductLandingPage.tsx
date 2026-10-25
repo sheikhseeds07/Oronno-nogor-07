@@ -580,7 +580,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
                         <SafeImage src={toImg(offer.image || "/placeholder.svg", { w: 180, q: 82 })} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[12px] font-black leading-5 text-all-product-ink sm:text-[12.5px]">{offer.name}</span>
+                        <span className="block min-w-0 break-words whitespace-normal text-[11px] font-black leading-[1.2] text-all-product-ink sm:text-[11.5px]">{offer.name}</span>
                         <span className="mt-0.5 flex items-center gap-1.5">
                           <span className="text-[13px] font-black leading-4 text-all-product-primary">{taka(offer.price)}</span>
                           {offer.old && offer.old > offer.price && <del className="text-[9px] font-semibold text-all-product-muted">{taka(offer.old)}</del>}
@@ -854,7 +854,7 @@ function OfferSelectionPopup({
                         <SafeImage src={toImg(offer.image || "/placeholder.svg", { w: 520, q: 84 })} alt={offer.name} loading="lazy" className="aspect-[1.08/1] w-full object-cover transition-transform duration-300 group-hover:scale-[1.025]" />
                       </div>
                       <div className="px-0.5 pb-0.5 pt-1">
-                        <div className="min-h-[30px] break-words text-[12.5px] font-black leading-[1.3] text-all-product-ink">{offer.name}</div>
+                        <div className="min-h-[30px] break-words whitespace-normal text-[11.5px] font-black leading-[1.25] text-all-product-ink">{offer.name}</div>
                         <div className="mt-1 flex items-baseline justify-center gap-1.5">
                           <span className="text-[17px] font-black leading-none text-all-product-primary">{taka(offer.price)}</span>
                           {offer.old && offer.old > offer.price && <del className="text-[10px] font-semibold leading-none text-all-product-muted">{taka(offer.old)}</del>}
