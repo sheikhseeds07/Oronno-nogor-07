@@ -14,3 +14,4 @@
 - Customer block/unblock functions authorize administrators or employees with orders/customers permission inside the database function, so order staff can act without opening access to unrelated users.
 
 - Keep mechanical login visuals in a self-contained component with scoped CSS; the login route retains authentication and role-based navigation unchanged.
+- Scope page-specific landing branding to the exact slug in the header and favicon metadata; keep shared settings, popups, footers, and other pages unchanged to prevent cross-page branding changes.

@@ -19,6 +19,7 @@ import { toImg, imgFallback } from "@/lib/img";
 import { isValidBdPhone, phoneSubmitError } from "@/lib/bd-phone";
 import { Button } from "@/components/ui/button";
 import brandLogoFile from "@/assets/logo.jpg";
+import arannyaLogo from "@/assets/arannya-nogor-logo.png.asset.json";
 import { GuaranteePopup } from "@/components/landing/GuaranteePopup";
 import { NutrimixReviews } from "@/components/landing/NutrimixReviews";
 import { SeedComboNutrimixPopup } from "@/components/landing/CleanLandingPage";
@@ -156,7 +157,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   const shipping = current?.delivery_fee ?? delivery;
   const total = subtotal + shipping;
   const brand = settings.site_name || "Sheikh Seeds";
-  const brandBn = "শেখ সিডস";
+  const brandBn = isNutrimix ? "অরন্য নগড়" : "শেখ সিডস";
   const logo = settings.logo_url || brandLogoFile;
   const features = page?.features?.length ? page.features : DEFAULT_FEATURES;
   const why = page?.why_choose_us?.length ? page.why_choose_us : DEFAULT_WHY;
@@ -340,7 +341,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-all-product-gold/70 to-transparent" />
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-6 bg-gradient-to-b from-white/[0.07] to-transparent" />
       <div className="relative mx-auto flex h-[40px] max-w-6xl items-center justify-between gap-1.5 px-3 sm:h-[46px] sm:px-4">
-        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2"><SafeImage src={logo} alt={brand} className="h-6 w-6 rounded-full object-cover ring-1 ring-all-product-gold/50 sm:h-7 sm:w-7" /><div className="min-w-0 pt-0.5"><span style={{ fontFamily: "'Noto Serif Bengali', 'Hind Siliguri', serif" }} className="block whitespace-nowrap text-[18px] font-black leading-[1.3] tracking-[0.01em] text-all-product-primary sm:text-[21px]">{brandBn}</span><svg viewBox="0 0 72 8" className="mt-0 block h-1.5 w-[56px] drop-shadow-[0_0_3px_var(--all-product-gold)] sm:w-[70px]" aria-hidden="true"><defs><linearGradient id="ap-gold-arc" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="var(--all-product-gold, #d9a53a)" stopOpacity="0.25" /><stop offset="50%" stopColor="var(--all-product-gold, #d9a53a)" /><stop offset="100%" stopColor="var(--all-product-gold, #d9a53a)" stopOpacity="0.25" /></linearGradient></defs><path d="M2 6.5 Q36 0.5 70 6.5" fill="none" stroke="url(#ap-gold-arc)" strokeWidth="2" strokeLinecap="round" /></svg></div></div>
+        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">{isNutrimix ? <img src={arannyaLogo.url} alt={brandBn} className="h-6 w-6 rounded-full object-cover ring-1 ring-all-product-gold/50 sm:h-7 sm:w-7" /> : <SafeImage src={logo} alt={brand} className="h-6 w-6 rounded-full object-cover ring-1 ring-all-product-gold/50 sm:h-7 sm:w-7" />}<div className="min-w-0 pt-0.5"><span style={{ fontFamily: "'Noto Serif Bengali', 'Hind Siliguri', serif" }} className="block whitespace-nowrap text-[18px] font-black leading-[1.3] tracking-[0.01em] text-all-product-primary sm:text-[21px]">{brandBn}</span><svg viewBox="0 0 72 8" className="mt-0 block h-1.5 w-[56px] drop-shadow-[0_0_3px_var(--all-product-gold)] sm:w-[70px]" aria-hidden="true"><defs><linearGradient id="ap-gold-arc" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="var(--all-product-gold, #d9a53a)" stopOpacity="0.25" /><stop offset="50%" stopColor="var(--all-product-gold, #d9a53a)" /><stop offset="100%" stopColor="var(--all-product-gold, #d9a53a)" stopOpacity="0.25" /></linearGradient></defs><path d="M2 6.5 Q36 0.5 70 6.5" fill="none" stroke="url(#ap-gold-arc)" strokeWidth="2" strokeLinecap="round" /></svg></div></div>
         <OfferCountdown />
       </div>
     </div>
