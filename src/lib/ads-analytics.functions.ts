@@ -223,7 +223,7 @@ export const getAdsAnalytics = createServerFn({ method: "POST" })
 
     const orderStats = {
       total: (orderRows ?? []).length, delivered: 0, active: 0, cancelled: 0, returned: 0,
-      deliveredRevenue: 0, activeOrderValue: 0, productCost: 0, missingCostLines: 0,
+      deliveredRevenue: 0, activeOrderValue: 0, productCost: 0, missingCostLines: 0, missingCostOrders: 0,
       deliveredCourierEstimate: 0, deliveredContributionBeforeAds: 0,
       sourceBreakdown: [] as Array<{ source: string; orders: number; revenue: number }>,
     };
@@ -249,11 +249,16 @@ export const getAdsAnalytics = createServerFn({ method: "POST" })
       if (isReturned) orderStats.returned++;
       if (isDelivered) {
         let cost = 0;
+        let hasMissingCost = false;
         for (const item of order.order_items ?? []) {
           const unitCost = Number(item?.products?.cost);
           if (Number.isFinite(unitCost) && unitCost > 0) cost += unitCost * Number(item.quantity || 0);
-          else if (Number(item.quantity || 0) > 0) orderStats.missingCostLines++;
+          else if (Number(item.quantity || 0) > 0) {
+            orderStats.missingCostLines++;
+            hasMissingCost = true;
+          }
         }
+        if (hasMissingCost) orderStats.missingCostOrders++;
         orderStats.productCost += cost;
       }
     }
