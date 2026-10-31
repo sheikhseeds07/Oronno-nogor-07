@@ -193,8 +193,11 @@ export const getAdsAnalytics = createServerFn({ method: "POST" })
       return {
         ...account,
         metrics: {
-          spend, purchases, purchaseValue,
+          spend, spendUsd: spend * (account.currency === "BDT" ? 1 / account.dollarRate : 1), purchases, purchaseValue,
           cpa: purchases > 0 ? spend / purchases : null,
+          cpaUsd: purchases > 0 ? (spend * (account.currency === "BDT" ? 1 / account.dollarRate : 1)) / purchases : null,
+          cpcUsd: Number(summary.cpc || 0) * (account.currency === "BDT" ? 1 / account.dollarRate : 1),
+          cpmUsd: Number(summary.cpm || 0) * (account.currency === "BDT" ? 1 / account.dollarRate : 1),
           roas: spend > 0 && purchaseValue > 0 ? purchaseValue / spend : null,
           impressions: summary.impressions,
           reach: summary.reach,
@@ -274,6 +277,7 @@ export const getAdsAnalytics = createServerFn({ method: "POST" })
       const factor = account.currency === "BDT" ? 1 : account.dollarRate;
       sum.spend += Number(m.spend || 0);
       sum.spendBdt += Number(m.spend || 0) * factor;
+      sum.spendUsd += Number(m.spend || 0) * (account.currency === "BDT" ? 1 / account.dollarRate : 1);
       sum.purchases += Number(m.purchases || 0);
       sum.purchaseValue += Number(m.purchaseValue || 0);
       sum.purchaseValueBdt += Number(m.purchaseValue || 0) * factor;
@@ -285,13 +289,17 @@ export const getAdsAnalytics = createServerFn({ method: "POST" })
       sum.addToCarts += Number(m.addToCarts || 0);
       sum.checkouts += Number(m.checkouts || 0);
       return sum;
-    }, { spend: 0, spendBdt: 0, purchases: 0, purchaseValue: 0, purchaseValueBdt: 0, impressions: 0, reach: 0, clicks: 0, linkClicks: 0, landingPageViews: 0, addToCarts: 0, checkouts: 0 });
+    }, { spend: 0, spendBdt: 0, spendUsd: 0, purchases: 0, purchaseValue: 0, purchaseValueBdt: 0, impressions: 0, reach: 0, clicks: 0, linkClicks: 0, landingPageViews: 0, addToCarts: 0, checkouts: 0 });
 
     const flatten = (field: "daily" | "campaigns" | "adsets" | "ads" | "audiences" | "regions" | "placements") =>
       connectedAccounts.flatMap((account: any) => (account[field] ?? []).map((row: any) => ({
         ...row,
         spendBdt: row.spend * (account.currency === "BDT" ? 1 : account.dollarRate),
         cpaBdt: row.cpa == null ? null : row.cpa * (account.currency === "BDT" ? 1 : account.dollarRate),
+        spendUsd: row.spend * (account.currency === "BDT" ? 1 / account.dollarRate : 1),
+        cpaUsd: row.cpa == null ? null : row.cpa * (account.currency === "BDT" ? 1 / account.dollarRate : 1),
+        cpcUsd: row.cpc * (account.currency === "BDT" ? 1 / account.dollarRate : 1),
+        cpmUsd: row.cpm * (account.currency === "BDT" ? 1 / account.dollarRate : 1),
       })));
 
     return {
@@ -302,6 +310,9 @@ export const getAdsAnalytics = createServerFn({ method: "POST" })
       metrics: {
         ...combined,
         cpa: combined.purchases > 0 ? combined.spendBdt / combined.purchases : null,
+        cpaUsd: combined.purchases > 0 ? combined.spendUsd / combined.purchases : null,
+        cpcUsd: combined.clicks > 0 ? combined.spendUsd / combined.clicks : 0,
+        cpmUsd: combined.impressions > 0 ? combined.spendUsd / combined.impressions * 1000 : 0,
         roas: combined.spendBdt > 0 && combined.purchaseValueBdt > 0 ? combined.purchaseValueBdt / combined.spendBdt : null,
         ctr: combined.impressions > 0 ? combined.clicks / combined.impressions * 100 : 0,
         cpc: combined.clicks > 0 ? combined.spendBdt / combined.clicks : 0,
