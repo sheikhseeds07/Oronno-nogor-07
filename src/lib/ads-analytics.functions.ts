@@ -242,6 +242,7 @@ export const getAdsAnalytics = createServerFn({ method: "POST" })
       connectedAccounts.flatMap((account: any) => (account[field] ?? []).map((row: any) => ({
         ...row,
         spendBdt: row.spend * (account.currency === "BDT" ? 1 : account.dollarRate),
+        cpaBdt: row.cpa == null ? null : row.cpa * (account.currency === "BDT" ? 1 : account.dollarRate),
       })));
 
     return {
