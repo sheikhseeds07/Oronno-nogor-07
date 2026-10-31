@@ -19,7 +19,7 @@ type MetaProfitConfig = {
 
 const bdDay = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dhaka" }).format(new Date(iso));
 
-async function getMetaProfitData(from: string, to: string, accountKey: "meta_ad_account" | "meta_ad_account_2" | "all") {
+async function getMetaProfitData(from: string, to: string) {
   const defaults = {
     dollarRate: 122,
     courierCostPerOrder: 50,
@@ -32,9 +32,8 @@ async function getMetaProfitData(from: string, to: string, accountKey: "meta_ad_
   };
 
   const db = supabaseAdmin as any;
-  const accountKeys = accountKey === "all"
-    ? ["meta_ad_account", "meta_ad_account_2"]
-    : [accountKey];
+  // Real Net Profit always includes spend from both connected Meta ad accounts.
+  const accountKeys = ["meta_ad_account", "meta_ad_account_2"];
   const { data: integrations, error } = await db
     .from("integrations")
     .select("name,config,is_active")
@@ -47,14 +46,12 @@ async function getMetaProfitData(from: string, to: string, accountKey: "meta_ad_
   const dollarRate = Math.max(0, Number(primaryCfg.dollar_rate) || defaults.dollarRate);
   const courierCostPerOrder = Math.max(0, Number(primaryCfg.courier_cost_per_order) || defaults.courierCostPerOrder);
   const cancelRate = Math.min(100, Math.max(0, Number(primaryCfg.cancel_rate ?? primaryCfg.return_rate) || defaults.cancelRate));
-  const accountName = accountKey === "all"
-    ? "All ad account"
-    : String(primaryCfg.account_name ?? (accountKey === "meta_ad_account_2" ? "Oronno Nogor" : "Sheikh Seeds"));
+  const accountName = "All ad account";
 
   if (selected.length !== accountKeys.length || selected.some((row: any) => !row.is_active || !row.config?.access_token || !row.config?.ad_account_id)) {
     return {
       ...defaults, dollarRate, courierCostPerOrder, cancelRate, accountName,
-      error: accountKey === "all" ? "দুইটি Ad Account-ই সংযুক্ত ও Active থাকতে হবে" : "নির্বাচিত Meta Ad Account সংযুক্ত নেই",
+      error: "দুইটি Ad Account-ই সংযুক্ত ও Active থাকতে হবে",
     };
   }
 
@@ -546,7 +543,7 @@ export const getOptimizedDashboardReport = createServerFn({ method: "POST" })
     const [summaryR, confirmedCountR, metaProfitR] = await Promise.allSettled([
       db.rpc("dashboard_egress_summary", { p_from: data.from, p_to: data.to }),
       db.rpc("dashboard_confirmed_order_count", { p_from: data.from, p_to: data.to }),
-      getMetaProfitData(data.from, data.to, data.accountKey),
+      getMetaProfitData(data.from, data.to),
     ]);
 
     const summaryResult = summaryR.status === "fulfilled" ? summaryR.value : null;
