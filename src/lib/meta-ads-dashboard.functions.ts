@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 
-const RangeSchema = z.object({ from: z.string().datetime(), to: z.string().datetime() });
+const RangeSchema = z.object({ from: z.string().datetime(), to: z.string().datetime(), accountKey: z.enum(["meta_ad_account", "meta_ad_account_2"]).default("meta_ad_account") });
 
 type MetaConfig = {
   access_token?: string;
@@ -76,19 +76,29 @@ export const getMetaAdsDashboard = createServerFn({ method: "POST" })
       return { connected: false, error: "Meta Ads is available to admin accounts" };
     }
 
-    const { data: integration, error: integrationError } = await db
+    const accountKeys = ["meta_ad_account", "meta_ad_account_2"] as const;
+    const { data: integrations, error: integrationError } = await db
       .from("integrations")
-      .select("config,is_active")
-      .eq("name", "meta_ad_account")
-      .maybeSingle();
+      .select("name,config,is_active")
+      .in("name", accountKeys);
     if (integrationError) throw new Error(integrationError.message);
 
+    const accountOptions = accountKeys.map((key, index) => {
+      const row = (integrations ?? []).find((item: any) => item.name === key);
+      const config = (row?.config ?? {}) as MetaConfig & { demo_name?: string };
+      return {
+        key,
+        label: String(config.demo_name || config.account_name || (index === 0 ? "Ad Account 1" : "Ad Account 2")),
+        connected: !!row?.is_active && !!String(config.access_token ?? "").trim() && !!String(config.ad_account_id ?? config.account_id ?? "").trim(),
+      };
+    });
+    const integration = (integrations ?? []).find((item: any) => item.name === data.accountKey);
     const cfg = ((integration?.config ?? {}) as MetaConfig);
     const token = String(cfg.access_token ?? "").trim();
     const accountId = String(cfg.ad_account_id ?? cfg.account_id ?? "").replace(/^act_/, "").trim();
 
     if (!integration?.is_active || !token || !accountId) {
-      return { connected: false, error: "Meta Ad Account is not connected" };
+      return { connected: false, error: "Selected Meta Ad Account is not connected", accountOptions, selectedAccountKey: data.accountKey };
     }
 
     const since = dhakaDate(data.from);
@@ -119,6 +129,8 @@ export const getMetaAdsDashboard = createServerFn({ method: "POST" })
       if (cached?.payload?.connected) {
         return {
           ...cached.payload,
+          accountOptions,
+          selectedAccountKey: data.accountKey,
           connected: true,
           cached: true,
           fetchedAt: cached.payload.fetchedAt || cached.fetched_at,
@@ -150,6 +162,8 @@ export const getMetaAdsDashboard = createServerFn({ method: "POST" })
 
     return {
       connected: true,
+      accountOptions,
+      selectedAccountKey: data.accountKey,
       accountName: accountJson.name || cfg.account_name || "Meta Ad Account",
       accountId: accountJson.account_id || accountId,
       currency: accountJson.currency || "USD",
