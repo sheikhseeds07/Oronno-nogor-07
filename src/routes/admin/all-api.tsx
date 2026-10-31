@@ -107,7 +107,7 @@ function AllApi() {
   const saveHoorin = async () => { setSavingH(true); const cfg = { endpoint: hoorin.endpoint.trim(), api_key: hoorin.api_key.trim() }; const { error } = await supabase.from("integrations").upsert({ name: "all_api_hoorin", is_active: hoorinActive, config: cfg, updated_at: new Date().toISOString() }, { onConflict: "name" }); setSavingH(false); if (error) toast.error(error.message); else toast.success("Hoorin সেভ হয়েছে"); };
   const testHoorin = async () => { setHTesting(true); setHResult(null); setHOk(null); try { await saveHoorin(); const r = await historyFn({ data: { phone: "01700000000" } }); if (r.error) { setHOk(false); setHResult(`ব্যর্থ: ${r.error}`); toast.error(r.error); } else { setHOk(true); setHResult(`সফল — ${r.stats.length} কুরিয়ার রেসপন্স পাওয়া গেছে`); toast.success("কানেকশন সফল"); } } catch (e) { const m = e instanceof Error ? e.message : "Failed"; setHOk(false); setHResult(m); toast.error(m); } finally { setHTesting(false); } };
 
-  const goBack = () => setSelected(null);
+  const goBack = async () => { const { data } = await supabase.from("integrations").select("name,config").in("name", ["meta_ad_account", "meta_ad_account_2"]); const names: Record<string, string> = {}; for (const row of data || []) { const cfg = (row.config || {}) as Record<string, unknown>; const key = row.name === "meta_ad_account_2" ? "metaAdAccount2" : "metaAdAccount"; const label = String(cfg.demo_name || "").trim(); if (label) names[key] = label; } setMetaDemoNames(names); setSelected(null); };
   const selectedItem = API_ITEMS.find(item => item.id === selected);
 
   return <AdminLayout>
