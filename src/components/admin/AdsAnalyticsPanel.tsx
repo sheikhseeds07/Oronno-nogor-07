@@ -47,8 +47,18 @@ export function AdsAnalyticsPanel() {
   const load = async () => {
     const id = ++request.current;
     setLoading(true); setError("");
-    const to = new Date();
-    const from = new Date(to.getTime() - Math.max(0, Number(days) - 1) * 86400000);
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dhaka" }).format(new Date());
+    const shiftDate = (date: string, offset: number) => {
+      const value = new Date(`${date}T00:00:00.000Z`);
+      value.setUTCDate(value.getUTCDate() + offset);
+      return value.toISOString().slice(0, 10);
+    };
+    const endDate = days === "yesterday" ? shiftDate(today, -1) : today;
+    const startDate = days === "today" ? today
+      : days === "yesterday" ? endDate
+      : shiftDate(today, -(Number(days) - 1));
+    const from = new Date(`${startDate}T00:00:00+06:00`);
+    const to = new Date(`${endDate}T23:59:59.999+06:00`);
     try {
       const result = await fetchAnalytics({ data: { from: from.toISOString(), to: to.toISOString(), accountKey } });
       if (id === request.current) setData(result);
@@ -102,7 +112,7 @@ export function AdsAnalyticsPanel() {
       </div>
       <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_160px_auto]">
         <select value={accountKey} onChange={e=>setAccountKey(e.target.value as AccountKey)} className="rounded-xl border border-white/15 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"><option className="text-slate-900" value="all">সব Ad Account</option><option className="text-slate-900" value="meta_ad_account">Sheikh Seeds</option><option className="text-slate-900" value="meta_ad_account_2">Oronno Nogor</option></select>
-        <select value={days} onChange={e=>setDays(e.target.value)} className="rounded-xl border border-white/15 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"><option className="text-slate-900" value="7">শেষ ৭ দিন</option><option className="text-slate-900" value="14">শেষ ১৪ দিন</option><option className="text-slate-900" value="30">শেষ ৩০ দিন</option><option className="text-slate-900" value="90">শেষ ৯০ দিন</option></select>
+        <select value={days} onChange={e=>setDays(e.target.value)} className="rounded-xl border border-white/15 bg-white/10 px-3 py-2.5 text-sm text-white outline-none"><option className="text-slate-900" value="today">Today</option><option className="text-slate-900" value="yesterday">Yesterday</option><option className="text-slate-900" value="7">শেষ ৭ দিন</option><option className="text-slate-900" value="14">শেষ ১৪ দিন</option><option className="text-slate-900" value="30">শেষ ৩০ দিন</option><option className="text-slate-900" value="90">শেষ ৯০ দিন</option></select>
         <div className="flex items-center rounded-xl bg-white/10 px-3 py-2 text-xs text-slate-200">{data?.range?.since || "—"} → {data?.range?.until || "—"}</div>
       </div>
     </div>
