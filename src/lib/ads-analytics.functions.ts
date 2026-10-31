@@ -55,10 +55,23 @@ function actionValue(items: any[] = []) {
   return 0;
 }
 
+function actionCount(items: any[] = [], types: string[]) {
+  for (const type of types) {
+    const found = items.find((item) => String(item?.action_type) === type);
+    if (found) return Number(found.value || 0);
+  }
+  return 0;
+}
+
 function normalizeInsight(row: any, account: any) {
   const spend = Number(row?.spend || 0);
-  const purchases = actionValue(Array.isArray(row?.actions) ? row.actions : []);
+  const actions = Array.isArray(row?.actions) ? row.actions : [];
+  const purchases = actionValue(actions);
   const purchaseValue = actionValue(Array.isArray(row?.action_values) ? row.action_values : []);
+  const linkClicks = Number(row?.inline_link_clicks || actionCount(actions, ["link_click", "outbound_click"]));
+  const landingPageViews = actionCount(actions, ["landing_page_view", "omni_landing_page_view"]);
+  const addToCarts = actionCount(actions, ["offsite_conversion.fb_pixel_add_to_cart", "add_to_cart", "omni_add_to_cart"]);
+  const checkouts = actionCount(actions, ["offsite_conversion.fb_pixel_initiate_checkout", "initiate_checkout", "omni_initiated_checkout"]);
   return {
     ...row,
     accountName: account.accountName,
@@ -77,6 +90,10 @@ function normalizeInsight(row: any, account: any) {
     impressions: Number(row?.impressions || 0),
     reach: Number(row?.reach || 0),
     clicks: Number(row?.clicks || 0),
+    linkClicks,
+    landingPageViews,
+    addToCarts,
+    checkouts,
   };
 }
 
@@ -255,8 +272,12 @@ export const getAdsAnalytics = createServerFn({ method: "POST" })
       sum.impressions += Number(m.impressions || 0);
       sum.reach += Number(m.reach || 0);
       sum.clicks += Number(m.clicks || 0);
+      sum.linkClicks += Number(m.linkClicks || 0);
+      sum.landingPageViews += Number(m.landingPageViews || 0);
+      sum.addToCarts += Number(m.addToCarts || 0);
+      sum.checkouts += Number(m.checkouts || 0);
       return sum;
-    }, { spend: 0, spendBdt: 0, purchases: 0, purchaseValue: 0, purchaseValueBdt: 0, impressions: 0, reach: 0, clicks: 0 });
+    }, { spend: 0, spendBdt: 0, purchases: 0, purchaseValue: 0, purchaseValueBdt: 0, impressions: 0, reach: 0, clicks: 0, linkClicks: 0, landingPageViews: 0, addToCarts: 0, checkouts: 0 });
 
     const flatten = (field: "daily" | "campaigns" | "adsets" | "ads" | "audiences" | "regions" | "placements") =>
       connectedAccounts.flatMap((account: any) => (account[field] ?? []).map((row: any) => ({
@@ -278,6 +299,7 @@ export const getAdsAnalytics = createServerFn({ method: "POST" })
         cpc: combined.clicks > 0 ? combined.spendBdt / combined.clicks : 0,
         reach: combined.reach,
         frequency: combined.reach > 0 ? combined.impressions / combined.reach : 0,
+        cpm: combined.impressions > 0 ? combined.spendBdt / combined.impressions * 1000 : 0,
       },
       daily: flatten("daily").sort((a: any, b: any) => String(a.day).localeCompare(String(b.day))),
       campaigns: flatten("campaigns").sort((a: any, b: any) => b.spend - a.spend),
