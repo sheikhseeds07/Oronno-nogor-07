@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, CheckCircle2, CircleDollarSign, Clock3, Eye, MapPin, MousePointerClick, RefreshCw, ShieldAlert, ShoppingCart, Target, Users, Wallet } from "lucide-react";
+import { Activity, AlertTriangle, BarChart3, CheckCircle2, CircleDollarSign, Clock3, Eye, MapPin, MousePointerClick, RefreshCw, ShieldAlert, ShoppingCart, Target, Users, Wallet } from "lucide-react";
 import { getAdsAnalytics } from "@/lib/ads-analytics.functions";
 
 type AccountKey = "all" | "meta_ad_account" | "meta_ad_account_2";
@@ -108,6 +108,7 @@ export function AdsAnalyticsPanel() {
     {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800"><b>রিপোর্ট লোড হয়নি:</b> {error}</div>}
     {loading && <div className="rounded-xl border bg-white p-10 text-center text-sm text-slate-500"><RefreshCw className="mx-auto mb-2 h-5 w-5 animate-spin"/>Meta ও সাইটের রিপোর্ট আনা হচ্ছে…</div>}
     {!loading && data && <>
+      <div className="grid gap-2 sm:grid-cols-2">{accounts.map((a:Row)=><div key={a.accountKey} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5"><div className="min-w-0"><div className="truncate text-xs font-bold text-slate-800">{a.accountName}</div><div className="text-[10px] text-slate-500">{a.accountId ? `act_${a.accountId}` : a.error || "Not configured"}</div></div><StatusPill label={a.connected ? (a.accountStatus === 1 ? "Connected · Active" : `Connected · Status ${a.accountStatus}`) : "Not connected"} good={a.connected && a.accountStatus === 1}/></div>)}</div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric title="Meta Ad Spend" value={money(spendBdt)} sub={`Account dollar rate অনুযায়ী BDT-তে রূপান্তরিত · ${accounts.filter((a: Row) => a.connected).length} account(s)`} icon={Wallet} tone="blue"/>
         <Metric title="Meta Purchases" value={number(m.purchases)} sub="Meta attribution · deduplication may differ from site orders" icon={ShoppingCart} tone="green"/>
