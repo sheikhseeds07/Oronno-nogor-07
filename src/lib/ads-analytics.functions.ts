@@ -258,9 +258,8 @@ export const getAdsAnalytics = createServerFn({ method: "POST" })
       }
     }
     const connectedAccounts = accounts.filter((account: any) => account.connected);
-    const courierCost = connectedAccounts.length
-      ? connectedAccounts.reduce((sum: number, account: any) => sum + Number(account.courierCostPerOrder || 50), 0) / connectedAccounts.length
-      : 50;
+    const primaryConfig = ((integrations ?? []).find((item: any) => item.name === "meta_ad_account")?.config ?? {}) as Config;
+    const courierCost = Number(primaryConfig.courier_cost_per_order) || 50;
     orderStats.sourceBreakdown = Array.from(sourceTotals.values()).sort((a, b) => b.revenue - a.revenue);
     orderStats.deliveredCourierEstimate = orderStats.delivered * courierCost;
     orderStats.deliveredContributionBeforeAds = orderStats.deliveredRevenue - orderStats.productCost - orderStats.deliveredCourierEstimate;
