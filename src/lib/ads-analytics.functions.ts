@@ -90,8 +90,16 @@ async function insights(base: string, auth: string, since: string, until: string
   ].join(",");
   const range = encodeURIComponent(JSON.stringify({ since, until }));
   const url = `${base}/insights?level=${level}&fields=${fields}&time_range=${range}&limit=500&${extra ? extra + "&" : ""}${auth}`;
-  const json = await graphGet(url);
-  return Array.isArray(json?.data) ? json.data : [];
+  let next: string | null = url;
+  const rows: any[] = [];
+  let pages = 0;
+  while (next && pages < 5) {
+    const json = await graphGet(next);
+    if (Array.isArray(json?.data)) rows.push(...json.data);
+    next = typeof json?.paging?.next === "string" ? json.paging.next : null;
+    pages++;
+  }
+  return rows;
 }
 
 export const getAdsAnalytics = createServerFn({ method: "POST" })
