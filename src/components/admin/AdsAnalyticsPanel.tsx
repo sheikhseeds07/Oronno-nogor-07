@@ -8,6 +8,7 @@ type AccountKey = "all" | "meta_ad_account" | "meta_ad_account_2";
 type Tab = "overview" | "campaigns" | "audience" | "regions" | "placements" | "profit";
 type Row = Record<string, any>;
 const money = (n: number, digits = 0) => `৳${Number(n || 0).toLocaleString("en-BD", { maximumFractionDigits: digits, minimumFractionDigits: digits })}`;
+const usd = (n: number, digits = 2) => `${Number(n || 0).toLocaleString("en-US", { maximumFractionDigits: digits, minimumFractionDigits: digits })}`;
 const number = (n: number) => Number(n || 0).toLocaleString("en-US", { maximumFractionDigits: 1 });
 const percent = (n: number) => `${Number(n || 0).toFixed(2)}%`;
 const actionName = (row: Row) => row.ad_name || row.adset_name || row.campaign_name || row.region || [row.age, row.gender].filter(Boolean).join(" · ") || row.publisher_platform || "—";
@@ -71,8 +72,8 @@ export function AdsAnalyticsPanel() {
 
   const m = data?.metrics || {};
   const accounts = data?.accounts || [];
-  const spendBdt = Number(m.spendBdt || 0);
-  const daily = (data?.daily || []).map((r: Row) => ({ ...r, label: String(r.day || "").slice(5), spendBdt: Number(r.spendBdt || 0) }));
+  const spendUsd = Number(m.spendUsd || 0);
+  const daily = (data?.daily || []).map((r: Row) => ({ ...r, label: String(r.day || "").slice(5), spendUsd: Number(r.spendUsd || 0) }));
   const tabs: Array<{ id: Tab; label: string; icon: any }> = [
     { id: "overview", label: "Overview", icon: Activity },
     { id: "campaigns", label: "Campaign / Ad", icon: Target },
@@ -83,9 +84,11 @@ export function AdsAnalyticsPanel() {
   ];
   const metricCols = [
     { key: "name", label: "নাম", render: (r: Row) => <div><div className="font-bold text-slate-900">{actionName(r)}</div><div className="text-[10px] text-slate-400">{r.accountName}</div></div> },
-    { key: "spend", label: "খরচ (৳)", render: (r: Row) => money(r.spendBdt) },
+    { key: "spend", label: "খরচ (USD)", render: (r: Row) => usd(r.spendUsd) },
     { key: "purchases", label: "Purchase", render: (r: Row) => number(r.purchases) },
-    { key: "cpa", label: "Cost / Purchase", render: (r: Row) => r.cpaBdt == null ? "—" : money(r.cpaBdt) },
+    { key: "cpa", label: "Cost / Purchase (USD)", render: (r: Row) => r.cpaUsd == null ? "—" : usd(r.cpaUsd) },
+    { key: "cpc", label: "CPC (USD)", render: (r: Row) => usd(r.cpcUsd) },
+    { key: "cpm", label: "CPM (USD)", render: (r: Row) => usd(r.cpmUsd) },
     { key: "roas", label: "ROAS", render: (r: Row) => r.roas == null ? "—" : `${r.roas.toFixed(2)}x` },
     { key: "ctr", label: "CTR", render: (r: Row) => percent(r.ctr) },
     { key: "frequency", label: "Frequency", render: (r: Row) => number(r.frequency) },
@@ -109,16 +112,16 @@ export function AdsAnalyticsPanel() {
     {!loading && data && <>
       <div className="grid gap-2 sm:grid-cols-2">{accounts.map((a:Row)=><div key={a.accountKey} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5"><div className="min-w-0"><div className="truncate text-xs font-bold text-slate-800">{a.accountName}</div><div className="text-[10px] text-slate-500">{a.accountId ? `act_${a.accountId}` : a.error || "Not configured"}</div></div><StatusPill label={a.connected ? (a.accountStatus === 1 ? "Connected · Active" : `Connected · Status ${a.accountStatus}`) : "Not connected"} good={a.connected && a.accountStatus === 1}/></div>)}</div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric title="Meta Ad Spend" value={money(spendBdt)} sub={`Account dollar rate অনুযায়ী BDT-তে রূপান্তরিত · ${accounts.filter((a: Row) => a.connected).length} account(s)`} icon={Wallet} tone="blue"/>
+        <Metric title="Meta Ad Spend" value={usd(spendUsd)} sub={`USD · ${accounts.filter((a: Row) => a.connected).length} account(s); BDT accounts converted using saved dollar rate`} icon={Wallet} tone="blue"/>
         <Metric title="Meta Purchases" value={number(m.purchases)} sub="Meta attribution · deduplication may differ from site orders" icon={ShoppingCart} tone="green"/>
-        <Metric title="Cost per Purchase" value={m.cpa == null ? "—" : money(m.cpa)} sub="Meta-reported CPA, converted using account dollar rate" icon={Target} tone="violet"/>
+        <Metric title="Cost per Purchase" value={m.cpaUsd == null ? "—" : usd(m.cpaUsd)} sub="Meta-reported cost per purchase · USD" icon={Target} tone="violet"/>
         <Metric title="Meta Purchase ROAS" value={m.roas == null ? "—" : `${Number(m.roas).toFixed(2)}x`} sub="Purchase value ÷ Meta ad spend" icon={Activity} tone="amber"/>
         <Metric title="Purchase Conversion Value" value={money(m.purchaseValueBdt)} sub="Meta-attributed purchase value · converted to BDT" icon={CircleDollarSign} tone="green"/>
         <Metric title="Reach" value={number(m.reach)} sub="Combined account reach · overlap possible" icon={Users} tone="blue"/>
         <Metric title="Frequency" value={number(m.frequency)} sub="Impressions ÷ combined reach" icon={Eye} tone="violet"/>
         <Metric title="Impressions" value={number(m.impressions)} sub={`CTR ${percent(m.ctr)}`} icon={Eye} tone="blue"/>
-        <Metric title="Clicks" value={number(m.clicks)} sub={m.clicks ? `Avg CPC ${money((m.spendBdt || 0) / m.clicks)}` : "No clicks"} icon={MousePointerClick} tone="violet"/>
-        <Metric title="CPM" value={money(m.cpm, 2)} sub="প্রতি ১,০০০ impressions-এর খরচ" icon={BarChart3} tone="amber"/>
+        <Metric title="Clicks" value={number(m.clicks)} sub={m.clicks ? `Avg CPC ${usd(m.cpcUsd)}` : "No clicks"} icon={MousePointerClick} tone="violet"/>
+        <Metric title="CPM" value={usd(m.cpmUsd)} sub="প্রতি ১,০০০ impressions-এর খরচ · USD" icon={BarChart3} tone="amber"/>
         <Metric title="Delivered Orders (Site)" value={number(data.orders?.delivered)} sub={`Revenue ${money(data.orders?.deliveredRevenue)} · all channels`} icon={CheckCircle2} tone="green"/>
         <Metric title="Cancelled / Returned" value={`${number(data.orders?.cancelled)} / ${number(data.orders?.returned)}`} sub={`${number(data.orders?.active)} active / processing orders`} icon={ShieldAlert} tone="rose"/>
       </div>
@@ -126,7 +129,7 @@ export function AdsAnalyticsPanel() {
       <div className="flex gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1.5">{tabs.map(t=><button key={t.id} onClick={()=>setTab(t.id)} className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold transition ${tab===t.id?"bg-slate-900 text-white shadow":"text-slate-600 hover:bg-slate-100"}`}><t.icon className="h-3.5 w-3.5"/>{t.label}</button>)}</div>
 
       {tab==="overview"&&<div className="space-y-4"><div className="grid gap-4 xl:grid-cols-[1.5fr_1fr]">
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="mb-3 flex items-center justify-between"><div><h3 className="font-extrabold text-slate-900">Daily Ad Spend</h3><p className="text-[11px] text-slate-500">প্রতিদিনের Meta spend (৳)</p></div><span className="text-xs font-bold text-slate-500">{daily.length} days</span></div>{daily.length?<div className="h-64"><ResponsiveContainer width="100%" height="100%"><AreaChart data={daily}><defs><linearGradient id="adsSpendFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#0f766e" stopOpacity={.28}/><stop offset="100%" stopColor="#0f766e" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="label" tick={{fontSize:10}}/><YAxis tick={{fontSize:10}}/><Tooltip formatter={(v:any)=>money(Number(v))}/><Area type="monotone" dataKey="spendBdt" stroke="#0f766e" fill="url(#adsSpendFill)" strokeWidth={2}/></AreaChart></ResponsiveContainer></div>:<p className="py-12 text-center text-sm text-slate-500">এই সময়ের daily data পাওয়া যায়নি।</p>}</section>
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="mb-3 flex items-center justify-between"><div><h3 className="font-extrabold text-slate-900">Daily Ad Spend</h3><p className="text-[11px] text-slate-500">প্রতিদিনের Meta spend (USD)</p></div><span className="text-xs font-bold text-slate-500">{daily.length} days</span></div>{daily.length?<div className="h-64"><ResponsiveContainer width="100%" height="100%"><AreaChart data={daily}><defs><linearGradient id="adsSpendFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#0f766e" stopOpacity={.28}/><stop offset="100%" stopColor="#0f766e" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="label" tick={{fontSize:10}}/><YAxis tick={{fontSize:10}}/><Tooltip formatter={(v:any)=>usd(Number(v))}/><Area type="monotone" dataKey="spendUsd" stroke="#0f766e" fill="url(#adsSpendFill)" strokeWidth={2}/></AreaChart></ResponsiveContainer></div>:<p className="py-12 text-center text-sm text-slate-500">এই সময়ের daily data পাওয়া যায়নি।</p>}</section>
         <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><h3 className="font-extrabold text-slate-900">করণীয় / Optimization Signals</h3><p className="mt-1 text-[11px] text-slate-500">নিচের নিয়মগুলো heuristic; সিদ্ধান্তের আগে tracking ও sample যাচাই করুন।</p><div className="mt-3 space-y-2">{recommendations.length?recommendations.map((r:any,i)=><div key={i} className="rounded-xl border border-slate-100 bg-slate-50 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><b className="text-xs text-slate-900">{r.name}</b><StatusPill label={r.status} good={r.tone==="good"}/></div><p className="mt-1 text-[11px] leading-5 text-slate-600">{r.reason}</p></div>):<div className="rounded-xl bg-slate-50 p-4 text-xs leading-5 text-slate-600">এখনও নির্ভরযোগ্য CPA baseline নেই। আরও Purchase data আসলে targeting suggestion তৈরি হবে।</div>}</div></section>
       </div>
         <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="mb-3"><h3 className="font-extrabold text-slate-900">Conversion Funnel</h3><p className="text-[11px] text-slate-500">Meta event reporting · প্রতিটি ধাপে কতজন এগিয়েছে দেখুন</p></div><div className="grid grid-cols-2 gap-2 sm:grid-cols-5">{[{label:"Link Clicks",value:m.linkClicks},{label:"Landing Page Views",value:m.landingPageViews},{label:"Add to Cart",value:m.addToCarts},{label:"Checkout",value:m.checkouts},{label:"Purchases",value:m.purchases}].map((stage:any,i:number,arr:any[])=>{const rate=i>0&&Number(arr[i-1].value)>0?Number(stage.value)/Number(arr[i-1].value)*100:null;return <div key={stage.label} className="rounded-xl bg-slate-50 p-3"><div className="text-[10px] font-bold text-slate-500">{stage.label}</div><div className="mt-1 text-xl font-black text-slate-900">{number(stage.value)}</div>{i>0&&<div className="mt-1 text-[10px] font-semibold text-slate-500">{rate==null?"—":`${rate.toFixed(1)}% from previous`}</div>}</div>})}</div><p className="mt-2 text-[10px] text-slate-400">Pixel/CAPI event reporting Meta-তে পাওয়া ডেটার ওপর নির্ভরশীল; event setup বা attribution gap থাকলে funnel অসম্পূর্ণ হতে পারে।</p></section>
