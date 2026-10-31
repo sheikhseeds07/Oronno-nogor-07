@@ -25,7 +25,7 @@ function Table({ rows, columns, empty }: { rows: Row[]; columns: Array<{ key: st
 function guidance(rows: Row[], baseline: number | null, label: string) {
   if (!baseline || baseline <= 0) return [];
   return rows.map(row => {
-    const purchases = Number(row.purchases || 0), spend = Number(row.spend || 0), cpa = row.cpa == null ? (purchases > 0 ? spend / purchases : null) : Number(row.cpa);
+    const purchases = Number(row.purchases || 0), spend = Number(row.spendBdt ?? row.spend ?? 0), cpa = row.cpaBdt == null ? (purchases > 0 ? spend / purchases : null) : Number(row.cpaBdt);
     if (purchases >= 3 && cpa != null && cpa <= baseline * 0.8) return { title: label, name: actionName(row), status: "বাজেট বাড়িয়ে পরীক্ষা", tone: "good", reason: `${purchases}টি Meta purchase; CPA account average-এর চেয়ে অন্তত ২০% কম। ধাপে ধাপে ১০–২০% budget test করো।` };
     if (purchases === 0 && spend >= baseline * 1.5) return { title: label, name: actionName(row), status: "Pause candidate", tone: "warn", reason: `এখনো purchase নেই এবং খরচ average CPA-এর ১.৫ গুণ। Tracking ও landing page যাচাই করে pause/test সিদ্ধান্ত নাও।` };
     if (purchases >= 1) return { title: label, name: actionName(row), status: "আরও ডেটা নাও", tone: "neutral", reason: `Purchase এসেছে, তবে বড় সিদ্ধান্তের জন্য আরও conversion data দরকার।` };
@@ -85,7 +85,7 @@ export function AdsAnalyticsPanel() {
     { key: "name", label: "নাম", render: (r: Row) => <span className="font-bold text-slate-900">{actionName(r)}</span> },
     { key: "spend", label: "খরচ (৳)", render: (r: Row) => money(r.spendBdt) },
     { key: "purchases", label: "Purchase", render: (r: Row) => number(r.purchases) },
-    { key: "cpa", label: "Cost / Purchase", render: (r: Row) => r.cpa == null ? "—" : money(r.cpa * (r.currency === "BDT" ? 1 : Number(accounts.find((a: Row) => a.accountKey === r.accountKey)?.currency === "BDT" ? 1 : 122))) },
+    { key: "cpa", label: "Cost / Purchase", render: (r: Row) => r.cpaBdt == null ? "—" : money(r.cpaBdt) },
     { key: "roas", label: "ROAS", render: (r: Row) => r.roas == null ? "—" : `${r.roas.toFixed(2)}x` },
     { key: "ctr", label: "CTR", render: (r: Row) => percent(r.ctr) },
     { key: "frequency", label: "Frequency", render: (r: Row) => number(r.frequency) },
@@ -109,9 +109,9 @@ export function AdsAnalyticsPanel() {
     {loading && <div className="rounded-xl border bg-white p-10 text-center text-sm text-slate-500"><RefreshCw className="mx-auto mb-2 h-5 w-5 animate-spin"/>Meta ও সাইটের রিপোর্ট আনা হচ্ছে…</div>}
     {!loading && data && <>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric title="Meta Ad Spend" value={money(spendBdt)} sub={`${number(m.spend)} ${accounts.find((a: Row) => a.currency !== "BDT")?.currency || "USD"} · ${accounts.filter((a: Row) => a.connected).length} account(s)`} icon={Wallet} tone="blue"/>
+        <Metric title="Meta Ad Spend" value={money(spendBdt)} sub={`Account dollar rate অনুযায়ী BDT-তে রূপান্তরিত · ${accounts.filter((a: Row) => a.connected).length} account(s)`} icon={Wallet} tone="blue"/>
         <Metric title="Meta Purchases" value={number(m.purchases)} sub="Meta attribution · deduplication may differ from site orders" icon={ShoppingCart} tone="green"/>
-        <Metric title="Cost per Purchase" value={m.cpa == null ? "—" : money(m.cpa * (accounts.find((a: Row) => a.connected)?.currency === "BDT" ? 1 : Number(accounts.find((a: Row) => a.connected)?.dollarRate || 122)))} sub="Meta-reported CPA, converted using account dollar rate" icon={Target} tone="violet"/>
+        <Metric title="Cost per Purchase" value={m.cpa == null ? "—" : money(m.cpa)} sub="Meta-reported CPA, converted using account dollar rate" icon={Target} tone="violet"/>
         <Metric title="Meta Purchase ROAS" value={m.roas == null ? "—" : `${Number(m.roas).toFixed(2)}x`} sub="Purchase value ÷ Meta ad spend" icon={Activity} tone="amber"/>
         <Metric title="Impressions" value={number(m.impressions)} sub={`CTR ${percent(m.ctr)}`} icon={Eye} tone="blue"/>
         <Metric title="Clicks" value={number(m.clicks)} sub={m.clicks ? `Avg CPC ${money((m.spendBdt || 0) / m.clicks)}` : "No clicks"} icon={MousePointerClick} tone="violet"/>
