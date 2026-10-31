@@ -114,6 +114,9 @@ export function AdsAnalyticsPanel() {
         <Metric title="Meta Purchases" value={number(m.purchases)} sub="Meta attribution · deduplication may differ from site orders" icon={ShoppingCart} tone="green"/>
         <Metric title="Cost per Purchase" value={m.cpa == null ? "—" : money(m.cpa)} sub="Meta-reported CPA, converted using account dollar rate" icon={Target} tone="violet"/>
         <Metric title="Meta Purchase ROAS" value={m.roas == null ? "—" : `${Number(m.roas).toFixed(2)}x`} sub="Purchase value ÷ Meta ad spend" icon={Activity} tone="amber"/>
+        <Metric title="Purchase Conversion Value" value={money(m.purchaseValueBdt)} sub="Meta-attributed purchase value · converted to BDT" icon={CircleDollarSign} tone="green"/>
+        <Metric title="Reach" value={number(m.reach)} sub="Combined account reach · overlap possible" icon={Users} tone="blue"/>
+        <Metric title="Frequency" value={number(m.frequency)} sub="Impressions ÷ combined reach" icon={Eye} tone="violet"/>
         <Metric title="Impressions" value={number(m.impressions)} sub={`CTR ${percent(m.ctr)}`} icon={Eye} tone="blue"/>
         <Metric title="Clicks" value={number(m.clicks)} sub={m.clicks ? `Avg CPC ${money((m.spendBdt || 0) / m.clicks)}` : "No clicks"} icon={MousePointerClick} tone="violet"/>
         <Metric title="Delivered Orders (Site)" value={number(data.orders?.delivered)} sub={`Revenue ${money(data.orders?.deliveredRevenue)} · all channels`} icon={CheckCircle2} tone="green"/>
