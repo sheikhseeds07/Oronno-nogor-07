@@ -203,6 +203,10 @@ export const getAdsAnalytics = createServerFn({ method: "POST" })
           cpc: summary.cpc,
           cpm: summary.cpm,
           frequency: summary.frequency,
+          linkClicks: summary.linkClicks,
+          landingPageViews: summary.landingPageViews,
+          addToCarts: summary.addToCarts,
+          checkouts: summary.checkouts,
         },
         daily, campaigns, adsets, ads, audiences, regions, placements,
       };
