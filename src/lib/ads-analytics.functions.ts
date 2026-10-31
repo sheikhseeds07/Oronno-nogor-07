@@ -63,6 +63,8 @@ function normalizeInsight(row: any, account: any) {
     ...row,
     accountName: account.accountName,
     accountKey: account.accountKey,
+    currency: account.currency,
+    dollarRate: account.dollarRate,
     spend,
     purchases,
     purchaseValue,
@@ -82,7 +84,9 @@ async function insights(base: string, auth: string, since: string, until: string
   const fields = [
     "spend", "impressions", "reach", "frequency", "clicks", "ctr", "cpc", "cpm",
     "inline_link_clicks", "actions", "action_values", "cost_per_action_type",
-    "campaign_id", "campaign_name", "adset_id", "adset_name", "ad_id", "ad_name",
+    ...(level !== "account" ? ["campaign_id", "campaign_name"] : []),
+    ...(level === "adset" || level === "ad" ? ["adset_id", "adset_name"] : []),
+    ...(level === "ad" ? ["ad_id", "ad_name"] : []),
   ].join(",");
   const range = encodeURIComponent(JSON.stringify({ since, until }));
   const url = `${base}/insights?level=${level}&fields=${fields}&time_range=${range}&limit=500&${extra ? extra + "&" : ""}${auth}`;
@@ -128,7 +132,8 @@ export const getAdsAnalytics = createServerFn({ method: "POST" })
         catch (error) { warnings.push(`${label}: ${error instanceof Error ? error.message : "API error"}`); return null; }
       };
       const accountJson = await graphGet(`${base}?fields=name,account_id,currency,account_status&${auth}`);
-      const [dailyRaw, campaignRaw, adsetRaw, adRaw, audienceRaw, regionRaw, placementRaw] = await Promise.all([
+      const [summaryRaw, dailyRaw, campaignRaw, adsetRaw, adRaw, audienceRaw, regionRaw, placementRaw] = await Promise.all([
+        safe("Account summary", insights(base, auth, since, until, "account")),
         safe("Daily trend", insights(base, auth, since, until, "account", "time_increment=1")),
         safe("Campaigns", insights(base, auth, since, until, "campaign")),
         safe("Ad Sets", insights(base, auth, since, until, "adset")),
@@ -156,22 +161,23 @@ export const getAdsAnalytics = createServerFn({ method: "POST" })
       const audiences = convert(audienceRaw);
       const regions = convert(regionRaw);
       const placements = convert(placementRaw);
-      const totals = campaigns.length ? campaigns : convert(dailyRaw);
-      const spend = totals.reduce((sum, item) => sum + item.spend, 0);
-      const purchases = totals.reduce((sum, item) => sum + item.purchases, 0);
-      const purchaseValue = totals.reduce((sum, item) => sum + item.purchaseValue, 0);
+      const summary = convert(summaryRaw)?.[0] ?? normalizeInsight({}, account);
+      const spend = summary.spend;
+      const purchases = summary.purchases;
+      const purchaseValue = summary.purchaseValue;
       return {
         ...account,
         metrics: {
           spend, purchases, purchaseValue,
           cpa: purchases > 0 ? spend / purchases : null,
           roas: spend > 0 && purchaseValue > 0 ? purchaseValue / spend : null,
-          impressions: totals.reduce((sum, item) => sum + item.impressions, 0),
-          reach: Math.max(0, ...totals.map((item) => item.reach)),
-          clicks: totals.reduce((sum, item) => sum + item.clicks, 0),
-          ctr: totals.reduce((sum, item) => sum + item.impressions, 0) > 0
-            ? totals.reduce((sum, item) => sum + item.clicks, 0) / totals.reduce((sum, item) => sum + item.impressions, 0) * 100 : 0,
-          frequency: totals.length ? totals.reduce((sum, item) => sum + item.frequency, 0) / totals.length : 0,
+          impressions: summary.impressions,
+          reach: summary.reach,
+          clicks: summary.clicks,
+          ctr: summary.ctr,
+          cpc: summary.cpc,
+          cpm: summary.cpm,
+          frequency: summary.frequency,
         },
         daily, campaigns, adsets, ads, audiences, regions, placements,
       };
@@ -226,10 +232,11 @@ export const getAdsAnalytics = createServerFn({ method: "POST" })
       sum.spendBdt += Number(m.spend || 0) * factor;
       sum.purchases += Number(m.purchases || 0);
       sum.purchaseValue += Number(m.purchaseValue || 0);
+      sum.purchaseValueBdt += Number(m.purchaseValue || 0) * factor;
       sum.impressions += Number(m.impressions || 0);
       sum.clicks += Number(m.clicks || 0);
       return sum;
-    }, { spend: 0, spendBdt: 0, purchases: 0, purchaseValue: 0, impressions: 0, clicks: 0 });
+    }, { spend: 0, spendBdt: 0, purchases: 0, purchaseValue: 0, purchaseValueBdt: 0, impressions: 0, clicks: 0 });
 
     const flatten = (field: "daily" | "campaigns" | "adsets" | "ads" | "audiences" | "regions" | "placements") =>
       connectedAccounts.flatMap((account: any) => (account[field] ?? []).map((row: any) => ({
@@ -244,8 +251,8 @@ export const getAdsAnalytics = createServerFn({ method: "POST" })
         ({ accountKey, accountName, connected, error, currency, accountStatus, accountId, warnings })),
       metrics: {
         ...combined,
-        cpa: combined.purchases > 0 ? combined.spend / combined.purchases : null,
-        roas: combined.spend > 0 && combined.purchaseValue > 0 ? combined.purchaseValue / combined.spend : null,
+        cpa: combined.purchases > 0 ? combined.spendBdt / combined.purchases : null,
+        roas: combined.spendBdt > 0 && combined.purchaseValueBdt > 0 ? combined.purchaseValueBdt / combined.spendBdt : null,
         ctr: combined.impressions > 0 ? combined.clicks / combined.impressions * 100 : 0,
         cpc: combined.clicks > 0 ? combined.spend / combined.clicks : 0,
       },
