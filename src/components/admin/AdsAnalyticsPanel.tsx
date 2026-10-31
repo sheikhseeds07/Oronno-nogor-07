@@ -8,7 +8,7 @@ type AccountKey = "all" | "meta_ad_account" | "meta_ad_account_2";
 type Tab = "overview" | "campaigns" | "audience" | "regions" | "placements" | "profit";
 type Row = Record<string, any>;
 const money = (n: number, digits = 0) => `৳${Number(n || 0).toLocaleString("en-BD", { maximumFractionDigits: digits, minimumFractionDigits: digits })}`;
-const usd = (n: number, digits = 2) => `${Number(n || 0).toLocaleString("en-US", { maximumFractionDigits: digits, minimumFractionDigits: digits })}`;
+const usd = (n: number, digits = 2) => `$${Number(n || 0).toLocaleString("en-US", { maximumFractionDigits: digits, minimumFractionDigits: digits })}`;
 const number = (n: number) => Number(n || 0).toLocaleString("en-US", { maximumFractionDigits: 1 });
 const percent = (n: number) => `${Number(n || 0).toFixed(2)}%`;
 const actionName = (row: Row) => row.ad_name || row.adset_name || row.campaign_name || row.region || [row.age, row.gender].filter(Boolean).join(" · ") || row.publisher_platform || "—";
