@@ -26,9 +26,9 @@ function guidance(rows: Row[], baseline: number | null, label: string) {
   if (!baseline || baseline <= 0) return [];
   return rows.map(row => {
     const purchases = Number(row.purchases || 0), spend = Number(row.spendBdt ?? row.spend ?? 0), cpa = row.cpaBdt == null ? (purchases > 0 ? spend / purchases : null) : Number(row.cpaBdt);
-    if (purchases >= 3 && cpa != null && cpa <= baseline * 0.8) return { title: label, name: actionName(row), status: "বাজেট বাড়িয়ে পরীক্ষা", tone: "good", reason: `${purchases}টি Meta purchase; CPA account average-এর চেয়ে অন্তত ২০% কম। ধাপে ধাপে ১০–২০% budget test করো।` };
-    if (purchases === 0 && spend >= baseline * 1.5) return { title: label, name: actionName(row), status: "Pause candidate", tone: "warn", reason: `এখনো purchase নেই এবং খরচ average CPA-এর ১.৫ গুণ। Tracking ও landing page যাচাই করে pause/test সিদ্ধান্ত নাও।` };
-    if (purchases >= 1) return { title: label, name: actionName(row), status: "আরও ডেটা নাও", tone: "neutral", reason: `Purchase এসেছে, তবে বড় সিদ্ধান্তের জন্য আরও conversion data দরকার।` };
+    if (purchases >= 3 && cpa != null && cpa <= baseline * 0.8) return { title: label, name: `${actionName(row)} · ${row.accountName || ""}`, status: "বাজেট বাড়িয়ে পরীক্ষা", tone: "good", reason: `${purchases}টি Meta purchase; CPA account average-এর চেয়ে অন্তত ২০% কম। ধাপে ধাপে ১০–২০% budget test করো।` };
+    if (purchases === 0 && spend >= baseline * 1.5) return { title: label, name: `${actionName(row)} · ${row.accountName || ""}`, status: "Pause candidate", tone: "warn", reason: `এখনো purchase নেই এবং খরচ average CPA-এর ১.৫ গুণ। Tracking ও landing page যাচাই করে pause/test সিদ্ধান্ত নাও।` };
+    if (purchases >= 1) return { title: label, name: `${actionName(row)} · ${row.accountName || ""}`, status: "আরও ডেটা নাও", tone: "neutral", reason: `Purchase এসেছে, তবে বড় সিদ্ধান্তের জন্য আরও conversion data দরকার।` };
     return null;
   }).filter(Boolean).slice(0, 8) as any[];
 }
@@ -61,11 +61,11 @@ export function AdsAnalyticsPanel() {
   const recommendations = useMemo(() => {
     if (!data?.metrics?.cpa) return [];
     return [
-      ...guidance(data.audiences || [], data.metrics.cpa, "Audience"),
-      ...guidance(data.regions || [], data.metrics.cpa, "Region"),
-      ...guidance(data.placements || [], data.metrics.cpa, "Placement"),
-      ...guidance(data.campaigns || [], data.metrics.cpa, "Campaign"),
-      ...guidance(data.ads || [], data.metrics.cpa, "Ad"),
+      ...guidance(data.campaigns || [], data.metrics.cpa, "Campaign").slice(0, 3),
+      ...guidance(data.ads || [], data.metrics.cpa, "Ad").slice(0, 3),
+      ...guidance(data.audiences || [], data.metrics.cpa, "Audience").slice(0, 2),
+      ...guidance(data.regions || [], data.metrics.cpa, "Region").slice(0, 2),
+      ...guidance(data.placements || [], data.metrics.cpa, "Placement").slice(0, 2),
     ].slice(0, 12);
   }, [data]);
 
