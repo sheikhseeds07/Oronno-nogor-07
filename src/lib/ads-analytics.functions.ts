@@ -204,7 +204,9 @@ export const getAdsAnalytics = createServerFn({ method: "POST" })
       total: (orderRows ?? []).length, delivered: 0, active: 0, cancelled: 0, returned: 0,
       deliveredRevenue: 0, activeOrderValue: 0, productCost: 0, missingCostLines: 0,
       deliveredCourierEstimate: 0, deliveredContributionBeforeAds: 0,
+      sourceBreakdown: [] as Array<{ source: string; orders: number; revenue: number }>,
     };
+    const sourceTotals = new Map<string, { source: string; orders: number; revenue: number }>();
     for (const order of orderRows ?? []) {
       const status = String(order.status || "").toLowerCase();
       const isDelivered = status === "delivered";
@@ -212,7 +214,15 @@ export const getAdsAnalytics = createServerFn({ method: "POST" })
       const isReturned = ["returned", "partial"].includes(status);
       const isActive = ["web_pending", "processing", "pending", "rts", "shipped", "pending_return"].includes(status);
       const total = Number(order.total || 0);
-      if (isDelivered) { orderStats.delivered++; orderStats.deliveredRevenue += total; }
+      if (isDelivered) {
+        orderStats.delivered++;
+        orderStats.deliveredRevenue += total;
+        const source = String(order.source || "unknown");
+        const current = sourceTotals.get(source) || { source, orders: 0, revenue: 0 };
+        current.orders++;
+        current.revenue += total;
+        sourceTotals.set(source, current);
+      }
       if (isActive) { orderStats.active++; orderStats.activeOrderValue += total; }
       if (isCancelled) orderStats.cancelled++;
       if (isReturned) orderStats.returned++;
@@ -230,6 +240,7 @@ export const getAdsAnalytics = createServerFn({ method: "POST" })
     const courierCost = connectedAccounts.length
       ? connectedAccounts.reduce((sum: number, account: any) => sum + Number(account.courierCostPerOrder || 50), 0) / connectedAccounts.length
       : 50;
+    orderStats.sourceBreakdown = Array.from(sourceTotals.values()).sort((a, b) => b.revenue - a.revenue);
     orderStats.deliveredCourierEstimate = orderStats.delivered * courierCost;
     orderStats.deliveredContributionBeforeAds = orderStats.deliveredRevenue - orderStats.productCost - orderStats.deliveredCourierEstimate;
 
@@ -242,9 +253,10 @@ export const getAdsAnalytics = createServerFn({ method: "POST" })
       sum.purchaseValue += Number(m.purchaseValue || 0);
       sum.purchaseValueBdt += Number(m.purchaseValue || 0) * factor;
       sum.impressions += Number(m.impressions || 0);
+      sum.reach += Number(m.reach || 0);
       sum.clicks += Number(m.clicks || 0);
       return sum;
-    }, { spend: 0, spendBdt: 0, purchases: 0, purchaseValue: 0, purchaseValueBdt: 0, impressions: 0, clicks: 0 });
+    }, { spend: 0, spendBdt: 0, purchases: 0, purchaseValue: 0, purchaseValueBdt: 0, impressions: 0, reach: 0, clicks: 0 });
 
     const flatten = (field: "daily" | "campaigns" | "adsets" | "ads" | "audiences" | "regions" | "placements") =>
       connectedAccounts.flatMap((account: any) => (account[field] ?? []).map((row: any) => ({
@@ -263,7 +275,9 @@ export const getAdsAnalytics = createServerFn({ method: "POST" })
         cpa: combined.purchases > 0 ? combined.spendBdt / combined.purchases : null,
         roas: combined.spendBdt > 0 && combined.purchaseValueBdt > 0 ? combined.purchaseValueBdt / combined.spendBdt : null,
         ctr: combined.impressions > 0 ? combined.clicks / combined.impressions * 100 : 0,
-        cpc: combined.clicks > 0 ? combined.spend / combined.clicks : 0,
+        cpc: combined.clicks > 0 ? combined.spendBdt / combined.clicks : 0,
+        reach: combined.reach,
+        frequency: combined.reach > 0 ? combined.impressions / combined.reach : 0,
       },
       daily: flatten("daily").sort((a: any, b: any) => String(a.day).localeCompare(String(b.day))),
       campaigns: flatten("campaigns").sort((a: any, b: any) => b.spend - a.spend),
