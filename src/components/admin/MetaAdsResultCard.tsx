@@ -13,6 +13,7 @@ export function MetaAdsResultCard({ range }: Props) {
   const fetchAds = useServerFn(getMetaAdsDashboard);
   const [data, setData] = useState<any>(null);
   const [accountKey, setAccountKey] = useState<"meta_ad_account" | "meta_ad_account_2" | "all">("meta_ad_account");
+  const [accountSelectionReady, setAccountSelectionReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const requestId = useRef(0);
 
@@ -47,11 +48,25 @@ export function MetaAdsResultCard({ range }: Props) {
   };
 
   useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("meta-ads-result-account");
+      if (saved === "all" || saved === "meta_ad_account" || saved === "meta_ad_account_2") setAccountKey(saved);
+    } catch { /* Storage may be unavailable; use the default account. */ }
+    setAccountSelectionReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!accountSelectionReady) return;
+    try { window.localStorage.setItem("meta-ads-result-account", accountKey); } catch { /* Keep selection for this session if storage is unavailable. */ }
+  }, [accountKey, accountSelectionReady]);
+
+  useEffect(() => {
+    if (!accountSelectionReady) return;
     requestId.current++;
     if (permissions.dashboard && user?.id) void load();
     else setLoading(false);
     // Auth changes must trigger a fresh request; range changes must never allow an old response to win.
-  }, [range.from, range.to, user?.id, permissions.dashboard, accountKey]);
+  }, [range.from, range.to, user?.id, permissions.dashboard, accountKey, accountSelectionReady]);
 
   if (!permissions.dashboard) return null;
   if (loading) return <div className="min-w-0 rounded-2xl border border-blue-200 bg-white p-4 shadow-sm"><div className="flex min-h-[176px] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-600" /></div></div>;
