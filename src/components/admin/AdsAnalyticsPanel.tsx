@@ -90,7 +90,6 @@ export function AdsAnalyticsPanel() {
     { key: "ctr", label: "CTR", render: (r: Row) => percent(r.ctr) },
     { key: "frequency", label: "Frequency", render: (r: Row) => number(r.frequency) },
   ];
-  const campaigns = [...(data?.campaigns || []), ...(data?.adsets || []), ...(data?.ads || [])];
 
   return <div className="space-y-5">
     <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 p-5 text-white shadow-lg">
