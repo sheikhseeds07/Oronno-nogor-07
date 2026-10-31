@@ -4,7 +4,7 @@ import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 import { isMassageOrder } from "@/lib/order-origin";
 
-const RangeSchema = z.object({ from: z.string().datetime(), to: z.string().datetime() });
+const RangeSchema = z.object({ from: z.string().datetime(), to: z.string().datetime(), accountKey: z.enum(["meta_ad_account", "meta_ad_account_2", "all"]).default("meta_ad_account") });
 const empty = { total: 0, confirmed: 0, processing: 0, cancelled: 0 };
 
 type MetaProfitConfig = {
@@ -19,7 +19,7 @@ type MetaProfitConfig = {
 
 const bdDay = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dhaka" }).format(new Date(iso));
 
-async function getMetaProfitData(from: string, to: string) {
+async function getMetaProfitData(from: string, to: string, accountKey: "meta_ad_account" | "meta_ad_account_2" | "all") {
   const defaults = {
     dollarRate: 122,
     courierCostPerOrder: 50,
@@ -32,39 +32,52 @@ async function getMetaProfitData(from: string, to: string) {
   };
 
   const db = supabaseAdmin as any;
-  const { data: integration, error } = await db
+  const accountKeys = accountKey === "all"
+    ? ["meta_ad_account", "meta_ad_account_2"]
+    : [accountKey];
+  const { data: integrations, error } = await db
     .from("integrations")
-    .select("config,is_active")
-    .eq("name", "meta_ad_account")
-    .maybeSingle();
+    .select("name,config,is_active")
+    .in("name", accountKeys);
   if (error) throw new Error(error.message);
 
-  const cfg = (integration?.config ?? {}) as MetaProfitConfig;
-  const dollarRate = Math.max(0, Number(cfg.dollar_rate) || defaults.dollarRate);
-  const courierCostPerOrder = Math.max(0, Number(cfg.courier_cost_per_order) || defaults.courierCostPerOrder);
-  const cancelRate = Math.min(100, Math.max(0, Number(cfg.cancel_rate ?? cfg.return_rate) || defaults.cancelRate));
-  const accountName = String(cfg.account_name ?? "Meta Ad Account");
+  const byName = new Map((integrations ?? []).map((row: any) => [String(row.name), row]));
+  const selected = accountKeys.map((key) => byName.get(key)).filter(Boolean) as any[];
+  const primaryCfg = (selected[0]?.config ?? {}) as MetaProfitConfig;
+  const dollarRate = Math.max(0, Number(primaryCfg.dollar_rate) || defaults.dollarRate);
+  const courierCostPerOrder = Math.max(0, Number(primaryCfg.courier_cost_per_order) || defaults.courierCostPerOrder);
+  const cancelRate = Math.min(100, Math.max(0, Number(primaryCfg.cancel_rate ?? primaryCfg.return_rate) || defaults.cancelRate));
+  const accountName = accountKey === "all"
+    ? "All ad account"
+    : String(primaryCfg.account_name ?? (accountKey === "meta_ad_account_2" ? "Oronno Nogor" : "Sheikh Seeds"));
 
-  if (!integration?.is_active || !cfg.access_token || !cfg.ad_account_id) {
-    return { ...defaults, dollarRate, courierCostPerOrder, cancelRate, accountName };
+  if (selected.length !== accountKeys.length || selected.some((row: any) => !row.is_active || !row.config?.access_token || !row.config?.ad_account_id)) {
+    return {
+      ...defaults, dollarRate, courierCostPerOrder, cancelRate, accountName,
+      error: accountKey === "all" ? "দুইটি Ad Account-ই সংযুক্ত ও Active থাকতে হবে" : "নির্বাচিত Meta Ad Account সংযুক্ত নেই",
+    };
   }
 
   try {
-    const accountId = String(cfg.ad_account_id).replace(/^act_/, "");
-    const base = `https://graph.facebook.com/v23.0/act_${encodeURIComponent(accountId)}`;
     const timeRange = encodeURIComponent(JSON.stringify({ since: bdDay(from), until: bdDay(to) }));
-    const auth = `access_token=${encodeURIComponent(String(cfg.access_token).trim())}`;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-    let response: Response;
-    try {
-      response = await fetch(`${base}/insights?fields=spend&time_range=${timeRange}&level=account&${auth}`, { signal: controller.signal });
-    } finally {
-      clearTimeout(timeout);
-    }
-    const json = await response.json();
-    if (!response.ok || json?.error) throw new Error(json?.error?.message || "Meta spend request failed");
-    const adSpendUsd = Number(json?.data?.[0]?.spend || 0);
+    const spends = await Promise.all(selected.map(async (integration: any) => {
+      const cfg = integration.config as MetaProfitConfig;
+      const accountId = String(cfg.ad_account_id).replace(/^act_/, "");
+      const base = `https://graph.facebook.com/v23.0/act_${encodeURIComponent(accountId)}`;
+      const auth = `access_token=${encodeURIComponent(String(cfg.access_token).trim())}`;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      let response: Response;
+      try {
+        response = await fetch(`${base}/insights?fields=spend&time_range=${timeRange}&level=account&${auth}`, { signal: controller.signal });
+      } finally {
+        clearTimeout(timeout);
+      }
+      const json = await response.json();
+      if (!response.ok || json?.error) throw new Error(json?.error?.message || "Meta spend request failed");
+      return Number(json?.data?.[0]?.spend || 0);
+    }));
+    const adSpendUsd = spends.reduce((sum, spend) => sum + spend, 0);
     return {
       dollarRate,
       courierCostPerOrder,
@@ -533,7 +546,7 @@ export const getOptimizedDashboardReport = createServerFn({ method: "POST" })
     const [summaryR, confirmedCountR, metaProfitR] = await Promise.allSettled([
       db.rpc("dashboard_egress_summary", { p_from: data.from, p_to: data.to }),
       db.rpc("dashboard_confirmed_order_count", { p_from: data.from, p_to: data.to }),
-      getMetaProfitData(data.from, data.to),
+      getMetaProfitData(data.from, data.to, data.accountKey),
     ]);
 
     const summaryResult = summaryR.status === "fulfilled" ? summaryR.value : null;
