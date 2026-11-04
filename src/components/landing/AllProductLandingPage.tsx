@@ -462,7 +462,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
                 `}</style>
               </>
             )}
-            {page.hero_subtitle && <p className="all-product-hero-subtitle mx-auto mt-2 max-w-2xl text-sm font-extrabold leading-6 text-amber-300 sm:mt-2.5 sm:text-base">{page.hero_subtitle}</p>}
+            {page.hero_subtitle && <p className="all-product-hero-subtitle mx-auto mt-1.5 max-w-2xl text-[12px] font-extrabold leading-5 text-amber-300 sm:mt-2.5 sm:text-base sm:leading-6">{isNutrimix ? page.hero_subtitle.replace(/("([^"]+)")(\s*"\2")+/g, "$1") : page.hero_subtitle}</p>}
           </div>
 
           <div className="mt-4 sm:mt-5">
