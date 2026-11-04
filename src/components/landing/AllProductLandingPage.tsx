@@ -345,7 +345,21 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
       trackPurchase(items, total, order.id);
       toast.success("অর্ডার সফল হয়েছে!");
       navigate({ to: "/order/$id", params: { id: order.id } });
-    } catch (error) { orderInFlightRef.current = false; notifyOrderError(error); setSubmitting(false); }
+    } catch (error) {
+      orderInFlightRef.current = false;
+      const message = error instanceof Error ? error.message : String(error ?? "");
+      if (isNutrimix && /Invalid Bangladesh mobile number|01XXXXXXXXX/i.test(message)) {
+        setFormErrors((errors) => ({ ...errors, phone: "মোবাইল নম্বরটি সঠিক নয় — ০১ দিয়ে ১১ সংখ্যার নম্বর লিখুন।" }));
+        window.requestAnimationFrame(() => {
+          const field = document.getElementById("nutrimix-phone");
+          field?.scrollIntoView({ behavior: "smooth", block: "center" });
+          (field as HTMLInputElement | null)?.focus();
+        });
+      } else {
+        notifyOrderError(error);
+      }
+      setSubmitting(false);
+    }
   };
 
   if (isLoading) return <div className="min-h-screen bg-all-product-surface" aria-hidden="true" />;
