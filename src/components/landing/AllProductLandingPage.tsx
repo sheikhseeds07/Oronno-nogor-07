@@ -717,9 +717,7 @@ function NutrimixNutrients() {
           <div className="pointer-events-none absolute -bottom-20 -left-10 h-40 w-40 rounded-full bg-all-product-gold/15 blur-3xl ap-nutri-glow" />
           <div className="relative">
             <div className="mb-2 text-center sm:mb-3">
-              <span className="inline-flex items-center gap-1 rounded-full border border-all-product-gold/30 bg-white/80 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-all-product-gold-foreground shadow-sm"><Sparkles className="h-3 w-3" /> Premium Nutrient Blend</span>
               <h2 className="mt-1 text-lg font-black leading-tight tracking-tight text-all-product-ink sm:text-2xl">NUTRIMIX-এর ৬টি পুষ্টি উপাদান</h2>
-              <p className="mx-auto mt-1 max-w-2xl text-[11px] font-semibold leading-[1.4] text-all-product-muted sm:text-sm">গাছের বৃদ্ধি, পাতা, ফুল ও পুষ্টি ব্যবস্থাপনায় সহায়ক ছয় উপাদানের সমন্বয়।</p>
             </div>
             <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 sm:gap-2.5">
               {nutrients.map((item) => (
@@ -733,7 +731,6 @@ function NutrimixNutrients() {
                 </article>
               ))}
             </div>
-            <div className="mt-2 flex items-center justify-center gap-1.5 rounded-lg border border-emerald-100 bg-white/75 px-2 py-1.5 text-center shadow-sm"><Leaf className="h-3.5 w-3.5 shrink-0 text-emerald-600" /><p className="text-[10px] font-bold leading-[1.35] text-all-product-muted sm:text-xs"><span className="font-black text-emerald-700">৬ উপাদান, একসাথে:</span> গাছের প্রয়োজনীয় পুষ্টি ব্যবস্থাপনায় সহায়ক।</p></div>
             <button type="button" onClick={() => document.getElementById("all-product-order-form")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="group relative mt-2 flex min-h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-all-product-primary px-4 py-2.5 text-sm font-black text-white shadow-[0_14px_30px_-14px_rgba(16,185,129,.7)] transition-all duration-300 hover:-translate-y-0.5 active:scale-[.99] sm:min-h-[50px] sm:rounded-2xl sm:text-[15px]">
               <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
               <ShoppingBag className="relative h-4 w-4 sm:h-5 sm:w-5" />
