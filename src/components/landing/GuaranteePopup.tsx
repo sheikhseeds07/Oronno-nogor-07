@@ -12,8 +12,6 @@ import { useEffect, useState } from "react";
  * the card never looks like it is flashing on mobile.
  */
 
-const POPUP_DURATION = 10000;
-
 export const GUARANTEE_POPUP_STYLE = `
 @keyframes gpFade{from{opacity:0}to{opacity:1}}
 @keyframes gpCard{0%{opacity:0;transform:scale(.92) translateY(12px)}100%{opacity:1;transform:scale(1) translateY(0)}}
