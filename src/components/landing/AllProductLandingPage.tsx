@@ -700,44 +700,44 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
 
 
 function NutrimixNutrients() {
-  const [active, setActive] = useState<string | null>(null);
   const nutrients = [
-    { symbol: "Mg", name: "Magnesium", bn: "ম্যাগনেসিয়াম", role: "ক্লোরোফিল ও পাতার সবুজভাব", benefit: "ক্লোরোফিল তৈরিতে সহায়তা করে এবং পাতাকে সবুজ ও সতেজ রাখতে ভূমিকা রাখে।", tone: "from-emerald-50 via-white to-lime-50", ring: "border-emerald-100", accent: "text-emerald-700", icon: "🌿" },
-    { symbol: "Ca", name: "Calcium", bn: "ক্যালসিয়াম", role: "কোষ ও নতুন বৃদ্ধির শক্তি", benefit: "গাছের কোষের গঠন ও নতুন টিস্যুর স্বাভাবিক বিকাশে গুরুত্বপূর্ণ ভূমিকা রাখে।", tone: "from-sky-50 via-white to-cyan-50", ring: "border-sky-100", accent: "text-sky-700", icon: "🌱" },
-    { symbol: "S", name: "Sulfur", bn: "সালফার", role: "প্রোটিন ও এনজাইম গঠন", benefit: "প্রোটিন ও গুরুত্বপূর্ণ যৌগ তৈরিতে সহায়তা করে এবং গাছের স্বাভাবিক বৃদ্ধি ও বিপাকীয় কার্যক্রমকে সমর্থন করে।", tone: "from-amber-50 via-white to-yellow-50", ring: "border-amber-100", accent: "text-amber-700", icon: "✨" },
-    { symbol: "B", name: "Boron", bn: "বোরন", role: "ফুল, পরাগায়ন ও নতুন টিস্যু", benefit: "ফুল ও প্রজনন অঙ্গের স্বাভাবিক বিকাশ, পরাগায়ন এবং নতুন টিস্যু গঠনে গুরুত্বপূর্ণ ভূমিকা রাখে।", tone: "from-rose-50 via-white to-orange-50", ring: "border-rose-100", accent: "text-rose-700", icon: "🌸" },
-    { symbol: "Zn", name: "Zinc", bn: "জিংক", role: "এনজাইম ও স্বাভাবিক বৃদ্ধি", benefit: "বিভিন্ন এনজাইমের কার্যক্রম ও উদ্ভিদের স্বাভাবিক বৃদ্ধি নিয়ন্ত্রণকারী প্রক্রিয়াকে সমর্থন করে।", tone: "from-teal-50 via-white to-emerald-50", ring: "border-teal-100", accent: "text-teal-700", icon: "🍃" },
+    { symbol: "Mg", name: "Magnesium", bn: "ম্যাগনেসিয়াম", role: "পাতার সবুজভাব", benefit: "ক্লোরোফিল তৈরিতে সহায়তা করে।", tone: "from-emerald-50 via-white to-lime-50", ring: "border-emerald-100", accent: "text-emerald-700", icon: "🌿" },
+    { symbol: "Ca", name: "Calcium", bn: "ক্যালসিয়াম", role: "কোষ ও নতুন বৃদ্ধি", benefit: "কোষের গঠন ও নতুন টিস্যুর বিকাশে সহায়ক।", tone: "from-sky-50 via-white to-cyan-50", ring: "border-sky-100", accent: "text-sky-700", icon: "🌱" },
+    { symbol: "Na", name: "Sodium", bn: "সোডিয়াম", role: "পানি ও আয়নের ভারসাম্য", benefit: "কিছু উদ্ভিদের পানি ও আয়নের ভারসাম্যে ভূমিকা রাখে।", tone: "from-cyan-50 via-white to-blue-50", ring: "border-cyan-100", accent: "text-cyan-700", icon: "💧" },
+    { symbol: "S", name: "Sulfur", bn: "সালফার", role: "প্রোটিন ও এনজাইম গঠন", benefit: "প্রোটিন ও প্রয়োজনীয় যৌগ তৈরিতে সহায়তা করে।", tone: "from-amber-50 via-white to-yellow-50", ring: "border-amber-100", accent: "text-amber-700", icon: "✨" },
+    { symbol: "B", name: "Boron", bn: "বোরন", role: "ফুল ও পরাগায়ন", benefit: "ফুল ও নতুন টিস্যুর স্বাভাবিক বিকাশে সহায়ক।", tone: "from-rose-50 via-white to-orange-50", ring: "border-rose-100", accent: "text-rose-700", icon: "🌸" },
+    { symbol: "Zn", name: "Zinc", bn: "জিংক", role: "এনজাইম ও বৃদ্ধি", benefit: "এনজাইমের কার্যক্রম ও স্বাভাবিক বৃদ্ধিকে সমর্থন করে।", tone: "from-teal-50 via-white to-emerald-50", ring: "border-teal-100", accent: "text-teal-700", icon: "🍃" },
   ];
   return (
-    <section className="bg-all-product-muted-surface px-3 pb-2 pt-1 sm:px-4 sm:pb-3">
-      <style>{`@keyframes apNutriFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}@keyframes apNutriGlow{0%,100%{opacity:.35;transform:scale(1)}50%{opacity:.75;transform:scale(1.08)}}@keyframes apNutriShine{0%{transform:translateX(-130%)}55%,100%{transform:translateX(130%)}}.ap-nutri-float{animation:apNutriFloat 3.8s ease-in-out infinite}.ap-nutri-glow{animation:apNutriGlow 3s ease-in-out infinite}.ap-nutri-shine{animation:apNutriShine 5.5s ease-in-out infinite}@media (prefers-reduced-motion:reduce){.ap-nutri-float,.ap-nutri-glow,.ap-nutri-shine{animation:none!important}}`}</style>
+    <section className="bg-all-product-muted-surface px-2.5 pb-2 pt-1 sm:px-4 sm:pb-3">
+      <style>{`@keyframes apNutriGlow{0%,100%{opacity:.3;transform:scale(1)}50%{opacity:.65;transform:scale(1.06)}}@keyframes apNutriShine{0%{transform:translateX(-130%)}55%,100%{transform:translateX(130%)}}.ap-nutri-glow{animation:apNutriGlow 3s ease-in-out infinite}.ap-nutri-shine{animation:apNutriShine 5.5s ease-in-out infinite}@media (prefers-reduced-motion:reduce){.ap-nutri-glow,.ap-nutri-shine{animation:none!important}}`}</style>
       <div className="mx-auto max-w-4xl">
-        <div className="relative overflow-hidden rounded-[20px] border border-all-product-gold/25 bg-gradient-to-br from-white via-all-product-soft to-all-product-gold/[0.10] p-3 shadow-[0_14px_38px_-26px_rgba(20,83,45,.45)] sm:rounded-[22px] sm:p-4">
+        <div className="relative overflow-hidden rounded-2xl border border-all-product-gold/25 bg-gradient-to-br from-white via-all-product-soft to-all-product-gold/[0.10] p-2.5 shadow-[0_14px_38px_-26px_rgba(20,83,45,.45)] sm:rounded-[22px] sm:p-4">
           <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-emerald-300/20 blur-3xl ap-nutri-glow" />
           <div className="pointer-events-none absolute -bottom-20 -left-10 h-40 w-40 rounded-full bg-all-product-gold/15 blur-3xl ap-nutri-glow" />
           <div className="relative">
-            <div className="mb-3 text-center">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-all-product-gold/30 bg-white/80 px-3 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-all-product-gold-foreground shadow-sm"><Sparkles className="h-3 w-3" /> Premium Nutrient Blend</span>
-              <h2 className="mt-1.5 text-xl font-black tracking-tight text-all-product-ink sm:text-2xl">NUTRIMIX-এ রয়েছে ৫টি প্রয়োজনীয় পুষ্টি উপাদান</h2>
-              <p className="mx-auto mt-1 max-w-2xl text-[12px] font-semibold leading-[1.45] text-all-product-muted sm:text-sm">গাছের সবুজভাব, নতুন বৃদ্ধি, ফুল ও সামগ্রিক পুষ্টি ব্যবস্থাপনায় প্রয়োজনীয় বিভিন্ন উপাদানের সমন্বিত ব্লেন্ড।</p>
+            <div className="mb-2 text-center sm:mb-3">
+              <span className="inline-flex items-center gap-1 rounded-full border border-all-product-gold/30 bg-white/80 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-all-product-gold-foreground shadow-sm"><Sparkles className="h-3 w-3" /> Premium Nutrient Blend</span>
+              <h2 className="mt-1 text-lg font-black leading-tight tracking-tight text-all-product-ink sm:text-2xl">NUTRIMIX-এর ৬টি পুষ্টি উপাদান</h2>
+              <p className="mx-auto mt-1 max-w-2xl text-[11px] font-semibold leading-[1.4] text-all-product-muted sm:text-sm">গাছের বৃদ্ধি, পাতা, ফুল ও পুষ্টি ব্যবস্থাপনায় সহায়ক ছয় উপাদানের সমন্বয়।</p>
             </div>
             <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 sm:gap-2.5">
               {nutrients.map((item) => (
-                <article key={item.symbol} className={"group relative overflow-hidden rounded-xl border " + item.ring + " bg-gradient-to-br " + item.tone + " p-2.5 shadow-[0_8px_18px_-15px_rgba(15,23,42,.45)] transition-shadow duration-200 hover:shadow-md sm:rounded-2xl sm:p-3"}>
+                <article key={item.symbol} className={"group relative overflow-hidden rounded-xl border " + item.ring + " bg-gradient-to-br " + item.tone + " p-2 shadow-[0_8px_18px_-15px_rgba(15,23,42,.45)] transition-shadow duration-200 hover:shadow-md sm:rounded-2xl sm:p-3"}>
                   <div className="pointer-events-none absolute inset-y-0 left-0 w-1/3 -translate-x-full bg-gradient-to-r from-transparent via-white/70 to-transparent ap-nutri-shine" />
-                  <div className="relative flex items-start gap-2.5">
-                    <div className="relative shrink-0"><div className="absolute inset-0 rounded-xl bg-white/70 blur-md ap-nutri-glow" /><div className="relative grid h-10 w-10 place-items-center rounded-lg border border-white/80 bg-white/90 text-lg shadow-sm sm:h-11 sm:w-11 sm:rounded-xl">{item.icon}</div><span className={"absolute -right-1.5 -top-1.5 grid h-6 min-w-6 place-items-center rounded-full bg-white px-1 text-[9px] font-black shadow ring-1 ring-black/5 " + item.accent}>{item.symbol}</span></div>
-                    <div className="min-w-0"><h3 className="text-[13px] font-black leading-4 text-all-product-ink sm:text-sm">{item.bn}</h3><p className={"mt-0.5 text-[9px] font-extrabold uppercase tracking-wide " + item.accent}>{item.name}</p></div>
+                  <div className="relative flex items-center gap-2">
+                    <div className="relative shrink-0"><div className="absolute inset-0 rounded-lg bg-white/70 blur-md ap-nutri-glow" /><div className="relative grid h-8 w-8 place-items-center rounded-lg border border-white/80 bg-white/90 text-base shadow-sm sm:h-10 sm:w-10 sm:text-lg">{item.icon}</div><span className={"absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-white px-1 text-[8px] font-black shadow ring-1 ring-black/5 " + item.accent}>{item.symbol}</span></div>
+                    <div className="min-w-0"><h3 className="text-[12px] font-black leading-4 text-all-product-ink sm:text-sm">{item.bn}</h3><p className={"text-[8px] font-extrabold uppercase tracking-wide " + item.accent}>{item.name}</p></div>
                   </div>
-                  <div className="relative mt-2 rounded-lg border border-white/80 bg-white/65 px-2 py-1.5 sm:rounded-xl sm:px-2.5 sm:py-2"><p className="text-[11px] font-black leading-[1.4] text-all-product-ink sm:text-xs">✦ {item.role}</p><p className="mt-0.5 text-[11px] font-semibold leading-[1.4] text-all-product-muted sm:text-xs sm:leading-[1.45]">{item.benefit}</p></div>
+                  <div className="relative mt-1.5 border-t border-white/80 pt-1.5"><p className="text-[10px] font-black leading-[1.35] text-all-product-ink sm:text-xs">✦ {item.role}</p><p className="mt-0.5 text-[10px] font-medium leading-[1.35] text-all-product-muted sm:text-xs">{item.benefit}</p></div>
                 </article>
               ))}
             </div>
-            <div className="mt-3 flex items-center justify-center gap-2 rounded-lg border border-emerald-100 bg-white/75 px-3 py-2 text-center shadow-sm"><Leaf className="h-4 w-4 shrink-0 text-emerald-600" /><p className="text-[11px] font-bold leading-[1.4] text-all-product-muted sm:text-xs"><span className="font-black text-emerald-700">৫ উপাদান, একসাথে:</span> গাছের প্রয়োজনীয় পুষ্টি ব্যবস্থাপনাকে আরও সম্পূর্ণভাবে সাপোর্ট করার জন্য তৈরি।</p></div>
-            <button type="button" onClick={() => document.getElementById("all-product-order-form")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="group relative mt-3 flex min-h-[50px] w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-all-product-primary px-5 py-3.5 text-[15px] font-black text-white shadow-[0_14px_30px_-14px_rgba(16,185,129,.7)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_36px_-14px_rgba(16,185,129,.8)] active:scale-[.99]">
+            <div className="mt-2 flex items-center justify-center gap-1.5 rounded-lg border border-emerald-100 bg-white/75 px-2 py-1.5 text-center shadow-sm"><Leaf className="h-3.5 w-3.5 shrink-0 text-emerald-600" /><p className="text-[10px] font-bold leading-[1.35] text-all-product-muted sm:text-xs"><span className="font-black text-emerald-700">৬ উপাদান, একসাথে:</span> গাছের প্রয়োজনীয় পুষ্টি ব্যবস্থাপনায় সহায়ক।</p></div>
+            <button type="button" onClick={() => document.getElementById("all-product-order-form")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="group relative mt-2 flex min-h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-all-product-primary px-4 py-2.5 text-sm font-black text-white shadow-[0_14px_30px_-14px_rgba(16,185,129,.7)] transition-all duration-300 hover:-translate-y-0.5 active:scale-[.99] sm:min-h-[50px] sm:rounded-2xl sm:text-[15px]">
               <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-              <ShoppingBag className="relative h-5 w-5" />
-              <span className="relative">{"এখনই অর্ডার করুন"}</span>
+              <ShoppingBag className="relative h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="relative">এখনই অর্ডার করুন</span>
               <span className="relative text-lg leading-none transition-transform duration-300 group-hover:translate-x-1">→</span>
             </button>
           </div>
