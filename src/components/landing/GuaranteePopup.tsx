@@ -1,6 +1,8 @@
 import { SafeImage } from "@/components/SafeImage";
 import { useEffect, useState } from "react";
 
+const POPUP_DURATION = 10000;
+
 /**
  * Guarantee card + growing-instruction popup for landing page templates.
  *
@@ -11,8 +13,6 @@ import { useEffect, useState } from "react";
  * Animations are intentionally calm (no opacity flicker / shimmer sweeps) so
  * the card never looks like it is flashing on mobile.
  */
-
-const POPUP_DURATION = 10000;
 
 export const GUARANTEE_POPUP_STYLE = `
 @keyframes gpFade{from{opacity:0}to{opacity:1}}
@@ -56,17 +56,35 @@ export function GuaranteePopup({ slug, delay = 600, logo, brand = "", nutrimix =
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    let seen = false;
-    try { seen = window.sessionStorage.getItem(popupKey) === "1"; } catch { seen = false; }
-    if (seen) return;
-    try { window.sessionStorage.setItem(popupKey, "1"); } catch { /* ignore */ }
-    const openTimer = window.setTimeout(() => setOpen(true), delay);
-    const closeTimer = window.setTimeout(() => setOpen(false), delay + POPUP_DURATION);
-    return () => { window.clearTimeout(openTimer); window.clearTimeout(closeTimer); };
-  }, [popupKey, delay]);
+    let dismissed = false;
+    try {
+      const stored = window.sessionStorage.getItem(popupKey);
+      dismissed = nutrimix ? stored === "dismissed" : stored === "1";
+      if (!nutrimix && !dismissed) window.sessionStorage.setItem(popupKey, "1");
+    } catch { dismissed = false; }
+    if (dismissed) return;
+    let opened = false;
+    const show = () => { if (opened || dismissed) return; opened = true; setOpen(true); };
+    const timer = window.setTimeout(show, nutrimix ? 15000 : delay);
+    const closeTimer = nutrimix ? undefined : window.setTimeout(() => setOpen(false), delay + POPUP_DURATION);
+    const onExitIntent = (event: MouseEvent) => { if (event.clientY <= 0) show(); };
+    const onPopState = () => show();
+    if (nutrimix) {
+      document.addEventListener("mouseout", onExitIntent);
+      window.history.pushState({ nutrimixPopupGuard: true }, "", window.location.href);
+      window.addEventListener("popstate", onPopState);
+    }
+    return () => {
+      window.clearTimeout(timer);
+      if (closeTimer !== undefined) window.clearTimeout(closeTimer);
+      document.removeEventListener("mouseout", onExitIntent);
+      window.removeEventListener("popstate", onPopState);
+    };
+  }, [popupKey, delay, nutrimix]);
 
   // Dismiss only: never scroll the page, never navigate.
   const close = (event?: React.MouseEvent) => {
+    if (nutrimix) { try { window.sessionStorage.setItem(popupKey, "dismissed"); } catch { /* ignore */ } }
     event?.preventDefault();
     event?.stopPropagation();
     setClosing(true);
