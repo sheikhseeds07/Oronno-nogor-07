@@ -55,11 +55,16 @@ export function GuaranteePopup({ slug, delay = 600, logo, brand = "", nutrimix =
   useEffect(() => {
     if (typeof window === "undefined") return;
     let dismissed = false;
-    try { dismissed = window.sessionStorage.getItem(popupKey) === "dismissed"; } catch { dismissed = false; }
+    try {
+      const stored = window.sessionStorage.getItem(popupKey);
+      dismissed = nutrimix ? stored === "dismissed" : stored === "1";
+      if (!nutrimix && !dismissed) window.sessionStorage.setItem(popupKey, "1");
+    } catch { dismissed = false; }
     if (dismissed) return;
     let opened = false;
     const show = () => { if (opened || dismissed) return; opened = true; setOpen(true); };
     const timer = window.setTimeout(show, nutrimix ? 15000 : delay);
+    const closeTimer = nutrimix ? undefined : window.setTimeout(() => setOpen(false), delay + POPUP_DURATION);
     const onExitIntent = (event: MouseEvent) => { if (event.clientY <= 0) show(); };
     const onPopState = () => show();
     if (nutrimix) {
@@ -69,6 +74,7 @@ export function GuaranteePopup({ slug, delay = 600, logo, brand = "", nutrimix =
     }
     return () => {
       window.clearTimeout(timer);
+      if (closeTimer !== undefined) window.clearTimeout(closeTimer);
       document.removeEventListener("mouseout", onExitIntent);
       window.removeEventListener("popstate", onPopState);
     };
