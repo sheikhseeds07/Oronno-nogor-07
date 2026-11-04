@@ -569,7 +569,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
         <div className="mx-auto max-w-3xl px-4">
           <div className="mb-6 text-center">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-all-product-primary px-3 py-1.5 text-xs font-black text-all-product-primary-foreground"><PackageCheck className="h-4 w-4" /> মাত্র ৩০ সেকেন্ডে অর্ডার</span>
-            <h2 className="mt-3 whitespace-nowrap text-[22px] font-black leading-tight sm:text-3xl">নিচের ফর্মগুলো পূরণ করুন</h2>
+            <h2 className="mt-3 whitespace-nowrap text-[22px] font-black leading-tight sm:text-3xl">{isNutrimix ? "নিচের ফর্মগুলো পূরণ করুন" : "নিচের ফর্ম গুলো পূরন করুন"}</h2>
             <p className="mt-1 text-sm text-all-product-muted">২-৩ দিনের মধ্যে হোম ডেলিভারি পেয়ে যাবেন</p>
           </div>
 
