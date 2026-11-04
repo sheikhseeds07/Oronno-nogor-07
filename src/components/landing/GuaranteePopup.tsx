@@ -55,7 +55,8 @@ export function GuaranteePopup({ slug, delay = 600, logo, brand = "", nutrimix =
   const popupKey = `hng-guarantee-seen:${slug}`;
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    // The NUTRIMIX landing page must never show the guarantee/gift popup.
+    if (nutrimix || typeof window === "undefined") return;
     let dismissed = false;
     try {
       const stored = window.sessionStorage.getItem(popupKey);
