@@ -29,12 +29,12 @@ const PHONE_RE = /^01[3-9][0-9]{8}$/;
 const normalizeBdPhoneServer = (value: string) => {
   const bn = "০১২৩৪৫৬৭৮৯";
   const ascii = String(value ?? "").replace(/[০-৯]/g, (digit) => String(bn.indexOf(digit)));
-  const digits = ascii.replace(/\\D/g, "");
+  const digits = ascii.replace(/\D/g, "");
   const local = digits.startsWith("880") ? "0" + digits.slice(3) : digits;
   return local.slice(0, 11);
 };
 const isNutrimixLanding = (value: unknown) => {
-  try { return new URL(String(value ?? "")).pathname.replace(/\\/$/, "") === "/landing/nutrimix"; } catch { return false; }
+  try { return new URL(String(value ?? "")).pathname.replace(/\/$/, "") === "/landing/nutrimix"; } catch { return false; }
 };
 const ORDER_DEVICE_COOKIE = "hng-device-id";
 
