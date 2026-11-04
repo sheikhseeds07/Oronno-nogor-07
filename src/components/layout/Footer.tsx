@@ -21,6 +21,7 @@ export function Footer() {
   const name = s.site_name || "Sheikh Seeds";
   const logoSrc = s.logo_url || DEFAULT_LOGO;
   const isCheckout = typeof window !== "undefined" && window.location.pathname === "/checkout";
+  const isNutrimixLanding = typeof window !== "undefined" && window.location.pathname === "/landing/nutrimix";
 
   useEffect(() => {
     if (!isCheckout) return;
@@ -96,6 +97,8 @@ export function Footer() {
             <a href={`mailto:${email}`} className="inline-flex items-center gap-1.5 transition-colors hover:text-brand"><Mail className="h-3.5 w-3.5 text-brand/90" />{email}</a>
             <span className="inline-flex max-w-full items-center gap-1.5"><MapPin className="h-3.5 w-3.5 shrink-0 text-brand/90" />{address}</span>
           </div>
+
+          {isNutrimixLanding && <div className="mt-3 text-[11px] font-semibold text-white/65"><span>২৪ ঘন্টা সাপোর্ট: </span><a href="tel:01XXXXXXXXX" className="text-white underline underline-offset-2 hover:text-brand">01XXXXXXXXX</a>{/* TODO: আসল সাপোর্ট নম্বর বসাতে হবে */}</div>}
 
           <div className="mt-4 flex items-center justify-center gap-2">
             <a href={s.facebook || "https://www.facebook.com/share/1DoMWrXv2i/"} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/[0.045] text-white/55 transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-500/40 hover:bg-blue-600 hover:text-white"><FacebookIcon /></a>
