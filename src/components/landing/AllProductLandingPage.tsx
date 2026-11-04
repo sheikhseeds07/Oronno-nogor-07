@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useRef, type ReactElement, type ReactNode
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Check, ChevronDown, Leaf, MapPin, PackageCheck, Phone, ShieldCheck, ShoppingBag, Sparkles, Truck, User, Volume2, VolumeX, Wallet, X } from "lucide-react";
+import { Check, ChevronDown, Leaf, MapPin, PackageCheck, Phone, ShieldCheck, ShoppingBag, Sparkles, Truck, User, Wallet, X } from "lucide-react";
 import { supabase } from "@/lib/personal-supabase/client";
 import { createLandingCheckoutIntent, finalizeLandingCheckoutIntent, placeOrder } from "@/lib/place-order.functions";
 import { useCheckoutAutofill } from "@/lib/useCheckoutAutofill";
@@ -36,7 +36,6 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   const runFinalizeLandingIntent = useServerFn(finalizeLandingCheckoutIntent);
   const isNutrimix = slug === "nutrimix";
   const isSeedCombo = slug === "seedcombo";
-  const isAudioLanding = isNutrimix || isSeedCombo;
   const [selected, setSelected] = useState<string | null>(null);
   const [offerPopupOpen, setOfferPopupOpen] = useState(false);
   const [nutrimixOpen, setNutrimixOpen] = useState(false);
@@ -62,37 +61,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   // Shared by every landing page built with the All Product template.
   const heroImages = Array.from(new Set([heroImage, ...configuredHeroImages]));
   const [heroImageIndex, setHeroImageIndex] = useState(0);
-  const [audioPlaying, setAudioPlaying] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   useEffect(() => { setHeroImageIndex(0); }, [page?.id, heroImages.length]);
-  useEffect(() => {
-    if (!isAudioLanding || !C.audio_url) { setAudioPlaying(false); return; }
-    let timer: number | undefined;
-    const start = () => {
-      const audio = audioRef.current;
-      if (!audio) {
-        timer = window.setTimeout(start, 100);
-        return;
-      }
-      audio.pause();
-      audio.currentTime = 0;
-      audio.load();
-      timer = window.setTimeout(() => {
-        audio.play().then(() => setAudioPlaying(true)).catch(() => setAudioPlaying(false));
-      }, 2000);
-    };
-    start();
-    return () => {
-      if (timer !== undefined) window.clearTimeout(timer);
-      audioRef.current?.pause();
-    };
-  }, [isAudioLanding, C.audio_url]);
-  const toggleLandingAudio = async () => {
-    const audio = audioRef.current;
-    if (!audio || !C.audio_url) return;
-    if (!audio.paused) { audio.pause(); setAudioPlaying(false); return; }
-    try { await audio.play(); setAudioPlaying(true); } catch { setAudioPlaying(false); }
-  };
   useEffect(() => {
     if (heroImages.length < 2) return;
     const timer = window.setInterval(() => setHeroImageIndex((current) => (current + 1) % heroImages.length), 5000);
@@ -391,7 +360,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
       }
     `}</style>}
     <FacebookPixel eager />
-    {isAudioLanding && C.audio_url && <audio ref={audioRef} src={C.audio_url} preload="auto" onPlay={() => setAudioPlaying(true)} onPause={() => setAudioPlaying(false)} onEnded={() => setAudioPlaying(false)} className="hidden" />}
+    
 
     <GuaranteePopup slug={slug} logo={logo} brand={brand} nutrimix={isNutrimix} onCta={handleCta} />
     {page.top_bar_text && (page.planting_steps as { top_bar_enabled?: boolean } | null)?.top_bar_enabled !== false && <div className="bg-all-product-alert px-3 py-0.5 text-center text-xs font-extrabold leading-4 text-all-product-alert-foreground sm:text-sm whitespace-nowrap overflow-hidden text-ellipsis" style={{ fontFamily: '"Noto Serif Bengali", "Hind Siliguri", serif' }}>{page.top_bar_text}</div>}
@@ -416,7 +385,6 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
         popupDescription={C.nutrimix_popup_description}
         popupAcceptText={C.nutrimix_popup_accept_text}
         popupDeclineText={C.nutrimix_popup_decline_text}
-        popupAudioUrl={C.nutrimix_popup_audio_url || ""}
       />
     )}
 
@@ -506,22 +474,11 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
                       {regularPrice && regularPrice > basePrice && <del className="pb-0.5 text-sm font-bold text-all-product-muted sm:text-base">{taka(regularPrice)}</del>}
                     </div>
                   </div>
-                  {isNutrimix && C.audio_url && (
-                    <>
-
-                      <button type="button" onClick={toggleLandingAudio} aria-label={audioPlaying ? "ভয়েস বন্ধ করুন" : "ভয়েস চালু করুন"} title={audioPlaying ? "ভয়েস বন্ধ করুন" : "ভয়েস চালু করুন"} className="ap-landing-audio group relative grid h-11 w-11 shrink-0 place-items-center rounded-full border border-all-product-gold/45 bg-white/90 text-all-product-primary shadow-[0_10px_28px_-14px_rgba(20,83,45,.65)] transition-all duration-300 hover:scale-105 hover:border-all-product-primary hover:bg-white active:scale-95">
-                        <span className="absolute inset-0 rounded-full border border-all-product-gold/35 ap-audio-ring" aria-hidden="true" />
-                        <span className="absolute inset-[-4px] rounded-full bg-all-product-gold/15 ap-audio-glow" aria-hidden="true" />
-                        {audioPlaying ? <Volume2 className="relative h-5 w-5" /> : <VolumeX className="relative h-5 w-5" />}
-                      </button>
-                    </>
-                  )}
                   <div className="shrink-0 text-right">
                     {discount > 0 && <span className="inline-flex rounded-full bg-all-product-alert px-3 py-1.5 text-xs font-black text-white shadow-md">{discount}% ছাড়</span>}
                     {savings > 0 && <span className="mt-1 block text-[11px] font-black text-all-product-success">সাশ্রয় {taka(savings)}</span>}
                   </div>
                 </div>
-                {isAudioLanding && C.audio_url && <style>{"@keyframes apAudioRing { 0%,100% { transform: scale(1); opacity:.35; } 50% { transform: scale(1.22); opacity:.9; } } @keyframes apAudioGlow { 0%,100% { transform: scale(.92); opacity:.25; } 50% { transform: scale(1.18); opacity:.65; } } .ap-audio-ring { animation: apAudioRing 1.25s ease-in-out infinite; } .ap-audio-glow { animation: apAudioGlow 1.55s ease-in-out infinite; } @media (prefers-reduced-motion:reduce) { .ap-audio-ring,.ap-audio-glow { animation:none!important; } }"}</style>}
               </div>
             </div>
           </div>
@@ -718,7 +675,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
 
     </main>
     <div role="contentinfo" className="bg-all-product-hero px-4 py-6 text-center text-xs text-all-product-hero-muted">© {new Date().getFullYear()} {brand} — বিশ্বস্ত বীজ, সুন্দর ভবিষ্যৎ</div>
-     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-all-product-line bg-all-product-surface/95 p-2 backdrop-blur-lg"><div className="mx-auto flex max-w-3xl items-center gap-2">{isSeedCombo && C.audio_url && <button type="button" onClick={toggleLandingAudio} aria-label={audioPlaying ? "ভয়েস বন্ধ করুন" : "ভয়েস চালু করুন"} title={audioPlaying ? "ভয়েস বন্ধ করুন" : "ভয়েস চালু করুন"} className="ap-landing-audio group relative grid h-11 w-11 shrink-0 place-items-center rounded-full border border-all-product-gold/45 bg-white/90 text-all-product-primary shadow-[0_10px_28px_-14px_rgba(20,83,45,.65)] transition-all duration-300 hover:scale-105 hover:border-all-product-primary hover:bg-white active:scale-95"><span className="absolute inset-0 rounded-full border border-all-product-gold/35 ap-audio-ring" aria-hidden="true" /><span className="absolute inset-[-4px] rounded-full bg-all-product-gold/15 ap-audio-glow" aria-hidden="true" />{audioPlaying ? <Volume2 className="relative h-5 w-5" /> : <VolumeX className="relative h-5 w-5" />}</button>}{formInView ? <Button type="submit" form="all-product-order-form" disabled={submitting} className="all-product-primary-cta h-12 flex-1 font-black"><ShieldCheck />{submitting ? "অর্ডার হচ্ছে..." : `অর্ডার টি কনফার্ম করুন — ${taka(total)}`}</Button> : <Button onClick={handleCta} className="all-product-primary-cta h-12 flex-1 font-black"><ShoppingBag />{page.cta_text || "এখনই অর্ডার করুন"}{selected ? ` — ${taka(subtotal)}` : ""}</Button>}</div></div>
+     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-all-product-line bg-all-product-surface/95 p-2 backdrop-blur-lg"><div className="mx-auto flex max-w-3xl items-center gap-2">{formInView ? <Button type="submit" form="all-product-order-form" disabled={submitting} className="all-product-primary-cta h-12 flex-1 font-black"><ShieldCheck />{submitting ? "অর্ডার হচ্ছে..." : `অর্ডার টি কনফার্ম করুন — ${taka(total)}`}</Button> : <Button onClick={handleCta} className="all-product-primary-cta h-12 flex-1 font-black"><ShoppingBag />{page.cta_text || "এখনই অর্ডার করুন"}{selected ? ` — ${taka(subtotal)}` : ""}</Button>}</div></div>
   </div>;
 }
 
