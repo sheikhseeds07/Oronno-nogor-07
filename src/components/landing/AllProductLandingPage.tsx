@@ -365,7 +365,31 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   if (isLoading) return <div className="min-h-screen bg-all-product-surface" aria-hidden="true" />;
   if (!page) return <div className="min-h-screen grid place-items-center bg-all-product-surface text-all-product-ink">পেজ পাওয়া যায়নি</div>;
 
-  return <div className="all-product-landing min-h-screen bg-all-product-surface text-all-product-ink">
+  return <div className={`all-product-landing min-h-screen bg-all-product-surface text-all-product-ink${isNutrimix ? " nutrimix-smooth" : ""}`}>
+    {isNutrimix && <style>{`
+      /* Keep NUTRIMIX touch scrolling and pinch-zoom responsive on mobile devices. */
+      .nutrimix-smooth { -webkit-overflow-scrolling: touch; overscroll-behavior-y: auto; }
+      .nutrimix-smooth [class*="backdrop-blur"] { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+      .nutrimix-smooth .nutrimix-hero-headline,
+      .nutrimix-smooth .nutrimix-headline-shine,
+      .nutrimix-smooth .nutrimix-free-seed-line,
+      .nutrimix-smooth .ap-nutri-glow,
+      .nutrimix-smooth .ap-nutri-shine,
+      .nutrimix-smooth .ap-cd-dot,
+      .nutrimix-smooth .ap-cd-box,
+      .nutrimix-smooth .animate-bounce { animation: none !important; }
+      .nutrimix-smooth .blur-2xl,
+      .nutrimix-smooth .blur-3xl,
+      .nutrimix-smooth .blur-md { filter: none !important; }
+      .nutrimix-smooth .sticky.top-0 { background-color: var(--all-product-surface) !important; }
+      .nutrimix-smooth > .fixed.inset-x-0.bottom-0 { background-color: var(--all-product-surface) !important; }
+      .nutrimix-smooth .nutrimix-hero-headline,
+      .nutrimix-smooth .nutrimix-free-seed-line { transform: none !important; }
+      @media (max-width: 767px) {
+        .nutrimix-smooth .all-product-image-wrap { box-shadow: 0 8px 22px -16px rgba(0,0,0,.55) !important; }
+        .nutrimix-smooth .nutrimix-hero-headline { box-shadow: 0 8px 22px -16px rgba(0,0,0,.55) !important; }
+      }
+    `}</style>}
     <FacebookPixel eager />
     {isAudioLanding && C.audio_url && <audio ref={audioRef} src={C.audio_url} preload="auto" onPlay={() => setAudioPlaying(true)} onPause={() => setAudioPlaying(false)} onEnded={() => setAudioPlaying(false)} className="hidden" />}
 
