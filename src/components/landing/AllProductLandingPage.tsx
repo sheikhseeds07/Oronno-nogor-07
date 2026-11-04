@@ -362,7 +362,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-6 bg-gradient-to-b from-white/[0.07] to-transparent" />
       <div className="relative mx-auto flex h-[40px] max-w-6xl items-center justify-between gap-1.5 px-3 sm:h-[46px] sm:px-4">
         <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">{isNutrimix ? <img src={arannyaLogo.url} alt={brandBn} className="h-6 w-6 rounded-full object-cover ring-1 ring-all-product-gold/50 sm:h-7 sm:w-7" /> : <SafeImage src={logo} alt={brand} className="h-6 w-6 rounded-full object-cover ring-1 ring-all-product-gold/50 sm:h-7 sm:w-7" />}<div className="min-w-0 pt-0.5"><span style={{ fontFamily: "'Noto Serif Bengali', 'Hind Siliguri', serif" }} className="block whitespace-nowrap text-[18px] font-black leading-[1.3] tracking-[0.01em] text-all-product-primary sm:text-[21px]">{brandBn}</span><svg viewBox="0 0 72 8" className="mt-0 block h-1.5 w-[56px] drop-shadow-[0_0_3px_var(--all-product-gold)] sm:w-[70px]" aria-hidden="true"><defs><linearGradient id="ap-gold-arc" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="var(--all-product-gold, #d9a53a)" stopOpacity="0.25" /><stop offset="50%" stopColor="var(--all-product-gold, #d9a53a)" /><stop offset="100%" stopColor="var(--all-product-gold, #d9a53a)" stopOpacity="0.25" /></linearGradient></defs><path d="M2 6.5 Q36 0.5 70 6.5" fill="none" stroke="url(#ap-gold-arc)" strokeWidth="2" strokeLinecap="round" /></svg></div></div>
-        <OfferCountdown />
+        <OfferCountdown shared={isNutrimix} />
       </div>
     </div>
 
@@ -751,15 +751,27 @@ function normalizeNutrimixPhone(value: string) {
 function bnDigits(value: number) { return String(value).padStart(2, "0").replace(/\d/g, (d) => "০১২৩৪৫৬৭৮৯"[Number(d)]); }
 
 /** Compact premium countdown to the end of the day, shown in the sticky header. */
-function OfferCountdown() {
+function OfferCountdown({ shared = false }: { shared?: boolean }) {
   const [msLeft, setMsLeft] = useState<number | null>(null);
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const tick = () => { const end = new Date(); end.setHours(24, 0, 0, 0); setMsLeft(Math.max(0, end.getTime() - Date.now())); };
+    const key = "nutrimix-offer-deadline";
+    let deadline = 0;
+    if (shared) {
+      deadline = Number(window.localStorage.getItem(key) || 0);
+      if (!deadline || deadline <= Date.now()) {
+        deadline = Date.now() + 24 * 60 * 60 * 1000;
+        window.localStorage.setItem(key, String(deadline));
+      }
+    }
+    const tick = () => {
+      const end = shared ? deadline : (() => { const value = new Date(); value.setHours(24, 0, 0, 0); return value.getTime(); })();
+      setMsLeft(Math.max(0, end - Date.now()));
+    };
     tick();
     const timer = window.setInterval(tick, 1000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [shared]);
   if (msLeft === null) return null;
   const total = Math.floor(msLeft / 1000);
   const units = [Math.floor(total / 3600), Math.floor((total % 3600) / 60), total % 60];
