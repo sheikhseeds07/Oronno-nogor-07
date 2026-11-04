@@ -468,22 +468,19 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
             )}
             {isNutrimix && (
               <>
-                <div className="nutrimix-free-seed-line mx-auto mt-2.5 inline-flex items-center justify-center whitespace-nowrap rounded-full border border-all-product-gold/45 bg-all-product-primary/20 px-4 py-1.5 text-[15px] font-black leading-none text-all-product-hero-foreground shadow-[0_10px_28px_-16px_rgba(0,0,0,.65)] backdrop-blur-sm sm:mt-3 sm:px-6 sm:py-2 sm:text-lg" aria-label="২৪ প্রকারের বীজ ও ডেলিভারি চার্জ ফ্রী">
-                  <span className="text-all-product-gold">২৪ প্রকারের বীজ</span>
-                  <span className="mx-1.5 text-all-product-gold/70">+</span>
-                  <span>ডেলিভারি চার্জ</span>
-                  <span className="ml-1.5 text-all-product-gold">ফ্রী</span>
+                <div className="nutrimix-free-seed-line mx-auto mt-3 grid max-w-[430px] grid-cols-[1fr_auto_1fr] items-stretch overflow-hidden rounded-2xl border border-all-product-gold/45 bg-gradient-to-br from-[#103d2b]/95 via-all-product-primary/90 to-[#173b2b]/95 p-1.5 shadow-[0_14px_34px_-18px_rgba(0,0,0,.72)] sm:mt-4 sm:max-w-[500px] sm:rounded-[22px] sm:p-2" aria-label="২৪ প্রকারের বীজ ও ডেলিভারি চার্জ ফ্রী">
+                  <div className="flex min-w-0 flex-col items-center justify-center rounded-xl bg-white/[0.07] px-2 py-3 text-center sm:py-3.5">
+                    <span className="text-[10px] font-bold tracking-wide text-white/70 sm:text-[11px]">উপহার</span>
+                    <span className="mt-0.5 text-[17px] font-black leading-tight text-[#f3d58b] sm:text-[21px]">২৪ প্রকার</span>
+                    <span className="text-[12px] font-extrabold leading-tight text-white sm:text-sm">সবজির বীজ</span>
+                  </div>
+                  <div className="flex items-center px-1.5 sm:px-3"><span className="grid h-7 w-7 place-items-center rounded-full border border-all-product-gold/50 bg-all-product-gold/15 text-sm font-black text-[#f3d58b] sm:h-9 sm:w-9 sm:text-base">+</span></div>
+                  <div className="flex min-w-0 flex-col items-center justify-center rounded-xl bg-white/[0.07] px-2 py-3 text-center sm:py-3.5">
+                    <span className="text-[10px] font-bold tracking-wide text-white/70 sm:text-[11px]">বিশেষ সুবিধা</span>
+                    <span className="mt-0.5 text-[17px] font-black leading-tight text-[#f3d58b] sm:text-[21px]">ডেলিভারি</span>
+                    <span className="text-[12px] font-extrabold leading-tight text-white sm:text-sm">চার্জ সম্পূর্ণ ফ্রী</span>
+                  </div>
                 </div>
-                <style>{`
-                  @keyframes nutrimixFreeSeedPulse {
-                    0%, 100% { transform: scale(1); filter: brightness(1); box-shadow: 0 10px 28px -16px rgba(0,0,0,.65), 0 0 0 0 rgba(217,165,58,.28); }
-                    50% { transform: scale(1.018); filter: brightness(1.08); box-shadow: 0 12px 32px -16px rgba(0,0,0,.62), 0 0 0 7px rgba(217,165,58,0); }
-                  }
-                  .nutrimix-free-seed-line { animation: nutrimixFreeSeedPulse 2.2s ease-in-out infinite; }
-                  @media (prefers-reduced-motion: reduce) {
-                    .nutrimix-free-seed-line { animation: none !important; }
-                  }
-                `}</style>
               </>
             )}
             {page.hero_subtitle && <p className="all-product-hero-subtitle mx-auto mt-1.5 max-w-2xl text-[12px] font-extrabold leading-5 text-amber-300 sm:mt-2.5 sm:text-base sm:leading-6">{isNutrimix ? page.hero_subtitle.replace(/("([^"]+)")(\s*"\2")+/g, "$1") : page.hero_subtitle}</p>}
