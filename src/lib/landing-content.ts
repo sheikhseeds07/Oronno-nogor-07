@@ -11,6 +11,8 @@ export type LandingTemplate = "combo" | "premium" | "modern" | "product" | "all-
 
 export type LandingContent = {
   template: LandingTemplate;
+  /** Controls visibility of the landing page top announcement bar. */
+  top_bar_enabled?: boolean;
   promo_messages: string[];
   header_cta_text: string;
   offer_badge_text: string;
