@@ -26,6 +26,16 @@ async function syncLandingItemPrices(intentId: string, orderId: string) {
 }
 
 const PHONE_RE = /^01[3-9][0-9]{8}$/;
+const normalizeBdPhoneServer = (value: string) => {
+  const bn = "০১২৩৪৫৬৭৮৯";
+  const ascii = String(value ?? "").replace(/[০-৯]/g, (digit) => String(bn.indexOf(digit)));
+  const digits = ascii.replace(/\\D/g, "");
+  const local = digits.startsWith("880") ? "0" + digits.slice(3) : digits;
+  return local.slice(0, 11);
+};
+const isNutrimixLanding = (value: unknown) => {
+  try { return new URL(String(value ?? "")).pathname.replace(/\\/$/, "") === "/landing/nutrimix"; } catch { return false; }
+};
 const ORDER_DEVICE_COOKIE = "hng-device-id";
 
 function getOrderDeviceId(): string | null {
@@ -86,7 +96,7 @@ export const saveIncompleteCheckout = createServerFn({ method: "POST" }).inputVa
 });
 
 
-export const createLandingCheckoutIntent = createServerFn({ method: "POST" }).inputValidator((input) => LandingIntentInputSchema.parse(input)).handler(async ({ data }) => {
+export const createLandingCheckoutIntent = createServerFn({ method: "POST" }).inputValidator((input) => LandingIntentInputSchema.parse(isNutrimixLanding((input as any)?.source_url) ? { ...(input as any), customer_phone: normalizeBdPhoneServer((input as any).customer_phone) } : input)).handler(async ({ data }) => {
   const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
   const deviceId = getOrderDeviceId();
   const { data: intentId, error } = await supabaseAdmin.rpc("create_landing_checkout_intent", {
@@ -163,7 +173,7 @@ export const finalizeLandingCheckoutIntent = createServerFn({ method: "POST" }).
   return { id: orderId };
 });
 
-export const placeOrder = createServerFn({ method: "POST" }).inputValidator((input: Input) => InputSchema.parse(input)).handler(async ({ data }) => {
+export const placeOrder = createServerFn({ method: "POST" }).inputValidator((input: Input) => InputSchema.parse(isNutrimixLanding((input as any)?.source_url) ? { ...(input as any), customer_phone: normalizeBdPhoneServer((input as any).customer_phone) } : input)).handler(async ({ data }) => {
   const customerPhone = data.customer_phone;
   const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
   const deviceId = getOrderDeviceId();
