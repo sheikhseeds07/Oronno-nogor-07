@@ -49,6 +49,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   const landingInitiateCheckoutRef = useRef(false);
   const [formInView, setFormInView] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", address: "" });
+  const [formErrors, setFormErrors] = useState<{name?:string;phone?:string;address?:string}>({});
   // The route loader already fetched this row fresh on the server for this very
   // request, so hydration must not spend the visitor's bandwidth re-fetching it.
   const { data: page, isLoading } = useQuery({ queryKey: ["landing-all-product", slug], staleTime: 0, refetchOnWindowFocus: true, queryFn: async () => (await supabase.from("landing_pages").select(`${LANDING_PAGES_COLUMNS}, products(id,name,price,sale_price,images)`).eq("slug", slug).eq("is_published", true).maybeSingle()).data as Page | null });
@@ -308,9 +309,23 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   const submit = async (event: React.FormEvent, skipNutrimixPopup = false) => {
     event.preventDefault();
     if (orderCreatedRef.current || orderInFlightRef.current) return;
-    if (!form.name || !form.address) return toast.error("নাম ও ঠিকানা পূরণ করুন");
-    if (!isValidBdPhone(form.phone)) return toast.error(phoneSubmitError(form.phone));
-    if (!current) return toast.error("একটি অফার নির্বাচন করুন");
+    const normalizedPhone = normalizeNutrimixPhone(form.phone);
+    const nextErrors = {
+      name: form.name.trim() ? "" : "অনুগ্রহ করে আপনার নাম লিখুন",
+      phone: !form.phone.trim() ? "অনুগ্রহ করে আপনার মোবাইল নম্বর লিখুন" : (!isValidBdPhone(normalizedPhone) ? "মোবাইল নম্বরটি সঠিক নয় — ০১ দিয়ে ১১ সংখ্যার নম্বর লিখুন।" : ""),
+      address: form.address.trim() ? "" : "অনুগ্রহ করে সম্পূর্ণ ঠিকানা লিখুন",
+    };
+    setFormErrors(nextErrors);
+    const firstInvalid = (["name", "phone", "address"] as const).find((key) => nextErrors[key]);
+    if (firstInvalid) {
+      window.requestAnimationFrame(() => {
+        const field = document.getElementById(`nutrimix-${firstInvalid}`);
+        field?.scrollIntoView({ behavior: "smooth", block: "center" });
+        (field as HTMLInputElement | HTMLTextAreaElement | null)?.focus();
+      });
+      return;
+    }
+    if (!current) return;
     if (!isNutrimix && !skipNutrimixPopup && C.nutrimix_popup_enabled !== false) {
       await openNutrimix();
       return;
@@ -320,7 +335,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
     try {
       const items = [{ id: current.product_id || `offer-${selected}`, name: current.name, price: current.price, quantity: 1 }];
       trackInitiateCheckout(items, total);
-      const order = await runPlaceOrder({ data: { customer_name: form.name, customer_phone: form.phone.replace(/[\s-]/g, ""), customer_address: form.address, delivery_fee: shipping, items, notes: null, ...getFbContext() } });
+      const order = await runPlaceOrder({ data: { customer_name: form.name, customer_phone: normalizedPhone, customer_address: form.address, delivery_fee: shipping, items, notes: null, ...getFbContext() } });
       orderCreatedRef.current = true;
       trackPurchase(items, total, order.id);
       toast.success("অর্ডার সফল হয়েছে!");
@@ -535,21 +550,21 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
         <div className="mx-auto max-w-3xl px-4">
           <div className="mb-6 text-center">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-all-product-primary px-3 py-1.5 text-xs font-black text-all-product-primary-foreground"><PackageCheck className="h-4 w-4" /> মাত্র ৩০ সেকেন্ডে অর্ডার</span>
-            <h2 className="mt-3 whitespace-nowrap text-[22px] font-black leading-tight sm:text-3xl">নিচের ফর্ম গুলো পূরন করুন</h2>
+            <h2 className="mt-3 whitespace-nowrap text-[22px] font-black leading-tight sm:text-3xl">নিচের ফর্মগুলো পূরণ করুন</h2>
             <p className="mt-1 text-sm text-all-product-muted">২-৩ দিনের মধ্যে হোম ডেলিভারি পেয়ে যাবেন</p>
           </div>
 
-          <form id="all-product-order-form" onSubmit={submit} className="overflow-hidden rounded-lg border border-all-product-line bg-all-product-surface shadow-all-product">
+          <form id="all-product-order-form" noValidate onSubmit={submit} className="overflow-hidden rounded-lg border border-all-product-line bg-all-product-surface shadow-all-product">
             <div className="border-b border-all-product-line p-4 sm:p-6">
               <div className="mb-4 flex items-center gap-2">
                 <span className="grid h-7 w-7 place-items-center rounded-full bg-all-product-primary text-sm font-black text-all-product-primary-foreground">১</span>
                 <h3 className="font-black">আপনার তথ্য দিন</h3>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <CheckoutField label="আপনার নাম" icon={<User />}><input required value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} placeholder="আপনার পুরো নাম" /></CheckoutField>
-                <CheckoutField label="মোবাইল নম্বর" icon={<Phone />}><input required type="tel" inputMode="numeric" value={form.phone} onChange={event => setForm({ ...form, phone: event.target.value.replace(/[^\d]/g, "").slice(0, 16) })} placeholder="01XXXXXXXXX" /></CheckoutField>
+                <CheckoutField label="আপনার নাম" icon={<User />} error={formErrors.name}><input id="nutrimix-name" value={form.name} onChange={event => { setForm({ ...form, name: event.target.value }); setFormErrors((errors) => ({ ...errors, name: "" })); }} placeholder="আপনার পুরো নাম" /></CheckoutField>
+                <CheckoutField label="মোবাইল নম্বর" icon={<Phone />} error={formErrors.phone}><input id="nutrimix-phone" type="tel" inputMode="tel" value={form.phone} onChange={event => { setForm({ ...form, phone: event.target.value.slice(0, 24) }); setFormErrors((errors) => ({ ...errors, phone: "" })); }} placeholder="01XXXXXXXXX" /></CheckoutField>
                 <div className="sm:col-span-2">
-                  <CheckoutField label="সম্পূর্ণ ঠিকানা" icon={<MapPin />}><textarea required rows={2} value={form.address} onChange={event => setForm({ ...form, address: event.target.value })} placeholder="গ্রাম/এলাকা, থানা, জেলা" /></CheckoutField>
+                  <CheckoutField label="সম্পূর্ণ ঠিকানা" icon={<MapPin />} error={formErrors.address}><textarea id="nutrimix-address" rows={2} value={form.address} onChange={event => { setForm({ ...form, address: event.target.value }); setFormErrors((errors) => ({ ...errors, address: "" })); }} placeholder="গ্রাম/এলাকা, থানা, জেলা" /></CheckoutField>
                 </div>
               </div>
             </div>
@@ -670,7 +685,6 @@ function NutrimixNutrients() {
   const nutrients = [
     { symbol: "Mg", name: "Magnesium", bn: "ম্যাগনেসিয়াম", role: "ক্লোরোফিল ও পাতার সবুজভাব", benefit: "ক্লোরোফিল তৈরিতে সহায়তা করে এবং পাতাকে সবুজ ও সতেজ রাখতে ভূমিকা রাখে।", tone: "from-emerald-50 via-white to-lime-50", ring: "border-emerald-100", accent: "text-emerald-700", icon: "🌿" },
     { symbol: "Ca", name: "Calcium", bn: "ক্যালসিয়াম", role: "কোষ ও নতুন বৃদ্ধির শক্তি", benefit: "গাছের কোষের গঠন ও নতুন টিস্যুর স্বাভাবিক বিকাশে গুরুত্বপূর্ণ ভূমিকা রাখে।", tone: "from-sky-50 via-white to-cyan-50", ring: "border-sky-100", accent: "text-sky-700", icon: "🌱" },
-    { symbol: "Na", name: "Sodium", bn: "সোডিয়াম", role: "পানি ও আয়ন ভারসাম্য", benefit: "কিছু উদ্ভিদের ক্ষেত্রে পানি ও আয়নের ভারসাম্য বজায় রাখতে ভূমিকা রাখতে পারে।", tone: "from-cyan-50 via-white to-blue-50", ring: "border-cyan-100", accent: "text-cyan-700", icon: "💧" },
     { symbol: "S", name: "Sulfur", bn: "সালফার", role: "প্রোটিন ও এনজাইম গঠন", benefit: "প্রোটিন ও গুরুত্বপূর্ণ যৌগ তৈরিতে সহায়তা করে এবং গাছের স্বাভাবিক বৃদ্ধি ও বিপাকীয় কার্যক্রমকে সমর্থন করে।", tone: "from-amber-50 via-white to-yellow-50", ring: "border-amber-100", accent: "text-amber-700", icon: "✨" },
     { symbol: "B", name: "Boron", bn: "বোরন", role: "ফুল, পরাগায়ন ও নতুন টিস্যু", benefit: "ফুল ও প্রজনন অঙ্গের স্বাভাবিক বিকাশ, পরাগায়ন এবং নতুন টিস্যু গঠনে গুরুত্বপূর্ণ ভূমিকা রাখে।", tone: "from-rose-50 via-white to-orange-50", ring: "border-rose-100", accent: "text-rose-700", icon: "🌸" },
     { symbol: "Zn", name: "Zinc", bn: "জিংক", role: "এনজাইম ও স্বাভাবিক বৃদ্ধি", benefit: "বিভিন্ন এনজাইমের কার্যক্রম ও উদ্ভিদের স্বাভাবিক বৃদ্ধি নিয়ন্ত্রণকারী প্রক্রিয়াকে সমর্থন করে।", tone: "from-teal-50 via-white to-emerald-50", ring: "border-teal-100", accent: "text-teal-700", icon: "🍃" },
@@ -685,7 +699,7 @@ function NutrimixNutrients() {
           <div className="relative">
             <div className="mb-3 text-center">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-all-product-gold/30 bg-white/80 px-3 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-all-product-gold-foreground shadow-sm"><Sparkles className="h-3 w-3" /> Premium Nutrient Blend</span>
-              <h2 className="mt-1.5 text-xl font-black tracking-tight text-all-product-ink sm:text-2xl">NUTRIMIX-এ রয়েছে ৬টি প্রয়োজনীয় পুষ্টি উপাদান</h2>
+              <h2 className="mt-1.5 text-xl font-black tracking-tight text-all-product-ink sm:text-2xl">NUTRIMIX-এ রয়েছে ৫টি প্রয়োজনীয় পুষ্টি উপাদান</h2>
               <p className="mx-auto mt-1 max-w-2xl text-[12px] font-semibold leading-[1.45] text-all-product-muted sm:text-sm">গাছের সবুজভাব, নতুন বৃদ্ধি, ফুল ও সামগ্রিক পুষ্টি ব্যবস্থাপনায় প্রয়োজনীয় বিভিন্ন উপাদানের সমন্বিত ব্লেন্ড।</p>
             </div>
             <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 sm:gap-2.5">
@@ -700,7 +714,7 @@ function NutrimixNutrients() {
                 </article>
               ))}
             </div>
-            <div className="mt-3 flex items-center justify-center gap-2 rounded-lg border border-emerald-100 bg-white/75 px-3 py-2 text-center shadow-sm"><Leaf className="h-4 w-4 shrink-0 text-emerald-600" /><p className="text-[11px] font-bold leading-[1.4] text-all-product-muted sm:text-xs"><span className="font-black text-emerald-700">৬ উপাদান, একসাথে:</span> গাছের প্রয়োজনীয় পুষ্টি ব্যবস্থাপনাকে আরও সম্পূর্ণভাবে সাপোর্ট করার জন্য তৈরি।</p></div>
+            <div className="mt-3 flex items-center justify-center gap-2 rounded-lg border border-emerald-100 bg-white/75 px-3 py-2 text-center shadow-sm"><Leaf className="h-4 w-4 shrink-0 text-emerald-600" /><p className="text-[11px] font-bold leading-[1.4] text-all-product-muted sm:text-xs"><span className="font-black text-emerald-700">৫ উপাদান, একসাথে:</span> গাছের প্রয়োজনীয় পুষ্টি ব্যবস্থাপনাকে আরও সম্পূর্ণভাবে সাপোর্ট করার জন্য তৈরি।</p></div>
             <button type="button" onClick={() => document.getElementById("all-product-order-form")?.scrollIntoView({ behavior: "smooth", block: "start" })} className="group relative mt-3 flex min-h-[50px] w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-all-product-primary px-5 py-3.5 text-[15px] font-black text-white shadow-[0_14px_30px_-14px_rgba(16,185,129,.7)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_36px_-14px_rgba(16,185,129,.8)] active:scale-[.99]">
               <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
               <ShoppingBag className="relative h-5 w-5" />
@@ -721,6 +735,13 @@ const AP_COUNTDOWN_STYLE = `
 .ap-cd-dot{animation:apCdPulse 1.4s ease-in-out infinite}
 @media (prefers-reduced-motion:reduce){.ap-cd-box,.ap-cd-dot{animation:none!important}}
 `;
+
+function normalizeNutrimixPhone(value: string) {
+  const bn = "০১২৩৪৫৬৭৮৯";
+  const ascii = String(value ?? "").replace(/[০-৯]/g, (digit) => String(bn.indexOf(digit)));
+  const digits = ascii.replace(/\D/g, "");
+  return (digits.startsWith("880") ? "0" + digits.slice(3) : digits).slice(0, 11);
+}
 
 function bnDigits(value: number) { return String(value).padStart(2, "0").replace(/\d/g, (d) => "০১২৩৪৫৬৭৮৯"[Number(d)]); }
 
@@ -754,8 +775,8 @@ function OfferCountdown() {
   );
 }
 
-function CheckoutField({ label, icon, children }: { label: string; icon: ReactNode; children: ReactElement<{ className?: string }> }) {
-  return <label className="block"><span className="mb-1.5 block text-sm font-bold">{label} <span className="text-all-product-alert">*</span></span><span className="all-product-field relative block"><span className="pointer-events-none absolute left-3 top-3.5 text-all-product-muted [&_svg]:h-4 [&_svg]:w-4">{icon}</span>{children}</span></label>;
+function CheckoutField({ label, icon, children, error }: { label: string; icon: ReactNode; children: ReactElement<{ className?: string }>; error?: string }) {
+  return <label className="block"><span className="mb-1.5 block text-sm font-bold">{label} <span className="text-all-product-alert">*</span></span><span className="all-product-field relative block"><span className="pointer-events-none absolute left-3 top-3.5 text-all-product-muted [&_svg]:h-4 [&_svg]:w-4">{icon}</span>{children}</span>{error && <small className="mt-1 block text-sm font-semibold text-red-600">{error}</small>}</label>;
 }
 
 
