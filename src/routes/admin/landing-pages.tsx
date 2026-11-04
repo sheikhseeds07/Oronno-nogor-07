@@ -129,7 +129,7 @@ function LandingPagesAdmin() {
       features: p.features?.length ? p.features : DEFAULT_FEATURES,
       why_choose_us: p.why_choose_us?.length ? p.why_choose_us : DEFAULT_WHY,
       reviews: p.reviews?.length ? p.reviews : DEFAULT_REVIEWS,
-      planting_steps: mergeContent(p.planting_steps),
+      planting_steps: { ...mergeContent(p.planting_steps), top_bar_enabled: (p.planting_steps as (LandingContent & { top_bar_enabled?: boolean }) | null)?.top_bar_enabled ?? true },
     });
     setTab("main");
   };
@@ -336,8 +336,11 @@ function LandingPagesAdmin() {
                     <div className="text-xs text-muted-foreground mt-1">URL: /landing/{editing.slug || "..."}</div>
                   </Field>
                   <Field label="হেডারের উপরের টেক্সট (top bar)">
-                    <input value={editing.top_bar_text ?? ""} onChange={(e) => set({ top_bar_text: e.target.value })} placeholder="যেমন: 🎉 আজকের বিশেষ অফার — ফ্রি ডেলিভারি!" className="w-full border rounded-lg px-3 py-2" />
-                    <div className="text-xs text-muted-foreground mt-1">খালি রাখলে দেখাবে না</div>
+                    <div className="flex items-center gap-2">
+                      <input value={editing.top_bar_text ?? ""} onChange={(e) => set({ top_bar_text: e.target.value })} placeholder="যেমন: 🎉 আজকের বিশেষ অফার — ফ্রি ডেলিভারি!" className="min-w-0 flex-1 border rounded-lg px-3 py-2" />
+                      <button type="button" role="switch" aria-checked={C.top_bar_enabled !== false} onClick={() => setC({ top_bar_enabled: C.top_bar_enabled === false })} className={`shrink-0 rounded-lg px-3 py-2 text-xs font-bold text-white ${C.top_bar_enabled === false ? "bg-slate-500" : "bg-emerald-600"}`}>{C.top_bar_enabled === false ? "OFF" : "ON"}</button>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">OFF করলে landing page-এ top bar দেখাবে না; লেখা সংরক্ষিত থাকবে।</div>
                   </Field>
                   <div className="pt-3 border-t"><Field label="থিম কালার"><input type="color" value={editing.theme_color ?? "#16a34a"} onChange={(e) => set({ theme_color: e.target.value })} className="w-full h-10 border rounded-lg" /></Field></div>
                   <label className="flex items-center gap-2 pt-3 border-t"><input type="checkbox" checked={editing.is_published ?? false} onChange={(e) => set({ is_published: e.target.checked })} /><span className="font-semibold">পাবলিশ করুন</span></label>
