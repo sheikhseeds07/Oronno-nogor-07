@@ -309,21 +309,26 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   const submit = async (event: React.FormEvent, skipNutrimixPopup = false) => {
     event.preventDefault();
     if (orderCreatedRef.current || orderInFlightRef.current) return;
-    const normalizedPhone = normalizeNutrimixPhone(form.phone);
-    const nextErrors = {
-      name: form.name.trim() ? "" : "অনুগ্রহ করে আপনার নাম লিখুন",
-      phone: !form.phone.trim() ? "অনুগ্রহ করে আপনার মোবাইল নম্বর লিখুন" : (!isValidBdPhone(normalizedPhone) ? "মোবাইল নম্বরটি সঠিক নয় — ০১ দিয়ে ১১ সংখ্যার নম্বর লিখুন।" : ""),
-      address: form.address.trim() ? "" : "অনুগ্রহ করে সম্পূর্ণ ঠিকানা লিখুন",
-    };
-    setFormErrors(nextErrors);
-    const firstInvalid = (["name", "phone", "address"] as const).find((key) => nextErrors[key]);
-    if (firstInvalid) {
-      window.requestAnimationFrame(() => {
-        const field = document.getElementById(`nutrimix-${firstInvalid}`);
-        field?.scrollIntoView({ behavior: "smooth", block: "center" });
-        (field as HTMLInputElement | HTMLTextAreaElement | null)?.focus();
-      });
-      return;
+    const normalizedPhone = isNutrimix ? normalizeNutrimixPhone(form.phone) : form.phone.replace(/[\\s-]/g, "");
+    if (isNutrimix) {
+      const nextErrors = {
+        name: form.name.trim() ? "" : "অনুগ্রহ করে আপনার নাম লিখুন",
+        phone: !form.phone.trim() ? "অনুগ্রহ করে আপনার মোবাইল নম্বর লিখুন" : (!isValidBdPhone(normalizedPhone) ? "মোবাইল নম্বরটি সঠিক নয় — ০১ দিয়ে ১১ সংখ্যার নম্বর লিখুন।" : ""),
+        address: form.address.trim() ? "" : "অনুগ্রহ করে সম্পূর্ণ ঠিকানা লিখুন",
+      };
+      setFormErrors(nextErrors);
+      const firstInvalid = (["name", "phone", "address"] as const).find((key) => nextErrors[key]);
+      if (firstInvalid) {
+        window.requestAnimationFrame(() => {
+          const field = document.getElementById(`nutrimix-${firstInvalid}`);
+          field?.scrollIntoView({ behavior: "smooth", block: "center" });
+          (field as HTMLInputElement | HTMLTextAreaElement | null)?.focus();
+        });
+        return;
+      }
+    } else {
+      if (!form.name || !form.address) return toast.error("নাম ও ঠিকানা পূরণ করুন");
+      if (!isValidBdPhone(form.phone)) return toast.error(phoneSubmitError(form.phone));
     }
     if (!current) return;
     if (!isNutrimix && !skipNutrimixPopup && C.nutrimix_popup_enabled !== false) {
@@ -554,17 +559,17 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
             <p className="mt-1 text-sm text-all-product-muted">২-৩ দিনের মধ্যে হোম ডেলিভারি পেয়ে যাবেন</p>
           </div>
 
-          <form id="all-product-order-form" noValidate onSubmit={submit} className="overflow-hidden rounded-lg border border-all-product-line bg-all-product-surface shadow-all-product">
+          <form id="all-product-order-form" noValidate={isNutrimix} onSubmit={submit} className="overflow-hidden rounded-lg border border-all-product-line bg-all-product-surface shadow-all-product">
             <div className="border-b border-all-product-line p-4 sm:p-6">
               <div className="mb-4 flex items-center gap-2">
                 <span className="grid h-7 w-7 place-items-center rounded-full bg-all-product-primary text-sm font-black text-all-product-primary-foreground">১</span>
                 <h3 className="font-black">আপনার তথ্য দিন</h3>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <CheckoutField label="আপনার নাম" icon={<User />} error={formErrors.name}><input id="nutrimix-name" value={form.name} onChange={event => { setForm({ ...form, name: event.target.value }); setFormErrors((errors) => ({ ...errors, name: "" })); }} placeholder="আপনার পুরো নাম" /></CheckoutField>
-                <CheckoutField label="মোবাইল নম্বর" icon={<Phone />} error={formErrors.phone}><input id="nutrimix-phone" type="tel" inputMode="tel" value={form.phone} onChange={event => { setForm({ ...form, phone: event.target.value.slice(0, 24) }); setFormErrors((errors) => ({ ...errors, phone: "" })); }} placeholder="01XXXXXXXXX" /></CheckoutField>
+                <CheckoutField label="আপনার নাম" icon={<User />} error={isNutrimix ? formErrors.name : undefined}><input required id="nutrimix-name" value={form.name} onChange={event => { setForm({ ...form, name: event.target.value }); setFormErrors((errors) => ({ ...errors, name: "" })); }} placeholder="আপনার পুরো নাম" /></CheckoutField>
+                <CheckoutField label="মোবাইল নম্বর" icon={<Phone />} error={isNutrimix ? formErrors.phone : undefined}><input required id="nutrimix-phone" type="tel" inputMode="tel" value={form.phone} onChange={event => { setForm({ ...form, phone: isNutrimix ? event.target.value.slice(0, 24) : event.target.value.replace(/[^\\d]/g, "").slice(0, 16) }); setFormErrors((errors) => ({ ...errors, phone: "" })); }} placeholder="01XXXXXXXXX" /></CheckoutField>
                 <div className="sm:col-span-2">
-                  <CheckoutField label="সম্পূর্ণ ঠিকানা" icon={<MapPin />} error={formErrors.address}><textarea id="nutrimix-address" rows={2} value={form.address} onChange={event => { setForm({ ...form, address: event.target.value }); setFormErrors((errors) => ({ ...errors, address: "" })); }} placeholder="গ্রাম/এলাকা, থানা, জেলা" /></CheckoutField>
+                  <CheckoutField label="সম্পূর্ণ ঠিকানা" icon={<MapPin />} error={isNutrimix ? formErrors.address : undefined}><textarea required id="nutrimix-address" rows={2} value={form.address} onChange={event => { setForm({ ...form, address: event.target.value }); setFormErrors((errors) => ({ ...errors, address: "" })); }} placeholder="গ্রাম/এলাকা, থানা, জেলা" /></CheckoutField>
                 </div>
               </div>
             </div>
