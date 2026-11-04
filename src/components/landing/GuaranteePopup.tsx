@@ -1,6 +1,8 @@
 import { SafeImage } from "@/components/SafeImage";
 import { useEffect, useState } from "react";
 
+const POPUP_DURATION = 10000;
+
 /**
  * Guarantee card + growing-instruction popup for landing page templates.
  *
