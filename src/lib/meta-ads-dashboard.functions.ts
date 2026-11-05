@@ -339,13 +339,13 @@ export const cancelMetaAdSchedule=createServerFn({method:"POST"}).middleware([re
 export const getMetaCampaignInventory=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(i=>ManageRange.parse(i)).handler(async({data,context})=>{
  const {token,accountId,cfg}=await manageAccount(context,data.accountKey);
  const since=dhakaDate(data.from),until=dhakaDate(data.to),base=`https://graph.facebook.com/v23.0/act_${encodeURIComponent(accountId)}`;
- const params=new URLSearchParams({fields:"id,name,status,effective_status,objective",limit:"500",access_token:token});
+ const params=new URLSearchParams({fields:"id,name,status,effective_status,objective,ads.limit(1){creative{thumbnail_url,image_url}}",limit:"500",access_token:token});
  let next:string|null=`${base}/campaigns?${params}`,items:any[]=[],pages=0;
  while(next&&pages<100){const u=new URL(next);if(u.hostname!=="graph.facebook.com"||u.protocol!=="https:")throw new Error("Invalid Meta pagination URL");const p=await graphJson(u.toString());items.push(...(p.data??[]));next=p.paging?.next??null;pages++;}
  const ip=new URLSearchParams({level:"campaign",fields:"campaign_id,spend,actions,cost_per_action_type",time_range:JSON.stringify({since,until}),limit:"500",access_token:token});
  const [insights,accountInfo]=await Promise.all([graphJson(`${base}/insights?${ip}`),graphJson(`${base}?fields=name,currency&access_token=${encodeURIComponent(token)}`)]);
  const im=new Map((insights.data??[]).map((x:any)=>[String(x.campaign_id),x]));
- const campaigns=items.map((x:any)=>{const st=String(x.status??"UNKNOWN").toUpperCase(),es=String(x.effective_status??st).toUpperCase();return {id:String(x.id),name:String(x.name||"Unnamed Campaign"),status:st,effectiveStatus:es,state:es==="ACTIVE"?"On":(["PAUSED","ARCHIVED","DELETED"].includes(es)||["PAUSED","ARCHIVED","DELETED"].includes(st))?"Off":"Other",objective:String(x.objective||""),...purchaseMetrics(im.get(String(x.id))??{})};});
+ const campaigns=items.map((x:any)=>{const st=String(x.status??"UNKNOWN").toUpperCase(),es=String(x.effective_status??st).toUpperCase();return {id:String(x.id),name:String(x.name||"Unnamed Campaign"),status:st,effectiveStatus:es,state:es==="ACTIVE"?"On":(["PAUSED","ARCHIVED","DELETED"].includes(es)||["PAUSED","ARCHIVED","DELETED"].includes(st))?"Off":"Other",objective:String(x.objective||""),imageUrl:String(x.ads?.data?.[0]?.creative?.thumbnail_url||x.ads?.data?.[0]?.creative?.image_url||""),...purchaseMetrics(im.get(String(x.id))??{})};});
  return {accountName:String((cfg as any).demo_name||cfg.account_name||"Meta Ad Account"),currency:String(accountInfo.currency||"USD"),since,until,total:campaigns.length,onCount:campaigns.filter(x=>x.state==="On").length,offCount:campaigns.filter(x=>x.state==="Off").length,otherCount:campaigns.filter(x=>x.state==="Other").length,truncated:!!next,campaigns};
 });
 export const getMetaCampaignAdsets=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(i=>ManageRange.extend({campaignId:z.string().min(1).max(80)}).parse(i)).handler(async({data,context})=>{
