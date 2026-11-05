@@ -348,7 +348,7 @@ export const getMetaCampaignInventory=createServerFn({method:"POST"}).middleware
  const campaigns=items.map((x:any)=>{const st=String(x.status??"UNKNOWN").toUpperCase(),es=String(x.effective_status??st).toUpperCase();return {id:String(x.id),name:String(x.name||"Unnamed Campaign"),status:st,effectiveStatus:es,state:es==="ACTIVE"?"On":(["PAUSED","ARCHIVED","DELETED"].includes(es)||["PAUSED","ARCHIVED","DELETED"].includes(st))?"Off":"Other",objective:String(x.objective||""),...purchaseMetrics(im.get(String(x.id))??{})};});
  return {accountName:String((cfg as any).demo_name||cfg.account_name||"Meta Ad Account"),currency:String(accountInfo.currency||"USD"),since,until,total:campaigns.length,onCount:campaigns.filter(x=>x.state==="On").length,offCount:campaigns.filter(x=>x.state==="Off").length,otherCount:campaigns.filter(x=>x.state==="Other").length,truncated:!!next,campaigns};
 });
-export const getMetaCampaignAdsets=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(ManageRange.extend({campaignId:z.string().min(1).max(80)}).parse).handler(async({data,context})=>{
+export const getMetaCampaignAdsets=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(i=>ManageRange.extend({campaignId:z.string().min(1).max(80)}).parse(i)).handler(async({data,context})=>{
  const {token,accountId}=await manageAccount(context,data.accountKey);
  const campaign=await graphJson(`https://graph.facebook.com/v23.0/${encodeURIComponent(data.campaignId)}?fields=id,account_id,name&access_token=${encodeURIComponent(token)}`);
  if(String(campaign.account_id??"")!==accountId)throw new Error("Campaign does not belong to selected Ad Account");
@@ -363,7 +363,7 @@ export const getMetaCampaignAdsets=createServerFn({method:"POST"}).middleware([r
  const adsets=items.map((x:any)=>{const st=String(x.status??"UNKNOWN").toUpperCase(),es=String(x.effective_status??st).toUpperCase();return {id:String(x.id),name:String(x.name||"Unnamed Ad Set"),status:st,effectiveStatus:es,state:es==="ACTIVE"?"On":(["PAUSED","CAMPAIGN_PAUSED","ARCHIVED","DELETED"].includes(es)||["PAUSED","ARCHIVED","DELETED"].includes(st))?"Off":"Other",...purchaseMetrics(im.get(String(x.id))??{})};});
  return {campaignName:String(campaign.name||""),total:adsets.length,onCount:adsets.filter(x=>x.state==="On").length,offCount:adsets.filter(x=>x.state==="Off").length,adsets};
 });
-export const getMetaAdsetAds=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(ManageRange.extend({adsetId:z.string().min(1).max(80)}).parse).handler(async({data,context})=>{
+export const getMetaAdsetAds=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(i=>ManageRange.extend({adsetId:z.string().min(1).max(80)}).parse(i)).handler(async({data,context})=>{
  const {token,accountId}=await manageAccount(context,data.accountKey);
  const adset=await graphJson(`https://graph.facebook.com/v23.0/${encodeURIComponent(data.adsetId)}?fields=id,account_id,name&access_token=${encodeURIComponent(token)}`);
  if(String(adset.account_id??"")!==accountId)throw new Error("Ad Set does not belong to selected Ad Account");
