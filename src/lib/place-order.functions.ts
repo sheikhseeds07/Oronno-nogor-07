@@ -46,7 +46,11 @@ function getOrderDeviceId(): string | null {
   return id;
 }
 const ItemSchema = z.object({ id: z.string().min(1).max(64), name: z.string().min(1).max(500), price: z.number().min(0).max(10_000_000), quantity: z.number().int().min(1).max(1000) });
-const InputSchema = z.object({ customer_name: z.string().min(1).max(255), customer_phone: z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number. Use 01XXXXXXXXX."), customer_address: z.string().min(1).max(1000), district: z.string().max(100).optional().nullable(), thana: z.string().max(100).optional().nullable(), notes: z.string().max(2000).optional().nullable(), delivery_fee: z.number().min(0).max(10000).default(50), items: z.array(ItemSchema).min(1).max(100), created_by: z.string().uuid().optional().nullable(), fbp: z.string().max(200).optional().nullable(), fbc: z.string().max(500).optional().nullable(), source_url: z.string().max(2000).optional().nullable(), checkout_session_id: z.string().max(200).optional().nullable() });
+const BdPhoneSchema = z.preprocess(
+  (value) => typeof value === "string" ? normalizeBdPhoneServer(value) : value,
+  z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number. Use 01XXXXXXXXX."),
+);
+const InputSchema = z.object({ customer_name: z.string().min(1).max(255), customer_phone: BdPhoneSchema, customer_address: z.string().min(1).max(1000), district: z.string().max(100).optional().nullable(), thana: z.string().max(100).optional().nullable(), notes: z.string().max(2000).optional().nullable(), delivery_fee: z.number().min(0).max(10000).default(50), items: z.array(ItemSchema).min(1).max(100), created_by: z.string().uuid().optional().nullable(), fbp: z.string().max(200).optional().nullable(), fbc: z.string().max(500).optional().nullable(), source_url: z.string().max(2000).optional().nullable(), checkout_session_id: z.string().max(200).optional().nullable() });
 type Input = z.infer<typeof InputSchema>;
 const LandingOrderInputSchema = InputSchema.extend({ landing_slug: z.string().min(1).max(200) });
 
@@ -55,7 +59,7 @@ type LandingAddon = { product_id?: string | null; name?: string; price?: number;
 const LandingIntentInputSchema = z.object({
   checkout_session_id: z.string().uuid(),
   customer_name: z.string().min(1).max(255),
-  customer_phone: z.string().regex(PHONE_RE),
+  customer_phone: BdPhoneSchema,
   customer_address: z.string().min(1).max(1000),
   delivery_fee: z.number().min(0).max(10000),
   seed_items: z.array(ItemSchema).min(1).max(100),
@@ -74,10 +78,10 @@ const LandingFinalizeInputSchema = z.object({
   source_url: z.string().max(2000).optional().nullable(),
 });
 
-const IncompleteInputSchema = z.object({ customer_name: z.string().max(255).optional().nullable(), customer_phone: z.string().regex(PHONE_RE), customer_address: z.string().max(1000).optional().nullable(), delivery_zone: z.string().max(100).optional().nullable(), delivery_fee: z.number().min(0).max(10000), subtotal: z.number().min(0).max(10_000_000), total: z.number().min(0).max(10_000_000), note: z.string().max(2000).optional().nullable(), items: z.array(ItemSchema).min(1).max(100) });
+const IncompleteInputSchema = z.object({ customer_name: z.string().max(255).optional().nullable(), customer_phone: BdPhoneSchema, customer_address: z.string().max(1000).optional().nullable(), delivery_zone: z.string().max(100).optional().nullable(), delivery_fee: z.number().min(0).max(10000), subtotal: z.number().min(0).max(10_000_000), total: z.number().min(0).max(10_000_000), note: z.string().max(2000).optional().nullable(), items: z.array(ItemSchema).min(1).max(100) });
 
 
-export const lookupCustomerByPhone = createServerFn({ method: "POST" }).inputValidator((input) => z.object({ phone: z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number") }).parse(input)).handler(async ({ data }) => {
+export const lookupCustomerByPhone = createServerFn({ method: "POST" }).inputValidator((input) => z.object({ phone: BdPhoneSchema }).parse(input)).handler(async ({ data }) => {
   const { data: order } = await supabaseAdmin.from("orders").select("customer_name,customer_address").eq("customer_phone", data.phone).order("created_at", { ascending: false }).limit(1).maybeSingle();
   return order ? { name: order.customer_name, address: order.customer_address } : null;
 });
@@ -96,7 +100,7 @@ export const saveIncompleteCheckout = createServerFn({ method: "POST" }).inputVa
 });
 
 
-export const createLandingCheckoutIntent = createServerFn({ method: "POST" }).inputValidator((input) => LandingIntentInputSchema.parse(isNutrimixLanding((input as any)?.source_url) ? { ...(input as any), customer_phone: normalizeBdPhoneServer((input as any).customer_phone) } : input)).handler(async ({ data }) => {
+export const createLandingCheckoutIntent = createServerFn({ method: "POST" }).inputValidator((input) => LandingIntentInputSchema.parse(input)).handler(async ({ data }) => {
   const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
   const deviceId = getOrderDeviceId();
   const { data: intentId, error } = await supabaseAdmin.rpc("create_landing_checkout_intent", {
@@ -173,7 +177,7 @@ export const finalizeLandingCheckoutIntent = createServerFn({ method: "POST" }).
   return { id: orderId };
 });
 
-export const placeOrder = createServerFn({ method: "POST" }).inputValidator((input: Input) => InputSchema.parse(isNutrimixLanding((input as any)?.source_url) ? { ...(input as any), customer_phone: normalizeBdPhoneServer((input as any).customer_phone) } : input)).handler(async ({ data }) => {
+export const placeOrder = createServerFn({ method: "POST" }).inputValidator((input: Input) => InputSchema.parse(input)).handler(async ({ data }) => {
   const customerPhone = data.customer_phone;
   const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
   const deviceId = getOrderDeviceId();
