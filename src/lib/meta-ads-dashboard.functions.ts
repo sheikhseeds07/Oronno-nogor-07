@@ -268,7 +268,7 @@ export const getOronnoNogorAdsList = createServerFn({ method: "POST" })
   });
 
 const ManageRange = z.object({accountKey:z.enum(["meta_ad_account","meta_ad_account_2"]),from:z.string().datetime(),to:z.string().datetime()});
-const ManageAction = z.object({accountKey:z.enum(["meta_ad_account","meta_ad_account_2"]),adId:z.string().min(1).max(80),action:z.enum(["ACTIVE","PAUSED"])});
+const ManageAction = z.object({accountKey:z.enum(["meta_ad_account","meta_ad_account_2"]),targetType:z.enum(["campaign","adset","ad"]).default("ad"),targetId:z.string().min(1).max(80),action:z.enum(["ACTIVE","PAUSED"])});
 async function manageAccount(context:any,key:"meta_ad_account"|"meta_ad_account_2"){
  const db=context.supabase as any;
  const {data:rr,error:re}=await db.from("user_roles").select("role").eq("user_id",context.userId);
@@ -318,16 +318,16 @@ export const getMetaAdDetails=createServerFn({method:"POST"}).middleware([requir
  return {id:String(ad.id),name:String(ad.name||""),status:String(ad.status||""),effectiveStatus:String(ad.effective_status||""),imageUrl:String(ad.creative?.thumbnail_url||ad.creative?.image_url||""),...purchaseMetrics(ins.data?.[0]??{}),since,until};
 });
 export const setMetaAdStatus=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(i=>ManageAction.parse(i)).handler(async({data,context})=>{
- const {token,accountId}=await manageAccount(context,data.accountKey);await verifyAdInAccount(data.adId,token,accountId);await changeAdStatus(data.adId,token,data.action);return {success:true,action:data.action};
+ const {token,accountId}=await manageAccount(context,data.accountKey);const target=await graphJson(`https://graph.facebook.com/v23.0/${encodeURIComponent(data.targetId)}?fields=id,account_id&access_token=${encodeURIComponent(token)}`);if(String(target.account_id??"")!==accountId)throw new Error("Selected object does not belong to this Ad Account");await changeAdStatus(data.targetId,token,data.action);return {success:true,action:data.action,targetType:data.targetType};
 });
-export const scheduleMetaAdStatus=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(i=>ManageAction.extend({adName:z.string().max(300).default(""),runAt:z.string().datetime()}).parse(i)).handler(async({data,context})=>{
- const {db,token,accountId}=await manageAccount(context,data.accountKey);const ad=await verifyAdInAccount(data.adId,token,accountId);
- if(new Date(data.runAt).getTime()<Date.now()+30000)throw new Error("Select a time at least 30 seconds in the future");
- const {data:row,error}=await db.from("meta_ad_schedules").insert({account_key:data.accountKey,ad_id:data.adId,ad_name:data.adName||String(ad.name||""),action:data.action,run_at:data.runAt,created_by:context.userId}).select("id,account_key,ad_id,ad_name,action,run_at,status").single();
+export const scheduleMetaAdStatus=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(i=>ManageAction.extend({targetName:z.string().max(300).default(""),runAt:z.string().datetime()}).parse(i)).handler(async({data,context})=>{
+ const {db,token,accountId}=await manageAccount(context,data.accountKey);const target=await graphJson(`https://graph.facebook.com/v23.0/${encodeURIComponent(data.targetId)}?fields=id,name,account_id&access_token=${encodeURIComponent(token)}`);if(String(target.account_id??"")!==accountId)throw new Error("Selected object does not belong to this Ad Account");
+ if(new Date(data.runAt).getTime()<Date.now()+60000)throw new Error("কমপক্ষে ১ মিনিট পরের সময় নির্বাচন করুন");
+ const {data:row,error}=await db.from("meta_ad_schedules").insert({account_key:data.accountKey,ad_id:data.targetId,target_id:data.targetId,target_type:data.targetType,ad_name:data.targetName||String(target.name||""),action:data.action,run_at:data.runAt,created_by:context.userId}).select("id,account_key,ad_id,target_id,target_type,ad_name,action,run_at,status").single();
  if(error)throw new Error(error.message);return row;
 });
 export const getMetaAdSchedules=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(i=>z.object({accountKey:z.enum(["meta_ad_account","meta_ad_account_2"])}).parse(i)).handler(async({data,context})=>{
- const {db}=await manageAccount(context,data.accountKey);const {data:rows,error}=await db.from("meta_ad_schedules").select("id,ad_id,ad_name,action,run_at,status,error_text").eq("account_key",data.accountKey).in("status",["pending","completed","failed"]).order("run_at",{ascending:false}).limit(30);if(error)throw new Error(error.message);return rows??[];
+ const {db}=await manageAccount(context,data.accountKey);const {data:rows,error}=await db.from("meta_ad_schedules").select("id,ad_id,target_id,target_type,ad_name,action,run_at,status,error_text").eq("account_key",data.accountKey).in("status",["pending","completed","failed"]).order("run_at",{ascending:false}).limit(30);if(error)throw new Error(error.message);return rows??[];
 });
 export const cancelMetaAdSchedule=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(i=>z.object({id:z.string().uuid()}).parse(i)).handler(async({data,context})=>{
  const db=context.supabase as any;const {data:rr,error:re}=await db.from("user_roles").select("role").eq("user_id",context.userId);if(re)throw new Error(re.message);if(!(rr??[]).some((x:any)=>["admin","super_admin"].includes(String(x.role))))throw new Error("Forbidden");
