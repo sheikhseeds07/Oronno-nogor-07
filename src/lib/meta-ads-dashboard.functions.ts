@@ -181,3 +181,88 @@ export const getMetaAdsDashboard = createServerFn({ method: "POST" })
       fetchedAt: new Date().toISOString(),
     };
   });
+
+
+/**
+ * Read-only ad inventory for Oronno Nogor. This endpoint never writes to Meta.
+ * Only admins can call it; the stored token stays server-side and is never returned.
+ */
+export const getOronnoNogorAdsList = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const db = context.supabase as any;
+    const { data: roleRows, error: roleError } = await db
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId);
+    if (roleError) throw new Error(roleError.message);
+    const roles = new Set((roleRows ?? []).map((row: any) => String(row.role)));
+    if (!roles.has("admin") && !roles.has("super_admin")) throw new Error("Forbidden");
+
+    const { data: integration, error: integrationError } = await db
+      .from("integrations")
+      .select("name,config,is_active")
+      .eq("name", "meta_ad_account_2")
+      .maybeSingle();
+    if (integrationError) throw new Error(integrationError.message);
+
+    const cfg = (integration?.config ?? {}) as MetaConfig;
+    const token = String(cfg.access_token ?? "").trim();
+    const accountId = String(cfg.ad_account_id ?? cfg.account_id ?? "").replace(/^act_/, "").trim();
+    if (!integration?.is_active || !token || !accountId) throw new Error("Oronno Nogor Ad Account is not connected");
+
+    const params = new URLSearchParams({
+      fields: "id,name,status,effective_status,campaign{name}",
+      limit: "500",
+      access_token: token,
+    });
+    let nextUrl: string | null = `https://graph.facebook.com/v23.0/act_${encodeURIComponent(accountId)}/ads?${params.toString()}`;
+    const ads: any[] = [];
+    let pages = 0;
+    while (nextUrl && pages < 100) {
+      const url = new URL(nextUrl);
+      if (url.protocol !== "https:" || url.hostname !== "graph.facebook.com") throw new Error("Unexpected Meta pagination URL");
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 12_000);
+      let response: Response;
+      try {
+        response = await fetch(url.toString(), { signal: controller.signal });
+      } finally {
+        clearTimeout(timeout);
+      }
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload?.error) {
+        throw new Error(payload?.error?.message || `Meta ads request failed with HTTP ${response.status}`);
+      }
+      if (Array.isArray(payload?.data)) ads.push(...payload.data);
+      nextUrl = typeof payload?.paging?.next === "string" ? payload.paging.next : null;
+      pages += 1;
+    }
+
+    const rows = ads.map((ad: any) => {
+      const status = String(ad?.status ?? "UNKNOWN").toUpperCase();
+      const effectiveStatus = String(ad?.effective_status ?? status).toUpperCase();
+      const isOn = effectiveStatus === "ACTIVE";
+      const isOff = ["PAUSED", "CAMPAIGN_PAUSED", "ADSET_PAUSED", "ARCHIVED", "DELETED"].includes(effectiveStatus)
+        || ["PAUSED", "ARCHIVED", "DELETED"].includes(status);
+      return {
+        id: String(ad?.id ?? ""),
+        name: String(ad?.name ?? "Unnamed ad"),
+        campaignName: String(ad?.campaign?.name ?? ""),
+        status,
+        effectiveStatus,
+        state: isOn ? "On" : isOff ? "Off" : "Other",
+      };
+    });
+
+    return {
+      accountName: String((cfg as any).demo_name || cfg.account_name || "Oronno Nogor"),
+      total: rows.length,
+      onCount: rows.filter((ad) => ad.state === "On").length,
+      offCount: rows.filter((ad) => ad.state === "Off").length,
+      otherCount: rows.filter((ad) => ad.state === "Other").length,
+      truncated: !!nextUrl,
+      ads: rows,
+      fetchedAt: new Date().toISOString(),
+    };
+  });
