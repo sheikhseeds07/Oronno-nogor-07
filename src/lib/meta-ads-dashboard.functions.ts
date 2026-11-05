@@ -333,3 +333,48 @@ export const cancelMetaAdSchedule=createServerFn({method:"POST"}).middleware([re
  const db=context.supabase as any;const {data:rr,error:re}=await db.from("user_roles").select("role").eq("user_id",context.userId);if(re)throw new Error(re.message);if(!(rr??[]).some((x:any)=>["admin","super_admin"].includes(String(x.role))))throw new Error("Forbidden");
  const {data:row,error}=await db.from("meta_ad_schedules").update({status:"cancelled"}).eq("id",data.id).eq("status","pending").select("id").maybeSingle();if(error)throw new Error(error.message);return {success:!!row};
 });
+
+
+/** Campaign-first hierarchy for Manage Ads: campaigns -> ad sets -> ads. */
+export const getMetaCampaignInventory=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(i=>ManageRange.parse(i)).handler(async({data,context})=>{
+ const {token,accountId,cfg}=await manageAccount(context,data.accountKey);
+ const since=dhakaDate(data.from),until=dhakaDate(data.to),base=`https://graph.facebook.com/v23.0/act_${encodeURIComponent(accountId)}`;
+ const params=new URLSearchParams({fields:"id,name,status,effective_status,objective",limit:"500",access_token:token});
+ let next:string|null=`${base}/campaigns?${params}`,items:any[]=[],pages=0;
+ while(next&&pages<100){const u=new URL(next);if(u.hostname!=="graph.facebook.com"||u.protocol!=="https:")throw new Error("Invalid Meta pagination URL");const p=await graphJson(u.toString());items.push(...(p.data??[]));next=p.paging?.next??null;pages++;}
+ const ip=new URLSearchParams({level:"campaign",fields:"campaign_id,spend,actions,cost_per_action_type",time_range:JSON.stringify({since,until}),limit:"500",access_token:token});
+ const [insights,accountInfo]=await Promise.all([graphJson(`${base}/insights?${ip}`),graphJson(`${base}?fields=name,currency&access_token=${encodeURIComponent(token)}`)]);
+ const im=new Map((insights.data??[]).map((x:any)=>[String(x.campaign_id),x]));
+ const campaigns=items.map((x:any)=>{const st=String(x.status??"UNKNOWN").toUpperCase(),es=String(x.effective_status??st).toUpperCase();return {id:String(x.id),name:String(x.name||"Unnamed Campaign"),status:st,effectiveStatus:es,state:es==="ACTIVE"?"On":(["PAUSED","ARCHIVED","DELETED"].includes(es)||["PAUSED","ARCHIVED","DELETED"].includes(st))?"Off":"Other",objective:String(x.objective||""),...purchaseMetrics(im.get(String(x.id))??{})};});
+ return {accountName:String((cfg as any).demo_name||cfg.account_name||"Meta Ad Account"),currency:String(accountInfo.currency||"USD"),since,until,total:campaigns.length,onCount:campaigns.filter(x=>x.state==="On").length,offCount:campaigns.filter(x=>x.state==="Off").length,otherCount:campaigns.filter(x=>x.state==="Other").length,truncated:!!next,campaigns};
+});
+export const getMetaCampaignAdsets=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(ManageRange.extend({campaignId:z.string().min(1).max(80)}).parse).handler(async({data,context})=>{
+ const {token,accountId}=await manageAccount(context,data.accountKey);
+ const campaign=await graphJson(`https://graph.facebook.com/v23.0/${encodeURIComponent(data.campaignId)}?fields=id,account_id,name&access_token=${encodeURIComponent(token)}`);
+ if(String(campaign.account_id??"")!==accountId)throw new Error("Campaign does not belong to selected Ad Account");
+ const since=dhakaDate(data.from),until=dhakaDate(data.to);
+ const p=new URLSearchParams({fields:"id,name,status,effective_status",limit:"500",access_token:token});
+ const base=`https://graph.facebook.com/v23.0/${encodeURIComponent(data.campaignId)}/adsets`;
+ let next:string|null=`${base}?${p}`,items:any[]=[],pages=0;
+ while(next&&pages<100){const u=new URL(next);if(u.hostname!=="graph.facebook.com"||u.protocol!=="https:")throw new Error("Invalid Meta pagination URL");const r=await graphJson(u.toString());items.push(...(r.data??[]));next=r.paging?.next??null;pages++;}
+ const ip=new URLSearchParams({level:"adset",fields:"adset_id,spend,actions,cost_per_action_type",time_range:JSON.stringify({since,until}),limit:"500",access_token:token});
+ const insights=await graphJson(`https://graph.facebook.com/v23.0/act_${encodeURIComponent(accountId)}/insights?${ip}`);
+ const im=new Map((insights.data??[]).map((x:any)=>[String(x.adset_id),x]));
+ const adsets=items.map((x:any)=>{const st=String(x.status??"UNKNOWN").toUpperCase(),es=String(x.effective_status??st).toUpperCase();return {id:String(x.id),name:String(x.name||"Unnamed Ad Set"),status:st,effectiveStatus:es,state:es==="ACTIVE"?"On":(["PAUSED","CAMPAIGN_PAUSED","ARCHIVED","DELETED"].includes(es)||["PAUSED","ARCHIVED","DELETED"].includes(st))?"Off":"Other",...purchaseMetrics(im.get(String(x.id))??{})};});
+ return {campaignName:String(campaign.name||""),total:adsets.length,onCount:adsets.filter(x=>x.state==="On").length,offCount:adsets.filter(x=>x.state==="Off").length,adsets};
+});
+export const getMetaAdsetAds=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(ManageRange.extend({adsetId:z.string().min(1).max(80)}).parse).handler(async({data,context})=>{
+ const {token,accountId}=await manageAccount(context,data.accountKey);
+ const adset=await graphJson(`https://graph.facebook.com/v23.0/${encodeURIComponent(data.adsetId)}?fields=id,account_id,name&access_token=${encodeURIComponent(token)}`);
+ if(String(adset.account_id??"")!==accountId)throw new Error("Ad Set does not belong to selected Ad Account");
+ const since=dhakaDate(data.from),until=dhakaDate(data.to);
+ const p=new URLSearchParams({fields:"id,name,status,effective_status,creative{thumbnail_url,image_url}",limit:"500",access_token:token});
+ const base=`https://graph.facebook.com/v23.0/${encodeURIComponent(data.adsetId)}/ads`;
+ let next:string|null=`${base}?${p}`,items:any[]=[],pages=0;
+ while(next&&pages<100){const u=new URL(next);if(u.hostname!=="graph.facebook.com"||u.protocol!=="https:")throw new Error("Invalid Meta pagination URL");const r=await graphJson(u.toString());items.push(...(r.data??[]));next=r.paging?.next??null;pages++;}
+ const ip=new URLSearchParams({level:"ad",fields:"ad_id,spend,actions,cost_per_action_type",time_range:JSON.stringify({since,until}),limit:"500",access_token:token});
+ const insights=await graphJson(`https://graph.facebook.com/v23.0/act_${encodeURIComponent(accountId)}/insights?${ip}`);
+ const im=new Map((insights.data??[]).map((x:any)=>[String(x.ad_id),x]));
+ const ads=items.map((x:any)=>{const st=String(x.status??"UNKNOWN").toUpperCase(),es=String(x.effective_status??st).toUpperCase();return {id:String(x.id),name:String(x.name||"Unnamed Ad"),status:st,effectiveStatus:es,state:es==="ACTIVE"?"On":(["PAUSED","CAMPAIGN_PAUSED","ADSET_PAUSED","ARCHIVED","DELETED"].includes(es)||["PAUSED","ARCHIVED","DELETED"].includes(st))?"Off":"Other",imageUrl:String(x.creative?.thumbnail_url||x.creative?.image_url||""),...purchaseMetrics(im.get(String(x.id))??{})};});
+ return {adsetName:String(adset.name||""),total:ads.length,onCount:ads.filter(x=>x.state==="On").length,offCount:ads.filter(x=>x.state==="Off").length,ads};
+});
