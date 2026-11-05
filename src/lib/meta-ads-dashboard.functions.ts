@@ -266,3 +266,74 @@ export const getOronnoNogorAdsList = createServerFn({ method: "POST" })
       fetchedAt: new Date().toISOString(),
     };
   });
+
+const ManageRange = z.object({accountKey:z.enum(["meta_ad_account","meta_ad_account_2"]),from:z.string().datetime(),to:z.string().datetime()});
+const ManageAction = z.object({accountKey:z.enum(["meta_ad_account","meta_ad_account_2"]),adId:z.string().min(1).max(80),action:z.enum(["ACTIVE","PAUSED"])});
+async function manageAccount(context:any,key:"meta_ad_account"|"meta_ad_account_2"){
+ const db=context.supabase as any;
+ const {data:rr,error:re}=await db.from("user_roles").select("role").eq("user_id",context.userId);
+ if(re) throw new Error(re.message);
+ const roles=new Set((rr??[]).map((x:any)=>String(x.role)));
+ if(!roles.has("admin")&&!roles.has("super_admin")) throw new Error("Admin access required");
+ const {data:row,error}=await db.from("integrations").select("name,config,is_active").eq("name",key).maybeSingle();
+ if(error) throw new Error(error.message);
+ const cfg=(row?.config??{}) as MetaConfig, token=String(cfg.access_token??"").trim(), accountId=String(cfg.ad_account_id??cfg.account_id??"").replace(/^act_/,"").trim();
+ if(!row?.is_active||!token||!accountId) throw new Error("Selected Meta Ad Account is not connected");
+ return {db,cfg,token,accountId};
+}
+const purchaseMetrics=(ins:any)=>{
+ const p=findPurchase(Array.isArray(ins?.actions)?ins.actions:[]);
+ const c=findPurchase(Array.isArray(ins?.cost_per_action_type)?ins.cost_per_action_type:[]);
+ const purchases=Number(p?.value||0), spend=Number(ins?.spend||0);
+ return {purchases,spend,costPerPurchase:c?Number(c.value||0):(purchases?spend/purchases:0)};
+};
+async function verifyAdInAccount(adId:string,token:string,accountId:string){
+ const ad=await graphJson(`https://graph.facebook.com/v23.0/${encodeURIComponent(adId)}?fields=id,name,account_id&access_token=${encodeURIComponent(token)}`);
+ if(String(ad.account_id??"")!==accountId) throw new Error("This Ad does not belong to the selected Ad Account");
+ return ad;
+}
+async function changeAdStatus(adId:string,token:string,action:"ACTIVE"|"PAUSED"){
+ const body=new URLSearchParams({status:action,access_token:token});
+ const r=await fetch(`https://graph.facebook.com/v23.0/${encodeURIComponent(adId)}`,{method:"POST",headers:{"content-type":"application/x-www-form-urlencoded"},body,signal:AbortSignal.timeout(12000)});
+ const p=await r.json().catch(()=>({}));
+ if(!r.ok||p?.error||p?.success!==true) throw new Error(p?.error?.message||`Meta API failed (${r.status})`);
+}
+export const getMetaAdInventory=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(i=>ManageRange.parse(i)).handler(async({data,context})=>{
+ const {token,accountId,cfg}=await manageAccount(context,data.accountKey);
+ const since=dhakaDate(data.from),until=dhakaDate(data.to),base=`https://graph.facebook.com/v23.0/act_${encodeURIComponent(accountId)}`;
+ const params=new URLSearchParams({fields:"id,name,status,effective_status,creative{thumbnail_url,image_url},adset{id,name,daily_budget,lifetime_budget},campaign{id,name}",limit:"500",access_token:token});
+ let next:string|null=`${base}/ads?${params}`,ads:any[]=[],pages=0;
+ while(next&&pages<100){const u=new URL(next);if(u.hostname!=="graph.facebook.com"||u.protocol!=="https:")throw new Error("Invalid Meta pagination URL");const p=await graphJson(u.toString());ads.push(...(p.data??[]));next=p.paging?.next??null;pages++;}
+ const ip=new URLSearchParams({level:"ad",fields:"ad_id,spend,actions,cost_per_action_type",time_range:JSON.stringify({since,until}),limit:"500",access_token:token});
+ const insights=await graphJson(`${base}/insights?${ip}`), im=new Map((insights.data??[]).map((x:any)=>[String(x.ad_id),x]));
+ const rows=ads.map((a:any)=>{const st=String(a.status??"UNKNOWN").toUpperCase(),es=String(a.effective_status??st).toUpperCase();return {id:String(a.id),name:String(a.name||"Unnamed Ad"),status:st,effectiveStatus:es,state:es==="ACTIVE"?"On":(["PAUSED","CAMPAIGN_PAUSED","ADSET_PAUSED","ARCHIVED","DELETED"].includes(es)||["PAUSED","ARCHIVED","DELETED"].includes(st))?"Off":"Other",imageUrl:String(a.creative?.thumbnail_url||a.creative?.image_url||""),adsetId:String(a.adset?.id||""),adsetName:String(a.adset?.name||""),dailyBudget:a.adset?.daily_budget==null?null:Number(a.adset.daily_budget)/100,lifetimeBudget:a.adset?.lifetime_budget==null?null:Number(a.adset.lifetime_budget)/100,campaignId:String(a.campaign?.id||""),campaignName:String(a.campaign?.name||""),...purchaseMetrics(im.get(String(a.id))??{})};});
+ return {accountKey:data.accountKey,accountName:String((cfg as any).demo_name||cfg.account_name||(data.accountKey==="meta_ad_account_2"?"Oronno Nogor":"Sheikh Seeds")),currency:"USD",since,until,total:rows.length,onCount:rows.filter(x=>x.state==="On").length,offCount:rows.filter(x=>x.state==="Off").length,otherCount:rows.filter(x=>x.state==="Other").length,truncated:!!next,ads:rows};
+});
+export const getMetaAdDetails=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(i=>ManageRange.extend({adId:z.string().min(1).max(80)}).parse(i)).handler(async({data,context})=>{
+ const {token,accountId}=await manageAccount(context,data.accountKey);
+ const ad=await graphJson(`https://graph.facebook.com/v23.0/${encodeURIComponent(data.adId)}?fields=id,name,account_id,status,effective_status,creative{thumbnail_url,image_url},adset{id,name,daily_budget,lifetime_budget,campaign{id,name}},campaign{id,name}&access_token=${encodeURIComponent(token)}`);
+ if(String(ad.account_id??"")!==accountId)throw new Error("This Ad does not belong to the selected account");
+ const since=dhakaDate(data.from),until=dhakaDate(data.to),tr=encodeURIComponent(JSON.stringify({since,until}));
+ const [ins,sets,ads]=await Promise.all([
+ graphJson(`https://graph.facebook.com/v23.0/${data.adId}/insights?fields=spend,actions,cost_per_action_type&time_range=${tr}&access_token=${encodeURIComponent(token)}`),
+ ad.campaign?.id?graphJson(`https://graph.facebook.com/v23.0/${ad.campaign.id}/adsets?fields=id,name,daily_budget,lifetime_budget&limit=200&access_token=${encodeURIComponent(token)}`):Promise.resolve({data:[]}),
+ ad.campaign?.id?graphJson(`https://graph.facebook.com/v23.0/${ad.campaign.id}/ads?fields=id,name,status,effective_status&limit=500&access_token=${encodeURIComponent(token)}`):Promise.resolve({data:[]})
+ ]);
+ return {id:String(ad.id),name:String(ad.name||""),status:String(ad.status||""),effectiveStatus:String(ad.effective_status||""),imageUrl:String(ad.creative?.thumbnail_url||ad.creative?.image_url||""),campaignName:String(ad.campaign?.name||ad.adset?.campaign?.name||""),adsetName:String(ad.adset?.name||""),dailyBudget:ad.adset?.daily_budget==null?null:Number(ad.adset.daily_budget)/100,lifetimeBudget:ad.adset?.lifetime_budget==null?null:Number(ad.adset.lifetime_budget)/100,adsetCount:(sets.data??[]).length,adCount:(ads.data??[]).length,adsets:(sets.data??[]).map((x:any)=>({id:x.id,name:x.name,dailyBudget:x.daily_budget==null?null:Number(x.daily_budget)/100})),campaignAds:ads.data??[],...purchaseMetrics(ins.data?.[0]??{}),since,until};
+});
+export const setMetaAdStatus=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(i=>ManageAction.parse(i)).handler(async({data,context})=>{
+ const {token,accountId}=await manageAccount(context,data.accountKey);await verifyAdInAccount(data.adId,token,accountId);await changeAdStatus(data.adId,token,data.action);return {success:true,action:data.action};
+});
+export const scheduleMetaAdStatus=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(i=>ManageAction.extend({adName:z.string().max(300).default(""),runAt:z.string().datetime()}).parse(i)).handler(async({data,context})=>{
+ const {db,token,accountId}=await manageAccount(context,data.accountKey);const ad=await verifyAdInAccount(data.adId,token,accountId);
+ if(new Date(data.runAt).getTime()<Date.now()+30000)throw new Error("Select a time at least 30 seconds in the future");
+ const {data:row,error}=await db.from("meta_ad_schedules").insert({account_key:data.accountKey,ad_id:data.adId,ad_name:data.adName||String(ad.name||""),action:data.action,run_at:data.runAt,created_by:context.userId}).select("id,account_key,ad_id,ad_name,action,run_at,status").single();
+ if(error)throw new Error(error.message);return row;
+});
+export const getMetaAdSchedules=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(i=>z.object({accountKey:z.enum(["meta_ad_account","meta_ad_account_2"])}).parse(i)).handler(async({data,context})=>{
+ const {db}=await manageAccount(context,data.accountKey);const {data:rows,error}=await db.from("meta_ad_schedules").select("id,ad_id,ad_name,action,run_at,status,error_text").eq("account_key",data.accountKey).in("status",["pending","completed","failed"]).order("run_at",{ascending:false}).limit(30);if(error)throw new Error(error.message);return rows??[];
+});
+export const cancelMetaAdSchedule=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(i=>z.object({id:z.string().uuid()}).parse(i)).handler(async({data,context})=>{
+ const db=context.supabase as any;const {data:rr,error:re}=await db.from("user_roles").select("role").eq("user_id",context.userId);if(re)throw new Error(re.message);if(!(rr??[]).some((x:any)=>["admin","super_admin"].includes(String(x.role))))throw new Error("Forbidden");
+ const {data:row,error}=await db.from("meta_ad_schedules").update({status:"cancelled"}).eq("id",data.id).eq("status","pending").select("id").maybeSingle();if(error)throw new Error(error.message);return {success:!!row};
+});
