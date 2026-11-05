@@ -4,7 +4,7 @@ import { Check, ShieldCheck, ShoppingCart, User, Phone, MapPin, Wallet } from "l
 import { toImg } from "@/lib/img";
 import { taka } from "@/lib/format";
 import { toast } from "sonner";
-import { isValidBdPhone, phoneSubmitError } from "@/lib/bd-phone";
+import { isValidBdPhone, phoneSubmitError, toAsciiDigits } from "@/lib/bd-phone";
 
 export const bnNum = (n: number | string) => String(n).replace(/[0-9]/g, d => "০১২৩৪৫৬৭৮৯"[Number(d)]);
 export const bnTaka = (n: number) => "৳" + bnNum(Math.round(Number(n) || 0).toLocaleString("en-US"));
