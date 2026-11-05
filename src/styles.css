@@ -573,17 +573,12 @@ html.texture-mesh::before {
 .seed-combo-page .seed-hero-seal{position:absolute;z-index:2;top:14px;left:14px;display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border:1px solid color-mix(in oklab,var(--seed-line) 70%,white);border-radius:999px;background:color-mix(in oklab,var(--seed-ivory) 88%,transparent);backdrop-filter:blur(10px);color:var(--seed-deep);font-size:10px;font-weight:800;letter-spacing:.03em}
 
 /* trust strip */
-.seed-combo-page .seed-trust-strip{display:block;width:100%;margin:0 auto;padding:0 11px 12px;border:1px solid color-mix(in oklab,var(--seed-line) 90%,white);border-radius:18px;background:linear-gradient(145deg,#fffdf5 0%,var(--seed-ivory) 55%,#f0faf3 100%);box-shadow:0 14px 30px -25px var(--seed-ink);overflow:hidden}
-.seed-combo-page .seed-trust-points{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;padding:11px 0 10px;border-bottom:1px solid color-mix(in oklab,var(--seed-line) 80%,white)}
-.seed-combo-page .seed-trust-points span{min-width:0;display:flex;align-items:center;justify-content:center;gap:5px;color:var(--seed-deep);font-size:10px;font-weight:850;white-space:nowrap}
-.seed-combo-page .seed-trust-points span+span{border-left:1px solid color-mix(in oklab,var(--seed-line) 80%,white)}
-.seed-combo-page .seed-trust-strip svg{width:14px;height:14px;color:var(--seed-emerald);flex:0 0 auto}
-.seed-combo-page .seed-trust-guarantee{padding:12px 2px 0;text-align:center}
-.seed-combo-page .seed-trust-guarantee-title{display:flex;align-items:center;justify-content:center;gap:7px;color:#075b3c;font-family:"Noto Serif Bengali","Hind Siliguri",serif;font-size:clamp(17px,4.5vw,20px);font-weight:950;line-height:1.42;letter-spacing:-.02em;text-shadow:0 1px 0 rgba(255,255,255,.9)}
-.seed-combo-page .seed-trust-guarantee-title svg{width:20px;height:20px;color:#b58a2b}
-.seed-combo-page .seed-trust-guarantee p{margin:7px 0 0;color:#3b5146;font-family:"Hind Siliguri","Noto Sans Bengali",sans-serif;font-size:12px;font-weight:650;line-height:1.7}
-.seed-combo-page .seed-trust-guarantee b{color:#075b3c;font-weight:900}
-@media(max-width:380px){.seed-combo-page .seed-trust-strip{padding-left:8px;padding-right:8px}.seed-combo-page .seed-trust-points span{font-size:9px;gap:3px}.seed-combo-page .seed-trust-guarantee-title{font-size:16px}.seed-combo-page .seed-trust-guarantee p{font-size:11.5px}}
+.seed-combo-page .seed-trust-strip{display:block;width:100%;margin:0 auto;padding:15px 12px 16px;border:1px solid color-mix(in oklab,var(--seed-line) 90%,white);border-radius:20px;background:linear-gradient(145deg,#fffdf5 0%,var(--seed-ivory) 55%,#f0faf3 100%);box-shadow:0 14px 30px -25px var(--seed-ink);overflow:hidden}
+.seed-combo-page .seed-trust-guarantee{text-align:center;position:relative}
+.seed-combo-page .seed-trust-guarantee-kicker{display:inline-flex;align-items:center;justify-content:center;margin:0 auto 7px;padding:3px 12px;border:1px solid rgba(181,138,43,.28);border-radius:999px;background:rgba(255,255,255,.72);color:#8a6a1f;font-family:"Hind Siliguri","Noto Sans Bengali",sans-serif;font-size:12px;font-weight:850;letter-spacing:.01em}
+.seed-combo-page .seed-trust-guarantee-title{display:block;color:#075b3c;font-family:"Noto Serif Bengali","Hind Siliguri",serif;font-size:clamp(22px,6vw,29px);font-weight:950;line-height:1.42;letter-spacing:-.035em;text-shadow:0 2px 0 rgba(255,255,255,.95),0 5px 18px rgba(7,91,60,.10)}
+.seed-combo-page .seed-trust-guarantee p{margin:7px auto 0;max-width:440px;color:#3b5146;font-family:"Hind Siliguri","Noto Sans Bengali",sans-serif;font-size:14px;font-weight:700;line-height:1.65}
+@media(max-width:380px){.seed-combo-page .seed-trust-strip{padding:13px 9px 14px}.seed-combo-page .seed-trust-guarantee-kicker{font-size:11px}.seed-combo-page .seed-trust-guarantee-title{font-size:21px}.seed-combo-page .seed-trust-guarantee p{font-size:12.5px}}
 
 /* collection table */
 .seed-combo-page .seed-collection{padding:15px 11px 12px;border:1px solid color-mix(in oklab,var(--seed-line) 90%,white);border-radius:22px;background:var(--seed-ivory);box-shadow:0 20px 42px -36px var(--seed-ink)}
@@ -710,7 +705,7 @@ html.texture-mesh::before {
 .seed-combo-page .lp-reveal{opacity:1;transform:none}
 .seed-combo-page .lp-reveal-in{animation:seed-reveal .58s cubic-bezier(.22,1,.36,1) both}
 @keyframes seed-reveal{from{opacity:.01;transform:translateY(14px)}to{opacity:1;transform:none}}
-@media(min-width:641px){.seed-combo-page>.container{padding-inline:16px}.seed-combo-page .top-hook h1{font-size:36px}.seed-combo-page .price-badge{font-size:32px}.seed-combo-page .seed-trust-strip span{font-size:11.5px}}
+@media(min-width:641px){.seed-combo-page>.container{padding-inline:16px}.seed-combo-page .top-hook h1{font-size:36px}.seed-combo-page .price-badge{font-size:32px}}
 @media(max-width:640px){.seed-popup-backdrop{backdrop-filter:none}.seed-combo-page .seed-hero-frame:hover img{transform:none}}
 @media(prefers-reduced-motion:reduce){.seed-combo-page .lp-reveal-in{animation:none}.seed-combo-page .seed-hero-frame img{transition:none}}
 
