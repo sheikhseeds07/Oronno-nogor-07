@@ -33,9 +33,6 @@ const normalizeBdPhoneServer = (value: string) => {
   const local = digits.startsWith("880") ? "0" + digits.slice(3) : digits;
   return local.slice(0, 11);
 };
-const isNutrimixLanding = (value: unknown) => {
-  try { return new URL(String(value ?? "")).pathname.replace(/\/$/, "") === "/landing/nutrimix"; } catch { return false; }
-};
 const ORDER_DEVICE_COOKIE = "hng-device-id";
 
 function getOrderDeviceId(): string | null {
