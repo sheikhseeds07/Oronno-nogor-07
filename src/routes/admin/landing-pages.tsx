@@ -442,7 +442,7 @@ function LandingPagesAdmin() {
                 <>
                   <div className="text-xs text-muted-foreground">পেজের প্রতিটি টেক্সট ও ইমেজ এখান থেকে বদলানো যাবে। খালি রাখলে সেই অংশ পেজে দেখাবে না।</div>
                   <div className="rounded-lg border p-3 space-y-3">
-                    <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={!!C.show_popup} onChange={(e) => setC({ show_popup: e.target.checked })} />সাইটে ঢোকার সাথে সাথে পপআপ দেখাবে</label>
+                    <div className="flex flex-wrap items-center justify-between gap-3"><div><div className="text-sm font-bold text-slate-800">গ্যারান্টি কার্ড পপআপ</div><div className="text-xs text-muted-foreground mt-0.5">ON করলে পেজে প্রবেশের পর পপআপ দেখাবে, OFF করলে দেখাবে না।</div></div><div className="inline-flex rounded-xl border bg-muted/40 p-1 gap-1"><button type="button" aria-pressed={C.show_popup !== false} onClick={() => setC({ show_popup: true })} className={`min-w-16 rounded-lg px-4 py-2 text-sm font-extrabold transition ${C.show_popup !== false ? "bg-emerald-600 text-white shadow-sm" : "text-muted-foreground hover:bg-background"}`}>ON</button><button type="button" aria-pressed={C.show_popup === false} onClick={() => setC({ show_popup: false })} className={`min-w-16 rounded-lg px-4 py-2 text-sm font-extrabold transition ${C.show_popup === false ? "bg-rose-600 text-white shadow-sm" : "text-muted-foreground hover:bg-background"}`}>OFF</button></div></div>
                     {editing.slug === "seedcombo" && (
                       <Field label="পপআপ কনটেন্ট টাইপ">
                         <div className="grid grid-cols-2 gap-2">
