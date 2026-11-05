@@ -240,6 +240,11 @@ function SearchPanel({ onOpen }: { onOpen: (id: string) => void }) {
     const next = pending[id];
     if (!next || next === current) return;
     if (next === "incomplete") { toast.error("ইনকমপ্লিট স্ট্যাটাসে ম্যানুয়ালি যাওয়া যাবে না"); return; }
+    const matchedOrder = data?.find((order) => order.id === id);
+    if (next === "shipped" && (current !== "rts" || !matchedOrder?.courier_consignment)) {
+      toast.error("Shipped করতে হলে অর্ডারটি RTS হতে হবে এবং কুরিয়ার কনসাইনমেন্ট থাকতে হবে");
+      return;
+    }
     setSavingId(id);
     if (current === "pending" && next !== "web_pending") {
       try { await ensureInvoices({ data: { ids: [id] } }); } catch { /* invoice পরে সেট হবে */ }
@@ -930,7 +935,7 @@ function OrdersTable({
       save();
     };
   }, [scrollReady, scrollStateKey]);
-  useEffect(() => { setPage(1); }, [filter, mode, search, pageSize]);
+  useEffect(() => { setPage(1); setSelectedIds(new Set()); }, [filter, mode, search, pageSize]);
   useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
   const allChecked = displayRows.length > 0 && displayRows.every((o) => selectedIds.has(o.id));
   const toggleAll = () => {
@@ -1080,9 +1085,15 @@ function OrdersTable({
   const bulkMoveToShipped = () => {
     if (!selectedIds.size) return;
     const picked = rows.filter((o) => selectedIds.has(o.id));
-    const missing = picked.filter((o) => !o.courier_consignment);
-    if (missing.length) {
-      toast.error(`${missing.length} টি অর্ডার এখনো কুরিয়ারে পাঠানো হয়নি — Shipped এ মুভ করা যাবে না`);
+    // Never trust stale selections left behind after changing the active filter/page.
+    if (picked.length !== selectedIds.size) {
+      setSelectedIds(new Set());
+      toast.error("অর্ডার তালিকা পরিবর্তিত হয়েছে। আবার অর্ডার সিলেক্ট করুন");
+      return;
+    }
+    const invalid = picked.filter((o) => o.status !== "rts" || !o.courier_consignment);
+    if (invalid.length) {
+      toast.error(`${invalid.length} টি অর্ডার RTS নয় অথবা কুরিয়ার কনসাইনমেন্ট নেই — Shipped করা যাবে না`);
       return;
     }
     bulkMoveTo("shipped", "Shipped");
