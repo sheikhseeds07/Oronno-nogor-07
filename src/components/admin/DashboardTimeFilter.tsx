@@ -36,13 +36,14 @@ export function getDashboardPresetRange(preset: Preset, now = new Date()): Dashb
   return null;
 }
 
-export function DashboardTimeFilter({ value, onChange }: { value: Preset; onChange: (preset: Preset, range: DashboardRange | null) => void }) {
+export function DashboardTimeFilter({ value, onChange, range: activeRange }: { value: Preset; onChange: (preset: Preset, range: DashboardRange | null) => void; range?: DashboardRange }) {
   const [open, setOpen] = useState(false);
   const [customRange, setCustomRange] = useState<DateRange>();
   const label = useMemo(() => {
     if (value === "custom" && customRange?.from && customRange?.to) return `${format(customRange.from, "dd MMM")} → ${format(customRange.to, "dd MMM")}`;
+    if (value === "custom" && activeRange?.from && activeRange?.to) return `${format(new Date(activeRange.from), "dd MMM")} → ${format(new Date(activeRange.to), "dd MMM")}`;
     return PRESETS.find((p) => p.key === value)?.label ?? "Today";
-  }, [value, customRange]);
+  }, [value, customRange, activeRange]);
 
   const choose = (preset: Preset) => {
     if (preset === "custom") return;
