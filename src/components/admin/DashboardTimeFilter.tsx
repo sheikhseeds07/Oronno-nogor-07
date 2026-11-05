@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, ChevronDown } from "lucide-react";
 import { format, startOfDay, endOfDay, subDays, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import type { DateRange } from "react-day-picker";
@@ -39,6 +39,9 @@ export function getDashboardPresetRange(preset: Preset, now = new Date()): Dashb
 export function DashboardTimeFilter({ value, onChange, range: activeRange }: { value: Preset; onChange: (preset: Preset, range: DashboardRange | null) => void; range?: DashboardRange }) {
   const [open, setOpen] = useState(false);
   const [customRange, setCustomRange] = useState<DateRange>();
+  useEffect(() => {
+    if (activeRange?.from && activeRange?.to) setCustomRange({ from: new Date(activeRange.from), to: new Date(activeRange.to) });
+  }, [activeRange?.from, activeRange?.to]);
   const label = useMemo(() => {
     if (value === "custom" && customRange?.from && customRange?.to) return `${format(customRange.from, "dd MMM")} → ${format(customRange.to, "dd MMM")}`;
     if (value === "custom" && activeRange?.from && activeRange?.to) return `${format(new Date(activeRange.from), "dd MMM")} → ${format(new Date(activeRange.to), "dd MMM")}`;
