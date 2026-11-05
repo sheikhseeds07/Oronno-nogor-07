@@ -21,7 +21,7 @@ import { getFbContext } from "@/lib/fb-context";
 import { toImg, imgSrcSet, imgFallback, markImgLoaded } from "@/lib/img";
 import brandLogoFile from "@/assets/logo.jpg";
 import { mergeContent, SeedRow } from "@/lib/landing-content";
-import { PHONE_ERROR, isValidBdPhone, phoneSubmitError } from "@/lib/bd-phone";
+import { PHONE_ERROR, isValidBdPhone, phoneSubmitError, normalizeBdPhone, toAsciiDigits } from "@/lib/bd-phone";
 import { Button } from "@/components/ui/button";
 
 const bnNum=(n:number|string)=>String(n).replace(/[0-9]/g,d=>"০১২৩৪৫৬৭৮৯"[Number(d)]);
@@ -166,7 +166,7 @@ export function CleanLandingPage({slug}:{slug:string}){
     const seedItem={id:selected.product_id,name:selected.name,price:selected.price,quantity:1};
     const nutrimixItem={id:p.id,name:p.name,price:p.price,quantity:1};
     if(!landingInitiateCheckoutRef.current){landingInitiateCheckoutRef.current=true;trackInitiateCheckout([seedItem],total);}
-    const intent=await runCreateLandingIntent({data:{checkout_session_id:landingCheckoutSessionRef.current,customer_name:form.name,customer_phone:form.phone.replace(/[\\s-]/g,""),customer_address:form.address,delivery_fee:deliveryFee,seed_items:[seedItem],nutrimix_item:nutrimixItem,notes:form.note||null,...getFbContext()}});
+    const intent=await runCreateLandingIntent({data:{checkout_session_id:landingCheckoutSessionRef.current,customer_name:form.name,customer_phone:normalizeBdPhone(form.phone),customer_address:form.address,delivery_fee:deliveryFee,seed_items:[seedItem],nutrimix_item:nutrimixItem,notes:form.note||null,...getFbContext()}});
     landingIntentIdRef.current=intent.id;
     setNutrimix(p);setNutrimixOpen(true);
   }catch(error){landingInitiateCheckoutRef.current=false;notifyOrderError(error)}
