@@ -410,11 +410,11 @@ function LandingPagesAdmin() {
                       <div className="mt-1 text-xs text-muted-foreground">এই ইমেজটি শুধু /landing/nutrimix পেজে “ব্যবহারের উপকারিতা” সেকশনের ঠিক উপরে দেখাবে।</div>
                     </Field>
                   )}
-                  {(editing.slug === "nutrimix" || C.template === "all-product") && (
+                  {(editing.slug === "nutrimix" || editing.slug === "seedcombo" || C.template === "all-product") && (
                     <div className="rounded-xl border-2 border-emerald-200 bg-emerald-50/40 p-3">
                       <div className="mb-2">
-                        <div className="font-bold text-sm">অতিরিক্ত হিরো ইমেজ — All Product Template</div>
-                        <div className="text-[11px] text-muted-foreground">মূল ইমেজের সাথে এখানে যোগ করা ইমেজগুলো একই জায়গায় ৫ সেকেন্ড পরপর ১.৪ সেকেন্ডের প্রিমিয়াম smooth fade transition-এ পরিবর্তন হবে। এই সেটিং এই টেমপ্লেট দিয়ে তৈরি সব ল্যান্ডিং পেজে কাজ করবে।</div>
+                        <div className="font-bold text-sm">অতিরিক্ত হিরো ইমেজ — Seed Combo / All Product</div>
+                        <div className="text-[11px] text-muted-foreground">মূল ইমেজের সাথে এখানে যোগ করা একাধিক ইমেজ Seed Combo পেজের হিরো সেকশনে একই জায়গায় ৫ সেকেন্ড পরপর প্রিমিয়াম smooth fade transition-এ দেখাবে।</div>
                       </div>
                       <ImageList
                         items={C.hero_gallery_images ?? []}
