@@ -463,7 +463,6 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
                 {heroImages.map((image, index) => (
                   <SafeImage key={image + index} src={toImg(image, { w: 1100, q: 88 })}  alt={page.hero_title || page.title} width={760} height={760} fetchPriority={index === 0 ? "high" : "auto"} className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-[1400ms] ease-in-out ${index === heroImageIndex ? "opacity-100" : "opacity-0"}`} />
                 ))}
-                {!isNutrimix && <span className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-all-product-surface/95 px-3 py-2 text-xs font-black text-all-product-primary shadow-lg"><Leaf className="h-4 w-4" /> ১০০% অরিজিনাল</span>}
                 {heroImages.length > 1 && <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5 rounded-full bg-black/25 px-2.5 py-1.5 backdrop-blur-md">{heroImages.map((_, index) => <button key={index} type="button" onClick={() => setHeroImageIndex(index)} aria-label={`ইমেজ ${index + 1}`} aria-current={index === heroImageIndex ? "true" : undefined} className={`h-1.5 rounded-full transition-all duration-500 ${index === heroImageIndex ? "w-7 bg-white" : "w-1.5 bg-white/55"}`} />)}</div>}
               </div>           <div className="border-t-2 border-all-product-gold/35 bg-gradient-to-r from-all-product-primary/10 via-all-product-gold/15 to-all-product-primary/10 px-4 py-3.5 sm:px-5 sm:py-4">
                 <div className="flex items-center justify-between gap-2 sm:gap-3">
