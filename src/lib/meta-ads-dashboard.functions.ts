@@ -327,7 +327,7 @@ export const scheduleMetaAdStatus=createServerFn({method:"POST"}).middleware([re
  if(error)throw new Error(error.message);return row;
 });
 export const getMetaAdSchedules=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(i=>z.object({accountKey:z.enum(["meta_ad_account","meta_ad_account_2"])}).parse(i)).handler(async({data,context})=>{
- const {db}=await manageAccount(context,data.accountKey);const {data:rows,error}=await db.from("meta_ad_schedules").select("id,ad_id,target_id,target_type,ad_name,action,run_at,status,error_text").eq("account_key",data.accountKey).in("status",["pending","completed","failed"]).order("run_at",{ascending:false}).limit(30);if(error)throw new Error(error.message);return rows??[];
+ const {db}=await manageAccount(context,data.accountKey);const {data:rows,error}=await db.from("meta_ad_schedules").select("id,ad_id,target_id,target_type,ad_name,action,run_at,status,error_text").eq("account_key",data.accountKey).eq("status","pending").order("run_at",{ascending:false}).limit(30);if(error)throw new Error(error.message);return rows??[];
 });
 export const cancelMetaAdSchedule=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(i=>z.object({id:z.string().uuid()}).parse(i)).handler(async({data,context})=>{
  const db=context.supabase as any;const {data:rr,error:re}=await db.from("user_roles").select("role").eq("user_id",context.userId);if(re)throw new Error(re.message);if(!(rr??[]).some((x:any)=>["admin","super_admin"].includes(String(x.role))))throw new Error("Forbidden");
