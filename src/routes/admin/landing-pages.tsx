@@ -688,7 +688,7 @@ function LandingPagesAdmin() {
                     <div className="space-y-1.5">
                       {(editing.addons || []).map((item, index) => (
                         <div
-                          key={item.product_id || `${item.name}-${index}`}
+                          key={`${item.product_id || item.name}-${index}`}
                           draggable={C.template === "all-product"}
                           onDragStart={() => C.template === "all-product" && setProductDragIndex(index)}
                           onDragOver={(e) => {
@@ -707,7 +707,7 @@ function LandingPagesAdmin() {
                             }
                           }}
                           onDragEnd={() => setProductDragIndex(null)}
-                          className={`flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-2.5 py-2 shadow-sm ${C.template === "all-product" ? "cursor-grab active:cursor-grabbing" : ""} ${productDragIndex === index ? "opacity-60" : ""}`}
+                          className={`flex flex-wrap items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-2.5 py-2 shadow-sm ${C.template === "all-product" ? "cursor-grab active:cursor-grabbing" : ""} ${productDragIndex === index ? "opacity-60" : ""}`}
                         >
                           {C.template === "all-product" && <div className="grid h-8 w-5 shrink-0 place-items-center text-slate-400" title="চেপে ধরে টেনে প্রডাক্টের ক্রম পরিবর্তন করুন"><GripVertical className="h-4 w-4" /></div>}
                           <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg border bg-slate-50">{item.image ? <SafeImage src={item.image} alt="" className="h-full w-full object-cover" /> : <div className="grid h-full w-full place-items-center text-[10px] font-bold text-slate-400">IMG</div>}</div>
@@ -715,6 +715,7 @@ function LandingPagesAdmin() {
                           <div className="shrink-0 text-sm font-black text-emerald-700">৳{item.price || 0}</div>
                           <button type="button" onClick={() => setProductEditor(index)} className="shrink-0 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] font-bold text-slate-700 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700"><Edit className="mr-1 inline h-3.5 w-3.5" />এডিট / ভিউ</button>
                           <button type="button" onClick={() => set({ addons: (editing.addons || []).filter((_, i) => i !== index) })} className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
+                          {C.template === "all-product" && <button type="button" onClick={() => { const list = [...(editing.addons || [])]; list.splice(index + 1, 0, { ...item }); set({ addons: list }); setProductEditor(index + 1); }} className="basis-full flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-emerald-200 bg-emerald-50/60 px-3 py-1.5 text-xs font-bold text-emerald-700 hover:border-emerald-400 hover:bg-emerald-50"><Copy className="h-3.5 w-3.5" />ডুপ্লিকেট করুন</button>}
                         </div>
                       ))}
                     </div>
