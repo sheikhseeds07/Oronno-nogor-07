@@ -94,6 +94,7 @@ function LandingPagesAdmin() {
   const [tab, setTab] = useState<"main" | "page" | "content" | "products" | "combo-offer">("main");
   const [createProductFor, setCreateProductFor] = useState<"main" | number | null>(null);
   const [productEditor, setProductEditor] = useState<"main" | number | null>(null);
+  const [productDragIndex, setProductDragIndex] = useState<number | null>(null);
   const [comboEditor, setComboEditor] = useState<number | null>(null);
   const [comboDragIndex, setComboDragIndex] = useState<number | null>(null);
 
@@ -682,11 +683,33 @@ function LandingPagesAdmin() {
                   <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-3">
                     <div className="mb-2">
                       <div className="text-sm font-black text-slate-900">প্রডাক্ট</div>
-                      <div className="text-[11px] text-slate-500">সাধারণ অবস্থায় শুধু প্রডাক্টের নাম, ইমেজ ও দাম দেখাবে। বিস্তারিত পরিবর্তন করতে এডিট / ভিউ চাপুন।</div>
+                      <div className="text-[11px] text-slate-500">{C.template === "all-product" ? "☷ ধরে টেনে প্রডাক্টের ক্রম সাজান। পরিবর্তনটি সংরক্ষণ করলে Landing Page-এ একই ক্রমে দেখাবে। বিস্তারিত পরিবর্তনে এডিট / ভিউ চাপুন।" : "সাধারণ অবস্থায় শুধু প্রডাক্টের নাম, ইমেজ ও দাম দেখাবে। বিস্তারিত পরিবর্তন করতে এডিট / ভিউ চাপুন।"}</div>
                     </div>
                     <div className="space-y-1.5">
                       {(editing.addons || []).map((item, index) => (
-                        <div key={index} className="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-2.5 py-2 shadow-sm">
+                        <div
+                          key={item.product_id || `${item.name}-${index}`}
+                          draggable={C.template === "all-product"}
+                          onDragStart={() => C.template === "all-product" && setProductDragIndex(index)}
+                          onDragOver={(e) => {
+                            if (C.template !== "all-product") return;
+                            e.preventDefault();
+                            if (productDragIndex === null || productDragIndex === index) return;
+                            const list = [...(editing.addons || [])];
+                            const [moved] = list.splice(productDragIndex, 1);
+                            list.splice(index, 0, moved);
+                            set({ addons: list });
+                            setProductDragIndex(index);
+                            if (productEditor !== null && productEditor !== "main") {
+                              if (productEditor === productDragIndex) setProductEditor(index);
+                              else if (productDragIndex < productEditor && index >= productEditor) setProductEditor(productEditor - 1);
+                              else if (productDragIndex > productEditor && index <= productEditor) setProductEditor(productEditor + 1);
+                            }
+                          }}
+                          onDragEnd={() => setProductDragIndex(null)}
+                          className={`flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-2.5 py-2 shadow-sm ${C.template === "all-product" ? "cursor-grab active:cursor-grabbing" : ""} ${productDragIndex === index ? "opacity-60" : ""}`}
+                        >
+                          {C.template === "all-product" && <div className="grid h-8 w-5 shrink-0 place-items-center text-slate-400" title="চেপে ধরে টেনে প্রডাক্টের ক্রম পরিবর্তন করুন"><GripVertical className="h-4 w-4" /></div>}
                           <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg border bg-slate-50">{item.image ? <SafeImage src={item.image} alt="" className="h-full w-full object-cover" /> : <div className="grid h-full w-full place-items-center text-[10px] font-bold text-slate-400">IMG</div>}</div>
                           <div className="min-w-0 flex-1"><div className="truncate text-sm font-black text-slate-900">{item.name || "নাম নেই"}</div><div className="text-[10px] text-slate-500">অতিরিক্ত প্যাকেজ</div></div>
                           <div className="shrink-0 text-sm font-black text-emerald-700">৳{item.price || 0}</div>
