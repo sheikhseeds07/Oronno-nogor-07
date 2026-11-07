@@ -30,6 +30,7 @@ type Addon = {
   old_price?: number;
   badge?: string;
   delivery_fee?: number | null;
+  cost?: number | null;
 };
 
 type LP = {
@@ -70,7 +71,7 @@ const empty: LP = {
   planting_steps: DEFAULT_CONTENT,
 };
 
-type Product = { id: string; name: string; price: number; sale_price: number | null; images: string[] | null; is_active?: boolean | null };
+type Product = { id: string; name: string; price: number; sale_price: number | null; images: string[] | null; is_active?: boolean | null; cost?: number | null };
 
 function ProductPicker({ products, value, onChange, placeholder, size = "sm" }: { products?: Product[]; value?: string | null; onChange: (id: string | null) => void; placeholder: string; size?: "sm" | "md" }) {
   const list = products ?? [];
@@ -97,6 +98,7 @@ function LandingPagesAdmin() {
   const [productDragIndex, setProductDragIndex] = useState<number | null>(null);
   const [comboEditor, setComboEditor] = useState<number | null>(null);
   const [comboDragIndex, setComboDragIndex] = useState<number | null>(null);
+  const [productCostDrafts, setProductCostDrafts] = useState<Record<string, number>>({});
 
   const { data } = useQuery({
     queryKey: ["admin-landing"],
@@ -107,7 +109,7 @@ function LandingPagesAdmin() {
     queryFn: async () =>
       ((await supabase
         .from("products")
-        .select("id,name,price,sale_price,images,is_active")
+        .select("id,name,price,sale_price,images,is_active,cost")
         .order("name")
         .limit(200)).data ?? []) as Product[],
   });
@@ -124,6 +126,7 @@ function LandingPagesAdmin() {
 
   const openEdit = (row: unknown) => {
     const p = row as LP;
+    setProductCostDrafts({});
     setEditing({
       ...empty,
       ...p,
@@ -164,6 +167,21 @@ function LandingPagesAdmin() {
       }
       payload.addons = fixed;
       setEditing((prev) => (prev ? { ...prev, addons: fixed } : prev));
+    }
+    // Keep landing-page product costs in the canonical products table so the dashboard's
+    // order_items × products.cost calculation can include these items.
+    const costUpdates = new Map<string, number>();
+    if (editing.product_id && Object.prototype.hasOwnProperty.call(productCostDrafts, editing.product_id)) {
+      costUpdates.set(editing.product_id, productCostDrafts[editing.product_id]);
+    }
+    for (const addon of payload.addons ?? []) {
+      if (addon.product_id && typeof addon.cost === "number" && Number.isFinite(addon.cost)) {
+        costUpdates.set(addon.product_id, Math.max(0, addon.cost));
+      }
+    }
+    for (const [productId, cost] of costUpdates) {
+      const { error: costError } = await supabase.from("products").update({ cost }).eq("id", productId);
+      if (costError) return toast.error(`প্রডাক্ট কস্ট সংরক্ষণ হয়নি: ${costError.message}`);
     }
     const { error } = editing.id
       ? await supabase.from("landing_pages").update(payload).eq("id", editing.id)
@@ -732,7 +750,7 @@ function LandingPagesAdmin() {
                         {productEditor === "main" ? (
                           <div className="max-h-[70vh] space-y-4 overflow-y-auto p-4">
                             <Field label="মেইন প্রডাক্ট নির্বাচন"><div className="flex gap-2"><ProductPicker products={products} value={editing.product_id} onChange={(id) => set({ product_id: id })} placeholder="— প্রডাক্ট নির্বাচন করুন —" size="md" /><button type="button" onClick={() => setCreateProductFor("main")} className="shrink-0 rounded-lg border-2 border-brand px-3 py-2 text-sm font-semibold text-brand flex items-center gap-1"><PackagePlus className="h-4 w-4" />নতুন</button></div></Field>
-                            {editing.product_id && (() => { const main=products?.find(p=>p.id===editing.product_id); return main ? <div className="flex items-center gap-3 rounded-xl border bg-slate-50 p-3"><div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border bg-white">{main.images?.[0]?<SafeImage src={main.images[0]} alt="" className="h-full w-full object-cover"/>:<div className="grid h-full place-items-center text-xs text-slate-400">IMG</div>}</div><div><div className="text-sm font-black">{main.name}</div><div className="text-xs text-slate-500 mt-1">বর্তমান দাম: ৳{main.sale_price??main.price}</div></div></div>:null; })()}
+                            {editing.product_id && (() => { const main=products?.find(p=>p.id===editing.product_id); return main ? <div className="flex items-center gap-3 rounded-xl border bg-slate-50 p-3"><div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border bg-white">{main.images?.[0]?<SafeImage src={main.images[0]} alt="" className="h-full w-full object-cover"/>:<div className="grid h-full place-items-center text-xs text-slate-400">IMG</div>}</div><div><div className="text-sm font-black">{main.name}</div><div className="text-xs text-slate-500 mt-1">বর্তমান দাম: ৳{main.sale_price??main.price}</div><Field label="প্রডাক্ট কস্ট (৳)"><input type="number" min={0} value={productCostDrafts[main.id] ?? Number(main.cost ?? 0)} onChange={e=>setProductCostDrafts(prev=>({...prev,[main.id]:Math.max(0,Number(e.target.value)||0)}))} className="mt-1 w-36 rounded-lg border bg-white px-2.5 py-2 text-sm font-bold"/></Field></div></div>:null; })()}
                             <Field label="মেইন প্রডাক্টের ডেলিভারি চার্জ (৳)"><div className="flex items-center gap-2"><input type="number" min={0} value={editing.main_delivery_fee??70} onChange={e=>set({main_delivery_fee:Math.max(0,Number(e.target.value)||0)})} className="flex-1 rounded-xl border px-3 py-2.5 font-semibold"/><label className="flex items-center gap-1.5 rounded-lg border bg-slate-50 px-3 py-2 text-sm font-semibold"><input type="checkbox" checked={Number(editing.main_delivery_fee)===0} onChange={e=>set({main_delivery_fee:e.target.checked?0:70})}/>ফ্রি</label></div></Field>
                             <div className="flex justify-end border-t pt-3"><button type="button" onClick={()=>setProductEditor(null)} className="rounded-lg bg-brand px-4 py-2 text-xs font-black text-white">সম্পন্ন</button></div>
                           </div>
@@ -740,9 +758,9 @@ function LandingPagesAdmin() {
                           const index=productEditor as number; const item=(editing.addons||[])[index]; if(!item) return null;
                           const update=(patch:Partial<Addon>)=>{const list=[...(editing.addons||[])]; list[index]={...list[index],...patch}; set({addons:list});};
                           return <div className="max-h-[70vh] space-y-4 overflow-y-auto p-4">
-                            <Field label="প্রডাক্ট নির্বাচন"><div className="flex gap-2"><ProductPicker products={products} value={item.product_id??null} onChange={pid=>{const p=products?.find(x=>x.id===pid); update(p?{product_id:p.id,name:p.name,price:p.sale_price??p.price,image:p.images?.[0]}:{product_id:undefined});}} placeholder="— Existing প্রডাক্ট —"/><button type="button" onClick={()=>setCreateProductFor(index)} className="shrink-0 rounded-lg border-2 border-brand px-3 py-2 text-sm font-semibold text-brand flex items-center gap-1"><PackagePlus className="h-4 w-4"/>নতুন</button></div></Field>
+                            <Field label="প্রডাক্ট নির্বাচন"><div className="flex gap-2"><ProductPicker products={products} value={item.product_id??null} onChange={pid=>{const p=products?.find(x=>x.id===pid); update(p?{product_id:p.id,name:p.name,price:p.sale_price??p.price,image:p.images?.[0],cost:Number(p.cost??0)}:{product_id:undefined,cost:undefined});}} placeholder="— Existing প্রডাক্ট —"/><button type="button" onClick={()=>setCreateProductFor(index)} className="shrink-0 rounded-lg border-2 border-brand px-3 py-2 text-sm font-semibold text-brand flex items-center gap-1"><PackagePlus className="h-4 w-4"/>নতুন</button></div></Field>
                             <div className="grid grid-cols-[88px_1fr] gap-3"><div className="h-[88px] w-[88px] overflow-hidden rounded-xl border bg-slate-50">{item.image?<SafeImage src={item.image} alt="" className="h-full w-full object-cover"/>:<div className="grid h-full place-items-center text-xs text-slate-400">No image</div>}</div><Field label="প্রডাক্টের নাম"><input value={item.name} onChange={e=>update({name:e.target.value})} className="w-full rounded-xl border px-3 py-2.5 font-semibold"/></Field><Field label="প্রডাক্ট ইমেজ"><input type="file" accept="image/*" onChange={async e=>{const f=e.target.files?.[0];if(!f)return;const url=await uploadImage(f);if(url)update({image:url});e.target.value="";}} className="w-full rounded-xl border px-3 py-2 text-sm"/><input value={item.image??""} onChange={e=>update({image:e.target.value||undefined})} placeholder="অথবা Image URL পেস্ট" className="mt-2 w-full rounded-xl border px-3 py-2 text-xs"/>{item.image&&<SafeImage src={item.image} alt="" className="mt-2 h-20 w-20 rounded-xl border object-cover"/>}</Field></div>
-                            <div className="grid grid-cols-2 gap-2.5"><Field label="দাম (৳)"><input type="number" min={0} value={item.price} onChange={e=>update({price:Math.max(0,Number(e.target.value)||0)})} className="w-full rounded-xl border px-3 py-2.5 font-black"/></Field><Field label="পুরোনো দাম (৳)"><input type="number" min={0} value={item.old_price??""} onChange={e=>update({old_price:e.target.value?Number(e.target.value):undefined})} className="w-full rounded-xl border px-3 py-2.5"/></Field><Field label="ব্যাজ"><input value={item.badge??""} onChange={e=>update({badge:e.target.value||undefined})} className="w-full rounded-xl border px-3 py-2.5"/></Field><Field label="ডেলিভারি চার্জ (৳)"><input type="number" min={0} value={item.delivery_fee??70} onChange={e=>update({delivery_fee:Math.max(0,Number(e.target.value)||0)})} className="w-full rounded-xl border px-3 py-2.5"/></Field></div>
+                            <Field label="প্রডাক্ট কস্ট (৳)"><input type="number" min={0} value={item.cost ?? Number(products?.find(p=>p.id===item.product_id)?.cost ?? 0)} onChange={e=>update({cost:Math.max(0,Number(e.target.value)||0)})} className="w-full rounded-xl border px-3 py-2.5 font-bold"/></Field><div className="grid grid-cols-2 gap-2.5"><Field label="দাম (৳)"><input type="number" min={0} value={item.price} onChange={e=>update({price:Math.max(0,Number(e.target.value)||0)})} className="w-full rounded-xl border px-3 py-2.5 font-black"/></Field><Field label="পুরোনো দাম (৳)"><input type="number" min={0} value={item.old_price??""} onChange={e=>update({old_price:e.target.value?Number(e.target.value):undefined})} className="w-full rounded-xl border px-3 py-2.5"/></Field><Field label="ব্যাজ"><input value={item.badge??""} onChange={e=>update({badge:e.target.value||undefined})} className="w-full rounded-xl border px-3 py-2.5"/></Field><Field label="ডেলিভারি চার্জ (৳)"><input type="number" min={0} value={item.delivery_fee??70} onChange={e=>update({delivery_fee:Math.max(0,Number(e.target.value)||0)})} className="w-full rounded-xl border px-3 py-2.5"/></Field></div>
                             <label className="flex items-center gap-2 rounded-xl border bg-slate-50 px-3 py-2.5 text-xs font-semibold"><input type="checkbox" checked={Number(item.delivery_fee)===0} onChange={e=>update({delivery_fee:e.target.checked?0:70})}/>ফ্রি ডেলিভারি</label>
                             <div className="flex justify-between border-t pt-3"><button type="button" onClick={()=>{set({addons:(editing.addons||[]).filter((_,i)=>i!==index)});setProductEditor(null)}} className="rounded-lg px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50"><Trash2 className="mr-1 inline h-3.5 w-3.5"/>ডিলিট</button><button type="button" onClick={()=>setProductEditor(null)} className="rounded-lg bg-brand px-4 py-2 text-xs font-black text-white">সম্পন্ন</button></div>
                           </div>;
