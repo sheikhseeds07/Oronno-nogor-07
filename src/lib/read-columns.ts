@@ -14,3 +14,6 @@ export const PRODUCTS_COLUMNS = "id,name,slug,sku,description,short_description,
 export const PROFILES_COLUMNS = "id,full_name,phone,address,avatar_url,created_at,updated_at" as const;
 export const SITE_SETTINGS_COLUMNS = "id,settings,updated_at" as const;
 export const USER_ROLES_COLUMNS = "id,user_id,role,created_at" as const;
+
+// Public landing pages only need display fields; never expose internal cost or inventory metadata.
+export const LANDING_PRODUCT_COLUMNS = "id,name,price,sale_price,images" as const;
