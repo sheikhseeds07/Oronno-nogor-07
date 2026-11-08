@@ -58,6 +58,9 @@ export function LegacyLandingPage({ slug }: { slug: string }) {
 
   const { data: settingsRow } = useQuery({
     queryKey: ["site-settings-public"],
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
     queryFn: async () => (await supabase.from("site_settings").select("settings").maybeSingle()).data,
   });
   const settings = (settingsRow?.settings as SiteSettings) ?? {};
