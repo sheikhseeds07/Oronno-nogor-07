@@ -39,7 +39,7 @@ const inFlight = new Map<string, Promise<CourierHistoryResult>>();
 // Deduplicate repeated persistent-cache reads during Admin list renders.
 // This does not change courier-history freshness; it only avoids repeated
 // database reads for the same phone within a short burst.
-const PERSISTENT_READ_TTL_MS = 5 * 60_000;
+const PERSISTENT_READ_TTL_MS = 15 * 60_000;
 const persistentReadCache = new Map<string, { expiresAt: number; hit: PersistentHit | null }>();
 const persistentReadInFlight = new Map<string, Promise<PersistentHit | null>>();
 
