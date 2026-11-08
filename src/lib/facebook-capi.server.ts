@@ -49,21 +49,16 @@ async function loadFbConfig(): Promise<FbConfig | null> {
   // pixel id and access token) cuts the vast majority of those requests.
   if (cachedConfig && now - cachedConfig.at < 900_000) return cachedConfig.value;
 
-  const [{ data: dbStatus }, { data: dbTokenRaw }] = await Promise.all([
-    (supabaseAdmin as any).rpc("get_meta_capi_status"),
-    (supabaseAdmin as any).rpc("get_meta_capi_token"),
-  ]);
+  const { data: dbTokenRaw } = await (supabaseAdmin as any).rpc("get_meta_capi_token");
   const tokenCfg = asRecord(dbTokenRaw);
   const hasFastConfig = typeof tokenCfg["pixel_id"] === "string" && String(tokenCfg["pixel_id"]).length > 0
     && typeof tokenCfg["access_token"] === "string" && String(tokenCfg["access_token"]).length > 0;
-  // The token RPC already returns the configured test-event code. Avoid a
-  // second private-table read here: this request uses a publishable key and
-  // the integrations table intentionally has no anonymous SELECT grant.
+  // The token RPC already includes readiness, pixel ID and test-event code.
+  // Avoid a duplicate status RPC and a private integrations-table lookup.
   const { data: site } = hasFastConfig
     ? { data: null as any }
     : await supabaseAdmin.from("site_settings").select("settings").limit(1).maybeSingle();
-  const privilegedStatus = asRecord(dbStatus);
-  databaseDispatcherReady = privilegedStatus.server_events_ready === true;
+  databaseDispatcherReady = tokenCfg.server_events_ready === true;
   const settings = asRecord(site?.settings);
   const siteFacebook = asRecord(settings.facebook);
   const siteMeta = asRecord(settings.meta);
@@ -77,7 +72,6 @@ async function loadFbConfig(): Promise<FbConfig | null> {
     pixel_id: pickString(
       envPixelId,
       tokenCfg.pixel_id,
-      privilegedStatus.pixel_id,
       siteFacebook.pixel_id,
       siteFacebook.pixelId,
       siteMeta.pixel_id,
@@ -88,7 +82,7 @@ async function loadFbConfig(): Promise<FbConfig | null> {
     access_token: pickString(
       envAccessToken,
       tokenCfg.access_token,
-      privilegedStatus.access_token_present === true ? "database-managed" : null,
+      tokenCfg.server_events_ready === true ? "database-managed" : null,
       siteFacebook.access_token,
       siteFacebook.accessToken,
       siteFacebook.conversion_api_access_token,
@@ -105,7 +99,7 @@ async function loadFbConfig(): Promise<FbConfig | null> {
       capiSettings.conversions_api_access_token,
       capiSettings.capi_access_token,
     ),
-    test_event_code_present: privilegedStatus.test_event_code_present === true,
+    test_event_code_present: Boolean(pickString(envTestEventCode, tokenCfg.test_event_code, siteFacebook.test_event_code, siteFacebook.testEventCode, siteMeta.test_event_code, siteMeta.testEventCode, capiSettings.test_event_code, capiSettings.testEventCode)),
     test_event_code: pickString(
       envTestEventCode,
       tokenCfg.test_event_code,
@@ -118,9 +112,7 @@ async function loadFbConfig(): Promise<FbConfig | null> {
     ),
     enabled: typeof tokenCfg.enabled === "boolean"
       ? tokenCfg.enabled
-      : typeof privilegedStatus.enabled === "boolean"
-        ? privilegedStatus.enabled
-        : pickEnabled(siteFacebook.enabled, siteMeta.enabled, pixelSettings.enabled, capiSettings.enabled),
+      : pickEnabled(siteFacebook.enabled, siteMeta.enabled, pixelSettings.enabled, capiSettings.enabled),
   };
   cachedConfig = { value, at: now };
   return value;
