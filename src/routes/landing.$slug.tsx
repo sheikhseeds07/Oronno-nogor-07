@@ -6,6 +6,7 @@ import { supabase } from "@/lib/personal-supabase/client";
 import { mergeContent } from "@/lib/landing-content";
 import { landingBaseSlug } from "@/lib/landing-slug";
 import { toImg } from "@/lib/img";
+import { getRequest } from "@tanstack/react-start/server";
 
 const LEGACY_SLUGS = new Set(["seeds-combo-24"]);
 
@@ -34,6 +35,42 @@ const LANDING_CACHE_KEYS = ["landing", "landing-clean", "landing-all-product", "
 // the edge cache so repeated ad hits in one Worker isolate reuse the same row.
 const LANDING_SERVER_CACHE_TTL_MS = 5 * 60_000;
 type LandingServerCacheEntry = { expiresAt: number; page: unknown };
+type EdgeCache = { match(request: Request): Promise<Response | undefined>; put(request: Request, response: Response): Promise<void> };
+function landingEdgeCacheKey(slug: string): Request | null {
+  try {
+    const request = getRequest();
+    if (!request?.url) return null;
+    const url = new URL(`/__oronno_edge_cache/landing-pages/${encodeURIComponent(slug)}?v=landing-v4`, request.url);
+    return new Request(url.toString(), { method: "GET" });
+  } catch {
+    return null;
+  }
+}
+async function readLandingEdgeCache(slug: string): Promise<{ hit: boolean; page?: unknown }> {
+  const cache = (globalThis as typeof globalThis & { caches?: { default?: EdgeCache } }).caches?.default;
+  const key = landingEdgeCacheKey(slug);
+  if (!cache || !key) return { hit: false };
+  try {
+    const response = await cache.match(key);
+    if (!response) return { hit: false };
+    const payload = await response.json() as { page?: unknown };
+    return { hit: true, page: payload?.page ?? null };
+  } catch {
+    return { hit: false };
+  }
+}
+async function writeLandingEdgeCache(slug: string, page: unknown): Promise<void> {
+  const cache = (globalThis as typeof globalThis & { caches?: { default?: EdgeCache } }).caches?.default;
+  const key = landingEdgeCacheKey(slug);
+  if (!cache || !key) return;
+  try {
+    await cache.put(key, new Response(JSON.stringify({ page }), {
+      headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=300" },
+    }));
+  } catch {
+    // Cache failures must never affect landing-page rendering.
+  }
+}
 const landingServerCache = new Map<string, LandingServerCacheEntry>();
 const SITE_SETTINGS_CACHE_TTL_MS = 300_000;
 let siteSettingsServerCache: { expiresAt: number; settings: unknown } | null = null;
@@ -64,9 +101,15 @@ export const Route = createFileRoute("/landing/$slug")({
     const cachedPage = getCachedLandingPage(params.slug);
     const pagePromise = cachedPage !== undefined
       ? Promise.resolve(cachedPage)
-      : supabase.from("landing_pages").select(`${LANDING_PAGES_COLUMNS}, products(${LANDING_PRODUCT_COLUMNS})`).eq("slug", params.slug).eq("is_published", true).maybeSingle().then(({ data }) => {
+      : readLandingEdgeCache(params.slug).then(async (edge) => {
+          if (edge.hit) {
+            setCachedLandingPage(params.slug, edge.page);
+            return edge.page;
+          }
+          const { data } = await supabase.from("landing_pages").select(`${LANDING_PAGES_COLUMNS}, products(${LANDING_PRODUCT_COLUMNS})`).eq("slug", params.slug).eq("is_published", true).maybeSingle();
           const page = data ?? null;
           setCachedLandingPage(params.slug, page);
+          await writeLandingEdgeCache(params.slug, page);
           return page;
         });
     const settingsPromise = hasSettings
