@@ -50,6 +50,9 @@ export function LegacyLandingPage({ slug }: { slug: string }) {
 
   const { data: page, isLoading } = useQuery({
     queryKey: ["landing", slug],
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
     queryFn: async () => (await supabase.from("landing_pages").select(`${LANDING_PAGES_COLUMNS}, products(${PRODUCTS_COLUMNS})`).eq("slug", slug).eq("is_published", true).maybeSingle()).data,
   });
 
