@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useLocation } from "@tanstack/react-router";
+import { supabase } from "@/lib/personal-supabase/client";
 import { cachedRequest } from "@/lib/egress-optimization";
 
 function createVisitorId(): string {
