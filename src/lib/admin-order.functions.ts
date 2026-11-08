@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { assertAdminOrPermission } from "@/lib/_admin-guard.server";
+import { assertCanManageOrders } from "@/lib/_admin-guard.server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
