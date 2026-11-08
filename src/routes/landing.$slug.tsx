@@ -1,4 +1,4 @@
-import { LANDING_PAGES_COLUMNS, PRODUCTS_COLUMNS } from "@/lib/read-columns";
+import { LANDING_PAGES_COLUMNS, LANDING_PRODUCT_COLUMNS } from "@/lib/read-columns";
 import { createFileRoute, useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect } from "react";
@@ -32,7 +32,7 @@ const LANDING_CACHE_KEYS = ["landing", "landing-clean", "landing-all-product", "
 
 // Short server-side cache for anonymous landing-page SSR. Keep it aligned with
 // the edge cache so repeated ad hits in one Worker isolate reuse the same row.
-const LANDING_SERVER_CACHE_TTL_MS = 60_000;
+const LANDING_SERVER_CACHE_TTL_MS = 5 * 60_000;
 type LandingServerCacheEntry = { expiresAt: number; page: unknown };
 const landingServerCache = new Map<string, LandingServerCacheEntry>();
 const SITE_SETTINGS_CACHE_TTL_MS = 300_000;
@@ -64,7 +64,7 @@ export const Route = createFileRoute("/landing/$slug")({
     const cachedPage = getCachedLandingPage(params.slug);
     const pagePromise = cachedPage !== undefined
       ? Promise.resolve(cachedPage)
-      : supabase.from("landing_pages").select(`${LANDING_PAGES_COLUMNS}, products(${PRODUCTS_COLUMNS})`).eq("slug", params.slug).eq("is_published", true).maybeSingle().then(({ data }) => {
+      : supabase.from("landing_pages").select(`${LANDING_PAGES_COLUMNS}, products(${LANDING_PRODUCT_COLUMNS})`).eq("slug", params.slug).eq("is_published", true).maybeSingle().then(({ data }) => {
           const page = data ?? null;
           setCachedLandingPage(params.slug, page);
           return page;
