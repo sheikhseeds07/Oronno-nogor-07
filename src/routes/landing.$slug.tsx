@@ -35,6 +35,9 @@ const LANDING_CACHE_KEYS = ["landing", "landing-clean", "landing-all-product", "
 // the edge cache so repeated ad hits in one Worker isolate reuse the same row.
 const LANDING_SERVER_CACHE_TTL_MS = 5 * 60_000;
 type LandingServerCacheEntry = { expiresAt: number; page: unknown };
+const landingServerCache = new Map<string, LandingServerCacheEntry>();
+const SITE_SETTINGS_CACHE_TTL_MS = 300_000;
+let siteSettingsServerCache: { expiresAt: number; settings: unknown } | null = null;
 
 function getCachedLandingPage(slug: string): unknown | undefined {
   const hit = landingServerCache.get(slug);
