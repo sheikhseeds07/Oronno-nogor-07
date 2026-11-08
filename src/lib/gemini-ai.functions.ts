@@ -1,11 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
+import { assertIsAdmin } from "@/lib/_admin-guard.server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 
 async function isAdmin(userId: string) {
-  const { data } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", userId).in("role", ["admin", "super_admin"]).limit(1);
-  return Boolean(data?.length);
+  try { await assertIsAdmin(userId); return true; } catch { return false; }
 }
 
 export const getGeminiSettings = createServerFn({ method: "POST" })
