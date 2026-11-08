@@ -200,7 +200,8 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
     // Settings changes are pushed over the existing Realtime/broadcast channel.
     // Avoid periodic and tab-focus REST reads; the query is invalidated on UPDATE.
     staleTime: 15 * 60_000,
-    refetchInterval: false,
+    // Realtime updates immediately; keep a slower fallback if the channel drops.
+    refetchInterval: 30 * 60_000,
     refetchOnMount: true,
     refetchOnWindowFocus: false,
   });
