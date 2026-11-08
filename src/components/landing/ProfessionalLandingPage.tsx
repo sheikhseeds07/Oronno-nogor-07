@@ -40,6 +40,9 @@ export function ProfessionalLandingPage({ slug, variant }: Props) {
   useEffect(() => { const el = document.getElementById("lp-order"); if (!el || typeof IntersectionObserver === "undefined") return; const obs = new IntersectionObserver(([e]) => setFormInView(Boolean(e?.isIntersecting)), { threshold: 0.12, rootMargin: "0px 0px -10% 0px" }); obs.observe(el); return () => obs.disconnect(); });
   const { data: page, isLoading } = useQuery({
     queryKey: ["landing-professional", slug],
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
     queryFn: async () => (await supabase.from("landing_pages").select(`${LANDING_PAGES_COLUMNS}, products(${PRODUCTS_COLUMNS})`).eq("slug", slug).eq("is_published", true).maybeSingle()).data,
   });
   const { data: settingsRow } = useQuery({ queryKey: ["site-settings-public"], staleTime: 300_000, queryFn: async () => (await supabase.from("site_settings").select("settings").maybeSingle()).data });
