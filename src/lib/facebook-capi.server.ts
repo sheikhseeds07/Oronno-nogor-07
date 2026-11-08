@@ -1,6 +1,7 @@
 import { logger } from "@/lib/logger";
 import { createHash } from "crypto";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
+import { LIVE_DATABASE_KEY, LIVE_DATABASE_URL } from "@/lib/personal-supabase/client";
 
 type FbConfig = {
   pixel_id?: string | null;
@@ -44,75 +45,20 @@ function privilegedStatusReady(_cfg?: FbConfig | null): boolean {
 
 async function loadFbConfig(): Promise<FbConfig | null> {
   const now = Date.now();
-  // Every pixel event used to reload this config with four separate round trips.
-  // A longer window plus a fast path (the privileged token row already carries
-  // pixel id and access token) cuts the vast majority of those requests.
   if (cachedConfig && now - cachedConfig.at < 900_000) return cachedConfig.value;
 
-  const { data: dbTokenRaw } = await (supabaseAdmin as any).rpc("get_meta_capi_token");
-  const tokenCfg = asRecord(dbTokenRaw);
-  const hasFastConfig = typeof tokenCfg["pixel_id"] === "string" && String(tokenCfg["pixel_id"]).length > 0
-    && typeof tokenCfg["access_token"] === "string" && String(tokenCfg["access_token"]).length > 0;
-  // The token RPC already includes readiness, pixel ID and test-event code.
-  // Avoid a duplicate status RPC and a private integrations-table lookup.
-  const { data: site } = hasFastConfig
-    ? { data: null as any }
-    : await supabaseAdmin.from("site_settings").select("settings").limit(1).maybeSingle();
-  databaseDispatcherReady = tokenCfg.server_events_ready === true;
-  const settings = asRecord(site?.settings);
-  const siteFacebook = asRecord(settings.facebook);
-  const siteMeta = asRecord(settings.meta);
-  const pixelSettings = asRecord(settings.pixel);
-  const capiSettings = asRecord(settings.capi);
+  // This RPC returns only non-secret readiness and pixel metadata. The access
+  // token never leaves the database; delivery is delegated to a server-only Edge Function.
+  const { data: rawStatus, error } = await (supabaseAdmin as any).rpc("get_meta_capi_status");
+  if (error) logger.error("[FB CAPI status lookup failed]", error.message);
+  const status = asRecord(rawStatus);
+  databaseDispatcherReady = status.server_events_ready === true;
   const envPixelId = pickString(process.env["META_PIXEL_ID"], process.env["FACEBOOK_PIXEL_ID"], process.env["FB_PIXEL_ID"]);
-  const envAccessToken = pickString(process.env["META_CAPI_ACCESS_TOKEN"], process.env["FACEBOOK_CAPI_ACCESS_TOKEN"], process.env["FB_CAPI_ACCESS_TOKEN"]);
-  const envTestEventCode = pickString(process.env["META_TEST_EVENT_CODE"], process.env["FACEBOOK_TEST_EVENT_CODE"]);
-
   const value: FbConfig = {
-    pixel_id: pickString(
-      envPixelId,
-      tokenCfg.pixel_id,
-      siteFacebook.pixel_id,
-      siteFacebook.pixelId,
-      siteMeta.pixel_id,
-      siteMeta.pixelId,
-      pixelSettings.pixel_id,
-      pixelSettings.pixelId,
-    ),
-    access_token: pickString(
-      envAccessToken,
-      tokenCfg.access_token,
-      tokenCfg.server_events_ready === true ? "database-managed" : null,
-      siteFacebook.access_token,
-      siteFacebook.accessToken,
-      siteFacebook.conversion_api_access_token,
-      siteFacebook.conversions_api_access_token,
-      siteFacebook.capi_access_token,
-      siteMeta.access_token,
-      siteMeta.accessToken,
-      siteMeta.conversion_api_access_token,
-      siteMeta.conversions_api_access_token,
-      siteMeta.capi_access_token,
-      capiSettings.access_token,
-      capiSettings.accessToken,
-      capiSettings.conversion_api_access_token,
-      capiSettings.conversions_api_access_token,
-      capiSettings.capi_access_token,
-    ),
-    test_event_code_present: Boolean(pickString(envTestEventCode, tokenCfg.test_event_code, siteFacebook.test_event_code, siteFacebook.testEventCode, siteMeta.test_event_code, siteMeta.testEventCode, capiSettings.test_event_code, capiSettings.testEventCode)),
-    test_event_code: pickString(
-      envTestEventCode,
-      tokenCfg.test_event_code,
-      siteFacebook.test_event_code,
-      siteFacebook.testEventCode,
-      siteMeta.test_event_code,
-      siteMeta.testEventCode,
-      capiSettings.test_event_code,
-      capiSettings.testEventCode,
-    ),
-    enabled: typeof tokenCfg.enabled === "boolean"
-      ? tokenCfg.enabled
-      : pickEnabled(siteFacebook.enabled, siteMeta.enabled, pixelSettings.enabled, capiSettings.enabled),
+    pixel_id: pickString(envPixelId, status.pixel_id),
+    access_token: databaseDispatcherReady ? "database-managed" : null,
+    test_event_code_present: status.test_event_code_present === true,
+    enabled: typeof status.enabled === "boolean" ? status.enabled : false,
   };
   cachedConfig = { value, at: now };
   return value;
@@ -164,28 +110,14 @@ function buildUserData(payload: ServerEventPayload) {
 }
 
 /** Send any supported website event to Meta CAPI with a direct server request and a database fallback. */
-async function queuePurchaseForRetry(body: AnyRecord, eventId: string) {
-  if (!eventId) return false;
-  try {
-    const { data, error } = await (supabaseAdmin as any).rpc("queue_meta_capi_purchase", {
-      p_event_id: eventId,
-      p_body: body,
-    });
-    if (!error && data === true) return true;
-    logger.error("[FB CAPI purchase outbox failed]", { eventId, error: error?.message ?? "queue unavailable" });
-  } catch (error) {
-    logger.error("[FB CAPI purchase outbox exception]", { eventId, error: error instanceof Error ? error.message : String(error) });
-  }
-  return false;
-}
 
 /** Send any supported website event to Meta CAPI with a direct server request and a durable Purchase retry fallback. */
 export async function sendServerEvent(payload: ServerEventPayload): Promise<{ ok: boolean }> {
   const cfg = await loadFbConfig();
+  if (!cfg?.enabled || !cfg.pixel_id || !databaseDispatcherReady) return { ok: false };
 
   const now = Math.floor(Date.now() / 1000);
   const eventTime = payload.event_time && payload.event_time <= now + 60 && payload.event_time > now - 6 * 24 * 3600 ? payload.event_time : now;
-
   const body = {
     data: [{
       event_name: payload.event_name,
@@ -196,53 +128,24 @@ export async function sendServerEvent(payload: ServerEventPayload): Promise<{ ok
       user_data: buildUserData(payload),
       ...(payload.custom_data ? { custom_data: payload.custom_data } : {}),
     }],
-    ...(cfg?.test_event_code ? { test_event_code: cfg.test_event_code } : {}),
   };
 
-  const queueRetry = async () => queuePurchaseForRetry(body, payload.event_id);
-
-  if (!cfg?.enabled || !cfg.pixel_id) {
-    if (payload.event_name === "Purchase") return (await queueRetry()) ? { ok: true } : { ok: false };
-    return { ok: false };
+  try {
+    const response = await fetch(`${LIVE_DATABASE_URL}/functions/v1/meta-capi-dispatch`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: LIVE_DATABASE_KEY,
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(18_000),
+    });
+    const result = await response.json().catch(() => ({})) as { ok?: boolean; queued?: boolean; error?: string };
+    if (response.ok && result.ok === true) return { ok: true };
+    logger.error("[FB CAPI Edge dispatch failed]", { event: payload.event_name, eventId: payload.event_id, status: response.status, error: result.error ?? "dispatch failed" });
+  } catch (error) {
+    logger.error("[FB CAPI Edge dispatch exception]", { event: payload.event_name, eventId: payload.event_id, error: error instanceof Error ? error.message : String(error) });
   }
-
-  const dispatchFallback = async () => {
-    try {
-      const { data, error } = await (supabaseAdmin as any).rpc("dispatch_meta_capi_event", { p_body: body });
-      if (!error && data === true) return true;
-      logger.error("[FB CAPI database fallback failed]", { event: payload.event_name, eventId: payload.event_id, error: error?.message ?? "dispatcher unavailable" });
-    } catch (error) {
-      logger.error("[FB CAPI database fallback exception]", { event: payload.event_name, eventId: payload.event_id, error: error instanceof Error ? error.message : String(error) });
-    }
-    return false;
-  };
-
-  const accessToken = cfg.access_token;
-  if (!accessToken || accessToken === "database-managed") return { ok: false };
-
-  const url = `https://graph.facebook.com/v23.0/${cfg.pixel_id}/events?access_token=${encodeURIComponent(accessToken)}`;
-  let lastError = "";
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(15000),
-      });
-      if (response.ok) return { ok: true };
-      const text = await response.text().catch(() => "");
-      lastError = `HTTP ${response.status}: ${text.slice(0, 500)}`;
-      if (response.status >= 400 && response.status < 500 && response.status !== 408 && response.status !== 429) break;
-    } catch (error) {
-      lastError = error instanceof Error ? error.message : String(error);
-    }
-    if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 250));
-  }
-
-  logger.error("[FB CAPI direct delivery failed]", { event: payload.event_name, eventId: payload.event_id, error: lastError });
-  if (await dispatchFallback()) return { ok: true };
-  if (payload.event_name === "Purchase" && await queueRetry()) return { ok: true };
   return { ok: false };
 }
 
