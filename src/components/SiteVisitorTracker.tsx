@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { useLocation } from "@tanstack/react-router";
-import { supabase } from "@/lib/personal-supabase/client";
 import { cachedRequest } from "@/lib/egress-optimization";
 
 function createVisitorId(): string {
@@ -79,11 +78,14 @@ export function SiteVisitorTracker() {
       if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
       const { landingPageId, productId } = await getRouteIds();
       if (!active) return;
-      await (supabase as any).rpc("heartbeat_site_visitor", {
-        p_id: visitorId,
-        p_path: path,
-        p_landing_page_id: landingPageId,
-        p_product_id: productId,
+      // Same-origin POST avoids the cross-origin OPTIONS preflight that Supabase
+      // REST required for every visitor heartbeat.
+      await fetch("/api/visitor/heartbeat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: visitorId, path, landingPageId, productId }),
+        signal: controller.signal,
+        keepalive: true,
       });
     };
 
