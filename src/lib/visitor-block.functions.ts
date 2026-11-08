@@ -24,50 +24,17 @@ export const getSiteBlockStatus = createServerFn({ method: "POST" })
     const db = supabaseAdmin as any;
 
     try {
-      // IP block: a blocked IP cannot open the site at all.
-      // Uses the security-definer RPC so the check works without table read access.
-      if (requestIp) {
-        const { data: blocked } = await db.rpc("is_blocked_visitor", { p_ip: requestIp, p_phone: undefined });
-        if (blocked === true) return { blocked: true };
-      }
-
-      // Remember this device for the logged-in customer so a block also stops the device.
-      if (deviceId && customerId) {
-        await db.from("customer_devices").upsert(
-          { customer_id: customerId, device_id: deviceId, last_seen_at: new Date().toISOString() },
-          { onConflict: "customer_id,device_id" },
-        );
-      }
-
-      if (customerId) {
-        const { data: row } = await db
-          .from("customer_profiles")
-          .select("is_blocked")
-          .eq("id", customerId)
-          .maybeSingle();
-        if (row?.is_blocked) return { blocked: true };
-      }
-
-      if (deviceId) {
-        const { data: rows } = await db
-          .from("customer_devices")
-          .select("customer_id")
-          .eq("device_id", deviceId)
-          .limit(50);
-        const ids = (rows ?? []).map((r: any) => r.customer_id).filter(Boolean);
-        if (ids.length) {
-          const { data: blockedRows } = await db
-            .from("customer_profiles")
-            .select("id")
-            .in("id", ids)
-            .eq("is_blocked", true)
-            .limit(1);
-          if (blockedRows?.length) return { blocked: true };
-        }
-      }
+      // One boolean-only SECURITY DEFINER RPC checks IP, account and linked-device
+      // blocks without exposing customer_devices/customer_profiles to anon callers.
+      const { data: blocked, error } = await db.rpc("get_site_block_status", {
+        p_ip: requestIp,
+        p_device_id: deviceId,
+        p_customer_id: customerId,
+      });
+      if (error) throw error;
+      return { blocked: blocked === true };
     } catch (err) {
       logger.error("[getSiteBlockStatus] check failed:", (err as Error).message);
+      return { blocked: false };
     }
-
-    return { blocked: false };
   });

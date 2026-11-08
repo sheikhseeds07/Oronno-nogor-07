@@ -30,9 +30,9 @@ function LandingTemplateBoundary({ children }: { children: React.ReactNode }) {
 const LANDING_CACHE_KEYS = ["landing", "landing-clean", "landing-all-product", "landing-professional", "landing-product-style", "landing-template"] as const;
 
 
-// Short server-side cache for anonymous landing-page SSR. A 60s TTL cuts repeated
-// identical reads during ad bursts while keeping admin edits visible shortly after edits.
-const LANDING_SERVER_CACHE_TTL_MS = 10_000;
+// Short server-side cache for anonymous landing-page SSR. Keep it aligned with
+// the edge cache so repeated ad hits in one Worker isolate reuse the same row.
+const LANDING_SERVER_CACHE_TTL_MS = 60_000;
 type LandingServerCacheEntry = { expiresAt: number; page: unknown };
 const landingServerCache = new Map<string, LandingServerCacheEntry>();
 const SITE_SETTINGS_CACHE_TTL_MS = 300_000;

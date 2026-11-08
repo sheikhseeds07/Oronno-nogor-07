@@ -162,6 +162,39 @@ function parseSteadfastScore(value: unknown): SteadfastScore | null {
   };
 }
 
+type SteadfastIntegrationConfig = { active: boolean; apiKey: string; secretKey: string };
+const STEADFAST_CONFIG_CACHE_TTL_MS = 5 * 60_000;
+let steadfastIntegrationCache: { expiresAt: number; value: SteadfastIntegrationConfig } | null = null;
+let steadfastIntegrationInFlight: Promise<SteadfastIntegrationConfig> | null = null;
+
+async function getSteadfastIntegrationConfig(admin: any): Promise<SteadfastIntegrationConfig> {
+  if (steadfastIntegrationCache && steadfastIntegrationCache.expiresAt > Date.now()) {
+    return steadfastIntegrationCache.value;
+  }
+  if (steadfastIntegrationInFlight) return steadfastIntegrationInFlight;
+  const request = (async () => {
+    const { data } = await admin
+      .from("integrations")
+      .select("config,is_active")
+      .eq("name", "all_api_steadfast")
+      .maybeSingle();
+    const cfg = (data?.config ?? {}) as Record<string, unknown>;
+    return {
+      active: Boolean(data?.is_active),
+      apiKey: String(cfg.api_key ?? "").trim(),
+      secretKey: String(cfg.secret_key ?? "").trim(),
+    };
+  })();
+  steadfastIntegrationInFlight = request;
+  try {
+    const value = await request;
+    steadfastIntegrationCache = { expiresAt: Date.now() + STEADFAST_CONFIG_CACHE_TTL_MS, value };
+    return value;
+  } finally {
+    steadfastIntegrationInFlight = null;
+  }
+}
+
 async function steadfastScore(phone: string): Promise<SteadfastScore | null> {
   const p = phone.slice(-11);
   if (p.length < 11) return null;
@@ -221,16 +254,11 @@ async function steadfastScore(phone: string): Promise<SteadfastScore | null> {
   }
 
   try {
-    const { data: integration } = await admin
-      .from("integrations")
-      .select("config,is_active")
-      .eq("name", "all_api_steadfast")
-      .maybeSingle();
-    const cfg = (integration?.config ?? {}) as Record<string, unknown>;
-    const apiKey = String(cfg.api_key ?? "").trim();
-    const secretKey = String(cfg.secret_key ?? "").trim();
+    const integration = await getSteadfastIntegrationConfig(admin);
+    const apiKey = integration.apiKey;
+    const secretKey = integration.secretKey;
 
-    if (!integration?.is_active || !apiKey || !secretKey) {
+    if (!integration.active || !apiKey || !secretKey) {
       await admin.from("courier_history_cache").update({
         steadfast_score: { status: "failed", fetchedAt: new Date().toISOString() },
       }).eq("phone", phone);
@@ -280,14 +308,25 @@ async function steadfastScore(phone: string): Promise<SteadfastScore | null> {
   }
 }
 
-async function withSteadfast(phone: string, result: CourierHistoryResult): Promise<CourierHistoryResult> {
+function combineSteadfast(result: CourierHistoryResult, score: SteadfastScore | null): CourierHistoryResult {
   const stats = result.stats.filter((s) => s.name.toLowerCase() !== "steadfast");
   const overall = aggregateOverall(stats);
   const cleaned = { ...result, stats, overall };
-  const score = await steadfastScore(phone).catch(() => null);
   if (!score) return cleaned;
   const combined = { name: "Overall", total: overall.total + score.total, success: overall.success + score.success, cancelled: overall.cancelled + score.cancelled };
   return { ...cleaned, overall: combined, steadfast: score };
+}
+
+async function withSteadfast(phone: string, result: CourierHistoryResult): Promise<CourierHistoryResult> {
+  // The persistent cache read already included steadfast_score. Reuse it while
+  // fresh instead of issuing a second GET for the same courier-history row.
+  const cached = result.steadfast;
+  const age = cached?.fetchedAt ? Date.now() - new Date(cached.fetchedAt).getTime() : Infinity;
+  if (cached && age >= 0 && age < STEADFAST_SCORE_TTL_MS) {
+    return combineSteadfast(result, cached);
+  }
+  const score = await steadfastScore(phone).catch(() => null);
+  return combineSteadfast(result, score);
 }
 
 async function readPersistentCache(phone: string): Promise<PersistentHit | null> {

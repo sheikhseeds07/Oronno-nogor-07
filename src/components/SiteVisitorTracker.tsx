@@ -1,7 +1,5 @@
 import { useEffect } from "react";
 import { useLocation } from "@tanstack/react-router";
-import { supabase } from "@/lib/personal-supabase/client";
-import { cachedRequest } from "@/lib/egress-optimization";
 
 function createVisitorId(): string {
   try {
@@ -12,7 +10,6 @@ function createVisitorId(): string {
 }
 
 const VISITOR_ID_KEY = "site-visitor-id";
-const VISITOR_LOOKUP_KEY_PREFIX = "site-visitor-route:";
 const VISITOR_BEAT_KEY_PREFIX = "site-visitor-beat:";
 // One presence write per visitor per path per window. Live-visitor accuracy
 // stays useful while request volume (and its egress) stops scaling with how
@@ -50,40 +47,18 @@ export function SiteVisitorTracker() {
 
     let active = true;
     const controller = new AbortController();
-    const landingSlug = path.startsWith("/landing/") ? path.split("/")[2] : null;
-    const lookupKey = `${VISITOR_LOOKUP_KEY_PREFIX}${path}`;
-
-    const getRouteIds = () => cachedRequest(`visitor-route:${path}`, async () => {
-      try {
-        const raw = localStorage.getItem(lookupKey);
-        if (raw) {
-          const parsed = JSON.parse(raw) as { at: number; value: { landingPageId: string | null; productId: string | null } };
-          if (parsed?.value && Date.now() - parsed.at < 86_400_000) return parsed.value;
-        }
-      } catch {}
-
-      let landingPageId: string | null = null;
-      let productId: string | null = null;
-      if (landingSlug) {
-        const { data } = await supabase.from("landing_pages").select("id,product_id").eq("slug", landingSlug).abortSignal(controller.signal).maybeSingle();
-        landingPageId = data?.id ?? null;
-        productId = data?.product_id ?? null;
-      }
-      const result = { landingPageId, productId };
-      try { localStorage.setItem(lookupKey, JSON.stringify({ at: Date.now(), value: result })); } catch {}
-      return result;
-    }, 900_000);
-
     const recordVisit = async () => {
       // Hidden/prerendered tabs must not spend a request at all.
       if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
-      const { landingPageId, productId } = await getRouteIds();
       if (!active) return;
-      await (supabase as any).rpc("heartbeat_site_visitor", {
-        p_id: visitorId,
-        p_path: path,
-        p_landing_page_id: landingPageId,
-        p_product_id: productId,
+      // The server resolves landing-page IDs through a short isolate cache,
+      // avoiding one public landing_pages read per visitor.
+      await fetch("/api/visitor/heartbeat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: visitorId, path }),
+        signal: controller.signal,
+        keepalive: true,
       });
     };
 

@@ -43,20 +43,15 @@ export const getOrderStatusCounts = createServerFn({ method: "POST" })
       ? Array.from(new Set(data.statuses)).filter((status) => status !== "incomplete")
       : ["web_pending", "pending", "rts", "shipped", "delivered", "pending_return", "returned", "partial", "cancelled", "hold"];
 
-    const results = await Promise.all(wanted.map(async (status) => {
-      let q = db.from("orders").select("id", { count: "exact", head: true }).eq("status", status as any);
-      // Imported orders must appear in every Order List status count,
-      // but must remain excluded from all Web Order counts.
-      // All status badges use this function; Web Order-specific queries apply
-      // originated_from_import=false separately.
-      if (data.from) q = q.gte("created_at", data.from);
-      if (data.to) q = q.lte("created_at", data.to);
-      const { count, error } = await q;
-      if (error) throw new Error(error.message);
-      return [status, count ?? 0] as const;
-    }));
-
-    return Object.fromEntries(results) as Record<string, number>;
+    // One grouped RPC replaces one HEAD/count request per status while retaining
+    // the same authenticated role and RLS visibility as the previous queries.
+    const { data: counts, error } = await db.rpc("get_order_status_counts", {
+      p_statuses: wanted,
+      p_from: data.from ?? null,
+      p_to: data.to ?? null,
+    });
+    if (error) throw new Error(error.message);
+    return (counts ?? {}) as Record<string, number>;
   });
 
 export const getSalesReport = createServerFn({ method: "POST" })
