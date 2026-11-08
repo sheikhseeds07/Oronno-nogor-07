@@ -1,12 +1,12 @@
 import { EMPLOYEES_COLUMNS, PROFILES_COLUMNS } from "@/lib/read-columns";
+import { assertIsAdmin } from "@/lib/_admin-guard.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 
 async function isAdminUser(userId: string) {
-  const { data } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", userId).in("role", ["admin", "super_admin"]).limit(1);
-  return !!data?.length;
+  try { await assertIsAdmin(userId); return true; } catch { return false; }
 }
 
 export const getEmployeeProfile = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator((input) => z.object({ user_id: z.string().uuid().optional() }).parse(input)).handler(async ({ data, context }) => {
