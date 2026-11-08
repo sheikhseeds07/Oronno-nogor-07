@@ -8,7 +8,7 @@ const HeartbeatInput = z.object({
 });
 
 type LandingIds = { landingPageId: string | null; productId: string | null };
-const LANDING_LOOKUP_TTL_MS = 5 * 60_000;
+const LANDING_LOOKUP_TTL_MS = 60 * 60_000;
 const landingLookupCache = new Map<string, { expiresAt: number; value: LandingIds }>();
 
 async function getLandingIds(slug: string): Promise<LandingIds> {
