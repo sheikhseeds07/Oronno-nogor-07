@@ -2357,6 +2357,7 @@ export type Database = {
         Returns: Json
       }
       dispatch_meta_capi_event: { Args: { p_body: Json }; Returns: boolean }
+      dispatch_landing_purchase: { Args: { p_intent_id: string; p_order_id: string }; Returns: boolean }
       get_customer_order_history: { Args: { p_phone: string }; Returns: Json }
       get_home_data_v1: { Args: never; Returns: Json }
       get_order_status_counts: {
