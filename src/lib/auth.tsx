@@ -1,4 +1,3 @@
-import { EMPLOYEE_PERMISSIONS_COLUMNS } from "@/lib/read-columns";
 import { useEffect, useState } from "react";
 import { staffSupabase, customerSupabase } from "@/lib/personal-supabase/client";
 import type { Session } from "@supabase/supabase-js";
