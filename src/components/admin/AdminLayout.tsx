@@ -197,10 +197,12 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
       if (data?.settings) writePublicSettingsCache(data.settings as SiteSettings);
       return data;
     },
-    staleTime: 5 * 60_000,
-    refetchInterval: 10 * 60_000,
+    // Settings changes are pushed over the existing Realtime/broadcast channel.
+    // Avoid periodic and tab-focus REST reads; the query is invalidated on UPDATE.
+    staleTime: 15 * 60_000,
+    refetchInterval: false,
     refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
   const brand = (brandRow?.settings as SiteSettings) ?? {};
   // Derive the announcement from the same settings row instead of issuing a
