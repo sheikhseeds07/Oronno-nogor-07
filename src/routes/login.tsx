@@ -16,12 +16,11 @@ function Login() {
 
   const goAfterLogin = async (uid?: string) => {
     if (!uid) return navigate({ to: "/" });
-    const { data: roles } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", uid)
-      .in("role", ["super_admin", "admin", "employee"]);
-    navigate({ to: roles && roles.length > 0 ? "/admin" : "/" });
+    const { data: access, error } = await supabase.rpc("get_my_staff_access");
+    const role = !error && access && typeof access === "object"
+      ? (access as Record<string, unknown>).role
+      : null;
+    navigate({ to: role === "super_admin" || role === "admin" || role === "employee" ? "/admin" : "/" });
   };
 
   const submit = async (e: React.FormEvent) => {
