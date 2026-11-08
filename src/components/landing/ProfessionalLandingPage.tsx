@@ -1,5 +1,5 @@
 import { SafeImage } from "@/components/SafeImage";
-import { LANDING_PAGES_COLUMNS, PRODUCTS_COLUMNS } from "@/lib/read-columns";
+import { LANDING_PAGES_COLUMNS, LANDING_PRODUCT_COLUMNS } from "@/lib/read-columns";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -43,7 +43,7 @@ export function ProfessionalLandingPage({ slug, variant }: Props) {
     staleTime: 5 * 60_000,
     gcTime: 10 * 60_000,
     refetchOnWindowFocus: false,
-    queryFn: async () => (await supabase.from("landing_pages").select(`${LANDING_PAGES_COLUMNS}, products(${PRODUCTS_COLUMNS})`).eq("slug", slug).eq("is_published", true).maybeSingle()).data,
+    queryFn: async () => (await supabase.from("landing_pages").select(`${LANDING_PAGES_COLUMNS}, products(${LANDING_PRODUCT_COLUMNS})`).eq("slug", slug).eq("is_published", true).maybeSingle()).data,
   });
   const { data: settingsRow } = useQuery({ queryKey: ["site-settings-public"], staleTime: 300_000, queryFn: async () => (await supabase.from("site_settings").select("settings").maybeSingle()).data });
   const settings = (settingsRow?.settings as { site_name?: string; tagline?: string; logo_url?: string }) ?? {};
