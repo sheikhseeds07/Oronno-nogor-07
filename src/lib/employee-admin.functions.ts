@@ -1,4 +1,5 @@
 import { EMPLOYEES_COLUMNS, EMPLOYEE_PERMISSIONS_COLUMNS, USER_ROLES_COLUMNS } from "@/lib/read-columns";
+import { assertIsSuperAdmin, assertPermission } from "@/lib/_admin-guard.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
@@ -18,29 +19,15 @@ const CreateSchema = z.object({
   permissions: PermSchema,
 });
 
-async function loadRole(db: any, userId: string): Promise<string | null> {
-  const { data, error } = await db.from("user_roles").select("role").eq("user_id", userId);
-  if (error) throw new Error(error.message);
-  const names = new Set((data ?? []).map((r: any) => r.role as string));
-  if (names.has("super_admin")) return "super_admin";
-  if (names.has("admin")) return "admin";
-  if (names.has("employee")) return "employee";
-  return null;
-}
-
 /** Only the CEO may hand out roles or module permissions. */
-async function assertSuperAdmin(db: any, userId: string) {
-  if ((await loadRole(db, userId)) !== "super_admin") throw new Error("শুধু CEO এই কাজটি করতে পারবেন");
+async function assertSuperAdmin(_db: any, userId: string) {
+  try { await assertIsSuperAdmin(userId); }
+  catch { throw new Error("শুধু CEO এই কাজটি করতে পারবেন"); }
 }
 
 /** CEO, or staff the CEO granted the Employees module. */
-async function assertHrm(db: any, userId: string) {
-  const role = await loadRole(db, userId);
-  if (!role) throw new Error("Unauthorized");
-  if (role === "super_admin") return;
-  const { data, error } = await db.from("employee_permissions").select("employees").eq("user_id", userId).maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data?.employees) throw new Error("Unauthorized");
+async function assertHrm(_db: any, userId: string) {
+  await assertPermission(userId, "employees");
 }
 
 async function invokeAdminBridge(db: any, body: Record<string, unknown>) {
