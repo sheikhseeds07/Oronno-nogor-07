@@ -61,8 +61,18 @@ const IncompleteInputSchema = z.object({ customer_name: z.string().max(255).opti
 
 
 export const lookupCustomerByPhone = createServerFn({ method: "POST" }).inputValidator((input) => z.object({ phone: BdPhoneSchema }).parse(input)).handler(async ({ data }) => {
-  const { data: order } = await supabaseAdmin.from("orders").select("customer_name,customer_address").eq("customer_phone", data.phone).order("created_at", { ascending: false }).limit(1).maybeSingle();
-  return order ? { name: order.customer_name, address: order.customer_address } : null;
+  // Public checkout must not query the private orders table with the publishable key.
+  // This narrowly-scoped SECURITY DEFINER RPC returns only the latest name/address.
+  const { data: customer, error } = await supabaseAdmin.rpc("lookup_checkout_customer_by_phone", {
+    p_phone: data.phone,
+  } as never);
+  if (error) {
+    logger.warn("[lookupCustomerByPhone] lookup unavailable:", error.message);
+    return null;
+  }
+  return customer && typeof customer === "object"
+    ? customer as { name: string | null; address: string | null }
+    : null;
 });
 
 export const saveIncompleteCheckout = createServerFn({ method: "POST" }).inputValidator((input) => IncompleteInputSchema.parse(input)).handler(async ({ data }) => {
