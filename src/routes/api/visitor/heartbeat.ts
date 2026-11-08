@@ -27,9 +27,14 @@ async function getLandingIds(slug: string): Promise<LandingIds> {
     landingPageId: error ? null : data?.id ?? null,
     productId: error ? null : data?.product_id ?? null,
   };
-  if (landingLookupCache.size > 500) {
+  if (landingLookupCache.size >= 500) {
     for (const [key, entry] of landingLookupCache) {
       if (entry.expiresAt <= now) landingLookupCache.delete(key);
+    }
+    while (landingLookupCache.size >= 500) {
+      const oldest = landingLookupCache.keys().next().value as string | undefined;
+      if (!oldest) break;
+      landingLookupCache.delete(oldest);
     }
   }
   landingLookupCache.set(slug, {
