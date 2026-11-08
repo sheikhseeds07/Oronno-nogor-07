@@ -87,32 +87,27 @@ async function loadStaff(s: Session | null, force = false) {
   if (!cachedRole) setStaff({ session: s, user: s.user, loading: true, ...(sameUser ? {} : { role: null, permissions: ALL_FALSE }) });
 
   try {
-    // Role and permission reads are independent, so don't wait for them serially.
-    const { data: roles, error: roleError } = await withRetry(async () => {
-      const result = await staffSupabase.from("user_roles").select("role").eq("user_id", s.user.id);
+    // One authenticated, SECURITY INVOKER RPC returns the caller's own role
+    // and permission row under the same RLS rules as the previous two reads.
+    const { data: access } = await withRetry(async () => {
+      const result = await staffSupabase.rpc("get_my_staff_access");
       if (result.error) throw result.error;
       return result;
     });
     if (seq !== staffLoadSeq) return;
-    const list = (roles ?? []).map(x => x.role as string);
+    const staffAccess = access && typeof access === "object" ? access as Record<string, unknown> : {};
+    const dbRole = typeof staffAccess.role === "string" ? staffAccess.role : null;
     const meta = (s.user.app_metadata?.role ?? s.user.app_metadata?.app_role) as string | undefined;
     let role: StaffRole = null;
-    if (list.includes("super_admin") || meta === "super_admin") role = "super_admin";
-    else if (list.includes("admin") || meta === "admin") role = "admin";
-    else if (list.includes("employee")) role = "employee";
+    if (dbRole === "super_admin" || meta === "super_admin") role = "super_admin";
+    else if (dbRole === "admin" || meta === "admin") role = "admin";
+    else if (dbRole === "employee") role = "employee";
 
-    let permissions = ALL_FALSE;
-    if (role === "super_admin") {
-      permissions = ALL_TRUE;
-    } else if (role) {
-      const { data: p } = await withRetry(async () => {
-        const result = await staffSupabase.from("employee_permissions").select(EMPLOYEE_PERMISSIONS_COLUMNS).eq("user_id", s.user.id).maybeSingle();
-        if (result.error) throw result.error;
-        return result;
-      });
-      if (seq !== staffLoadSeq) return;
-      permissions = p ? readPerms(p) : ALL_FALSE;
-    }
+    const permissions = role === "super_admin"
+      ? ALL_TRUE
+      : role
+        ? staffAccess.permissions ? readPerms(staffAccess.permissions) : ALL_FALSE
+        : ALL_FALSE;
     try { window.localStorage.setItem("ss_auth_cache_v1", JSON.stringify({ role, permissions, user_id: s.user.id })); } catch {}
     if (seq !== staffLoadSeq) return;
     if (role) markStaffBypass();
