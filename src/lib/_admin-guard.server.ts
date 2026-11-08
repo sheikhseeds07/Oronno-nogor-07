@@ -78,7 +78,7 @@ export async function getStaffAccess(userId: string): Promise<CachedAuthz> {
 /** Allows an administrator, or a staff member with the requested permission. */
 export async function assertAdminOrPermission(userId: string, module: string): Promise<void> {
   const authz = await loadAuthz(userId);
-  if (authz.isAdmin || authz.permissions[module] === true) return;
+  if (authz.isAdmin || (authz.isStaff && authz.permissions[module] === true)) return;
   throw new Error("Unauthorized");
 }
 
