@@ -6,24 +6,6 @@ import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 import { sendPurchaseEvent } from "@/lib/facebook-capi.server";
 import { BLOCKED_ORDER_CODE, BLOCKED_ORDER_MESSAGE } from "@/lib/order-block";
 
-// Landing offers can link to a catalogue product whose own price differs from
-// the offer price; keep order_items equal to the offer price the customer saw.
-async function syncLandingItemPrices(intentId: string, orderId: string) {
-  try {
-    const { data: intent } = await supabaseAdmin.from("landing_checkout_intents" as never).select("seed_items,nutrimix_item").eq("id", intentId).maybeSingle();
-    const it = intent as { seed_items?: unknown; nutrimix_item?: unknown } | null;
-    const list = [...(Array.isArray(it?.seed_items) ? it!.seed_items as any[] : []), ...(it?.nutrimix_item ? [it.nutrimix_item as any] : [])];
-    const { data: rows } = await supabaseAdmin.from("order_items").select("id,product_name,price,quantity").eq("order_id", orderId);
-    for (const row of (rows ?? []) as any[]) {
-      const match = list.find((x) => String(x?.name ?? "").trim() === String(row.product_name ?? "").trim());
-      const price = Number(match?.price);
-      if (!match || !Number.isFinite(price) || price < 0 || Number(row.price) === price) continue;
-      await supabaseAdmin.from("order_items").update({ price, subtotal: price * Number(row.quantity || 1) } as never).eq("id", row.id);
-    }
-  } catch (err) {
-    logger.error("[syncLandingItemPrices] failed:", err);
-  }
-}
 
 const PHONE_RE = /^01[3-9][0-9]{8}$/;
 const normalizeBdPhoneServer = (value: string) => {
@@ -142,33 +124,18 @@ export const finalizeLandingCheckoutIntent = createServerFn({ method: "POST" }).
     throw new Error(error.message || "Order create failed");
   }
   if (!orderId || typeof orderId !== "string") throw new Error("Order create failed");
-  await syncLandingItemPrices(data.intent_id, orderId);
 
-  if (data.emit_purchase !== false) try {
-    const [{ data: order }, { data: rows }] = await Promise.all([
-      supabaseAdmin.from("orders").select("customer_phone,customer_name,total,client_ip,district,thana").eq("id", orderId).maybeSingle(),
-      supabaseAdmin.from("order_items").select("product_id,quantity,price").eq("order_id", orderId),
-    ]);
-    if (order) {
-      const userAgent = getRequestHeader("user-agent") ?? null;
-      await sendPurchaseEvent({
-        orderId,
-        value: Number(order.total) || 0,
-        currency: "BDT",
-        phone: order.customer_phone,
-        name: order.customer_name,
-        city: (order as any).district ?? (order as any).thana ?? null,
-        country: "bd",
-        contents: (rows ?? []).map((i) => ({ id: i.product_id ?? "landing-popup-nutrimix", quantity: i.quantity, price: Number(i.price) || 0 })),
-        clientIp: order.client_ip ?? null,
-        userAgent,
-        fbp: data.fbp ?? null,
-        fbc: data.fbc ?? null,
-        eventSourceUrl: data.source_url ?? null,
-      } as never);
+  // The database reads the finalized intent/order and dispatches only when the
+  // supplied order ID is exactly linked to this intent. No private table reads
+  // or customer PII are exposed to the publishable-key server client.
+  if (data.emit_purchase !== false) {
+    const { data: dispatched, error: dispatchError } = await supabaseAdmin.rpc("dispatch_landing_purchase", {
+      p_intent_id: data.intent_id,
+      p_order_id: orderId,
+    } as never);
+    if (dispatchError || dispatched !== true) {
+      logger.error("[finalizeLandingCheckoutIntent] CAPI dispatch failed:", dispatchError?.message ?? "dispatch rejected");
     }
-  } catch (e) {
-    logger.error("[finalizeLandingCheckoutIntent] CAPI dispatch failed:", e);
   }
 
   return { id: orderId };
@@ -183,7 +150,6 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   // landing configuration so a generic checkout fallback (e.g. ৳50) can never
   // overwrite an explicitly configured free-delivery offer.
   let effectiveDeliveryFee = data.delivery_fee;
-  let landingOwnsDeliveryFee = false;
   try {
     const source = data.source_url ? new URL(data.source_url) : null;
     const match = source?.pathname.match(/^\/landing\/([^/]+)\/?$/);
@@ -204,7 +170,6 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
         effectiveDeliveryFee = addon
           ? Number(addon.delivery_fee ?? landing.main_delivery_fee ?? landing.delivery_inside ?? 70)
           : Number(landing.main_delivery_fee ?? landing.delivery_inside ?? 70);
-        landingOwnsDeliveryFee = Number.isFinite(effectiveDeliveryFee) && effectiveDeliveryFee >= 0;
       }
     }
   } catch {
@@ -237,15 +202,6 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
     throw new Error(rpcMessage || "Order create failed");
   }
   if (!orderId || typeof orderId !== "string") throw new Error("Order create failed");
-
-  // place_public_order recomputes delivery from the site-wide rules (e.g. ৳50
-  // for ৳300+). Landing pages own their delivery charge, so restore it here.
-  if (landingOwnsDeliveryFee) {
-    const { data: saved } = await supabaseAdmin.from("orders").select("subtotal,delivery_fee").eq("id", orderId).maybeSingle();
-    if (saved && Number(saved.delivery_fee) !== effectiveDeliveryFee) {
-      await supabaseAdmin.from("orders").update({ delivery_fee: effectiveDeliveryFee, total: Number(saved.subtotal ?? 0) + effectiveDeliveryFee }).eq("id", orderId);
-    }
-  }
 
   const total = data.items.reduce((sum, item) => sum + item.price * item.quantity, 0) + effectiveDeliveryFee;
   try {
@@ -317,8 +273,6 @@ export const placeLandingOrder = createServerFn({ method: "POST" }).inputValidat
     throw new Error(rpcMessage || "Order create failed");
   }
   if (!orderId || typeof orderId !== "string") throw new Error("Order create failed");
-  await syncLandingItemPrices(intentId as string, orderId);
-
   const subtotal = offer.price * requested.quantity;
   try {
     const userAgent = getRequestHeader("user-agent") ?? null;
