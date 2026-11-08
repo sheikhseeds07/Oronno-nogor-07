@@ -197,7 +197,7 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
       if (data?.settings) writePublicSettingsCache(data.settings as SiteSettings);
       return data;
     },
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
     refetchInterval: 10 * 60_000,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
