@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { assertIsAdmin } from "@/lib/_admin-guard.server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
@@ -318,16 +319,7 @@ export const getEmployeeMetricOrders = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) => EmployeeMetricSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const role = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId)
-      .in("role", ["admin", "super_admin", "employee"])
-      .limit(1);
-    if (role.error) throw new Error(role.error.message);
-    const roles = (role.data ?? []).map((r: any) => String(r.role));
-    const isAdminRole = roles.includes("admin") || roles.includes("super_admin");
-    if (!isAdminRole) throw new Error("Forbidden");
+    await assertIsAdmin(context.userId);
 
     const db = supabaseAdmin as any;
     if (data.metric === "live_processing") {

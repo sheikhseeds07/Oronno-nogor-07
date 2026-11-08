@@ -1,4 +1,3 @@
-import { EMPLOYEE_PERMISSIONS_COLUMNS } from "@/lib/read-columns";
 // Shared server-side authorization helpers for staff/admin server functions.
 // Always import from a server-only path; never imported by client code.
 //
@@ -28,24 +27,20 @@ async function loadAuthz(userId: string): Promise<CachedAuthz> {
   if (existing) return existing;
 
   const request = (async (): Promise<CachedAuthz> => {
-    const { data: roles } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId);
-    const names = new Set((roles ?? []).map((r) => r.role));
-    const isSuperAdmin = names.has("super_admin");
-    const isAdmin = isSuperAdmin || names.has("admin");
-    const isStaff = isAdmin || names.has("employee");
+    const { data: rawAccess, error } = await supabaseAdmin.rpc("get_my_staff_access");
+    if (error) throw new Error(error.message);
+    const access = rawAccess && typeof rawAccess === "object"
+      ? rawAccess as Record<string, unknown>
+      : {};
+    if (access.user_id !== userId) throw new Error("Unauthorized");
 
-    let permissions: PermissionMap = {};
-    if (isStaff && !isSuperAdmin) {
-      const { data: perms } = await supabaseAdmin
-        .from("employee_permissions")
-        .select(EMPLOYEE_PERMISSIONS_COLUMNS)
-        .eq("user_id", userId)
-        .maybeSingle();
-      permissions = (perms ?? {}) as PermissionMap;
-    }
+    const role = typeof access.role === "string" ? access.role : null;
+    const isSuperAdmin = role === "super_admin";
+    const isAdmin = isSuperAdmin || role === "admin";
+    const isStaff = isAdmin || role === "employee";
+    const permissions = access.permissions && typeof access.permissions === "object"
+      ? access.permissions as PermissionMap
+      : {};
 
     const value = {
       expiresAt: Date.now() + AUTHZ_CACHE_TTL_MS,
@@ -72,6 +67,19 @@ async function loadAuthz(userId: string): Promise<CachedAuthz> {
 export function clearAuthzCache(userId?: string) {
   if (userId) authzCache.delete(userId);
   else authzCache.clear();
+}
+
+export async function getStaffAccess(userId: string): Promise<CachedAuthz> {
+  const authz = await loadAuthz(userId);
+  if (!authz.isStaff) throw new Error("Unauthorized");
+  return authz;
+}
+
+/** Allows an administrator, or a staff member with the requested permission. */
+export async function assertAdminOrPermission(userId: string, module: string): Promise<void> {
+  const authz = await loadAuthz(userId);
+  if (authz.isAdmin || (authz.isStaff && authz.permissions[module] === true)) return;
+  throw new Error("Unauthorized");
 }
 
 export async function assertIsStaff(userId: string): Promise<void> {

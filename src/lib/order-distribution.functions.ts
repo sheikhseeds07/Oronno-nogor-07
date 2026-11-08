@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { assertAdminOrPermission } from "@/lib/_admin-guard.server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
@@ -8,21 +9,10 @@ const MemberId = z.object({ userId: z.string().uuid() });
 const Members = z.object({ members: z.array(z.object({ user_id: z.string().uuid(), name: z.string().min(1), enabled: z.boolean(), position: z.number().int().min(0) })).max(100) });
 const DistributionSettings = Members.extend({ enabled: z.boolean(), includeIncomplete: z.boolean() });
 
-async function assertEmployeeManagementAccess(userId: string) {
-  const { data: roles, error: roleError } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", userId);
-  if (roleError) throw new Error(roleError.message);
-  const roleNames = new Set((roles ?? []).map(r => r.role));
-  if (roleNames.has("super_admin") || roleNames.has("admin")) return;
-  if (!roleNames.has("employee")) throw new Error("Unauthorized");
-  const { data: permissions, error } = await supabaseAdmin.from("employee_permissions").select("employees").eq("user_id", userId).maybeSingle();
-  if (error) throw new Error(error.message);
-  if (permissions?.employees !== true) throw new Error("Unauthorized");
-}
-
 const PROCESSING_STATUS = "web_pending" as const;
 
 export const bulkAssignOrders = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator(Ids.parse).handler(async ({ data, context }) => {
-  await assertEmployeeManagementAccess(context.userId);
+  await assertAdminOrPermission(context.userId, "employees");
   const { data: employee, error: employeeError } = await supabaseAdmin.from("employees").select("user_id").eq("user_id", data.userId).eq("is_active", true).maybeSingle();
   if (employeeError) throw new Error(employeeError.message);
   if (!employee?.user_id) throw new Error("Selected employee is not active");

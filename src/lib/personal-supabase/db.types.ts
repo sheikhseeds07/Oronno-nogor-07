@@ -2366,6 +2366,7 @@ export type Database = {
       }
       get_meta_capi_status: { Args: never; Returns: Json }
       get_meta_capi_token: { Args: never; Returns: Json }
+      get_my_staff_access: { Args: never; Returns: Json }
       get_my_customer_order_detail: {
         Args: { p_order_id: string }
         Returns: Json

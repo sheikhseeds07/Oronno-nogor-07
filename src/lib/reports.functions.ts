@@ -1,13 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/personal-supabase/db.types";
+import { assertIsStaff } from "@/lib/_admin-guard.server";
 
-async function assertStaff(db: SupabaseClient<Database>, userId: string) {
-  const { data, error } = await db.from("user_roles").select("role").eq("user_id", userId).in("role", ["admin", "super_admin", "employee"]);
-  if (error) throw new Error(error.message);
-  if (!data?.length) throw new Error("Unauthorized");
+async function assertStaff(_db: unknown, userId: string) {
+  await assertIsStaff(userId);
 }
 
 const bdDay = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dhaka" }).format(new Date(iso));
