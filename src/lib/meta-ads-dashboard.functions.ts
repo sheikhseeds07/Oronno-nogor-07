@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { assertIsAdmin } from "@/lib/_admin-guard.server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 
@@ -65,14 +66,9 @@ export const getMetaAdsDashboard = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const db = context.supabase as any;
 
-    const { data: roleRows, error: roleError } = await db
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId);
-    if (roleError) throw new Error(roleError.message);
-
-    const roles = new Set((roleRows ?? []).map((row: any) => String(row.role)));
-    if (!roles.has("admin") && !roles.has("super_admin")) {
+    try {
+      await assertIsAdmin(context.userId);
+    } catch {
       return { connected: false, error: "Meta Ads is available to admin accounts" };
     }
 
@@ -191,13 +187,7 @@ export const getOronnoNogorAdsList = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const db = context.supabase as any;
-    const { data: roleRows, error: roleError } = await db
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId);
-    if (roleError) throw new Error(roleError.message);
-    const roles = new Set((roleRows ?? []).map((row: any) => String(row.role)));
-    if (!roles.has("admin") && !roles.has("super_admin")) throw new Error("Forbidden");
+    await assertIsAdmin(context.userId).catch(() => { throw new Error("Forbidden"); });
 
     const { data: integration, error: integrationError } = await db
       .from("integrations")
@@ -271,10 +261,7 @@ const ManageRange = z.object({accountKey:z.enum(["meta_ad_account","meta_ad_acco
 const ManageAction = z.object({accountKey:z.enum(["meta_ad_account","meta_ad_account_2"]),targetType:z.enum(["campaign","adset","ad"]).default("ad"),targetId:z.string().min(1).max(80),action:z.enum(["ACTIVE","PAUSED"])});
 async function manageAccount(context:any,key:"meta_ad_account"|"meta_ad_account_2"){
  const db=context.supabase as any;
- const {data:rr,error:re}=await db.from("user_roles").select("role").eq("user_id",context.userId);
- if(re) throw new Error(re.message);
- const roles=new Set((rr??[]).map((x:any)=>String(x.role)));
- if(!roles.has("admin")&&!roles.has("super_admin")) throw new Error("Admin access required");
+ await assertIsAdmin(context.userId).catch(() => { throw new Error("Admin access required"); });
  const {data:row,error}=await db.from("integrations").select("name,config,is_active").eq("name",key).maybeSingle();
  if(error) throw new Error(error.message);
  const cfg=(row?.config??{}) as MetaConfig, token=String(cfg.access_token??"").trim(), accountId=String(cfg.ad_account_id??cfg.account_id??"").replace(/^act_/,"").trim();
@@ -330,7 +317,7 @@ export const getMetaAdSchedules=createServerFn({method:"POST"}).middleware([requ
  const {db}=await manageAccount(context,data.accountKey);const {data:rows,error}=await db.from("meta_ad_schedules").select("id,ad_id,target_id,target_type,ad_name,action,run_at,status,error_text").eq("account_key",data.accountKey).eq("status","pending").order("run_at",{ascending:false}).limit(30);if(error)throw new Error(error.message);return rows??[];
 });
 export const cancelMetaAdSchedule=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(i=>z.object({id:z.string().uuid()}).parse(i)).handler(async({data,context})=>{
- const db=context.supabase as any;const {data:rr,error:re}=await db.from("user_roles").select("role").eq("user_id",context.userId);if(re)throw new Error(re.message);if(!(rr??[]).some((x:any)=>["admin","super_admin"].includes(String(x.role))))throw new Error("Forbidden");
+ const db=context.supabase as any;await assertIsAdmin(context.userId).catch(()=>{throw new Error("Forbidden")});
  const {data:row,error}=await db.from("meta_ad_schedules").update({status:"cancelled"}).eq("id",data.id).eq("status","pending").select("id").maybeSingle();if(error)throw new Error(error.message);return {success:!!row};
 });
 
