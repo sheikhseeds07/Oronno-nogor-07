@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { assertCanManageOrders } from "@/lib/_admin-guard.server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
@@ -22,14 +23,6 @@ export const cancelOrders = createServerFn({ method: "POST" }).middleware([requi
   if (error) throw new Error(error.message);
   return { ok: true, cancelled: Number(cancelled ?? 0) };
 });
-
-async function assertCanManageOrders(userId: string) {
-  const { data: roles } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", userId);
-  const roleNames = new Set((roles ?? []).map((r) => r.role));
-  if (roleNames.has("super_admin") || roleNames.has("admin")) return;
-  const { data: perms } = await supabaseAdmin.from("employee_permissions").select("orders").eq("user_id", userId).maybeSingle();
-  if (!perms?.orders) throw new Error("Unauthorized");
-}
 
 async function replaceOrderItems(orderId: string, items: z.infer<typeof AdminItemSchema>[]) {
   const { error: deleteError } = await supabaseAdmin.from("order_items").delete().eq("order_id", orderId); if (deleteError) throw new Error(deleteError.message);
