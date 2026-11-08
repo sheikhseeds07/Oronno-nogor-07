@@ -39,6 +39,50 @@ function pickEnabled(...values: unknown[]): boolean {
 let cachedConfig: { value: FbConfig | null; at: number } | null = null;
 let databaseDispatcherReady = false;
 
+// Persist the non-secret readiness snapshot across Worker isolates in the same
+// Cloudflare colo. Keep the same 15-minute freshness as the in-isolate cache.
+type MetaStatusEdgeCache = {
+  match(request: Request): Promise<Response | undefined>;
+  put(request: Request, response: Response): Promise<void>;
+};
+const META_STATUS_CACHE_KEY = new Request("https://oronno-internal-cache.invalid/meta-capi-status-v1");
+
+function getMetaStatusEdgeCache(): MetaStatusEdgeCache | undefined {
+  return (globalThis as { caches?: { default?: MetaStatusEdgeCache } }).caches?.default;
+}
+
+async function readMetaCapiStatus(): Promise<unknown> {
+  const cache = getMetaStatusEdgeCache();
+  if (cache) {
+    try {
+      const hit = await cache.match(META_STATUS_CACHE_KEY);
+      if (hit) return await hit.json();
+    } catch {
+      // Edge cache is an optimization only; fall back to the database.
+    }
+  }
+
+  const { data, error } = await (supabaseAdmin as any).rpc("get_meta_capi_status");
+  if (error) {
+    logger.error("[FB CAPI status lookup failed]", error.message);
+    return null;
+  }
+
+  if (cache) {
+    try {
+      await cache.put(
+        META_STATUS_CACHE_KEY,
+        new Response(JSON.stringify(data), {
+          headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=900" },
+        }),
+      );
+    } catch {
+      // Cache write failures must never affect Meta event delivery.
+    }
+  }
+  return data;
+}
+
 function privilegedStatusReady(_cfg?: FbConfig | null): boolean {
   return databaseDispatcherReady;
 }
@@ -49,8 +93,7 @@ async function loadFbConfig(): Promise<FbConfig | null> {
 
   // This RPC returns only non-secret readiness and pixel metadata. The access
   // token never leaves the database; delivery is delegated to a server-only Edge Function.
-  const { data: rawStatus, error } = await (supabaseAdmin as any).rpc("get_meta_capi_status");
-  if (error) logger.error("[FB CAPI status lookup failed]", error.message);
+  const rawStatus = await readMetaCapiStatus();
   const status = asRecord(rawStatus);
   databaseDispatcherReady = status.server_events_ready === true;
   const envPixelId = pickString(process.env["META_PIXEL_ID"], process.env["FACEBOOK_PIXEL_ID"], process.env["FB_PIXEL_ID"]);
