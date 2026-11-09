@@ -1674,8 +1674,8 @@ function toR2MediaUrl(raw: string): string {
  *  1) by product_id, 2) by product name from the products table,
  *  3) by product name from landing page packages/addons (custom landing offers). */
 const PRODUCT_IMAGE_CACHE_TTL = 30 * 60_000; // ৩০ মিনিট — ডেটা খরচ কমাতে
-const PRODUCT_IMAGE_CACHE_KEY = "admin-product-image-cache-v6";
-let productImageCache: { expiresAt: number; idMap: Record<string, string>; nameMap: Record<string, string>; comboImageMap: Record<string, string> } | null = null;
+const PRODUCT_IMAGE_CACHE_KEY = "admin-product-image-cache-v7";
+let productImageCache: { expiresAt: number; idMap: Record<string, string>; nameMap: Record<string, string>; comboImageMap: Record<string, string>; nutrimixImage: string } | null = null;
 let productImageCachePromise: Promise<typeof productImageCache> | null = null;
 
 async function loadProductImageCache() {
@@ -1698,6 +1698,7 @@ async function loadProductImageCache() {
     const idMap: Record<string, string> = {};
     const nameMap: Record<string, string> = {};
     const comboImageMap: Record<string, string> = {};
+    let nutrimixImage = "";
 
     for (const p of catalog ?? []) {
       const img = ((p.images as string[] | null) ?? [])[0] ?? "";
@@ -1734,8 +1735,11 @@ async function loadProductImageCache() {
       const popup = plantingSteps;
       if (popup && typeof popup === "object" && popup.nutrimix_offer_image) {
         const key = normalizeProductName(String(popup.nutrimix_offer_name ?? ""));
-        const image = String(popup.nutrimix_offer_image);
+        const image = String(popup.nutrimix_offer_image).trim();
         if (key) nameMap[key] = image;
+        // The popup's dedicated Nutrimix image is the authoritative thumbnail
+        // for Nutrimix/অনুখাদ্য line items, whose order name may be shortened.
+        if (image && /nutrimix|নিউট্রিমিক্স|অনুখাদ্য/i.test(key)) nutrimixImage = image;
         landingCandidates.push({ name: key, image });
       }
       const comboOffers = plantingSteps && typeof plantingSteps === "object" && Array.isArray((plantingSteps as any).combo_offers)
@@ -1781,7 +1785,7 @@ async function loadProductImageCache() {
     // Persist only after landing-page add-ons and popup offers are merged.
     // Saving earlier left Nutrimix absent after a refresh until the cache expired.
     const expiresAt = Date.now() + PRODUCT_IMAGE_CACHE_TTL;
-    productImageCache = { expiresAt, idMap, nameMap, comboImageMap };
+    productImageCache = { expiresAt, idMap, nameMap, comboImageMap, nutrimixImage };
     try { window.localStorage.setItem(PRODUCT_IMAGE_CACHE_KEY, JSON.stringify(productImageCache)); } catch {}
 
     return productImageCache;
@@ -1805,7 +1809,7 @@ async function attachProductImages(orders: OrderRow[]): Promise<OrderRow[]> {
   const cache = await loadProductImageCache();
   if (!cache) return orders;
 
-  const { idMap, nameMap, comboImageMap } = cache;
+  const { idMap, nameMap, comboImageMap, nutrimixImage } = cache;
 
   return orders.map((o) => ({
     ...o,
@@ -1814,6 +1818,7 @@ async function attachProductImages(orders: OrderRow[]): Promise<OrderRow[]> {
       return {
         ...it,
         image: toR2MediaUrl(
+          (/nutrimix|নিউট্রিমিক্স|অনুখাদ্য/i.test(String(it.product_name ?? "")) && nutrimixImage) ||
           nameMap[key] ||
           comboImageMap[key] ||
           (it.product_id ? idMap[it.product_id] : "") ||
