@@ -997,8 +997,7 @@ function OrdersTable({
     const html = buildInvoicesHTML(picked, ids);
     const w = window.open("", "_blank");
     if (w) { w.document.write(html); w.document.close(); }
-    markPrinted({ data: { ids } })
-      .then(() => qc.invalidateQueries({ queryKey: ["admin-orders"] }))
+    markPrinted({ data: { ids } })      .then(() => qc.invalidateQueries({ queryKey: ["admin-orders"] }))
       .catch(() => { /* non-fatal */ });
   };
 
@@ -1674,7 +1673,7 @@ function toR2MediaUrl(raw: string): string {
  *  1) by product_id, 2) by product name from the products table,
  *  3) by product name from landing page packages/addons (custom landing offers). */
 const PRODUCT_IMAGE_CACHE_TTL = 30 * 60_000; // ৩০ মিনিট — ডেটা খরচ কমাতে
-const PRODUCT_IMAGE_CACHE_KEY = "admin-product-image-cache-v3";
+const PRODUCT_IMAGE_CACHE_KEY = "admin-product-image-cache-v4";
 let productImageCache: { expiresAt: number; idMap: Record<string, string>; nameMap: Record<string, string>; comboImageMap: Record<string, string> } | null = null;
 let productImageCachePromise: Promise<typeof productImageCache> | null = null;
 
@@ -1719,13 +1718,13 @@ async function loadProductImageCache() {
       if (mainProduct?.name) {
         landingCandidates.push({
           name: normalizeProductName(mainProduct.name),
-          image: (Array.isArray(mainProduct.images) ? mainProduct.images[0] : "") || pg?.hero_image || "",
+          image: (Array.isArray(mainProduct.images) ? mainProduct.images[0] : "") || "",
         });
       }
       for (const a of Array.isArray(pg?.addons) ? pg.addons : []) {
         landingCandidates.push({
           name: normalizeProductName(a?.name ?? ""),
-          image: a?.image || pg?.hero_image || "",
+          image: a?.image || "",
         });
       }
       const plantingSteps = pg?.planting_steps;
@@ -1997,8 +1996,7 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
         }
       },
       { rootMargin: "320px 0px" },
-    );
-    observer.observe(node);
+    );    observer.observe(node);
     return () => observer.disconnect();
   }, [cachedClientResult, enabled, inView]);
 
@@ -2997,8 +2995,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
     staleTime: 60_000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const [historyResult, eventResult, employeesResult] = await Promise.all([
-        supabase
+      const [historyResult, eventResult, employeesResult] = await Promise.all([        supabase
           .from("order_action_history" as any)
           .select("id,actor_id,action,from_status,to_status,from_assigned_to,to_assigned_to,created_at")
           .eq("order_id", id)
