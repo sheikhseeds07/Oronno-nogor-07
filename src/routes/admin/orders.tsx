@@ -997,7 +997,8 @@ function OrdersTable({
     const html = buildInvoicesHTML(picked, ids);
     const w = window.open("", "_blank");
     if (w) { w.document.write(html); w.document.close(); }
-    markPrinted({ data: { ids } })      .then(() => qc.invalidateQueries({ queryKey: ["admin-orders"] }))
+    markPrinted({ data: { ids } })
+      .then(() => qc.invalidateQueries({ queryKey: ["admin-orders"] }))
       .catch(() => { /* non-fatal */ });
   };
 
@@ -1673,7 +1674,7 @@ function toR2MediaUrl(raw: string): string {
  *  1) by product_id, 2) by product name from the products table,
  *  3) by product name from landing page packages/addons (custom landing offers). */
 const PRODUCT_IMAGE_CACHE_TTL = 30 * 60_000; // ৩০ মিনিট — ডেটা খরচ কমাতে
-const PRODUCT_IMAGE_CACHE_KEY = "admin-product-image-cache-v4";
+const PRODUCT_IMAGE_CACHE_KEY = "admin-product-image-cache-v5";
 let productImageCache: { expiresAt: number; idMap: Record<string, string>; nameMap: Record<string, string>; comboImageMap: Record<string, string> } | null = null;
 let productImageCachePromise: Promise<typeof productImageCache> | null = null;
 
@@ -1744,7 +1745,7 @@ async function loadProductImageCache() {
         if (key && image) comboImageMap[key] = image;
         landingCandidates.push({
           name: key,
-          image: image || pg?.hero_image || "",
+          image,
         });
       }
     }
@@ -1784,7 +1785,7 @@ async function loadProductImageCache() {
     for (const candidate of landingCandidates) {
       if (!candidate.name || !candidate.image) continue;
       const current = nameMap[candidate.name] ?? "";
-      if (!current || imagePriority(candidate.image) >= imagePriority(current)) {
+      if (!current) {
         nameMap[candidate.name] = candidate.image;
       }
     }
@@ -1849,8 +1850,8 @@ async function attachProductImages(orders: OrderRow[]): Promise<OrderRow[]> {
       return {
         ...it,
         image: toR2MediaUrl(
-          (it.product_id ? idMap[it.product_id] : "") ||
           nameMap[key] ||
+          (it.product_id ? idMap[it.product_id] : "") ||
           bestCatalogImage(it.product_name) ||
           comboImageMap[key] ||
           it.image ||
