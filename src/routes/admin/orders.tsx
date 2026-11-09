@@ -1674,7 +1674,7 @@ function toR2MediaUrl(raw: string): string {
  *  1) by product_id, 2) by product name from the products table,
  *  3) by product name from landing page packages/addons (custom landing offers). */
 const PRODUCT_IMAGE_CACHE_TTL = 30 * 60_000; // ৩০ মিনিট — ডেটা খরচ কমাতে
-const PRODUCT_IMAGE_CACHE_KEY = "admin-product-image-cache-v5";
+const PRODUCT_IMAGE_CACHE_KEY = "admin-product-image-cache-v6";
 let productImageCache: { expiresAt: number; idMap: Record<string, string>; nameMap: Record<string, string>; comboImageMap: Record<string, string> } | null = null;
 let productImageCachePromise: Promise<typeof productImageCache> | null = null;
 
@@ -1717,24 +1717,26 @@ async function loadProductImageCache() {
     for (const pg of (pages ?? []) as any[]) {
       const mainProduct = pg?.products;
       if (mainProduct?.name) {
-        landingCandidates.push({
-          name: normalizeProductName(mainProduct.name),
-          image: (Array.isArray(mainProduct.images) ? mainProduct.images[0] : "") || "",
-        });
+        const key = normalizeProductName(mainProduct.name);
+        const image = (Array.isArray(mainProduct.images) ? mainProduct.images[0] : "") || "";
+        if (key && image) nameMap[key] = image;
+        landingCandidates.push({ name: key, image });
       }
       for (const a of Array.isArray(pg?.addons) ? pg.addons : []) {
-        landingCandidates.push({
-          name: normalizeProductName(a?.name ?? ""),
-          image: a?.image || "",
-        });
+        const key = normalizeProductName(a?.name ?? "");
+        const image = String(a?.image ?? "").trim();
+        // Use the exact image saved in this landing page's Product editor.
+        if (key && image) nameMap[key] = image;
+        if (a?.product_id && image) idMap[String(a.product_id)] = image;
+        landingCandidates.push({ name: key, image });
       }
       const plantingSteps = pg?.planting_steps;
       const popup = plantingSteps;
       if (popup && typeof popup === "object" && popup.nutrimix_offer_image) {
-        landingCandidates.push({
-          name: normalizeProductName(String(popup.nutrimix_offer_name ?? "")),
-          image: String(popup.nutrimix_offer_image),
-        });
+        const key = normalizeProductName(String(popup.nutrimix_offer_name ?? ""));
+        const image = String(popup.nutrimix_offer_image);
+        if (key) nameMap[key] = image;
+        landingCandidates.push({ name: key, image });
       }
       const comboOffers = plantingSteps && typeof plantingSteps === "object" && Array.isArray((plantingSteps as any).combo_offers)
         ? (plantingSteps as any).combo_offers
@@ -1742,11 +1744,11 @@ async function loadProductImageCache() {
       for (const offer of comboOffers) {
         const key = normalizeProductName(offer?.name ?? "");
         const image = String(offer?.image ?? "").trim();
-        if (key && image) comboImageMap[key] = image;
-        landingCandidates.push({
-          name: key,
-          image,
-        });
+        if (key && image) {
+          comboImageMap[key] = image;
+          nameMap[key] = image;
+        }
+        landingCandidates.push({ name: key, image });
       }
     }
 
@@ -1773,22 +1775,8 @@ async function loadProductImageCache() {
       return best;
     };
 
-    // Prefer permanent R2 asset links over legacy signed links. The same add-on
-    // name can exist on several landing pages; keeping the first match could
-    // leave old orders pointing at an expired/deleted image even after an admin
-    // uploaded a replacement on the current landing page.
-    const imagePriority = (image: string) => {
-      if (/\/media\?asset=/i.test(image)) return 3;
-      if (/\/media\?src=/i.test(image)) return 1;
-      return image ? 2 : 0;
-    };
-    for (const candidate of landingCandidates) {
-      if (!candidate.name || !candidate.image) continue;
-      const current = nameMap[candidate.name] ?? "";
-      if (!current) {
-        nameMap[candidate.name] = candidate.image;
-      }
-    }
+    // Landing-page editor images above intentionally override the global catalog image.
+    // Do not fuzzy-match similar product names: Rani Lanka must never resolve to Naga.
 
     // Persist only after landing-page add-ons and popup offers are merged.
     // Saving earlier left Nutrimix absent after a refresh until the cache expired.
@@ -1819,30 +1807,6 @@ async function attachProductImages(orders: OrderRow[]): Promise<OrderRow[]> {
 
   const { idMap, nameMap, comboImageMap } = cache;
 
-  const bestCatalogImage = (raw: string) => {
-    const target = normalizeProductName(raw);
-    if (!target) return "";
-    if (nameMap[target]) return nameMap[target];
-
-    const targetTokens = new Set(target.split(/[^\p{L}\p{N}]+/u).filter((x) => x.length >= 2));
-    let best = "";
-    let bestScore = 0;
-    // nameMap contains exact known catalog/landing names. Only scan the
-    // relatively small cached map for fuzzy matching when exact lookup fails.
-    for (const [candidateName, image] of Object.entries(nameMap)) {
-      if (!candidateName || !image) continue;
-      let score = target.includes(candidateName) || candidateName.includes(target) ? 8 : 0;
-      const shared = candidateName.split(/[^\p{L}\p{N}]+/u).filter((x) => x.length >= 2)
-        .filter((x) => targetTokens.has(x)).length;
-      score += shared * 2;
-      if (shared >= 2 && score > bestScore) {
-        bestScore = score;
-        best = image;
-      }
-    }
-    return best;
-  };
-
   return orders.map((o) => ({
     ...o,
     order_items: (o.order_items ?? []).map((it) => {
@@ -1851,9 +1815,8 @@ async function attachProductImages(orders: OrderRow[]): Promise<OrderRow[]> {
         ...it,
         image: toR2MediaUrl(
           nameMap[key] ||
-          (it.product_id ? idMap[it.product_id] : "") ||
-          bestCatalogImage(it.product_name) ||
           comboImageMap[key] ||
+          (it.product_id ? idMap[it.product_id] : "") ||
           it.image ||
           "",
         ),
