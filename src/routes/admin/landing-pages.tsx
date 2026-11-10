@@ -130,6 +130,17 @@ function LandingPagesAdmin() {
     setEditing({
       ...empty,
       ...p,
+      ...(p.slug === "seedcombo-copy-mwanao76" ? {
+        planting_steps: {
+          ...mergeContent(p.planting_steps),
+          // Consolidate both legacy hero-gallery sources into one editable list for this page.
+          hero_gallery_images: Array.from(new Set([
+            ...mergeContent(p.planting_steps).hero_gallery_images ?? [],
+            ...mergeContent(p.planting_steps).gallery_images ?? [],
+          ])),
+          gallery_images: [],
+        },
+      } : {}),
       features: p.features?.length ? p.features : DEFAULT_FEATURES,
       why_choose_us: p.why_choose_us?.length ? p.why_choose_us : DEFAULT_WHY,
       reviews: p.reviews?.length ? p.reviews : DEFAULT_REVIEWS,
@@ -429,14 +440,14 @@ function LandingPagesAdmin() {
                       <div className="mt-1 text-xs text-muted-foreground">এই ইমেজটি শুধু /landing/nutrimix পেজে “ব্যবহারের উপকারিতা” সেকশনের ঠিক উপরে দেখাবে।</div>
                     </Field>
                   )}
-                  {(editing.slug === "nutrimix" || editing.slug === "seedcombo" || C.template === "all-product") && (
+                  {(editing.slug === "nutrimix" || editing.slug === "seedcombo" || editing.slug === "seedcombo-copy-mwanao76" || C.template === "all-product") && (
                     <div className="rounded-xl border-2 border-emerald-200 bg-emerald-50/40 p-3">
                       <div className="mb-2">
                         <div className="font-bold text-sm">অতিরিক্ত হিরো ইমেজ — Seed Combo / All Product</div>
                         <div className="text-[11px] text-muted-foreground">মূল ইমেজের সাথে এখানে যোগ করা একাধিক ইমেজ Seed Combo পেজের হিরো সেকশনে একই জায়গায় ৫ সেকেন্ড পরপর প্রিমিয়াম smooth fade transition-এ দেখাবে।</div>
                       </div>
                       <ImageList
-                        items={C.hero_gallery_images ?? []}
+                        items={editing.slug === "seedcombo-copy-mwanao76" ? Array.from(new Set([...(C.hero_gallery_images ?? []), ...(C.gallery_images ?? [])])) : (C.hero_gallery_images ?? [])}
                         onChange={(hero_gallery_images) => setC({ hero_gallery_images })}
                         uploadImage={uploadImage}
                       />
