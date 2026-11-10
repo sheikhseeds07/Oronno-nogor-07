@@ -2,9 +2,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
 type R = Record<string, unknown>;
-// One full sync cycle per day. Cron wakes hourly only to resume an unfinished
-// cycle or retry failed orders, so no shipped order is ever skipped.
-const COOLDOWN_MS = 23 * 60 * 60 * 1000;
+// One full sync cycle every 12 hours. Cron resumes unfinished pages and retries failed Shipped orders.
+const COOLDOWN_MS = 12 * 60 * 60 * 1000;
 const RUN_BUDGET_MS = 100 * 1000;
 const PAGE_SIZE = 400;
 const RETRY_BATCH = 100;
@@ -28,7 +27,7 @@ function map(v: string): "delivered" | "partial" | "pending_return" | "returned"
   if (x.includes("cancellation_request") || x.includes("cancel_request") || x.includes("cancellation_pending") || x.includes("cancel_pending") || x.includes("return_pending") || x.includes("return_process") || x === "pending_return") return "pending_return";
   if (x === "returned" || x === "return" || x === "rto" || x.startsWith("return_") || x.startsWith("rto_") || x.includes("reversed_back") || x.includes("return_to_sender") || x.includes("returned_to_sender") || x.includes("return_to_merchant")) return "returned";
   if (x === "cancelled" || x === "canceled" || x.startsWith("cancelled_") || x.startsWith("canceled_")) return "cancelled";
-  return "shipped";
+  return null;
 }
 
 async function call(c: string, cfg: R) {
@@ -80,7 +79,7 @@ async function syncOne(a: ReturnType<typeof createClient>, o: R, byDisplay: Map<
   // Pending and RTS orders are manual-only. Courier sync must never
   // change their business status until an admin explicitly moves them to Shipped.
   const currentStatus = s(o.status);
-  if (currentStatus === "pending" || currentStatus === "rts") {
+  if (currentStatus !== "shipped") {
     return { ok: true, updated: false, skipped: true };
   }
 
@@ -230,8 +229,8 @@ Deno.serve(async (req) => {
       let query = a.from("orders")
         .select("id,status,courier_consignment,courier_display_name,courier_status,courier_synced_at")
         .not("courier_consignment", "is", null)
-        // Pending/RTS are manual-only: never even read them for sync.
-        .not("status", "in", "(pending,rts,web_pending)")
+        // Only Shipped orders are eligible. Pending, RTS and all other statuses are excluded.
+        .eq("status", "shipped")
         .or("courier_status.is.null,courier_status.not.in.(delivered,cancelled,partial_delivered)")
         .order("id", { ascending: true }).limit(PAGE_SIZE);
       if (cursorId) query = query.gt("id", cursorId);
