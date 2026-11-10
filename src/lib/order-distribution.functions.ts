@@ -22,7 +22,7 @@ export const bulkAssignOrders = createServerFn({ method: "POST" }).middleware([r
 });
 
 export const getAssignedOrders = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator(MemberId).handler(async ({ data, context }) => {
-  await assertEmployeeManagementAccess(context.userId);
+  await assertAdminOrPermission(context.userId, "employees");
   const { data: orders, error } = await supabaseAdmin
     .from("orders")
     .select("id,invoice_id,customer_name,phone,total,status,created_at,assigned_to")
@@ -35,7 +35,7 @@ export const getAssignedOrders = createServerFn({ method: "POST" }).middleware([
 });
 
 export const saveOrderDistributionMembers = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator(Members.parse).handler(async ({ data, context }) => {
-  await assertEmployeeManagementAccess(context.userId);
+  await assertAdminOrPermission(context.userId, "employees");
   const { data: employees, error: employeesError } = await supabaseAdmin.from("employees").select("user_id,name").eq("is_active", true).not("user_id", "is", null);
   if (employeesError) throw new Error(employeesError.message);
   const allowed = new Set((employees ?? []).map(e => e.user_id).filter(Boolean));
@@ -48,7 +48,7 @@ export const saveOrderDistributionMembers = createServerFn({ method: "POST" }).m
 });
 
 export const saveOrderDistributionSettings = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator(DistributionSettings.parse).handler(async ({ data, context }) => {
-  await assertEmployeeManagementAccess(context.userId);
+  await assertAdminOrPermission(context.userId, "employees");
   const { data: current, error: readError } = await supabaseAdmin.from("site_settings").select("id,settings").maybeSingle();
   if (readError) throw new Error(readError.message);
   const settings = { ...((current?.settings ?? {}) as Record<string, unknown>), order_distribution_enabled: data.enabled, order_distribution_include_incomplete: data.includeIncomplete };
@@ -71,7 +71,7 @@ export const getOrderAssignmentCounts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(Members.pick({ members: true }))
   .handler(async ({ data, context }) => {
-    await assertEmployeeManagementAccess(context.userId);
+    await assertAdminOrPermission(context.userId, "employees");
     const counts: Record<string, number> = {};
     await Promise.all(data.members.map(async (member) => {
       const { count, error } = await supabaseAdmin
