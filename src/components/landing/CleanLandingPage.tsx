@@ -101,7 +101,7 @@ const REF_STYLE = `
 .top-hook .ribbon{position:absolute;top:-6px;right:-6px;background:#ff4b00;color:#fff;font-size:12px;font-weight:700;padding:4px 8px;border-radius:4px;text-transform:uppercase;box-shadow:0 2px 6px rgba(0,0,0,0.3)}
 .hook-divider{width:70px;height:3px;background:linear-gradient(90deg,#ffd700,#ffb703);margin:7px auto 6px;border-radius:2px}
 .hook-delivery{font-size:16px;opacity:.95;display:flex;justify-content:center;align-items:center;gap:6px}
-.hook-delivery.seedcombo-copy-delivery{color:#F2A900;font-weight:900;opacity:1;text-shadow:0 1px 1px rgba(120,75,0,.18)}
+.hook-delivery.seedcombo-copy-delivery{color:#B8860B;font-weight:900;opacity:1;text-shadow:0 1px 1px rgba(120,75,0,.18)}
 
 .hook-delivery span{font-size:18px}
 .lp-ref-cta{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:10px;width:100%;max-width:440px;margin:0 auto;background:linear-gradient(135deg,#ff2d20 0%,#ff0000 55%,#d40000 100%);color:#fff;border:3px solid #fff;border-radius:12px;font-size:22px;font-weight:700;padding:13px 20px;line-height:1.4;box-shadow:0 16px 34px -16px rgba(255,0,0,.85),0 2px 0 rgba(255,255,255,.25) inset;transition:transform .18s cubic-bezier(.22,1,.36,1),box-shadow .18s ease;animation:lpCtaBeat 2.6s ease-in-out infinite}
