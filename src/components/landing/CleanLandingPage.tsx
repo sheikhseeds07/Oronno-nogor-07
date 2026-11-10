@@ -73,6 +73,38 @@ const LANDING_CHECKOUT_GROUP_STYLE = `
 
 const REF_STYLE = `
 
+/* Scoped mobile performance tuning for the managed seed-combo copy page */
+.seedcombo-copy-smooth.lp-agri-bg::before{
+  background-image:
+    radial-gradient(ellipse 120% 65% at 50% -8%,rgba(6,78,59,.22),transparent 62%),
+    radial-gradient(ellipse 100% 55% at 50% 110%,rgba(180,120,20,.12),transparent 66%),
+    linear-gradient(180deg,#b8d4bc 0%,#cfe0d1 38%,#d6e5d6 72%,#c2d8c5 100%);
+  background-size:auto;
+  background-repeat:no-repeat;
+}
+.seedcombo-copy-smooth .lp-premium-header{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(255,255,255,.98)}
+.seedcombo-copy-smooth .lp-ref-cta,
+.seedcombo-copy-smooth .lp-ref-cta::after,
+.seedcombo-copy-smooth .lp-fancy-ico,
+.seedcombo-copy-smooth .lp-nutrimix-decline,
+.seedcombo-copy-smooth .lp-nutrimix-decline::after,
+.seedcombo-copy-smooth .lp-nutrimix-accept,
+.seedcombo-copy-smooth .lp-nutrimix-accept::after{animation:none!important}
+.seedcombo-copy-smooth .seed-hero-frame img{transition-duration:420ms!important}
+.seedcombo-copy-smooth .lp-card,
+.seedcombo-copy-smooth .combo-table,
+.seedcombo-copy-smooth .lp-product-checkout-group,
+.seedcombo-copy-smooth .lp-trust-note,
+.seedcombo-copy-smooth .lp-order-note{box-shadow:0 5px 16px -12px rgba(4,47,32,.28)}
+.seedcombo-copy-smooth .lp-premium-header,
+.seedcombo-copy-smooth .lp-card,
+.seedcombo-copy-smooth .combo-table,
+.seedcombo-copy-smooth .lp-product-checkout-group{transition:none}
+@media(prefers-reduced-motion:reduce){
+  .seedcombo-copy-smooth *,.seedcombo-copy-smooth *::before,.seedcombo-copy-smooth *::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}
+}
+
+
 .lp-premium-header{background:rgba(255,255,255,.94);backdrop-filter:blur(10px);border-bottom:1px solid #d9efe2;box-shadow:0 2px 10px -6px rgba(6,78,59,.25)}
 .lp-fancy-list{border-radius:18px;overflow:hidden;background:linear-gradient(180deg,#ffffff,#f6fffa);border:1px solid #d6efe0;box-shadow:0 14px 34px -22px rgba(6,78,59,.55)}
 .lp-fancy-row{position:relative;display:flex;align-items:flex-start;gap:12px;padding:11px 14px;transition:background .25s ease,transform .25s ease}
@@ -205,7 +237,7 @@ export function CleanLandingPage({slug}:{slug:string}){
  const fieldLabel=(value:string)=>value.replace(/\s*\*+\s*$/,"");
   
  
- return <div className={`lp-root min-h-screen text-slate-700 ${isSeedCombo?"lp-agri-bg seed-combo-page":"bg-white"}`} style={{["--lp" as string]:themeColor}}><FacebookPixel eager/><style>{LANDING_CHECKOUT_GROUP_STYLE}</style><style>{REF_STYLE}</style><LandingVisitTracker slug={slug}/>
+ return <div className={`lp-root min-h-screen text-slate-700 ${isSeedCombo?"lp-agri-bg seed-combo-page": "bg-white"} ${isManagedSeedComboCopy?"seedcombo-copy-smooth":""}`} style={{["--lp" as string]:themeColor}}><FacebookPixel eager/><style>{LANDING_CHECKOUT_GROUP_STYLE}</style><style>{REF_STYLE}</style><LandingVisitTracker slug={slug}/>
  {C.show_popup&&<WelcomePopup themeColor={themeColor} logo={brandLogo} brand={brandName} title={C.popup_title} text={C.popup_text} cta={C.popup_cta} mode={landingBaseSlug(slug) === "seedcombo"?C.popup_mode:"text"} image={landingBaseSlug(slug) === "seedcombo"?C.popup_image:""} delay={Number(C.popup_delay)||0} countdownHours={landingBaseSlug(slug) === "seedcombo"?2:undefined} onCta={scrollToOrder}/>} 
 
   <header className="lp-premium-header sticky top-0 z-30"><div className="container mx-auto px-3 max-w-xl py-1 flex items-center justify-between gap-2"><div className="flex min-w-0 items-center gap-2"><span className="seed-brand-mark"><SafeImage src={toImg(brandLogo)} alt={brandName} width={28} height={28} decoding="async" className="h-7 w-7 shrink-0 rounded-full object-cover bg-white"/></span><div className="leading-tight min-w-0"><div className="font-extrabold text-[14px] text-slate-900 tracking-tight truncate">{brandName}</div>{settings.tagline&&<div className="text-[9px] text-slate-500 truncate">{settings.tagline}</div>}</div></div>{C.show_countdown!==false&&<Countdown themeColor={themeColor} hours={C.countdown_hours} title={C.countdown_title} compact/>}</div></header>
