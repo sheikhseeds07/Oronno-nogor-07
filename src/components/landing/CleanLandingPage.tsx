@@ -73,15 +73,7 @@ const LANDING_CHECKOUT_GROUP_STYLE = `
 
 const REF_STYLE = `
 
-/* Scoped mobile performance tuning for the managed seed-combo copy page */
-.seedcombo-copy-smooth.lp-agri-bg::before{
-  background-image:
-    radial-gradient(ellipse 120% 65% at 50% -8%,rgba(6,78,59,.22),transparent 62%),
-    radial-gradient(ellipse 100% 55% at 50% 110%,rgba(180,120,20,.12),transparent 66%),
-    linear-gradient(180deg,#b8d4bc 0%,#cfe0d1 38%,#d6e5d6 72%,#c2d8c5 100%);
-  background-size:auto;
-  background-repeat:no-repeat;
-}
+/* Scoped mobile performance tuning; original landing background is preserved. */
 .seedcombo-copy-smooth .lp-premium-header{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(255,255,255,.98)}
 .seedcombo-copy-smooth .lp-ref-cta,
 .seedcombo-copy-smooth .lp-ref-cta::after,
