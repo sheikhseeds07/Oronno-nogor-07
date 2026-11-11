@@ -108,10 +108,27 @@ Deno.serve(async (req: Request) => {
       method:"POST",headers:{"Content-Type":"application/json","Access-Token":accessToken},
       body:JSON.stringify(payload),signal:AbortSignal.timeout(15000)
     });
-    const result=await response.json().catch(()=>({})) as {code?:number;message?:string};
+    const raw=await response.text();
+    let result:{code?:number;message?:string;request_id?:string}={};
+    try { result=JSON.parse(raw) as typeof result; } catch { /* TikTok returned a non-JSON response */ }
     if(response.ok&&result.code===0) return reply(req,{ok:true});
-    return reply(req,{ok:false,message:result.message||"TikTok Events API rejected the event",code:result.code??null},502);
-  } catch {
-    return reply(req,{ok:false,message:"TikTok Events API request failed"},502);
+    const upstreamMessage=typeof result.message==="string"&&result.message.trim()?result.message.trim():"TikTok returned an empty or non-JSON error response";
+    console.error("[tiktok-events] upstream_rejected",JSON.stringify({
+      http_status:response.status,
+      api_code:result.code??null,
+      message:upstreamMessage.slice(0,500),
+      request_id:result.request_id??null,
+      response_content_type:response.headers.get("content-type"),
+    }));
+    return reply(req,{
+      ok:false,
+      message:`TikTok API error ${result.code??response.status}: ${upstreamMessage}`,
+      code:result.code??null,
+      request_id:result.request_id??null,
+    },502);
+  } catch (error) {
+    const message=error instanceof Error?error.message:"Unknown network error";
+    console.error("[tiktok-events] upstream_request_failed",message.slice(0,300));
+    return reply(req,{ok:false,message:`TikTok Events API request failed: ${message.slice(0,200)}`},502);
   }
 });
