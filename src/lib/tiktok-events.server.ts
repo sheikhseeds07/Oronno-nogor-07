@@ -32,7 +32,7 @@ export async function sendTikTokEvent(input: TikTokEvent): Promise<{ ok: boolean
   if (input.clientIp) user.ip = input.clientIp;
   if (input.userAgent) user.user_agent = input.userAgent;
   if (input.email) user.email = hash(input.email);
-  if (input.phone) user.phone = hash(input.phone.replace(/\\D/g, ""));
+  if (input.phone) { const digits = input.phone.replace(/\\D/g, ""); const normalized = digits.startsWith("880") ? "+" + digits : digits.startsWith("0") ? "+880" + digits.slice(1) : "+" + digits; user.phone = hash(normalized); }
   if (input.externalId) user.external_id = hash(input.externalId);
   const body = {
     event_source: "web",
