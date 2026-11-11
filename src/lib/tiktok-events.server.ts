@@ -18,11 +18,17 @@ type TikTokEvent = {
 const endpoint = `${LIVE_DATABASE_URL}/functions/v1/tiktok-events`;
 
 async function callTikTokFunction(path = "", init?: RequestInit) {
-  const response = await fetch(`${endpoint}${path}`, {
+  const target = new URL(`${endpoint}${path}`);
+  // TikTok blocks requests originating from some regions. Pin only this
+  // integration to Singapore so Supabase's nearest-region routing cannot
+  // intermittently send Events API traffic through Mumbai.
+  target.searchParams.set("forceFunctionRegion", "ap-southeast-1");
+  const response = await fetch(target.toString(), {
     ...init,
     headers: {
       apikey: LIVE_DATABASE_KEY,
       "Content-Type": "application/json",
+      "x-region": "ap-southeast-1",
       ...(init?.headers || {}),
     },
     signal: init?.signal ?? AbortSignal.timeout(20000),
