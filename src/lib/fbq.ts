@@ -2,6 +2,7 @@ import { getFbContext } from "@/lib/fb-context";
 import { safeUUID } from "@/lib/uuid";
 
 type FbqArgs = unknown[];
+type TikTokBridge = (event: string, properties?: Record<string, unknown>, eventId?: string) => string;
 type Fbq = (...args: FbqArgs) => void;
 
 type QueuedEvent = {
@@ -152,6 +153,8 @@ export function fbqTrack(event: string, params?: Record<string, unknown>, eventI
   if (fbq) sendBrowser(item, fbq);
   else enqueue(item);
   mirrorToCapi(item);
+  const tt = (window as unknown as { __oronnoTikTokTrack?: TikTokBridge }).__oronnoTikTokTrack;
+  if (tt) tt(event, params ?? {}, id);
   return id;
 }
 
@@ -186,6 +189,8 @@ export function trackPurchase(items: PixelItem[], value: number, eventID?: strin
   inFlight.add(id);
   const params = { content_ids: items.map((i) => i.id), content_type: "product", contents: toContentItems(items), num_items: items.reduce((s, i) => s + (i.quantity ?? 1), 0), value: Number(value.toFixed(2)), currency: "BDT" };
   const item = { event: "Purchase", params, eventID: id };
+  const tt = (window as unknown as { __oronnoTikTokTrack?: TikTokBridge }).__oronnoTikTokTrack;
+  if (tt) tt("Purchase", { ...params, currency: "BDT", value: Number(value.toFixed(2)) }, id);
   const fbq = getFbq();
   if (fbq) {
     if (sendBrowser(item, fbq)) markSent(id);
