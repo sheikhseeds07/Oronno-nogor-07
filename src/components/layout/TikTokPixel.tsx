@@ -14,7 +14,7 @@ function init(pixelId: string) {
     for (const method of methods) ttq[method as keyof TikTokFn] = ((...args: unknown[]) => ttq.queue.push([method, ...args])) as never;
     ttq.load = (id: string, options?: Record<string, unknown>) => {
       ttq._i.push([id, options] as never);
-      const script = document.createElement("script"); script.async = true; script.src = "https://analytics.tiktok.com/i18n/pixel/events.js"; script.dataset.oronnoTikTok = "1";
+      const script = document.createElement("script"); script.async = true; script.src = `https://analytics.tiktok.com/i18n/pixel/events.js?sdkid=${encodeURIComponent(id)}&lib=ttq`; script.dataset.oronnoTikTok = "1";
       if (!document.querySelector('script[data-oronno-tiktok="1"]')) document.head.appendChild(script);
     };
     ttq.page = () => ttq.queue.push(["page"]);
