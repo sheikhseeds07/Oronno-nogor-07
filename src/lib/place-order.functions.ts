@@ -289,7 +289,7 @@ export const placeLandingOrder = createServerFn({ method: "POST" }).inputValidat
   try {
     const userAgent = getRequestHeader("user-agent") ?? null;
     await sendPurchaseEvent({ orderId, value: subtotal + offer.deliveryFee, currency: "BDT", phone: customerPhone, name: data.customer_name, city: (data as any).district ?? (data as any).thana ?? null, country: "bd", contents: items.map((item) => ({ id: item.id, quantity: item.quantity, price: item.price })), clientIp, userAgent, fbp: data.fbp ?? null, fbc: data.fbc ?? null, eventSourceUrl: data.source_url ?? null } as never);
-    await sendTikTokPurchase({ orderId, value: subtotal + offer.deliveryFee, phone: customerPhone, contents: items.map((item) => ({ id: item.id, quantity: item.quantity, price: item.price })), clientIp, userAgent, eventSourceUrl: data.source_url ?? null });
+    await sendTikTokPurchase({ orderId, value: subtotal + offer.deliveryFee, phone: customerPhone, contents: items.map((item) => ({ id: item.id, quantity: item.quantity, price: item.price })), clientIp, userAgent, eventSourceUrl: data.source_url ?? null, ttclid: getCookie("_ttclid") ?? null, ttp: getCookie("_ttp") ?? null });
   } catch (e) { logger.error("[placeLandingOrder] CAPI dispatch failed:", e); }
 
   return { id: orderId };
