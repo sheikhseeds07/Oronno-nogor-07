@@ -8,6 +8,7 @@ function init(pixelId: string) {
   if (typeof window === "undefined") return;
   const w = window as Window;
   if (!w.ttq) {
+    (window as Window & { TiktokAnalyticsObject?: string }).TiktokAnalyticsObject = "ttq";
     const ttq: any = [];
     ttq.methods = ["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie"];
     ttq.setAndDefer = (target: any, method: string) => { target[method] = (...args: unknown[]) => target.push([method, ...args]); };
