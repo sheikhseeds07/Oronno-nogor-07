@@ -163,7 +163,7 @@ function AllApi() {
         const test = await fetch("/api/public/tiktok-events", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ event: "PageView", event_id: `tiktok-test-${Date.now()}`, event_source_url: window.location.href }),
+          body: JSON.stringify({ event: "PageView", event_id: `tiktok-test-${Date.now()}`, event_source_url: window.location.href, externalId: `tiktok-test-${Date.now()}` }),
         });
         const result = await test.json().catch(() => ({}));
         if (!test.ok || !result.ok) throw new Error(result.message || result.error || `TikTok Test Event failed (HTTP ${test.status})`);
