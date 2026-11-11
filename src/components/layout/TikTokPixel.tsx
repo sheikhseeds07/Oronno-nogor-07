@@ -49,8 +49,8 @@ export function TikTokPixel() {
     const send: TikTokBridge = (event, properties = {}, eventId = safeUUID() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`) => {
       if (!enabled || !window.ttq) return eventId;
       const params = { ...properties, event_id: eventId };
-      if (event === "PageView") window.ttq.page();
-      else window.ttq.track(event, params);
+      const pixelEvent = event === "Purchase" ? "CompletePayment" : event;
+      window.ttq.track(pixelEvent, properties, { event_id: eventId });
       void fetch("/api/public/tiktok-events", {
         method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true,
         body: JSON.stringify({ event, event_id: eventId, event_source_url: window.location.href, properties, ttclid: readCookie("_ttclid"), ttp: readCookie("_ttp") }),
