@@ -38,7 +38,7 @@ export async function sendTikTokEvent(input: TikTokEvent): Promise<{ ok: boolean
     event_source: "web",
     event_source_id: config.pixel_id,
     data: [{
-      event: input.event,
+      event: input.event === "Purchase" ? "CompletePayment" : input.event,
       event_id: input.event_id,
       event_time: eventTime,
       ...(input.event_source_url ? { page: { url: input.event_source_url } } : {}),
