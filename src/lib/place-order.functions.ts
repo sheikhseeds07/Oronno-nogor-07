@@ -4,6 +4,7 @@ import { getCookie, getRequestHeader, getRequestIP, setCookie } from "@tanstack/
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 import { sendPurchaseEvent } from "@/lib/facebook-capi.server";
+import { sendTikTokPurchase } from "@/lib/tiktok-events.server";
 import { BLOCKED_ORDER_CODE, BLOCKED_ORDER_MESSAGE } from "@/lib/order-block";
 
 
@@ -217,6 +218,7 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   try {
     const userAgent = getRequestHeader("user-agent") ?? null;
     await sendPurchaseEvent({ orderId, value: total, currency: "BDT", phone: customerPhone, name: data.customer_name, city: data.district ?? data.thana ?? null, country: "bd", contents: data.items.map((i) => ({ id: i.id, quantity: i.quantity, price: i.price })), clientIp, userAgent, fbp: data.fbp ?? null, fbc: data.fbc ?? null, eventSourceUrl: data.source_url ?? null } as never);
+    await sendTikTokPurchase({ orderId, value: total, phone: customerPhone, contents: data.items.map((i) => ({ id: i.id, quantity: i.quantity, price: i.price })), clientIp, userAgent, eventSourceUrl: data.source_url ?? null, ttclid: getCookie("_ttclid") ?? null, ttp: getCookie("_ttp") ?? null });
   } catch (e) { logger.error("[placeOrder] CAPI dispatch failed:", e); }
 
   return { id: orderId };
@@ -287,6 +289,7 @@ export const placeLandingOrder = createServerFn({ method: "POST" }).inputValidat
   try {
     const userAgent = getRequestHeader("user-agent") ?? null;
     await sendPurchaseEvent({ orderId, value: subtotal + offer.deliveryFee, currency: "BDT", phone: customerPhone, name: data.customer_name, city: (data as any).district ?? (data as any).thana ?? null, country: "bd", contents: items.map((item) => ({ id: item.id, quantity: item.quantity, price: item.price })), clientIp, userAgent, fbp: data.fbp ?? null, fbc: data.fbc ?? null, eventSourceUrl: data.source_url ?? null } as never);
+    await sendTikTokPurchase({ orderId, value: subtotal + offer.deliveryFee, phone: customerPhone, contents: items.map((item) => ({ id: item.id, quantity: item.quantity, price: item.price })), clientIp, userAgent, eventSourceUrl: data.source_url ?? null, ttclid: getCookie("_ttclid") ?? null, ttp: getCookie("_ttp") ?? null });
   } catch (e) { logger.error("[placeLandingOrder] CAPI dispatch failed:", e); }
 
   return { id: orderId };
