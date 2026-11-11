@@ -964,7 +964,21 @@ function OrdersTable({
     // Send one-by-one for animation
     for (const item of initial) {
       try {
-        const res = await sendBulk({ data: { orderIds: [item.id], account } });
+        // Each order is sent in its own request so a slow courier response
+        // cannot hold the entire batch indefinitely. The server may perform up
+        // to three 12-second courier calls for one order, so allow 45 seconds.
+        let requestTimer: ReturnType<typeof setTimeout> | undefined;
+        const res = await Promise.race([
+          sendBulk({ data: { orderIds: [item.id], account } }),
+          new Promise<never>((_, reject) => {
+            requestTimer = setTimeout(
+              () => reject(new Error("৪৫ সেকেন্ডেও সার্ভারের উত্তর আসেনি। এই অর্ডারের ইনভয়েস কুরিয়ারে যাচাই করে তারপর পুনরায় চেষ্টা করুন।")),
+              45_000,
+            );
+          }),
+        ]).finally(() => {
+          if (requestTimer) clearTimeout(requestTimer);
+        });
 
         const r = res.results?.[0];
         setSendModal((prev) => prev && prev.map((p) =>
