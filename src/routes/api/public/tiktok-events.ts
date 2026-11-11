@@ -11,6 +11,7 @@ const EventSchema = z.object({
   properties: z.record(z.unknown()).optional(),
   ttclid: z.string().max(1000).optional().nullable(),
   ttp: z.string().max(500).optional().nullable(),
+  externalId: z.string().max(500).optional().nullable(),
 });
 export const Route = createFileRoute("/api/public/tiktok-events")({
   server: { handlers: {
