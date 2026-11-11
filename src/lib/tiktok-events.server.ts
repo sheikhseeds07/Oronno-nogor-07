@@ -63,10 +63,10 @@ export async function sendTikTokEvent(input: TikTokEvent): Promise<{ ok: boolean
     return { ok: false, message: "TikTok Events API request failed" };
   }
 }
-export async function sendTikTokPurchase(input: { orderId: string; value: number; contents?: Array<{ id: string; quantity: number; price: number }>; eventSourceUrl?: string | null; clientIp?: string | null; userAgent?: string | null; phone?: string | null; }) {
+export async function sendTikTokPurchase(input: { orderId: string; value: number; contents?: Array<{ id: string; quantity: number; price: number }>; eventSourceUrl?: string | null; clientIp?: string | null; userAgent?: string | null; phone?: string | null; ttclid?: string | null; ttp?: string | null; }) {
   return sendTikTokEvent({
     event: "Purchase", event_id: input.orderId, event_source_url: input.eventSourceUrl,
-    clientIp: input.clientIp, userAgent: input.userAgent, phone: input.phone, externalId: input.orderId,
+    clientIp: input.clientIp, userAgent: input.userAgent, phone: input.phone, externalId: input.orderId, ttclid: input.ttclid, ttp: input.ttp,
     properties: { currency: "BDT", value: Number(input.value.toFixed(2)), order_id: input.orderId,
       ...(input.contents ? { contents: input.contents.map((item) => ({ content_id: item.id, quantity: item.quantity, price: item.price })), content_type: "product" } : {}) },
   });
