@@ -45,16 +45,17 @@ export function TikTokPixel() {
     window.__oronnoTikTokOwner = true;
     const initialClickId = new URLSearchParams(window.location.search).get("ttclid");
     if (initialClickId) writeAttributionCookie("_ttclid", initialClickId);
+    if (!readCookie("_tt_external_id")) writeAttributionCookie("_tt_external_id", crypto.randomUUID());
     let lastPath = "";
     let enabled = false;
     const send: TikTokBridge = (event, properties = {}, eventId = safeUUID() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`) => {
       if (!enabled || !window.ttq) return eventId;
       const params = { ...properties, event_id: eventId };
-      const pixelEvent = event === "Purchase" ? "CompletePayment" : event === "Lead" ? "SubmitForm" : event;
+      const pixelEvent = event === "PageView" ? "Pageview" : event === "Purchase" ? "CompletePayment" : event === "Lead" ? "SubmitForm" : event;
       window.ttq.track(pixelEvent, properties, { event_id: eventId });
       void fetch("/api/public/tiktok-events", {
         method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true,
-        body: JSON.stringify({ event, event_id: eventId, event_source_url: window.location.href, properties, ttclid: readCookie("_ttclid"), ttp: readCookie("_ttp") }),
+        body: JSON.stringify({ event, event_id: eventId, event_source_url: window.location.href, properties, ttclid: readCookie("_ttclid"), ttp: readCookie("_ttp"), externalId: readCookie("_tt_external_id") }),
       }).catch(() => undefined);
       return eventId;
     };
