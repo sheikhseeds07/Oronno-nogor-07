@@ -115,8 +115,68 @@ function AllApi() {
 
   const saveSms = async () => { setSavingSms(true); const cfg = { url_template: sms.url_template.trim(), api_key: sms.api_key.trim() }; const { error } = await supabase.from("integrations").upsert({ name: "sms_hoorin", is_active: smsActive, config: cfg, updated_at: new Date().toISOString() }, { onConflict: "name" }); setSavingSms(false); if (error) toast.error(error.message); else toast.success("SMS সেভ হয়েছে"); };
   const testSms = async () => { if (!smsTestPhone.trim()) { toast.error("টেস্ট ফোন নাম্বার দিন"); return; } setSmsTesting(true); setSmsResult(null); setSmsOk(null); try { await saveSms(); const r = await testSmsFn({ data: { phone: smsTestPhone.trim() } }); if (r.ok && r.sent) { setSmsOk(true); setSmsResult("Test SMS পাঠানো হয়েছে — ফোন চেক করুন"); toast.success("Test SMS পাঠানো হয়েছে"); } else { setSmsOk(false); setSmsResult(r.message || "ব্যর্থ"); toast.error(r.message || "ব্যর্থ"); } } catch (e) { const m = e instanceof Error ? e.message : "Failed"; setSmsOk(false); setSmsResult(m); toast.error(m); } finally { setSmsTesting(false); } };
-  const saveTikTok = async () => { setTtSaving(true); const config = { pixel_id: tt.pixel_id.trim(), access_token: tt.access_token.trim(), test_event_code: tt.test_event_code.trim() }; const { error } = await supabase.from("integrations").upsert({ name: "tiktok_pixel", is_active: tt.enabled, config, updated_at: new Date().toISOString() }, { onConflict: "name" }); setTtSaving(false); if (error) toast.error(error.message); else { toast.success("TikTok Pixel সেটিংস সেভ হয়েছে"); setTt({ ...tt, ...config }); } };
-  const testTikTok = async () => { setTtTesting(true); try { await saveTikTok(); const response = await fetch("/api/public/tiktok-events?status=1", { cache: "no-store" }); const status = await response.json(); setTtStatus(status); if (!status.server_events_ready) { toast.error("Pixel ID / Access Token / Enable সেটিংস যাচাই করুন"); return; } if (tt.test_event_code.trim()) { const test = await fetch("/api/public/tiktok-events", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ event: "PageView", event_id: `tiktok-test-${Date.now()}`, event_source_url: window.location.href }) }); const result = await test.json(); if (!test.ok || !result.ok) throw new Error(result.message || "TikTok Test Event পাঠানো যায়নি"); toast.success("Test Event TikTok-এ পাঠানো হয়েছে। Events Manager → Test Events দেখুন।"); } else toast.success("Configuration ঠিক আছে। Live Test Event পাঠাতে Test Event Code দিন।"); } catch (error) { toast.error(error instanceof Error ? error.message : "TikTok test failed"); } finally { setTtTesting(false); } };
+  const saveTikTok = async (): Promise<boolean> => {
+    setTtSaving(true);
+    const config = { pixel_id: tt.pixel_id.trim(), access_token: tt.access_token.trim(), test_event_code: tt.test_event_code.trim() };
+    try {
+      const { error } = await supabase.from("integrations").upsert(
+        { name: "tiktok_pixel", is_active: tt.enabled, config, updated_at: new Date().toISOString() },
+        { onConflict: "name" },
+      );
+      if (error) {
+        toast.error("TikTok সেটিংস সেভ হয়নি: " + error.message);
+        return false;
+      }
+      setTt({ ...tt, ...config });
+      toast.success("TikTok Pixel সেটিংস সেভ হয়েছে");
+      return true;
+    } catch (error) {
+      toast.error("TikTok সেটিংস সেভ হয়নি: " + (error instanceof Error ? error.message : "Unknown database error"));
+      return false;
+    } finally {
+      setTtSaving(false);
+    }
+  };
+  const testTikTok = async () => {
+    setTtTesting(true);
+    setTtStatus(null);
+    try {
+      if (!tt.pixel_id.trim()) { toast.error("TikTok Pixel ID দিন"); return; }
+      if (!tt.access_token.trim()) { toast.error("Events API Access Token দিন"); return; }
+      if (!tt.enabled) { toast.error("TikTok Pixel চালু রাখুন (Enable toggle)"); return; }
+      const saved = await saveTikTok();
+      if (!saved) return;
+
+      const response = await fetch("/api/public/tiktok-events?status=1", { cache: "no-store" });
+      if (!response.ok) throw new Error(`Server status check failed (HTTP ${response.status})`);
+      const status = await response.json();
+      setTtStatus(status);
+      if (!status.server_events_ready) {
+        const missing = [
+          !status.enabled ? "Enable setting" : null,
+          !status.pixel_id_present ? "Pixel ID" : null,
+          !status.access_token_present ? "Access Token" : null,
+        ].filter(Boolean).join(", ");
+        throw new Error(`Server configuration not ready: ${missing || "check server integration settings"}`);
+      }
+      if (tt.test_event_code.trim()) {
+        const test = await fetch("/api/public/tiktok-events", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ event: "PageView", event_id: `tiktok-test-${Date.now()}`, event_source_url: window.location.href }),
+        });
+        const result = await test.json().catch(() => ({}));
+        if (!test.ok || !result.ok) throw new Error(result.message || result.error || `TikTok Test Event failed (HTTP ${test.status})`);
+        toast.success("Test Event TikTok-এ পাঠানো হয়েছে। Events Manager → Test Events দেখুন।");
+      } else {
+        toast.success("Configuration ঠিক আছে। Live Test Event পাঠাতে Test Event Code দিন।");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "TikTok test failed");
+    } finally {
+      setTtTesting(false);
+    }
+  };
 
   const saveFb = async () => { setSavingFb(true); const publicFacebook = { pixel_id: fb.pixel_id, enabled: fb.enabled }; const next = { ...allSettings, facebook: publicFacebook }; const payload = { settings: next, updated_at: new Date().toISOString() }; const [siteRes, integRes] = await Promise.all([rowId ? supabase.from("site_settings").update(payload).eq("id", rowId) : supabase.from("site_settings").insert({ id: SETTINGS_ID, ...payload }), supabase.from("integrations").upsert({ name: "facebook_capi", is_active: fb.enabled, config: { pixel_id: fb.pixel_id, access_token: fb.access_token, test_event_code: fb.test_event_code }, updated_at: new Date().toISOString() }, { onConflict: "name" })]); setSavingFb(false); const err = siteRes.error || integRes.error; if (err) toast.error(err.message); else { toast.success("Facebook সেভ হয়েছে"); setAllSettings(next); } };
   const saveHoorin = async () => { setSavingH(true); const cfg = { endpoint: hoorin.endpoint.trim(), api_key: hoorin.api_key.trim() }; const { error } = await supabase.from("integrations").upsert({ name: "all_api_hoorin", is_active: hoorinActive, config: cfg, updated_at: new Date().toISOString() }, { onConflict: "name" }); setSavingH(false); if (error) toast.error(error.message); else toast.success("Hoorin সেভ হয়েছে"); };
