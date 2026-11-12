@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
     }
     if ((assignedOrderCount ?? 0) > 0) {
       return json({
-        error: `এই Employee-এর প্যানেলে ${assignedOrderCount.toLocaleString("en-US")}টি অর্ডার রয়েছে। আগে অর্ডারগুলো অন্য Employee-কে Assign করুন বা Unassign করুন, তারপর ডিলিট করুন।`,
+        error: "দুঃখিত! এই কর্মীর নামে এখনো অর্ডার অ্যাসাইন করা রয়েছে। অনুগ্রহ করে আগে অর্ডারগুলো অন্য কর্মীকে অ্যাসাইন করুন অথবা Unassign করুন। এরপর কর্মীকে ডিলিট করতে পারবেন.",
         code: "EMPLOYEE_HAS_ASSIGNED_ORDERS",
         assigned_order_count: assignedOrderCount,
       }, 409);
