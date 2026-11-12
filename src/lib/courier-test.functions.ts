@@ -117,11 +117,11 @@ export const sendOrdersToSteadfast = createServerFn({ method: "POST" })
         continue;
       }
 
-      const setGuard = async (state: "success" | "unknown" | "rejected", values: { invoice_no?: string; consignment?: string; last_error?: string } = {}) => {
+      const setGuard = async (state: "success" | "unknown", values: { invoice_no?: string; consignment?: string; last_error?: string } = {}) => {
         await supabaseAdmin.from("courier_upload_guard").update({
           state,
           ...values,
-          resolved_at: state === "processing" ? null : new Date().toISOString(),
+          resolved_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }).eq("order_id", o.id);
       };
