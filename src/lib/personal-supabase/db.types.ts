@@ -2419,6 +2419,20 @@ export type Database = {
       }
       get_meta_capi_status: { Args: never; Returns: Json }
       get_meta_capi_token: { Args: never; Returns: Json }
+      claim_courier_upload_lock: {
+        Args: { p_account: number; p_order_id: string }
+        Returns: Json
+      }
+      update_courier_upload_lock: {
+        Args: {
+          p_consignment?: string | null
+          p_invoice_no?: string | null
+          p_last_error?: string | null
+          p_order_id: string
+          p_state?: string | null
+        }
+        Returns: boolean
+      }
       get_my_staff_access: { Args: never; Returns: Json }
       get_my_customer_order_detail: {
         Args: { p_order_id: string }
