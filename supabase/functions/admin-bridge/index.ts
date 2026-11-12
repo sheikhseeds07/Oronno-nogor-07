@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
       return json({ error: "Employee profile could not be saved: " + employeeError.message }, 500);
     }
     const [{ error: roleError }, { error: permissionsError }] = await Promise.all([
-      admin.from("user_roles").upsert({ user_id: userId, role }, { onConflict: "user_id" }),
+      admin.from("user_roles").insert({ user_id: userId, role }),
       admin.from("employee_permissions").upsert({ user_id: userId, ...permissions, updated_at: new Date().toISOString() }, { onConflict: "user_id" }),
     ]);
     if (roleError || permissionsError) {
@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
   if (!["super_admin","admin","employee"].includes(role)) return json({ error: "Invalid role" }, 400);
   const { data: target, error: targetError } = await admin.auth.admin.getUserById(userId);
   if (targetError || !target.user) return json({ error: targetError?.message || "User not found" }, 404);
-  const { error: updateError } = await admin.from("user_roles").upsert({ user_id: userId, role }, { onConflict: "user_id" });
+  const { error: updateError } = await admin.from("user_roles").upsert({ user_id: userId, role }, { onConflict: "user_id,role" });
   if (updateError) return json({ error: updateError.message }, 500);
   return json({ ok: true });
 });
