@@ -66,7 +66,24 @@ export const deleteEmployee = createServerFn({ method: "POST" })
     const { data: result, error } = await context.supabase.functions.invoke("employee-delete", {
       body: { employee_id: data.employee_id },
     });
-    if (error) throw new Error(error.message || "Employee delete failed");
+    if (error) {
+      // Supabase FunctionsHttpError stores the Edge Function response in context.
+      // Read its JSON body so expected business-rule errors (HTTP 409) reach the UI
+      // instead of showing the generic "Edge Function returned a non-2xx status code".
+      let functionMessage: string | undefined;
+      const response = (error as any).context;
+      if (response && typeof response.clone === "function") {
+        try {
+          const payload = await response.clone().json();
+          if (typeof payload?.error === "string" && payload.error.trim()) {
+            functionMessage = payload.error.trim();
+          }
+        } catch {
+          // Fall back to the Supabase error message when no JSON body is available.
+        }
+      }
+      throw new Error(functionMessage || error.message || "Employee delete failed");
+    }
     if (result?.error) throw new Error(String(result.error));
     if (result?.ok !== true) throw new Error("Employee delete was not confirmed");
     return result;
