@@ -89,47 +89,47 @@ export const sendOrdersToSteadfast = createServerFn({ method: "POST" })
 
       // One database row per order is the global lock shared by both accounts,
       // all employees/admins, and every concurrent bulk request.
-      const { error: claimError } = await supabaseAdmin.from("courier_upload_guard").insert({
-        order_id: o.id,
-        provider: "steadfast",
-        account,
-        state: "processing",
-        created_by: context.userId,
+      const { data: claimData, error: claimError } = await supabaseAdmin.rpc("claim_courier_upload_lock", {
+        p_order_id: o.id,
+        p_account: account,
       });
       if (claimError) {
-        if (claimError.code === "23505") {
-          const { data: prior } = await supabaseAdmin.from("courier_upload_guard")
-            .select("state,account,consignment")
-            .eq("order_id", o.id)
-            .maybeSingle();
-          results.push({
-            id: o.id,
-            ok: false,
-            already: true,
-            consignment: prior?.consignment || undefined,
-            message: prior?.state === "success"
-              ? "এই অর্ডারটি ইতিমধ্যে কুরিয়ারে পাঠানো হয়েছে; পুনরায় আপলোড বন্ধ"
-              : "এই অর্ডারের কুরিয়ার আপলোড চলছে বা যাচাই অপেক্ষমাণ; ডুপ্লিকেট এড়াতে পুনরায় পাঠানো বন্ধ",
-          });
-        } else {
-          results.push({ id: o.id, ok: false, message: "ডাটাবেজে আপলোড লক নেওয়া যায়নি; নিরাপত্তার জন্য পাঠানো হয়নি" });
-        }
+        console.error("[courier-upload] lock claim failed", { orderId: o.id, code: claimError.code, message: claimError.message });
+        results.push({ id: o.id, ok: false, message: "ডাটাবেজে আপলোড লক নেওয়া যায়নি; নিরাপত্তার জন্য পাঠানো হয়নি" });
+        continue;
+      }
+      const claim = (claimData ?? {}) as { claimed?: boolean; state?: string; account?: number; consignment?: string | null };
+      if (!claim.claimed) {
+        results.push({
+          id: o.id,
+          ok: false,
+          already: true,
+          consignment: claim.consignment || undefined,
+          message: claim.state === "success"
+            ? "এই অর্ডারটি ইতিমধ্যে কুরিয়ারে পাঠানো হয়েছে; পুনরায় আপলোড বন্ধ"
+            : "এই অর্ডারের কুরিয়ার আপলোড চলছে বা যাচাই অপেক্ষমাণ; ডুপ্লিকেট এড়াতে পুনরায় পাঠানো বন্ধ",
+        });
         continue;
       }
 
+      const updateGuard = async (values: { state?: "processing" | "success" | "unknown"; invoice_no?: string; consignment?: string; last_error?: string }) => {
+        const { error } = await supabaseAdmin.rpc("update_courier_upload_lock", {
+          p_order_id: o.id,
+          p_state: values.state ?? null,
+          p_invoice_no: values.invoice_no ?? null,
+          p_consignment: values.consignment ?? null,
+          p_last_error: values.last_error ?? null,
+        });
+        if (error) throw error;
+      };
       const setGuard = async (state: "success" | "unknown", values: { invoice_no?: string; consignment?: string; last_error?: string } = {}) => {
-        await supabaseAdmin.from("courier_upload_guard").update({
-          state,
-          ...values,
-          resolved_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }).eq("order_id", o.id);
+        await updateGuard({ ...values, state });
       };
 
       let invoice: string;
       try {
         invoice = await ensureOrderInvoiceNo(o.id, o.invoice_no);
-        await supabaseAdmin.from("courier_upload_guard").update({ invoice_no: invoice, updated_at: new Date().toISOString() }).eq("order_id", o.id);
+        await updateGuard({ invoice_no: invoice });
       } catch (e) {
         const message = e instanceof Error ? e.message : "Invoice generation failed";
         await setGuard("unknown", { last_error: message.slice(0, 500) });
