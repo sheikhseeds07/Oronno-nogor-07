@@ -199,59 +199,6 @@ export type Database = {
         }
         Relationships: []
       }
-      courier_upload_guard: {
-        Row: {
-          account: number
-          consignment: string | null
-          created_at: string
-          created_by: string | null
-          invoice_no: string | null
-          last_error: string | null
-          order_id: string
-          provider: string
-          request_started_at: string
-          resolved_at: string | null
-          state: string
-          updated_at: string
-        }
-        Insert: {
-          account: number
-          consignment?: string | null
-          created_at?: string
-          created_by?: string | null
-          invoice_no?: string | null
-          last_error?: string | null
-          order_id: string
-          provider?: string
-          request_started_at?: string
-          resolved_at?: string | null
-          state?: string
-          updated_at?: string
-        }
-        Update: {
-          account?: number
-          consignment?: string | null
-          created_at?: string
-          created_by?: string | null
-          invoice_no?: string | null
-          last_error?: string | null
-          order_id?: string
-          provider?: string
-          request_started_at?: string
-          resolved_at?: string | null
-          state?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "courier_upload_guard_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: true
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       courier_history_cache: {
         Row: {
           configured: boolean
@@ -2419,20 +2366,6 @@ export type Database = {
       }
       get_meta_capi_status: { Args: never; Returns: Json }
       get_meta_capi_token: { Args: never; Returns: Json }
-      claim_courier_upload_lock: {
-        Args: { p_account: number; p_order_id: string }
-        Returns: Json
-      }
-      update_courier_upload_lock: {
-        Args: {
-          p_consignment?: string | null
-          p_invoice_no?: string | null
-          p_last_error?: string | null
-          p_order_id: string
-          p_state?: string | null
-        }
-        Returns: boolean
-      }
       get_my_staff_access: { Args: never; Returns: Json }
       get_my_customer_order_detail: {
         Args: { p_order_id: string }
