@@ -24,12 +24,33 @@ Deno.serve(async (req) => {
   const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
   if (!token) return json({ error: "Unauthorized" }, 401);
 
+  // The Edge gateway has already cryptographically verified this JWT
+  // (verify_jwt=true). Read its subject locally to avoid a second Auth API
+  // round-trip, which can reject newer asymmetric ES256 access tokens.
+  let callerId = "";
+  try {
+    const payloadPart = token.split(".")[1];
+    if (!payloadPart) throw new Error("Missing JWT payload");
+    const normalized = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+    const payload = JSON.parse(atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=")));
+    const issuer = String(payload.iss ?? "").replace(/\/$/, "");
+    const exp = Number(payload.exp ?? 0);
+    if (
+      typeof payload.sub !== "string" ||
+      !payload.sub ||
+      issuer !== url.replace(/\/$/, "") + "/auth/v1" ||
+      payload.role !== "authenticated" ||
+      !Number.isFinite(exp) ||
+      exp <= Math.floor(Date.now() / 1000)
+    ) throw new Error("Invalid or expired access token");
+    callerId = payload.sub;
+  } catch {
+    return json({ error: "Unauthorized: invalid or expired session" }, 401);
+  }
+
   const admin = createClient(url, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data: callerData, error: callerError } = await admin.auth.getUser(token);
-  const caller = callerData?.user;
-  if (callerError || !caller) return json({ error: "Unauthorized" }, 401);
 
   let body: Record<string, unknown>;
   try {
@@ -50,8 +71,8 @@ Deno.serve(async (req) => {
   // Match assertPermission(userId, "employees"): super_admin is allowed;
   // other staff need the explicit Employees module permission.
   const [{ data: roles, error: roleError }, { data: perms, error: permError }] = await Promise.all([
-    admin.from("user_roles").select("role").eq("user_id", caller.id),
-    admin.from("employee_permissions").select("employees").eq("user_id", caller.id).maybeSingle(),
+    admin.from("user_roles").select("role").eq("user_id", callerId),
+    admin.from("employee_permissions").select("employees").eq("user_id", callerId).maybeSingle(),
   ]);
   if (roleError || permError) {
     return json({ error: roleError?.message || permError?.message || "Permission lookup failed" }, 500);
