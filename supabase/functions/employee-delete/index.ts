@@ -92,13 +92,14 @@ Deno.serve(async (req) => {
 
   const targetUserId = employee.user_id ? String(employee.user_id) : null;
 
-  // Never delete an employee while orders are still assigned to their panel.
-  // Check every order status and fail closed if the lookup itself fails.
+  // Block deletion only when unconfirmed Processing (web_pending) orders remain assigned.
+  // Historical, shipped, delivered, cancelled and other statuses do not block deletion.
   if (targetUserId) {
     const { count: assignedOrderCount, error: assignedOrdersError } = await admin
       .from("orders")
       .select("id", { count: "exact", head: true })
-      .eq("assigned_to", targetUserId);
+      .eq("assigned_to", targetUserId)
+      .eq("status", "web_pending");
 
     if (assignedOrdersError) {
       return json({ error: "অর্ডার যাচাই করা যায়নি। নিরাপত্তার জন্য Employee ডিলিট করা হয়নি: " + assignedOrdersError.message }, 500);
