@@ -83,154 +83,85 @@ export const sendOrdersToSteadfast = createServerFn({ method: "POST" })
     const results: { id: string; ok: boolean; consignment?: string; message: string; already?: boolean }[] = [];
     for (const o of orders ?? []) {
       if (o.courier_consignment) {
-        results.push({ id: o.id, ok: false, already: true, consignment: o.courier_consignment, message: "ইতিমধ্যে কুরিয়ারে এন্ট্রি আছে; অন্য অ্যাকাউন্টে পাঠানো যাবে না" });
+        await supabaseAdmin.from("orders").update({ courier_display_name: (cfg.display_name || "").trim() || `Courier ${account}` }).eq("id", o.id);
+        results.push({ id: o.id, ok: false, already: true, consignment: o.courier_consignment, message: "ইতিমধ্যে এন্ট্রি হয়েছে (Already entry)" });
         continue;
       }
-
-      // One database row per order is the global lock shared by both accounts,
-      // all employees/admins, and every concurrent bulk request.
-      const { data: claimData, error: claimError } = await supabaseAdmin.rpc("claim_courier_upload_lock", {
-        p_order_id: o.id,
-        p_account: account,
-      });
-      if (claimError) {
-        console.error("[courier-upload] lock claim failed", { orderId: o.id, code: claimError.code, message: claimError.message });
-        results.push({ id: o.id, ok: false, message: "ডাটাবেজে আপলোড লক নেওয়া যায়নি; নিরাপত্তার জন্য পাঠানো হয়নি" });
-        continue;
-      }
-      const claim = (claimData ?? {}) as { claimed?: boolean; state?: string; account?: number; consignment?: string | null };
-      if (!claim.claimed) {
-        results.push({
-          id: o.id,
-          ok: false,
-          already: true,
-          consignment: claim.consignment || undefined,
-          message: claim.state === "success"
-            ? "এই অর্ডারটি ইতিমধ্যে কুরিয়ারে পাঠানো হয়েছে; পুনরায় আপলোড বন্ধ"
-            : "এই অর্ডারের কুরিয়ার আপলোড চলছে বা যাচাই অপেক্ষমাণ; ডুপ্লিকেট এড়াতে পুনরায় পাঠানো বন্ধ",
-        });
-        continue;
-      }
-
-      const updateGuard = async (values: { state?: "processing" | "success" | "unknown"; invoice_no?: string; consignment?: string; last_error?: string }) => {
-        const { error } = await supabaseAdmin.rpc("update_courier_upload_lock", {
-          p_order_id: o.id,
-          p_state: values.state ?? null,
-          p_invoice_no: values.invoice_no ?? null,
-          p_consignment: values.consignment ?? null,
-          p_last_error: values.last_error ?? null,
-        });
-        if (error) throw error;
-      };
-      const setGuard = async (state: "success" | "unknown", values: { invoice_no?: string; consignment?: string; last_error?: string } = {}) => {
-        await updateGuard({ ...values, state });
-      };
-
-      let invoice: string;
+      const invoice = await ensureOrderInvoiceNo(o.id, o.invoice_no);
       try {
-        invoice = await ensureOrderInvoiceNo(o.id, o.invoice_no);
-        await updateGuard({ invoice_no: invoice });
-      } catch (e) {
-        const message = e instanceof Error ? e.message : "Invoice generation failed";
-        await setGuard("unknown", { last_error: message.slice(0, 500) });
-        results.push({ id: o.id, ok: false, message: "ইনভয়েস প্রস্তুত করা যায়নি; নিরাপত্তার জন্য আপলোড লক রাখা হয়েছে" });
-        continue;
-      }
-
-      // Never create a parcel unless the provider explicitly confirms that
-      // this invoice is absent. A timeout/5xx/unknown response is ambiguous.
-      let chk: Awaited<ReturnType<typeof callSteadfast>>;
-      try {
-        chk = await callSteadfast(`status_by_invoice/${encodeURIComponent(invoice)}`, cfg);
-      } catch (e) {
-        const message = e instanceof Error ? e.message : "Invoice lookup network error";
-        await setGuard("unknown", { invoice_no: invoice, last_error: message.slice(0, 500) });
-        results.push({ id: o.id, ok: false, message: "কুরিয়ারে আগের এন্ট্রি যাচাই করা যায়নি; ডুপ্লিকেট এড়াতে আপলোড বন্ধ রাখা হয়েছে" });
-        continue;
-      }
-
-      const existing = deepFind(chk.json, ["consignment_id", "tracking_code"]);
-      const dstatus = deepFind(chk.json, ["delivery_status", "status_text"]);
-      const known = Boolean(dstatus && !/not[_\\s-]?found|invalid|unknown/i.test(dstatus));
-      if (chk.ok && (existing || known)) {
-        const savedConsignment = existing || invoice;
-        const { error: saveError } = await supabaseAdmin.from("orders").update({
-          courier_consignment: savedConsignment,
-          courier_status: dstatus || "in_review",
-          courier_display_name: (cfg.display_name || "").trim() || `Courier ${account}`,
-        }).eq("id", o.id);
-        await setGuard("success", { invoice_no: invoice, consignment: savedConsignment, last_error: saveError?.message });
-        results.push({
-          id: o.id,
-          ok: false,
-          already: true,
-          consignment: savedConsignment,
-          message: saveError
-            ? "কুরিয়ারে আগের এন্ট্রি পাওয়া গেছে; সাইটে সেভে সমস্যা হয়েছে। পুনরায় আপলোড করবেন না।"
-            : "আগেই কুরিয়ারে এন্ট্রি পাওয়া গেছে; নতুন করে পাঠানো হয়নি",
-        });
-        continue;
-      }
-
-      const explicitlyNotFound = /not[_\\s-]?found|no data|no record|invalid invoice/i.test(chk.body)
-        && (chk.ok || chk.status === 404);
-      if (!explicitlyNotFound) {
-        await setGuard("unknown", { invoice_no: invoice, last_error: `Invoice lookup inconclusive: HTTP ${chk.status} ${chk.body}`.slice(0, 500) });
-        results.push({ id: o.id, ok: false, message: "কুরিয়ারের আগের এন্ট্রি নিশ্চিতভাবে যাচাই করা যায়নি; নিরাপত্তার জন্য নতুন আপলোড বন্ধ রাখা হয়েছে" });
-        continue;
-      }
+        const chk = await callSteadfast(`status_by_invoice/${encodeURIComponent(invoice)}`, cfg);
+        const existing = deepFind(chk.json, ["consignment_id", "tracking_code"]);
+        const dstatus = deepFind(chk.json, ["delivery_status", "status_text"]);
+        const known = dstatus && !/not[_\s-]?found|invalid|unknown/i.test(dstatus);
+        if (chk.ok && (existing || known)) {
+          await supabaseAdmin.from("orders").update({ courier_consignment: existing || invoice, courier_status: dstatus || "in_review", courier_display_name: (cfg.display_name || "").trim() || `Courier ${account}` }).eq("id", o.id);
+          results.push({ id: o.id, ok: false, already: true, consignment: existing, message: "ইতিমধ্যে এন্ট্রি হয়েছে (Already entry)" });
+          continue;
+        }
+      } catch { /* proceed to create */ }
 
       const basePayload = {
         invoice,
         recipient_name: (o.customer_name || "").slice(0, 100),
-        recipient_phone: (o.customer_phone || "").replace(/\\D/g, "").slice(-11),
+        recipient_phone: (o.customer_phone || "").replace(/\D/g, "").slice(-11),
         recipient_address: [o.customer_address, o.thana, o.district].filter(Boolean).join(", ").slice(0, 240),
         cod_amount: Number(o.total) || 0,
       };
       const itemDescription = buildNote(o.id);
       const createPayload = { ...basePayload, item_description: itemDescription, note: deliveryNote.slice(0, 110) };
-
       let r: Awaited<ReturnType<typeof callSteadfast>>;
       try {
         r = await callSteadfast("create_order", cfg, createPayload);
       } catch (e) {
-        const message = e instanceof Error ? e.message : "Steadfast network error";
-        await setGuard("unknown", { invoice_no: invoice, last_error: message.slice(0, 500) });
-        results.push({ id: o.id, ok: false, message: "কুরিয়ারে পাঠানোর রেসপন্স পাওয়া যায়নি; অর্ডারটি যাচাই না হওয়া পর্যন্ত পুনরায় আপলোড বন্ধ থাকবে" });
+        results.push({ id: o.id, ok: false, message: e instanceof Error ? e.message : "Steadfast network error" });
         continue;
       }
 
       let consignment = deepFind(r.json, ["consignment_id", "tracking_code"]);
+      let postCheck: Awaited<ReturnType<typeof callSteadfast>> | null = null;
       if (!consignment) {
         try {
-          const postCheck = await callSteadfast(`status_by_invoice/${encodeURIComponent(invoice)}`, cfg);
+          postCheck = await callSteadfast(`status_by_invoice/${encodeURIComponent(invoice)}`, cfg);
           consignment = deepFind(postCheck.json, ["consignment_id", "tracking_code"]);
-        } catch { /* request may have succeeded despite a lost response */ }
+        } catch { /* do not assume the first request failed before creating the parcel */ }
       }
 
-      if (!consignment) {
-        await setGuard("unknown", {
-          invoice_no: invoice,
-          last_error: `Create response HTTP ${r.status}: ${r.body}`.slice(0, 500),
-        });
+      // Retry a 5xx create only when the courier explicitly confirms that this
+      // invoice was not created. This avoids duplicate parcels after an ambiguous 500.
+      const explicitlyNotFound = Boolean(
+        postCheck?.ok &&
+        !deepFind(postCheck.json, ["consignment_id", "tracking_code"]) &&
+        /not[_\s-]?found|no data|no record|invalid invoice/i.test(postCheck.body),
+      );
+      if (!consignment && r.status >= 500 && explicitlyNotFound) {
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        try {
+          r = await callSteadfast("create_order", cfg, createPayload);
+          consignment = deepFind(r.json, ["consignment_id", "tracking_code"]);
+          if (!consignment) {
+            const retryCheck = await callSteadfast(`status_by_invoice/${encodeURIComponent(invoice)}`, cfg);
+            consignment = deepFind(retryCheck.json, ["consignment_id", "tracking_code"]);
+          }
+        } catch { /* report the original courier failure below */ }
+      }
+
+      if (consignment) {
+        const { error: saveError } = await supabaseAdmin.from("orders").update({
+          courier_consignment: consignment,
+          courier_status: "in_review",
+          courier_display_name: (cfg.display_name || "").trim() || `Courier ${account}`,
+        }).eq("id", o.id);
+        if (saveError) {
+          results.push({ id: o.id, ok: false, consignment, message: "কুরিয়ারে এন্ট্রি হয়েছে, কিন্তু সাইটে ট্র্যাকিং নম্বর সেভ হয়নি। পুনরায় আপলোড করবেন না; অর্ডারটি যাচাই করুন।" });
+        } else {
+          results.push({ id: o.id, ok: true, consignment, message: "পাঠানো হয়েছে" });
+        }
+      } else {
         const htmlResponse = /<!doctype html|<html/i.test(r.body);
         const message = r.status >= 500 && htmlResponse
-          ? `কুরিয়ার সার্ভার HTTP ${r.status} দিয়েছে। ইনভয়েস ${invoice} দিয়ে এন্ট্রি নিশ্চিত হয়নি; ডুপ্লিকেট এড়াতে পুনরায় পাঠানো বন্ধ রাখা হয়েছে।`
-          : `কুরিয়ার রেসপন্স HTTP ${r.status}; এন্ট্রি নিশ্চিত হয়নি। যাচাই ছাড়া পুনরায় আপলোড করবেন না।`;
+          ? `কুরিয়ার সার্ভার HTTP ${r.status} দিয়েছে। ইনভয়েস ${invoice} দিয়ে এন্ট্রি নিশ্চিত করা যায়নি; ডুপ্লিকেট এড়াতে স্বয়ংক্রিয়ভাবে আবার পাঠানো হয়নি।`
+          : `HTTP ${r.status} — ${r.body.slice(0, 160)}`;
         results.push({ id: o.id, ok: false, message });
-        continue;
-      }
-
-      const { error: saveError } = await supabaseAdmin.from("orders").update({
-        courier_consignment: consignment,
-        courier_status: "in_review",
-        courier_display_name: (cfg.display_name || "").trim() || `Courier ${account}`,
-      }).eq("id", o.id);
-      await setGuard("success", { invoice_no: invoice, consignment, last_error: saveError?.message });
-      if (saveError) {
-        results.push({ id: o.id, ok: false, consignment, message: "কুরিয়ারে এন্ট্রি হয়েছে, কিন্তু সাইটে ট্র্যাকিং নম্বর সেভ হয়নি। পুনরায় আপলোড করবেন না; অর্ডারটি যাচাই করুন।" });
-      } else {
-        results.push({ id: o.id, ok: true, consignment, message: "পাঠানো হয়েছে" });
       }
     }
     return { results, error: null };
