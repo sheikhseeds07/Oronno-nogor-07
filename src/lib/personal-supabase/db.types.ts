@@ -199,6 +199,59 @@ export type Database = {
         }
         Relationships: []
       }
+      courier_upload_guard: {
+        Row: {
+          account: number
+          consignment: string | null
+          created_at: string
+          created_by: string | null
+          invoice_no: string | null
+          last_error: string | null
+          order_id: string
+          provider: string
+          request_started_at: string
+          resolved_at: string | null
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          account: number
+          consignment?: string | null
+          created_at?: string
+          created_by?: string | null
+          invoice_no?: string | null
+          last_error?: string | null
+          order_id: string
+          provider?: string
+          request_started_at?: string
+          resolved_at?: string | null
+          state?: string
+          updated_at?: string
+        }
+        Update: {
+          account?: number
+          consignment?: string | null
+          created_at?: string
+          created_by?: string | null
+          invoice_no?: string | null
+          last_error?: string | null
+          order_id?: string
+          provider?: string
+          request_started_at?: string
+          resolved_at?: string | null
+          state?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_upload_guard_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courier_history_cache: {
         Row: {
           configured: boolean
