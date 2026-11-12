@@ -121,5 +121,8 @@ Deno.serve(async (req) => {
   if (targetError || !target.user) return json({ error: targetError?.message || "User not found" }, 404);
   const { error: updateError } = await admin.from("user_roles").upsert({ user_id: userId, role }, { onConflict: "user_id,role" });
   if (updateError) return json({ error: updateError.message }, 500);
+  const { error: staleRoleError } = await admin.from("user_roles").delete()
+    .eq("user_id", userId).in("role", ["super_admin", "admin", "employee"]).neq("role", role);
+  if (staleRoleError) return json({ error: staleRoleError.message }, 500);
   return json({ ok: true });
 });
