@@ -91,6 +91,28 @@ Deno.serve(async (req) => {
   if (!employee) return json({ error: "Employee not found" }, 404);
 
   const targetUserId = employee.user_id ? String(employee.user_id) : null;
+
+  // Never delete an employee while orders are still assigned to their panel.
+  // Check every order status and fail closed if the lookup itself fails.
+  if (targetUserId) {
+    const { count: assignedOrderCount, error: assignedOrdersError } = await admin
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("assigned_to", targetUserId);
+
+    if (assignedOrdersError) {
+      return json({ error: "অর্ডার যাচাই করা যায়নি। নিরাপত্তার জন্য Employee ডিলিট করা হয়নি: " + assignedOrdersError.message }, 500);
+    }
+    if ((assignedOrderCount ?? 0) > 0) {
+      return json({
+        error: `এই Employee-এর প্যানেলে ${assignedOrderCount.toLocaleString("en-US")}টি অর্ডার রয়েছে। আগে অর্ডারগুলো অন্য Employee-কে Assign করুন বা Unassign করুন, তারপর ডিলিট করুন।`,
+        code: "EMPLOYEE_HAS_ASSIGNED_ORDERS",
+        assigned_order_count: assignedOrderCount,
+      }, 409);
+    }
+  }
+
+  // Only remove the Auth account after confirming no orders remain assigned.
   // If Auth deletion fails, keep the employee profile untouched.
   if (targetUserId) {
     const { error: authDeleteError } = await admin.auth.admin.deleteUser(targetUserId);
