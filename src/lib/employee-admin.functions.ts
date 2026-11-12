@@ -63,7 +63,13 @@ export const deleteEmployee = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ employee_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     await assertHrm(context.supabase, context.userId);
-    return invokeAdminBridge(context.supabase, { action: "employee_delete", employee_id: data.employee_id });
+    const { data: result, error } = await context.supabase.functions.invoke("employee-delete", {
+      body: { employee_id: data.employee_id },
+    });
+    if (error) throw new Error(error.message || "Employee delete failed");
+    if (result?.error) throw new Error(String(result.error));
+    if (result?.ok !== true) throw new Error("Employee delete was not confirmed");
+    return result;
   });
 
 export const resetEmployeePassword = createServerFn({ method: "POST" })
