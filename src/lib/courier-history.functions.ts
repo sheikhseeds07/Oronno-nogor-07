@@ -29,7 +29,7 @@ type PersistentHit = { result: CourierHistoryResult; fresh: boolean; fetchedAtMs
 const SUCCESS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const FAILURE_CACHE_TTL_MS = 15 * 1000;
 const STALE_CACHE_TTL_MS = 30 * 60 * 1000;
-const CACHE_VERSION = "courier-history-v16-hoorin-all-couriers";
+const CACHE_VERSION = "courier-history-v17-hoorin-all-couriers";
 const MAX_CACHE_ENTRIES = 3000;
 
 const courierCache = new Map<string, CacheEntry>();
