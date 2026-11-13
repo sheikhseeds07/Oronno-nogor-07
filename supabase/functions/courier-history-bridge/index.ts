@@ -102,7 +102,7 @@ function parseStats(payload: unknown): CourierStat[] {
   if (!payload || typeof payload !== "object") return [];
   const found = new Map<string, CourierStat>();
   const normalizeKey = (key: string) => key.toLowerCase().replace(/[\\s_-]/g, "");
-  const totalKeys = new Set(["totalparcels","totaldelivery","totalparcel","total","totalparcelcount","totalparcelscount","totalorders","parcelcount","ordercount","totalcount","allparcels"]);
+  const totalKeys = new Set(["totalparcels","totaldelivery","totalparcel","total","totalparcelcount","totalparcelscount","totalparcels","totalorders","parcelcount","ordercount","totalcount","allparcels"]);
   const successKeys = new Set(["deliveredparcels","successfuldelivery","successparcel","success","delivered","deliveredparcel","totaldelivered","deliveredcount","deliveredorders","successfulorders","successcount","completed","completedorders"]);
   const cancelledKeys = new Set(["canceledparcels","canceleddelivery","cancelledparcels","cancelledparcel","cancelledparcelscount","canceledparcels","canceledparcel","cancelled","canceled","cancel","totalcancelled","cancelledcount","cancelledorders","canceledorders","cancelcount"]);
   const nameKeys = ["name","courier","couriername","courier_name","provider","carrier","service","courierservice","couriertitle","title"];
