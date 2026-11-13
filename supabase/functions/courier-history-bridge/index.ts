@@ -27,6 +27,7 @@ let configCache: { expiresAt: number; value: { configured: boolean; endpoint: st
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "private, no-store" } });
 const num = (value: unknown) => { const n = Number(value); return Number.isFinite(n) ? n : 0; };
+const hasRecords = (result: HistoryResult) => Number(result.overall?.total ?? 0) > 0 || result.stats.some((row) => row.total > 0 || row.success > 0 || row.cancelled > 0);
 const pretty = (s: string) => s.replace(/[_-]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
 function readMemory(key: string): HistoryResult | null {
@@ -44,7 +45,7 @@ function writeMemory(key: string, result: HistoryResult) {
     if (!first) break;
     historyCache.delete(first);
   }
-  const ttl = result.stale ? STALE_CACHE_TTL_MS : result.error ? FAILURE_CACHE_TTL_MS : SUCCESS_CACHE_TTL_MS;
+  const ttl = result.stale ? STALE_CACHE_TTL_MS : result.error || !hasRecords(result) ? FAILURE_CACHE_TTL_MS : SUCCESS_CACHE_TTL_MS;
   historyCache.set(key, { expiresAt: now + ttl, result });
 }
 
@@ -202,7 +203,7 @@ async function readPersistent(admin: ReturnType<typeof createClient>, phone: str
       source: "cache",
     };
     const expiresAt = new Date(String(data.expires_at ?? "")).getTime();
-    return { result, fresh: Number.isFinite(expiresAt) && expiresAt > Date.now() && data.steadfast_source === "hoorin-all-couriers-v4" };
+    return { result, fresh: hasRecords(result) && Number.isFinite(expiresAt) && expiresAt > Date.now() && data.steadfast_source === "hoorin-all-couriers-v4" };
   })();
 
   persistentReadInFlight.set(phone, request);
@@ -221,7 +222,8 @@ async function writePersistent(admin: ReturnType<typeof createClient>, phone: st
   const courierStats = result.stats.filter((row) => String(row.name).toLowerCase() !== "overall");
   const overall = result.overall ?? aggregateOverall(courierStats);
   const persistedStats = [...courierStats, overall];
-  await admin.from("courier_history_cache").upsert({ phone, configured: true, stats: persistedStats, error: null, steadfast_source: "hoorin-all-couriers-v4", fetched_at: new Date(now).toISOString(), expires_at: new Date(now + SUCCESS_CACHE_TTL_MS).toISOString() }, { onConflict: "phone" });
+  const ttl = hasRecords(result) ? SUCCESS_CACHE_TTL_MS : FAILURE_CACHE_TTL_MS;
+  await admin.from("courier_history_cache").upsert({ phone, configured: true, stats: persistedStats, error: null, steadfast_source: "hoorin-all-couriers-v4", fetched_at: new Date(now).toISOString(), expires_at: new Date(now + ttl).toISOString() }, { onConflict: "phone" });
 }
 
 async function reserveProviderSlot(admin: ReturnType<typeof createClient>) {
@@ -289,7 +291,7 @@ Deno.serve(async (req) => {
   if (phone.length < 6 || phone.length > 20) return json({ error: "Invalid phone" }, 400);
   const forceRefresh = body.forceRefresh === true;
   const memory = readMemory(phone);
-  if (!forceRefresh && memory && !memory.error && memory.overall) return json(memory);
+  if (!forceRefresh && memory && !memory.error && hasRecords(memory)) return json(memory);
   const persistent = await readPersistent(admin, phone);
   if (!forceRefresh && persistent?.fresh && !persistent.result.error && persistent.result.overall) { writeMemory(phone, persistent.result); return json(persistent.result); }
   const existing = inFlight.get(phone);
@@ -298,7 +300,7 @@ Deno.serve(async (req) => {
     const waitMs = await reserveProviderSlot(admin);
     if (waitMs > 0) await sleep(waitMs);
     const afterWait = await readPersistent(admin, phone);
-    if (!forceRefresh && afterWait?.fresh && !afterWait.result.error && afterWait.result.overall) return afterWait.result;
+    if (!forceRefresh && afterWait?.fresh && !afterWait.result.error && hasRecords(afterWait.result)) return afterWait.result;
     const result = await fetchHoorin(admin, phone);
     if (!result.error) {
       const live = {
