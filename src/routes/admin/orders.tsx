@@ -2013,19 +2013,7 @@ function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCre
     const total = displayData.overall?.total ?? displayData.stats.reduce((sum: number, stat: any) => sum + stat.total, 0);
     const success = displayData.overall?.success ?? displayData.stats.reduce((sum: number, stat: any) => sum + stat.success, 0);
     const cancelled = displayData.overall?.cancelled ?? displayData.stats.reduce((sum: number, stat: any) => sum + stat.cancelled, 0);
-    const sf = displayData.steadfast as { deliveryRatio: number; cancellationRatio: number; volumeBand: string | null } | undefined;
-    if (!total && sf) {
-      const rate = Math.round(sf.deliveryRatio);
-      const ring = rate >= 80 ? "border-emerald-500 text-emerald-700" : rate >= 50 ? "border-amber-500 text-amber-700" : "border-rose-500 text-rose-700";
-      content = (
-        <div className="flex items-center gap-2">
-          <div className={`w-9 h-9 rounded-full border-[3px] ${ring} flex items-center justify-center text-[10px] font-bold`}>{rate}%</div>
-          <div className="text-[11px] leading-tight">
-            <div className="font-bold text-slate-700">Steadfast</div>
-          </div>
-        </div>
-      );
-    } else if (total) {
+    if (total) {
       const rate = Math.round((success / total) * 100);
       const ring = rate >= 80 ? "border-emerald-500 text-emerald-700" : rate >= 50 ? "border-amber-500 text-amber-700" : "border-rose-500 text-rose-700";
       content = (
@@ -2500,7 +2488,6 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
             {courierStats.map((c) => (
               <CourierCard key={c.name} name={c.name} total={c.total} success={c.success} cancelled={c.cancelled} />
             ))}
-            {!courierStats.some((c) => c.name.toLowerCase().startsWith("steadfast") && c.total > 0) && <SteadfastRateCard sf={(extHistory as any)?.steadfast} />}
             {courierLoading && null}
             {!courierLoading && hoorinError && <div className="min-w-[220px] rounded-lg border border-dashed p-2.5 bg-amber-50 text-xs text-amber-800 self-center">Hoorin error: {hoorinError}</div>}
             {!courierLoading && !hoorinError && hoorinReady && courierStats.length === 0 && <div className="min-w-[200px] rounded-lg border border-dashed p-2.5 bg-muted/40 text-xs text-muted-foreground self-center">এই নাম্বারে কোনো কুরিয়ার রেকর্ড নেই</div>}
@@ -2650,21 +2637,6 @@ function CourierCard({ name, total, success, cancelled, highlight, clickable }: 
       <div className="text-muted-foreground">Total: <span className="font-semibold text-foreground">{total}</span></div>
       <div className="text-emerald-700">Success: <span className="font-semibold">{success}</span></div>
       <div className="text-rose-600">Cancelled: <span className="font-semibold">{cancelled}</span></div>
-      <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-1">
-        <div className="h-full bg-emerald-500" style={{ width: `${rate}%` }} />
-      </div>
-    </div>
-  );
-}
-
-function SteadfastRateCard({ sf }: { sf?: { deliveryRatio: number; cancellationRatio: number; volumeBand: string | null } | null }) {
-  if (!sf) return null;
-  const rate = Math.round(sf.deliveryRatio);
-  return (
-    <div className="min-w-[150px] rounded-lg border p-2.5 text-xs space-y-1 bg-white">
-      <div className="font-bold text-sm text-foreground">Steadfast</div>
-      <div className="text-emerald-600 font-semibold">Success Rate: {rate}%</div>
-      <div className="text-rose-600">Cancelled: <span className="font-semibold">{Math.round(sf.cancellationRatio)}%</span></div>
       <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-1">
         <div className="h-full bg-emerald-500" style={{ width: `${rate}%` }} />
       </div>
@@ -3401,7 +3373,6 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
               {courierStats.map((c) => (
                 <CourierCard key={c.name} name={c.name} total={c.total} success={c.success} cancelled={c.cancelled} />
               ))}
-              {!courierStats.some((c) => c.name.toLowerCase().startsWith("steadfast") && c.total > 0) && <SteadfastRateCard sf={(extHistory as any)?.steadfast} />}
               {hoorinError && (
                 <div className="min-w-[220px] rounded-lg border border-dashed p-2.5 bg-amber-50 text-xs text-amber-800 self-center">
                   Hoorin error: {hoorinError}
