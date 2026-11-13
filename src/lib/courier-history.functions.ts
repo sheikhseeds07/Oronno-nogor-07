@@ -29,7 +29,7 @@ type PersistentHit = { result: CourierHistoryResult; fresh: boolean; fetchedAtMs
 const SUCCESS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const FAILURE_CACHE_TTL_MS = 15 * 1000;
 const STALE_CACHE_TTL_MS = 30 * 60 * 1000;
-const CACHE_VERSION = "courier-history-v17-hoorin-all-couriers";
+const CACHE_VERSION = "courier-history-v18-hoorin-all-couriers";
 const MAX_CACHE_ENTRIES = 3000;
 
 const courierCache = new Map<string, CacheEntry>();
@@ -160,7 +160,7 @@ async function readPersistentCache(phone: string): Promise<PersistentHit | null>
   };
   const expiresAt = new Date(String(data.expires_at ?? "")).getTime();
   const fetchedAtMs = new Date(String(data.fetched_at ?? "")).getTime();
-  return { result, fresh: Number.isFinite(expiresAt) && expiresAt > Date.now() && data.steadfast_source === "hoorin-all-couriers-v2", fetchedAtMs };
+  return { result, fresh: Number.isFinite(expiresAt) && expiresAt > Date.now() && data.steadfast_source === "hoorin-all-couriers-v4", fetchedAtMs };
   })();
   persistentReadInFlight.set(phone, request);
   try {
