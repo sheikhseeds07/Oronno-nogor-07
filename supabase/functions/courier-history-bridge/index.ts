@@ -101,48 +101,68 @@ function prettyCourier(normalizedKey: string, fallback: string) {
 function parseStats(payload: unknown): CourierStat[] {
   if (!payload || typeof payload !== "object") return [];
   const found = new Map<string, CourierStat>();
-
-  const visit = (key: string, value: unknown, depth: number) => {
-    if (!value || typeof value !== "object" || depth > 6) return;
-    if (Array.isArray(value)) {
-      for (const entry of value) {
-        if (entry && typeof entry === "object" && !Array.isArray(entry)) {
-          const row = entry as JsonRecord;
-          const rowName = typeof row.name === "string" ? row.name : typeof row.courier === "string" ? row.courier : key;
-          visit(String(rowName), row, depth + 1);
+  const normalizeKey = (key: string) => key.toLowerCase().replace(/[\\s_-]/g, "");
+  const totalKeys = new Set(["totalparcels","totaldelivery","totalparcel","total","totalparcelcount","totalparcelscount","totalorders","parcelcount","ordercount","totalcount","allparcels"]);
+  const successKeys = new Set(["deliveredparcels","successfuldelivery","successparcel","success","delivered","deliveredparcel","totaldelivered","deliveredcount","deliveredorders","successfulorders","successcount","completed","completedorders"]);
+  const cancelledKeys = new Set(["canceledparcels","canceleddelivery","cancelledparcels","cancelledparcel","cancelledparcelscount","canceledparcels","canceledparcel","cancelled","canceled","cancel","totalcancelled","cancelledcount","cancelledorders","canceledorders","cancelcount"]);
+  const nameKeys = ["name","courier","couriername","courier_name","provider","carrier","service","courierservice","couriertitle","title"];
+  const readNumber = (sources: JsonRecord[], aliases: Set<string>) => {
+    for (const source of sources) {
+      for (const [key, value] of Object.entries(source)) {
+        if (aliases.has(normalizeKey(key)) && value !== null && value !== undefined && value !== "") {
+          const n = Number(value);
+          if (Number.isFinite(n)) return n;
         }
+      }
+    }
+    return 0;
+  };
+  const visit = (key: string, value: unknown, depth: number) => {
+    if (!value || typeof value !== "object" || depth > 8) return;
+    if (Array.isArray(value)) {
+      for (const entry of value) if (entry && typeof entry === "object" && !Array.isArray(entry)) {
+        visit(key, entry, depth + 1);
       }
       return;
     }
 
     const row = value as JsonRecord;
-    const inner = row.summary && typeof row.summary === "object" && !Array.isArray(row.summary) ? row.summary as JsonRecord : row;
-    const total = num(inner["Total Parcels"] ?? inner["Total Delivery"] ?? inner.total_parcel ?? inner.totalParcel ?? inner.total ?? inner["total_parcel_count"] ?? inner.Total_parcels ?? inner.total_parcels ?? inner.totalParcelCount ?? inner.total_parcels ?? inner.totalParcels ?? inner.total_orders ?? inner.totalOrders ?? inner.parcel_count ?? inner.parcelCount ?? inner.order_count ?? inner.orderCount);
-    const success = num(inner["Delivered Parcels"] ?? inner["Successful Delivery"] ?? inner.delivered_parcels ?? inner.success_parcel ?? inner.successParcel ?? inner.success ?? inner.delivered ?? inner["delivered_parcel"] ?? inner.total_delivered ?? inner.delivered_count ?? inner.delivered_orders ?? inner.deliveredOrders ?? inner.successful_orders ?? inner.successfulOrders ?? inner.success_count ?? inner.successCount);
-    const cancelled = num(inner["Canceled Parcels"] ?? inner["Canceled Delivery"] ?? inner["Cancelled Parcels"] ?? inner.cancelled_parcels ?? inner.canceled_parcels ?? inner.cancelled_parcel ?? inner.cancelledParcel ?? inner.cancel ?? inner.cancelled ?? inner["cancelled_parcel"] ?? inner.total_cancelled ?? inner.cancelled_count ?? inner.cancelled_orders ?? inner.cancelledOrders ?? inner.canceled_orders ?? inner.canceledOrders ?? inner.cancel_count ?? inner.cancelCount);
-    const hasCounts = COUNT_KEYS.some((k) => Object.prototype.hasOwnProperty.call(inner, k));
+    const nested = [row.summary, row.stats, row.data, row.result]
+      .filter((item): item is JsonRecord => !!item && typeof item === "object" && !Array.isArray(item));
+    const sources = [row, ...nested];
+    const total = readNumber(sources, totalKeys);
+    const success = readNumber(sources, successKeys);
+    const cancelled = readNumber(sources, cancelledKeys);
+    const hasCounts = sources.some(source => Object.keys(source).some(k => totalKeys.has(normalizeKey(k)) || successKeys.has(normalizeKey(k)) || cancelledKeys.has(normalizeKey(k))));
 
-    const rawName = typeof inner.name === "string" && inner.name.trim() ? inner.name.trim() : key;
-    const normalizedKey = String(rawName).replace(/[\s_-]/g, "").toLowerCase();
-    const isCourier = COURIER_KEY_RE.test(normalizedKey);
+    let rawName = "";
+    for (const source of sources) {
+      for (const field of nameKeys) {
+        const match = Object.entries(source).find(([k,v]) => normalizeKey(k) === normalizeKey(field) && typeof v === "string" && v.trim());
+        if (match) { rawName = String(match[1]).trim(); break; }
+      }
+      if (rawName) break;
+    }
+    if (!rawName && !SKIP_KEY_RE.test(normalizeKey(key)) && key !== "root") rawName = key;
 
-    if ((isCourier || hasCounts) && !SKIP_KEY_RE.test(normalizedKey)) {
-      const name = prettyCourier(normalizedKey, pretty(String(rawName)));
-      const id = name.toLowerCase();
+    const normalizedKey = normalizeKey(rawName);
+    if (hasCounts && rawName && !SKIP_KEY_RE.test(normalizedKey)) {
+      const name = prettyCourier(normalizedKey, pretty(rawName));
+      const id = normalizeKey(name);
       const prev = found.get(id);
       if (!prev || total > prev.total || (total === prev.total && success > prev.success)) {
         found.set(id, { name, total, success, cancelled });
       }
     }
 
-    for (const [k, v] of Object.entries(row)) {
-      if (v && typeof v === "object") visit(k, v, depth + 1);
+    for (const [childKey, child] of Object.entries(row)) {
+      if (child && typeof child === "object") visit(childKey, child, depth + 1);
     }
   };
 
   visit("root", payload, 0);
   return Array.from(found.values())
-    .filter((s) => COURIER_KEY_RE.test(s.name.replace(/[\s_-]/g, "").toLowerCase()) || s.total > 0 || s.success > 0 || s.cancelled > 0)
+    .filter(s => s.total > 0 || s.success > 0 || s.cancelled > 0)
     .sort((a, b) => b.total - a.total);
 }
 
@@ -182,7 +202,7 @@ async function readPersistent(admin: ReturnType<typeof createClient>, phone: str
       source: "cache",
     };
     const expiresAt = new Date(String(data.expires_at ?? "")).getTime();
-    return { result, fresh: Number.isFinite(expiresAt) && expiresAt > Date.now() && data.steadfast_source === "hoorin-all-couriers-v2" };
+    return { result, fresh: Number.isFinite(expiresAt) && expiresAt > Date.now() && data.steadfast_source === "hoorin-all-couriers-v3" };
   })();
 
   persistentReadInFlight.set(phone, request);
@@ -201,7 +221,7 @@ async function writePersistent(admin: ReturnType<typeof createClient>, phone: st
   const courierStats = result.stats.filter((row) => String(row.name).toLowerCase() !== "overall");
   const overall = result.overall ?? aggregateOverall(courierStats);
   const persistedStats = [...courierStats, overall];
-  await admin.from("courier_history_cache").upsert({ phone, configured: true, stats: persistedStats, error: null, steadfast_source: "hoorin-all-couriers-v2", fetched_at: new Date(now).toISOString(), expires_at: new Date(now + SUCCESS_CACHE_TTL_MS).toISOString() }, { onConflict: "phone" });
+  await admin.from("courier_history_cache").upsert({ phone, configured: true, stats: persistedStats, error: null, steadfast_source: "hoorin-all-couriers-v3", fetched_at: new Date(now).toISOString(), expires_at: new Date(now + SUCCESS_CACHE_TTL_MS).toISOString() }, { onConflict: "phone" });
 }
 
 async function reserveProviderSlot(admin: ReturnType<typeof createClient>) {
