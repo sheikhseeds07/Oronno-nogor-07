@@ -68,7 +68,7 @@ export function MetaAdsResultCard({ range, accountKey, onAccountChange }: Props)
 }
 function ManageAdsDialog({range}:{range:DashboardRange}) {
  const inventoryFn=useServerFn(getMetaCampaignInventory), adsetsFn=useServerFn(getMetaCampaignAdsets), adsFn=useServerFn(getMetaAdsetAds), detailFn=useServerFn(getMetaAdDetails), statusFn=useServerFn(setMetaAdStatus), scheduleFn=useServerFn(scheduleMetaAdStatus), schedulesFn=useServerFn(getMetaAdSchedules), cancelFn=useServerFn(cancelMetaAdSchedule);
- const [open,setOpen]=useState(false),[accountKey,setAccountKey]=useState<"meta_ad_account"|"meta_ad_account_2">("meta_ad_account_2");
+ const [open,setOpen]=useState(false),[accountKey,setAccountKey]=useState<"meta_ad_account"|"meta_ad_account_2">("meta_ad_account");
  const [managePreset,setManagePreset]=useState<DashboardPreset>(()=>inferPreset(range)),[manageRange,setManageRange]=useState<DashboardRange>(range);
  const [inventory,setInventory]=useState<any>(null),[schedules,setSchedules]=useState<any[]>([]),[selected,setSelected]=useState<string[]>([]),[campaign,setCampaign]=useState<any>(null),[adsets,setAdsets]=useState<any>(null),[adset,setAdset]=useState<any>(null),[adsetAds,setAdsetAds]=useState<any>(null);
  const [loading,setLoading]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(""),[query,setQuery]=useState(""),[filter,setFilter]=useState("all");
