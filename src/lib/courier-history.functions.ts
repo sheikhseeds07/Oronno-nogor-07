@@ -141,7 +141,7 @@ async function readPersistentCache(phone: string): Promise<PersistentHit | null>
   const admin = supabaseAdmin as any;
   const { data, error } = await admin
     .from("courier_history_cache")
-     .select("configured,stats,error,expires_at,fetched_at,steadfast_score")
+     .select("configured,stats,error,expires_at,fetched_at,steadfast_score,steadfast_source")
     .eq("phone", phone)
     .maybeSingle();
   if (error || !data) return null;
@@ -161,7 +161,7 @@ async function readPersistentCache(phone: string): Promise<PersistentHit | null>
   };
   const expiresAt = new Date(String(data.expires_at ?? "")).getTime();
   const fetchedAtMs = new Date(String(data.fetched_at ?? "")).getTime();
-  return { result, fresh: Number.isFinite(expiresAt) && expiresAt > Date.now(), fetchedAtMs };
+  return { result, fresh: Number.isFinite(expiresAt) && expiresAt > Date.now() && data.steadfast_source === "hoorin-all-couriers-v2", fetchedAtMs };
   })();
   persistentReadInFlight.set(phone, request);
   try {
