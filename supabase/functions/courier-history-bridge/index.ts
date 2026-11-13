@@ -101,7 +101,7 @@ function prettyCourier(normalizedKey: string, fallback: string) {
 function parseStats(payload: unknown): CourierStat[] {
   if (!payload || typeof payload !== "object") return [];
   const found = new Map<string, CourierStat>();
-  const normalizeKey = (key: string) => key.toLowerCase().replace(/[\\s_-]/g, "");
+  const normalizeKey = (key: string) => key.toLowerCase().replace(/[^a-z0-9]/g, "");
   const totalKeys = new Set(["totalparcels","totaldelivery","totalparcel","total","totalparcelcount","totalparcelscount","totalparcels","totalorders","parcelcount","ordercount","totalcount","allparcels"]);
   const successKeys = new Set(["deliveredparcels","successfuldelivery","successparcel","success","delivered","deliveredparcel","totaldelivered","deliveredcount","deliveredorders","successfulorders","successcount","completed","completedorders"]);
   const cancelledKeys = new Set(["canceledparcels","canceleddelivery","cancelledparcels","cancelledparcel","cancelledparcelscount","canceledparcels","canceledparcel","cancelled","canceled","cancel","totalcancelled","cancelledcount","cancelledorders","canceledorders","cancelcount"]);
@@ -202,7 +202,7 @@ async function readPersistent(admin: ReturnType<typeof createClient>, phone: str
       source: "cache",
     };
     const expiresAt = new Date(String(data.expires_at ?? "")).getTime();
-    return { result, fresh: Number.isFinite(expiresAt) && expiresAt > Date.now() && data.steadfast_source === "hoorin-all-couriers-v3" };
+    return { result, fresh: Number.isFinite(expiresAt) && expiresAt > Date.now() && data.steadfast_source === "hoorin-all-couriers-v4" };
   })();
 
   persistentReadInFlight.set(phone, request);
@@ -221,7 +221,7 @@ async function writePersistent(admin: ReturnType<typeof createClient>, phone: st
   const courierStats = result.stats.filter((row) => String(row.name).toLowerCase() !== "overall");
   const overall = result.overall ?? aggregateOverall(courierStats);
   const persistedStats = [...courierStats, overall];
-  await admin.from("courier_history_cache").upsert({ phone, configured: true, stats: persistedStats, error: null, steadfast_source: "hoorin-all-couriers-v3", fetched_at: new Date(now).toISOString(), expires_at: new Date(now + SUCCESS_CACHE_TTL_MS).toISOString() }, { onConflict: "phone" });
+  await admin.from("courier_history_cache").upsert({ phone, configured: true, stats: persistedStats, error: null, steadfast_source: "hoorin-all-couriers-v4", fetched_at: new Date(now).toISOString(), expires_at: new Date(now + SUCCESS_CACHE_TTL_MS).toISOString() }, { onConflict: "phone" });
 }
 
 async function reserveProviderSlot(admin: ReturnType<typeof createClient>) {
