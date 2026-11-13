@@ -1970,7 +1970,7 @@ function useSharedCourierHistory(phone: string, enabled: boolean) {
   return query;
 }
 
-function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCreatedAt?: string | null }) {
+function CourierSuccessCell({ phone }: { phone: string; orderCreatedAt?: string | null }) {
   const cellRef = useRef<HTMLDivElement>(null);
   const [inView, setInView] = useState(false);
   const digits = normalizePhone(phone);
