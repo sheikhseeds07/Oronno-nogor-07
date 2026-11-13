@@ -259,6 +259,7 @@ export const getOronnoNogorAdsList = createServerFn({ method: "POST" })
 
 const ManageRange = z.object({accountKey:z.enum(["meta_ad_account","meta_ad_account_2"]),from:z.string().datetime(),to:z.string().datetime()});
 const ManageAction = z.object({accountKey:z.enum(["meta_ad_account","meta_ad_account_2"]),targetType:z.enum(["campaign","adset","ad"]).default("ad"),targetId:z.string().min(1).max(80),action:z.enum(["ACTIVE","PAUSED"])});
+const ManageBudget = z.object({accountKey:z.enum(["meta_ad_account","meta_ad_account_2"]),targetType:z.enum(["campaign","adset"]),targetId:z.string().min(1).max(80),dailyBudget:z.number().finite().positive().max(100000000)});
 async function manageAccount(context:any,key:"meta_ad_account"|"meta_ad_account_2"){
  const db=context.supabase as any;
  await assertIsAdmin(context.userId).catch(() => { throw new Error("Admin access required"); });
@@ -285,6 +286,23 @@ async function changeAdStatus(adId:string,token:string,action:"ACTIVE"|"PAUSED")
  const p=await r.json().catch(()=>({}));
  if(!r.ok||p?.error||p?.success!==true) throw new Error(p?.error?.message||`Meta API failed (${r.status})`);
 }
+export const updateMetaDailyBudget=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(i=>ManageBudget.parse(i)).handler(async({data,context})=>{
+ const {token,accountId}=await manageAccount(context,data.accountKey);
+ const fields=data.targetType==="campaign"?"id,account_id,daily_budget":"id,account_id,daily_budget,campaign{id,daily_budget}";
+ const target=await graphJson(`https://graph.facebook.com/v23.0/${encodeURIComponent(data.targetId)}?fields=${fields}&access_token=${encodeURIComponent(token)}`);
+ if(String(target.account_id??"")!==accountId)throw new Error("Selected object does not belong to this Ad Account");
+ if(data.targetType==="campaign"&&target.daily_budget==null)throw new Error("এই Campaign-এ সরাসরি Daily Budget সেট করা নেই। Ad Set-এর বাজেট আলাদাভাবে পরিবর্তন করুন।");
+ if(data.targetType==="adset"&&target.campaign?.daily_budget!=null)throw new Error("এই Campaign-এর বাজেট Campaign level-এ সেট করা আছে। Campaign Budget থেকেই পরিবর্তন করুন।");
+ if(data.targetType==="adset"&&target.daily_budget==null)throw new Error("এই Ad Set-এ Daily Budget সেট করা নেই; Lifetime Budget ব্যবহার করা হতে পারে।");
+ const minorUnits=Math.round(data.dailyBudget*100);
+ if(!Number.isSafeInteger(minorUnits)||minorUnits<=0)throw new Error("সঠিক Daily Budget লিখুন");
+ const body=new URLSearchParams({daily_budget:String(minorUnits),access_token:token});
+ const response=await fetch(`https://graph.facebook.com/v23.0/${encodeURIComponent(data.targetId)}`,{method:"POST",headers:{"content-type":"application/x-www-form-urlencoded"},body,signal:AbortSignal.timeout(12000)});
+ const payload=await response.json().catch(()=>({}));
+ if(!response.ok||payload?.error||payload?.success!==true)throw new Error(payload?.error?.message||`Meta API failed (${response.status})`);
+ return {success:true,targetType:data.targetType,targetId:data.targetId,dailyBudget:minorUnits/100};
+});
+
 export const getMetaAdInventory=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(i=>ManageRange.parse(i)).handler(async({data,context})=>{
  const {token,accountId,cfg}=await manageAccount(context,data.accountKey);
  const since=dhakaDate(data.from),until=dhakaDate(data.to),base=`https://graph.facebook.com/v23.0/act_${encodeURIComponent(accountId)}`;
@@ -332,7 +350,7 @@ export const getMetaCampaignInventory=createServerFn({method:"POST"}).middleware
  const ip=new URLSearchParams({level:"campaign",fields:"campaign_id,spend,actions,cost_per_action_type,purchase_roas",time_range:JSON.stringify({since,until}),limit:"500",access_token:token});
  const [insights,accountInfo]=await Promise.all([graphJson(`${base}/insights?${ip}`),graphJson(`${base}?fields=name,currency&access_token=${encodeURIComponent(token)}`)]);
  const im=new Map((insights.data??[]).map((x:any)=>[String(x.campaign_id),x]));
- const campaigns=items.map((x:any)=>{const st=String(x.status??"UNKNOWN").toUpperCase(),es=String(x.effective_status??st).toUpperCase();return {id:String(x.id),name:String(x.name||"Unnamed Campaign"),status:st,effectiveStatus:es,state:es==="ACTIVE"?"On":(["PAUSED","ARCHIVED","DELETED"].includes(es)||["PAUSED","ARCHIVED","DELETED"].includes(st))?"Off":"Other",objective:String(x.objective||""),dailyBudget:x.daily_budget==null?0:Number(x.daily_budget)/100,imageUrl:String(x.ads?.data?.[0]?.creative?.thumbnail_url||x.ads?.data?.[0]?.creative?.image_url||""),...purchaseMetrics(im.get(String(x.id))??{}),roas:(()=>{const ins=im.get(String(x.id))??{};const r=findPurchase(Array.isArray(ins.purchase_roas)?ins.purchase_roas:[]);return r?Number(r.value):null;})()};});
+ const campaigns=items.map((x:any)=>{const st=String(x.status??"UNKNOWN").toUpperCase(),es=String(x.effective_status??st).toUpperCase();return {id:String(x.id),name:String(x.name||"Unnamed Campaign"),status:st,effectiveStatus:es,state:es==="ACTIVE"?"On":(["PAUSED","ARCHIVED","DELETED"].includes(es)||["PAUSED","ARCHIVED","DELETED"].includes(st))?"Off":"Other",objective:String(x.objective||""),budgetType:x.daily_budget==null?"adset":"campaign",dailyBudget:x.daily_budget==null?0:Number(x.daily_budget)/100,imageUrl:String(x.ads?.data?.[0]?.creative?.thumbnail_url||x.ads?.data?.[0]?.creative?.image_url||""),...purchaseMetrics(im.get(String(x.id))??{}),roas:(()=>{const ins=im.get(String(x.id))??{};const r=findPurchase(Array.isArray(ins.purchase_roas)?ins.purchase_roas:[]);return r?Number(r.value):null;})()};});
  return {accountName:String((cfg as any).demo_name||cfg.account_name||"Meta Ad Account"),currency:String(accountInfo.currency||"USD"),since,until,total:campaigns.length,onCount:campaigns.filter(x=>x.state==="On").length,offCount:campaigns.filter(x=>x.state==="Off").length,otherCount:campaigns.filter(x=>x.state==="Other").length,truncated:!!next,campaigns};
 });
 export const getMetaCampaignAdsets=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(i=>ManageRange.extend({campaignId:z.string().min(1).max(80)}).parse(i)).handler(async({data,context})=>{
@@ -347,7 +365,7 @@ export const getMetaCampaignAdsets=createServerFn({method:"POST"}).middleware([r
  const ip=new URLSearchParams({level:"adset",fields:"adset_id,spend,actions,cost_per_action_type,purchase_roas",time_range:JSON.stringify({since,until}),limit:"500",access_token:token});
  const insights=await graphJson(`https://graph.facebook.com/v23.0/act_${encodeURIComponent(accountId)}/insights?${ip}`);
  const im=new Map((insights.data??[]).map((x:any)=>[String(x.adset_id),x]));
- const adsets=items.map((x:any)=>{const st=String(x.status??"UNKNOWN").toUpperCase(),es=String(x.effective_status??st).toUpperCase();return {id:String(x.id),name:String(x.name||"Unnamed Ad Set"),status:st,effectiveStatus:es,state:es==="ACTIVE"?"On":(["PAUSED","CAMPAIGN_PAUSED","ARCHIVED","DELETED"].includes(es)||["PAUSED","ARCHIVED","DELETED"].includes(st))?"Off":"Other",dailyBudget:x.daily_budget==null?0:Number(x.daily_budget)/100,...purchaseMetrics(im.get(String(x.id))??{}),roas:(()=>{const r=findPurchase(Array.isArray(im.get(String(x.id))?.purchase_roas)?im.get(String(x.id)).purchase_roas:[]);return r?Number(r.value):null;})()};});
+ const adsets=items.map((x:any)=>{const st=String(x.status??"UNKNOWN").toUpperCase(),es=String(x.effective_status??st).toUpperCase();return {id:String(x.id),name:String(x.name||"Unnamed Ad Set"),status:st,effectiveStatus:es,state:es==="ACTIVE"?"On":(["PAUSED","CAMPAIGN_PAUSED","ARCHIVED","DELETED"].includes(es)||["PAUSED","ARCHIVED","DELETED"].includes(st))?"Off":"Other",budgetType:x.daily_budget==null?"none":"adset",dailyBudget:x.daily_budget==null?0:Number(x.daily_budget)/100,...purchaseMetrics(im.get(String(x.id))??{}),roas:(()=>{const r=findPurchase(Array.isArray(im.get(String(x.id))?.purchase_roas)?im.get(String(x.id)).purchase_roas:[]);return r?Number(r.value):null;})()};});
  return {campaignName:String(campaign.name||""),total:adsets.length,onCount:adsets.filter(x=>x.state==="On").length,offCount:adsets.filter(x=>x.state==="Off").length,adsets};
 });
 export const getMetaAdsetAds=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(i=>ManageRange.extend({adsetId:z.string().min(1).max(80)}).parse(i)).handler(async({data,context})=>{
