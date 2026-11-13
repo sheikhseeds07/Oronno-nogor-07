@@ -1930,80 +1930,65 @@ function escapeHtml(s: string) {
   return (s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 }
 
-function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCreatedAt?: string | null }) {
+const COURIER_CLIENT_CACHE_VERSION = "hoorin-courier-history-v11";
+const COURIER_CLIENT_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+function readCourierClientCache(phone: string): any | null {
+  if (!phone || typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(`${COURIER_CLIENT_CACHE_VERSION}:${phone}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const fetchedAt = Number(parsed?._fetchedAt ?? 0);
+    const total = Number(parsed?.overall?.total ?? 0);
+    if (!parsed?.configured || parsed?.error || !parsed?.overall || total <= 0) return null;
+    if (!fetchedAt || Date.now() - fetchedAt > COURIER_CLIENT_CACHE_TTL_MS) return null;
+    return parsed;
+  } catch { return null; }
+}
+
+function useSharedCourierHistory(phone: string, enabled: boolean) {
   const fn = useServerFn(fetchCourierHistory);
-  const cellRef = useRef<HTMLDivElement>(null);
-  const [inView, setInView] = useState(false);
-  const digits = normalizePhone(phone);
-  const enabled = digits.length >= 10;
-  const clientCacheKey = useMemo(
-    () => `hoorin-courier-history-v10:${digits}`,
-    [digits],
-  );
-
-  // Persist the last successful result in the browser. This lets a full
-  // page refresh render the saved rate immediately, without waiting for
-  // Supabase/Edge Function/network round-trips.
-  const readClientCache = useCallback((): any | null => {
-    if (!enabled || typeof window === "undefined") return null;
-    try {
-      const raw = window.localStorage.getItem(clientCacheKey);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      if (!parsed || !parsed.configured || parsed.error || !parsed.overall) return null;
-      const fetchedAt = Number(parsed._fetchedAt ?? 0);
-      if (fetchedAt && Date.now() - fetchedAt > 24 * 60 * 60 * 1000) return null;
-      return parsed;
-    } catch {
-      return null;
-    }
-  }, [clientCacheKey, enabled]);
-
-  const cachedClientResult = readClientCache();
-
-  // Courier lookups are relatively expensive (auth + cache + provider fallback).
-  // Only hydrate rows when they are near the viewport. A 50-row order page used
-  // to fan out dozens of server/Edge requests at once and made Admin feel slow.
-  useEffect(() => {
-    if (!enabled || cachedClientResult || inView) return;
-    const node = cellRef.current;
-    if (!node || typeof IntersectionObserver === "undefined") {
-      setInView(true);
-      return;
-    }
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry?.isIntersecting) {
-          setInView(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: "320px 0px" },
-    );    observer.observe(node);
-    return () => observer.disconnect();
-  }, [cachedClientResult, enabled, inView]);
-
-  const { data, isFetching } = useQuery({
-    queryKey: ["hoorin-courier-history-v10", digits],
-    enabled: enabled && inView && !cachedClientResult,
-    queryFn: () => fn({ data: { phone: digits, orderCreatedAt } }),
-    initialData: cachedClientResult ?? undefined,
-    staleTime: Infinity,
-    gcTime: 24 * 60 * 60 * 1000,
-    refetchOnMount: false,
+  const cached = readCourierClientCache(phone);
+  const query = useQuery({
+    queryKey: [COURIER_CLIENT_CACHE_VERSION, phone],
+    enabled: enabled && phone.length >= 10,
+    queryFn: async () => readCourierClientCache(phone) ?? fn({ data: { phone } }),
+    initialData: cached ?? undefined,
+    staleTime: (q) => Number(q.state.data?.overall?.total ?? 0) > 0 ? COURIER_CLIENT_CACHE_TTL_MS : 15_000,
+    gcTime: COURIER_CLIENT_CACHE_TTL_MS,
+    refetchOnMount: true,
     refetchOnWindowFocus: false,
     retry: 1,
     retryDelay: (attempt) => 600 * (attempt + 1),
   });
+  useEffect(() => {
+    const result = query.data;
+    if (!result?.configured || result.error || !result.overall || Number(result.overall.total ?? 0) <= 0 || typeof window === "undefined") return;
+    try { window.localStorage.setItem(`${COURIER_CLIENT_CACHE_VERSION}:${phone}`, JSON.stringify({ ...result, _fetchedAt: Date.now() })); } catch { /* server cache fallback */ }
+  }, [phone, query.data]);
+  return query;
+}
+
+function CourierSuccessCell({ phone, orderCreatedAt }: { phone: string; orderCreatedAt?: string | null }) {
+  const cellRef = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(false);
+  const digits = normalizePhone(phone);
+  const enabled = digits.length >= 10;
+  const cachedClientResult = readCourierClientCache(digits);
 
   useEffect(() => {
-    if (!data?.configured || data.error || typeof window === "undefined") return;
-    try {
-      window.localStorage.setItem(clientCacheKey, JSON.stringify({ ...data, _fetchedAt: Date.now() }));
-    } catch {
-      // Server-side persistent cache remains the fallback.
-    }
-  }, [clientCacheKey, data]);
+    if (!enabled || cachedClientResult || inView) return;
+    const node = cellRef.current;
+    if (!node || typeof IntersectionObserver === "undefined") { setInView(true); return; }
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry?.isIntersecting) { setInView(true); observer.disconnect(); }
+    }, { rootMargin: "320px 0px" });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [cachedClientResult, enabled, inView]);
+
+  const { data, isFetching } = useSharedCourierHistory(digits, enabled && (inView || !!cachedClientResult));
 
   let content: ReactNode = <span className="text-xs text-muted-foreground">—</span>;
   const displayData = data ?? cachedClientResult;
@@ -2390,16 +2375,7 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
 
   const historyTotal = history?.length ?? 0;
 
-  const { data: extHistory, isFetching: courierLoading } = useQuery({
-    queryKey: ["hoorin-courier-history", phoneDigits],
-    enabled: phoneReady,
-    queryFn: () => courierHistoryFn({ data: { phone: phoneDigits } }),
-    staleTime: 5 * 60_000,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    retry: 2,
-    retryDelay: (attempt) => 600 * (attempt + 1),
-  });
+  const { data: extHistory, isFetching: courierLoading } = useSharedCourierHistory(phoneDigits, phoneReady);
   const courierStats = extHistory?.configured ? extHistory.stats : [];
   const steadfastStat = courierStats.find((stat) => /steadfast/i.test(stat.name));
   const otherCourierStats = courierStats.filter((stat) => !/steadfast/i.test(stat.name));
@@ -3094,15 +3070,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
 
 
   // Real courier history via BD Courier Check API (configured in /admin/all-api)
-  const courierHistoryFn = useServerFn(fetchCourierHistory);
-  const { data: extHistory } = useQuery({
-    queryKey: ["hoorin-courier-history", lookupPhoneDigits],
-    enabled: lookupPhoneDigits.length >= 10,
-    queryFn: () => courierHistoryFn({ data: { phone: lookupPhoneDigits } }),
-    staleTime: 5 * 60_000,
-    retry: 2,
-    retryDelay: (attempt) => 600 * (attempt + 1),
-  });
+  const { data: extHistory } = useSharedCourierHistory(lookupPhoneDigits, lookupPhoneDigits.length >= 10);
 
   // Per-courier stats come ONLY from Hoorin API. No fallback / no synthetic distribution.
   const courierStats: { name: string; total: number; success: number; cancelled: number }[] =
