@@ -182,7 +182,7 @@ async function readPersistent(admin: ReturnType<typeof createClient>, phone: str
       source: "cache",
     };
     const expiresAt = new Date(String(data.expires_at ?? "")).getTime();
-    return { result, fresh: Number.isFinite(expiresAt) && expiresAt > Date.now() };
+    return { result, fresh: Number.isFinite(expiresAt) && expiresAt > Date.now() && data.steadfast_source === "hoorin-all-couriers-v2" };
   })();
 
   persistentReadInFlight.set(phone, request);
