@@ -60,9 +60,10 @@ function writeCache(key: string, result: CourierHistoryResult) {
     if (!first) break;
     courierCache.delete(first);
   }
+  const hasCourierRecords = Number(result.overall?.total ?? 0) > 0 || result.stats.some((row) => row.total > 0 || row.success > 0 || row.cancelled > 0);
   const ttl = result.stale
     ? STALE_CACHE_TTL_MS
-    : result.error || !result.configured
+    : result.error || !result.configured || !hasCourierRecords
       ? FAILURE_CACHE_TTL_MS
       : SUCCESS_CACHE_TTL_MS;
   courierCache.set(key, { expiresAt: now + ttl, result });
@@ -160,7 +161,8 @@ async function readPersistentCache(phone: string): Promise<PersistentHit | null>
   };
   const expiresAt = new Date(String(data.expires_at ?? "")).getTime();
   const fetchedAtMs = new Date(String(data.fetched_at ?? "")).getTime();
-  return { result, fresh: Number.isFinite(expiresAt) && expiresAt > Date.now() && data.steadfast_source === "hoorin-all-couriers-v4", fetchedAtMs };
+  const hasCourierRecords = Number(result.overall?.total ?? 0) > 0 || courierStats.some((row) => row.total > 0 || row.success > 0 || row.cancelled > 0);
+  return { result, fresh: hasCourierRecords && Number.isFinite(expiresAt) && expiresAt > Date.now() && data.steadfast_source === "hoorin-all-couriers-v4", fetchedAtMs };
   })();
   persistentReadInFlight.set(phone, request);
   try {
