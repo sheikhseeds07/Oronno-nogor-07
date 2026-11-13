@@ -352,7 +352,7 @@ export const getMetaCampaignAdsets=createServerFn({method:"POST"}).middleware([r
 });
 export const getMetaAdsetAds=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(i=>ManageRange.extend({adsetId:z.string().min(1).max(80)}).parse(i)).handler(async({data,context})=>{
  const {token,accountId}=await manageAccount(context,data.accountKey);
- const adset=await graphJson(`https://graph.facebook.com/v23.0/${encodeURIComponent(data.adsetId)}?fields=id,account_id,name,daily_budget,campaign{daily_budget}&access_token=${encodeURIComponent(token)}`);
+ const adset=await graphJson(`https://graph.facebook.com/v23.0/${encodeURIComponent(data.adsetId)}?fields=id,account_id,name,daily_budget,campaign{id,daily_budget}&access_token=${encodeURIComponent(token)}`);
  if(String(adset.account_id??"")!==accountId)throw new Error("Ad Set does not belong to selected Ad Account");
  const since=dhakaDate(data.from),until=dhakaDate(data.to);
  const p=new URLSearchParams({fields:"id,name,status,effective_status,creative{thumbnail_url,image_url}",limit:"500",access_token:token});
