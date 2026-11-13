@@ -21,7 +21,6 @@ type CourierHistoryResult = {
   error: string | null;
   stale?: boolean;
   source?: string;
-  steadfast?: SteadfastScore;
 };
 
 type CacheEntry = { expiresAt: number; result: CourierHistoryResult };
@@ -30,7 +29,7 @@ type PersistentHit = { result: CourierHistoryResult; fresh: boolean; fetchedAtMs
 const SUCCESS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const FAILURE_CACHE_TTL_MS = 15 * 1000;
 const STALE_CACHE_TTL_MS = 30 * 60 * 1000;
-const CACHE_VERSION = "courier-history-v14-steadfast-score-api";
+const CACHE_VERSION = "courier-history-v15-hoorin-all-couriers";
 const MAX_CACHE_ENTRIES = 3000;
 
 const courierCache = new Map<string, CacheEntry>();
@@ -130,205 +129,6 @@ function aggregateOverall(stats: CourierStat[]): CourierOverall {
 }
 
 
-// Hoorin supplies every courier except Steadfast.
-// Steadfast success/cancellation ratios are read directly from our
-// Steadfast merchant API and persisted per phone so refreshes do not
-// create another provider request.
-export type SteadfastScore = {
-  deliveryRatio: number;
-  cancellationRatio: number;
-  volumeBand: string | null;
-  total: number;
-  success: number;
-  cancelled: number;
-  fetchedAt?: string;
-};
-
-// Deploy sync: Steadfast fraud-check endpoint/parser is live-code critical; keep this marker in the app bundle.
-const STEADFAST_SCORE_TTL_MS = 24 * 60 * 60 * 1000;
-
-function parseSteadfastScore(value: unknown): SteadfastScore | null {
-  if (!value || typeof value !== "object") return null;
-  const row = value as Record<string, unknown>;
-  if (row.status !== "ok" || !Number.isFinite(Number(row.deliveryRatio))) return null;
-  return {
-    deliveryRatio: Number(row.deliveryRatio),
-    cancellationRatio: Number(row.cancellationRatio) || 0,
-    volumeBand: typeof row.volumeBand === "string" ? row.volumeBand : null,
-    total: Number(row.total) || 0,
-    success: Number(row.success) || 0,
-    cancelled: Number(row.cancelled) || 0,
-    fetchedAt: typeof row.fetchedAt === "string" ? row.fetchedAt : undefined,
-  };
-}
-
-type SteadfastIntegrationConfig = { active: boolean; apiKey: string; secretKey: string };
-const STEADFAST_CONFIG_CACHE_TTL_MS = 5 * 60_000;
-let steadfastIntegrationCache: { expiresAt: number; value: SteadfastIntegrationConfig } | null = null;
-let steadfastIntegrationInFlight: Promise<SteadfastIntegrationConfig> | null = null;
-
-async function getSteadfastIntegrationConfig(admin: any): Promise<SteadfastIntegrationConfig> {
-  if (steadfastIntegrationCache && steadfastIntegrationCache.expiresAt > Date.now()) {
-    return steadfastIntegrationCache.value;
-  }
-  if (steadfastIntegrationInFlight) return steadfastIntegrationInFlight;
-  const request = (async () => {
-    const { data } = await admin
-      .from("integrations")
-      .select("config,is_active")
-      .eq("name", "all_api_steadfast")
-      .maybeSingle();
-    const cfg = (data?.config ?? {}) as Record<string, unknown>;
-    return {
-      active: Boolean(data?.is_active),
-      apiKey: String(cfg.api_key ?? "").trim(),
-      secretKey: String(cfg.secret_key ?? "").trim(),
-    };
-  })();
-  steadfastIntegrationInFlight = request;
-  try {
-    const value = await request;
-    steadfastIntegrationCache = { expiresAt: Date.now() + STEADFAST_CONFIG_CACHE_TTL_MS, value };
-    return value;
-  } finally {
-    steadfastIntegrationInFlight = null;
-  }
-}
-
-async function steadfastScore(phone: string): Promise<SteadfastScore | null> {
-  const p = phone.slice(-11);
-  if (p.length < 11) return null;
-
-  const admin = supabaseAdmin as any;
-  let { data: cachedRow } = await admin
-    .from("courier_history_cache")
-    .select("steadfast_score")
-    .eq("phone", phone)
-    .maybeSingle();
-
-  // Ensure the persistent row exists before claiming the single Steadfast request.
-  // This is important for a brand-new phone that has never had courier cache data.
-  if (!cachedRow) {
-    await admin.from("courier_history_cache").upsert(
-      { phone, configured: true, stats: [], error: null, steadfast_score: null },
-      { onConflict: "phone", ignoreDuplicates: true },
-    );
-    const reread = await admin
-      .from("courier_history_cache")
-      .select("steadfast_score")
-      .eq("phone", phone)
-      .maybeSingle();
-    cachedRow = reread.data;
-  }
-
-  const cached = parseSteadfastScore(cachedRow?.steadfast_score);
-  if (cached) {
-    const age = cached.fetchedAt ? Date.now() - new Date(cached.fetchedAt).getTime() : Infinity;
-    if (age >= 0 && age < STEADFAST_SCORE_TTL_MS) return cached;
-  }
-
-  // Atomically claim the single provider request for this phone.
-  // A refresh/concurrent request that cannot claim it must never call Steadfast again.
-  const claim = await admin
-    .from("courier_history_cache")
-    .update({
-      steadfast_score: {
-        status: "fetching",
-        claimedAt: new Date().toISOString(),
-      },
-    })
-    .eq("phone", phone)
-    .or("steadfast_score.is.null,steadfast_score->>status.eq.failed")
-    .select("phone")
-    .maybeSingle();
-
-  if (!claim.data) {
-    // Another request owns the fetch. Re-read once; do not call the provider.
-    const { data: waitingRow } = await admin
-      .from("courier_history_cache")
-      .select("steadfast_score")
-      .eq("phone", phone)
-      .maybeSingle();
-    const waiting = parseSteadfastScore(waitingRow?.steadfast_score);
-    return waiting ?? null;
-  }
-
-  try {
-    const integration = await getSteadfastIntegrationConfig(admin);
-    const apiKey = integration.apiKey;
-    const secretKey = integration.secretKey;
-
-    if (!integration.active || !apiKey || !secretKey) {
-      await admin.from("courier_history_cache").update({
-        steadfast_score: { status: "failed", fetchedAt: new Date().toISOString() },
-      }).eq("phone", phone);
-      return null;
-    }
-
-    const res = await fetch(
-      `https://portal.packzy.com/api/v1/fraud_check/score/${p}`,
-      {
-        headers: { "Api-Key": apiKey, "Secret-Key": secretKey, Accept: "application/json" },
-        signal: AbortSignal.timeout(8000),
-      },
-    );
-
-    if (!res.ok) throw new Error(`Steadfast HTTP ${res.status}`);
-    const j = (await res.json()) as Record<string, unknown>;
-    // Steadfast only returns ratios + a volume range (counts were sunset 27 Sep 2026).
-    const deliveryRatio = Number(j.delivery_ratio);
-    const cancellationRatio = Number(j.cancellation_ratio ?? j.return_ratio) || 0;
-    if (!Number.isFinite(deliveryRatio)) throw new Error("Invalid Steadfast score response");
-    const range = typeof j.volume_range === "string" ? j.volume_range : "";
-    const nums = (range.match(/\d+/g) ?? []).map(Number);
-    const safeTotal = nums.length ? Math.round(nums.reduce((x, y) => x + y, 0) / nums.length) : 0;
-    const safeSuccess = Math.round((safeTotal * deliveryRatio) / 100);
-    const safeCancelled = Math.round((safeTotal * cancellationRatio) / 100);
-
-    const score: SteadfastScore = {
-      deliveryRatio,
-      cancellationRatio,
-      volumeBand: range || (typeof j.volume_band === "string" ? j.volume_band : null),
-      total: safeTotal,
-      success: safeSuccess,
-      cancelled: safeCancelled,
-      fetchedAt: new Date().toISOString(),
-    };
-
-    await admin.from("courier_history_cache").update({
-      steadfast_score: { status: "ok", ...score },
-    }).eq("phone", phone);
-
-    return score;
-  } catch {
-    await admin.from("courier_history_cache").update({
-      steadfast_score: { status: "failed", fetchedAt: new Date().toISOString() },
-    }).eq("phone", phone);
-    return null;
-  }
-}
-
-function combineSteadfast(result: CourierHistoryResult, score: SteadfastScore | null): CourierHistoryResult {
-  const stats = result.stats.filter((s) => s.name.toLowerCase() !== "steadfast");
-  const overall = aggregateOverall(stats);
-  const cleaned = { ...result, stats, overall };
-  if (!score) return cleaned;
-  const combined = { name: "Overall", total: overall.total + score.total, success: overall.success + score.success, cancelled: overall.cancelled + score.cancelled };
-  return { ...cleaned, overall: combined, steadfast: score };
-}
-
-async function withSteadfast(phone: string, result: CourierHistoryResult): Promise<CourierHistoryResult> {
-  // The persistent cache read already included steadfast_score. Reuse it while
-  // fresh instead of issuing a second GET for the same courier-history row.
-  const cached = result.steadfast;
-  const age = cached?.fetchedAt ? Date.now() - new Date(cached.fetchedAt).getTime() : Infinity;
-  if (cached && age >= 0 && age < STEADFAST_SCORE_TTL_MS) {
-    return combineSteadfast(result, cached);
-  }
-  const score = await steadfastScore(phone).catch(() => null);
-  return combineSteadfast(result, score);
-}
-
 async function readPersistentCache(phone: string): Promise<PersistentHit | null> {
   const cached = persistentReadCache.get(phone);
   if (cached && cached.expiresAt > Date.now()) return cached.hit;
@@ -392,9 +192,9 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
       if (persistent?.result.configured && !persistent.result.error) {
         const cached = persistent.fresh ? persistent.result : { ...persistent.result, stale: true };
         writeCache(cacheKey, cached);
-        return withSteadfast(phone, cached);
+        return cached;
       }
-      if (memoryCached) return withSteadfast(phone, memoryCached);
+      if (memoryCached) return memoryCached;
       return { configured: false, stats: [], error: null };
     }
 
@@ -407,7 +207,7 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
       // records, not when a new local shop order is created. Reuse the persisted
       // 24-hour result instead of forcing another Edge/provider round-trip.
       if (beforeInvoke?.fresh && beforeInvoke.result.configured && !beforeInvoke.result.error) {
-        return withSteadfast(phone, beforeInvoke.result);
+        return beforeInvoke.result;
       }
 
       let value: Partial<CourierHistoryResult> = {};
@@ -488,7 +288,7 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
       }
 
       return normalized;
-    })().then((r) => withSteadfast(phone, r));
+    })();
 
     inFlight.set(cacheKey, request);
     try {
