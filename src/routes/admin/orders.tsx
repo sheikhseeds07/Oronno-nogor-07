@@ -2401,6 +2401,8 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
     retryDelay: (attempt) => 600 * (attempt + 1),
   });
   const courierStats = extHistory?.configured ? extHistory.stats : [];
+  const steadfastStat = courierStats.find((stat) => /steadfast/i.test(stat.name));
+  const otherCourierStats = courierStats.filter((stat) => !/steadfast/i.test(stat.name));
   const overallTotal = extHistory?.overall?.total ?? courierStats.reduce((a, s) => a + s.total, 0);
   const overallSuccess = extHistory?.overall?.success ?? courierStats.reduce((a, s) => a + s.success, 0);
   const overallCancelled = extHistory?.overall?.cancelled ?? courierStats.reduce((a, s) => a + s.cancelled, 0);
@@ -2485,7 +2487,8 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
           <div className="flex gap-2 overflow-x-auto pb-1">
             <OurRecordCard history={history ?? []} />
             <CourierCard name="Overall" total={overallTotal} success={overallSuccess} cancelled={overallCancelled} />
-            {courierStats.map((c) => (
+            <CourierCard name="Steadfast" total={steadfastStat?.total ?? 0} success={steadfastStat?.success ?? 0} cancelled={steadfastStat?.cancelled ?? 0} />
+            {otherCourierStats.map((c) => (
               <CourierCard key={c.name} name={c.name} total={c.total} success={c.success} cancelled={c.cancelled} />
             ))}
             {courierLoading && null}
@@ -3104,6 +3107,8 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
   // Per-courier stats come ONLY from Hoorin API. No fallback / no synthetic distribution.
   const courierStats: { name: string; total: number; success: number; cancelled: number }[] =
     extHistory?.configured ? extHistory.stats : [];
+  const steadfastStat = courierStats.find((stat) => /steadfast/i.test(stat.name));
+  const otherCourierStats = courierStats.filter((stat) => !/steadfast/i.test(stat.name));
 
   // Overall = sum of all couriers from Hoorin only. Independent of "Our Record".
   const overallTotal = extHistory?.overall?.total ?? courierStats.reduce((a, s) => a + s.total, 0);
@@ -3370,7 +3375,8 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
             <div className="flex gap-2 overflow-x-auto pb-1">
               <OurRecordCard history={otherHistory} />
               <CourierCard name="Overall" total={overallTotal} success={overallSuccess} cancelled={overallCancelled} />
-              {courierStats.map((c) => (
+              <CourierCard name="Steadfast" total={steadfastStat?.total ?? 0} success={steadfastStat?.success ?? 0} cancelled={steadfastStat?.cancelled ?? 0} />
+              {otherCourierStats.map((c) => (
                 <CourierCard key={c.name} name={c.name} total={c.total} success={c.success} cancelled={c.cancelled} />
               ))}
               {hoorinError && (
