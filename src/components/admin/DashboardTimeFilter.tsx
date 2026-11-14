@@ -7,7 +7,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
-type Preset = "today" | "yesterday" | "7d" | "30d" | "month" | "lastMonth" | "maximum" | "custom";
+type Preset = "today" | "yesterday" | "7d" | "30d" | "month" | "lastMonth" | "custom";
 export type DashboardRange = { from: string; to: string };
 
 const PRESETS: { key: Preset; label: string }[] = [
@@ -17,7 +17,6 @@ const PRESETS: { key: Preset; label: string }[] = [
   { key: "30d", label: "Last 30 Days" },
   { key: "month", label: "This Month" },
   { key: "lastMonth", label: "Last Month" },
-  { key: "maximum", label: "Maximum (Lifetime)" },
   { key: "custom", label: "Custom Range" },
 ];
 
@@ -37,7 +36,7 @@ export function getDashboardPresetRange(preset: Preset, now = new Date()): Dashb
   return null;
 }
 
-export function DashboardTimeFilter({ value, onChange, range: activeRange, showMaximum = false }: { value: Preset; onChange: (preset: Preset, range: DashboardRange | null) => void; range?: DashboardRange; showMaximum?: boolean }) {
+export function DashboardTimeFilter({ value, onChange, range: activeRange }: { value: Preset; onChange: (preset: Preset, range: DashboardRange | null) => void; range?: DashboardRange }) {
   const [open, setOpen] = useState(false);
   const [customRange, setCustomRange] = useState<DateRange>();
   useEffect(() => {
@@ -72,7 +71,7 @@ export function DashboardTimeFilter({ value, onChange, range: activeRange, showM
       </PopoverTrigger>
       <PopoverContent align="end" className="w-[300px] rounded-xl p-2">
         <div className="grid gap-1">
-          {PRESETS.filter((p) => p.key !== "custom" && (showMaximum || p.key !== "maximum")).map((p) => (
+          {PRESETS.filter((p) => p.key !== "custom").map((p) => (
             <button key={p.key} type="button" onClick={() => choose(p.key)} className={cn("rounded-lg px-3 py-2 text-left text-xs font-semibold transition hover:bg-slate-100", value === p.key && "bg-slate-900 text-white hover:bg-slate-900")}>{p.label}</button>
           ))}
           <div className="mt-1 border-t pt-2">
