@@ -257,7 +257,7 @@ export const getOronnoNogorAdsList = createServerFn({ method: "POST" })
     };
   });
 
-const ManageRange = z.object({accountKey:z.enum(["meta_ad_account","meta_ad_account_2"]),from:z.string().datetime(),to:z.string().datetime(),lifetime:z.boolean().optional().default(false)});
+const ManageRange = z.object({accountKey:z.enum(["meta_ad_account","meta_ad_account_2"]),from:z.string().datetime(),to:z.string().datetime()});
 const ManageAction = z.object({accountKey:z.enum(["meta_ad_account","meta_ad_account_2"]),targetType:z.enum(["campaign","adset","ad"]).default("ad"),targetId:z.string().min(1).max(80),action:z.enum(["ACTIVE","PAUSED"])});
 const ManageBudget = z.object({accountKey:z.enum(["meta_ad_account","meta_ad_account_2"]),targetType:z.enum(["campaign","adset"]),targetId:z.string().min(1).max(80),dailyBudget:z.number().finite().positive().max(100000000)});
 async function manageAccount(context:any,key:"meta_ad_account"|"meta_ad_account_2"){
@@ -309,7 +309,7 @@ export const getMetaAdInventory=createServerFn({method:"POST"}).middleware([requ
  const params=new URLSearchParams({fields:"id,name,status,effective_status,creative{thumbnail_url,image_url}",limit:"500",access_token:token});
  let next:string|null=`${base}/ads?${params}`,ads:any[]=[],pages=0;
  while(next&&pages<100){const u=new URL(next);if(u.hostname!=="graph.facebook.com"||u.protocol!=="https:")throw new Error("Invalid Meta pagination URL");const p=await graphJson(u.toString());ads.push(...(p.data??[]));next=p.paging?.next??null;pages++;}
- const ip=new URLSearchParams({level:"ad",fields:"ad_id,spend,actions,action_values,cost_per_action_type,purchase_roas",...(data.lifetime?{date_preset:"maximum"}:{time_range:JSON.stringify({since,until})}),limit:"500",access_token:token});
+ const ip=new URLSearchParams({level:"ad",fields:"ad_id,spend,actions,action_values,cost_per_action_type,purchase_roas",time_range:JSON.stringify({since,until}),limit:"500",access_token:token});
  const [insights,accountInfo]=await Promise.all([graphJson(`${base}/insights?${ip}`),graphJson(`${base}?fields=name,currency&access_token=${encodeURIComponent(token)}`)]), im=new Map((insights.data??[]).map((x:any)=>[String(x.ad_id),x]));
  const rows=ads.map((a:any)=>{const st=String(a.status??"UNKNOWN").toUpperCase(),es=String(a.effective_status??st).toUpperCase();return {id:String(a.id),name:String(a.name||"Unnamed Ad"),status:st,effectiveStatus:es,state:es==="ACTIVE"?"On":(["PAUSED","CAMPAIGN_PAUSED","ADSET_PAUSED","ARCHIVED","DELETED"].includes(es)||["PAUSED","ARCHIVED","DELETED"].includes(st))?"Off":"Other",imageUrl:String(a.creative?.thumbnail_url||a.creative?.image_url||""),...purchaseMetrics(im.get(String(a.id))??{})};});
  return {accountKey:data.accountKey,accountName:String((cfg as any).demo_name||cfg.account_name||(data.accountKey==="meta_ad_account_2"?"Oronno Nogor":"Sheikh Seeds")),currency:String(accountInfo.currency||"USD"),since,until,total:rows.length,onCount:rows.filter(x=>x.state==="On").length,offCount:rows.filter(x=>x.state==="Off").length,otherCount:rows.filter(x=>x.state==="Other").length,truncated:!!next,ads:rows};
@@ -318,7 +318,7 @@ export const getMetaAdDetails=createServerFn({method:"POST"}).middleware([requir
  const {token,accountId}=await manageAccount(context,data.accountKey);
  const ad=await graphJson(`https://graph.facebook.com/v23.0/${encodeURIComponent(data.adId)}?fields=id,name,account_id,status,effective_status,creative{thumbnail_url,image_url}&access_token=${encodeURIComponent(token)}`);
  if(String(ad.account_id??"")!==accountId)throw new Error("This Ad does not belong to the selected account");
- const since=dhakaDate(data.from),until=dhakaDate(data.to),insightRange=data.lifetime?"date_preset=maximum":`time_range=${encodeURIComponent(JSON.stringify({since,until}))}`;
+ const since=dhakaDate(data.from),until=dhakaDate(data.to),insightRange=`time_range=${encodeURIComponent(JSON.stringify({since,until}))}`;
  const ins=await graphJson(`https://graph.facebook.com/v23.0/${data.adId}/insights?fields=spend,actions,action_values,cost_per_action_type&${insightRange}&access_token=${encodeURIComponent(token)}`);
  return {id:String(ad.id),name:String(ad.name||""),status:String(ad.status||""),effectiveStatus:String(ad.effective_status||""),imageUrl:String(ad.creative?.thumbnail_url||ad.creative?.image_url||""),...purchaseMetrics(ins.data?.[0]??{}),since,until};
 });
@@ -347,7 +347,7 @@ export const getMetaCampaignInventory=createServerFn({method:"POST"}).middleware
  const params=new URLSearchParams({fields:"id,name,status,effective_status,objective,daily_budget,ads.limit(1){creative{thumbnail_url,image_url}}",limit:"500",access_token:token});
  let next:string|null=`${base}/campaigns?${params}`,items:any[]=[],pages=0;
  while(next&&pages<100){const u=new URL(next);if(u.hostname!=="graph.facebook.com"||u.protocol!=="https:")throw new Error("Invalid Meta pagination URL");const p=await graphJson(u.toString());items.push(...(p.data??[]));next=p.paging?.next??null;pages++;}
- const ip=new URLSearchParams({level:"campaign",fields:"campaign_id,spend,actions,action_values,cost_per_action_type,purchase_roas",...(data.lifetime?{date_preset:"maximum"}:{time_range:JSON.stringify({since,until})}),limit:"500",access_token:token});
+ const ip=new URLSearchParams({level:"campaign",fields:"campaign_id,spend,actions,action_values,cost_per_action_type,purchase_roas",time_range:JSON.stringify({since,until}),limit:"500",access_token:token});
  const [insights,accountInfo]=await Promise.all([graphJson(`${base}/insights?${ip}`),graphJson(`${base}?fields=name,currency&access_token=${encodeURIComponent(token)}`)]);
  const im=new Map((insights.data??[]).map((x:any)=>[String(x.campaign_id),x]));
  const campaigns=items.map((x:any)=>{const st=String(x.status??"UNKNOWN").toUpperCase(),es=String(x.effective_status??st).toUpperCase();return {id:String(x.id),name:String(x.name||"Unnamed Campaign"),status:st,effectiveStatus:es,state:es==="ACTIVE"?"On":(["PAUSED","ARCHIVED","DELETED"].includes(es)||["PAUSED","ARCHIVED","DELETED"].includes(st))?"Off":"Other",objective:String(x.objective||""),budgetType:x.daily_budget==null?"adset":"campaign",dailyBudget:x.daily_budget==null?0:Number(x.daily_budget)/100,imageUrl:String(x.ads?.data?.[0]?.creative?.thumbnail_url||x.ads?.data?.[0]?.creative?.image_url||""),...purchaseMetrics(im.get(String(x.id))??{}),roas:(()=>{const ins=im.get(String(x.id))??{};const r=findPurchase(Array.isArray(ins.purchase_roas)?ins.purchase_roas:[]);return r?Number(r.value):null;})()};});
@@ -362,7 +362,7 @@ export const getMetaCampaignAdsets=createServerFn({method:"POST"}).middleware([r
  const base=`https://graph.facebook.com/v23.0/${encodeURIComponent(data.campaignId)}/adsets`;
  let next:string|null=`${base}?${p}`,items:any[]=[],pages=0;
  while(next&&pages<100){const u=new URL(next);if(u.hostname!=="graph.facebook.com"||u.protocol!=="https:")throw new Error("Invalid Meta pagination URL");const r=await graphJson(u.toString());items.push(...(r.data??[]));next=r.paging?.next??null;pages++;}
- const ip=new URLSearchParams({level:"adset",fields:"adset_id,spend,actions,action_values,cost_per_action_type,purchase_roas",...(data.lifetime?{date_preset:"maximum"}:{time_range:JSON.stringify({since,until})}),limit:"500",access_token:token});
+ const ip=new URLSearchParams({level:"adset",fields:"adset_id,spend,actions,action_values,cost_per_action_type,purchase_roas",time_range:JSON.stringify({since,until}),limit:"500",access_token:token});
  const insights=await graphJson(`https://graph.facebook.com/v23.0/act_${encodeURIComponent(accountId)}/insights?${ip}`);
  const im=new Map((insights.data??[]).map((x:any)=>[String(x.adset_id),x]));
  const adsets=items.map((x:any)=>{const st=String(x.status??"UNKNOWN").toUpperCase(),es=String(x.effective_status??st).toUpperCase();return {id:String(x.id),name:String(x.name||"Unnamed Ad Set"),status:st,effectiveStatus:es,state:es==="ACTIVE"?"On":(["PAUSED","CAMPAIGN_PAUSED","ARCHIVED","DELETED"].includes(es)||["PAUSED","ARCHIVED","DELETED"].includes(st))?"Off":"Other",budgetType:x.daily_budget==null?"none":"adset",dailyBudget:x.daily_budget==null?0:Number(x.daily_budget)/100,...purchaseMetrics(im.get(String(x.id))??{}),roas:(()=>{const r=findPurchase(Array.isArray(im.get(String(x.id))?.purchase_roas)?im.get(String(x.id)).purchase_roas:[]);return r?Number(r.value):null;})()};});
@@ -377,7 +377,7 @@ export const getMetaAdsetAds=createServerFn({method:"POST"}).middleware([require
  const base=`https://graph.facebook.com/v23.0/${encodeURIComponent(data.adsetId)}/ads`;
  let next:string|null=`${base}?${p}`,items:any[]=[],pages=0;
  while(next&&pages<100){const u=new URL(next);if(u.hostname!=="graph.facebook.com"||u.protocol!=="https:")throw new Error("Invalid Meta pagination URL");const r=await graphJson(u.toString());items.push(...(r.data??[]));next=r.paging?.next??null;pages++;}
- const ip=new URLSearchParams({level:"ad",fields:"ad_id,spend,actions,action_values,cost_per_action_type,purchase_roas",...(data.lifetime?{date_preset:"maximum"}:{time_range:JSON.stringify({since,until})}),limit:"500",access_token:token});
+ const ip=new URLSearchParams({level:"ad",fields:"ad_id,spend,actions,action_values,cost_per_action_type,purchase_roas",time_range:JSON.stringify({since,until}),limit:"500",access_token:token});
  const insights=await graphJson(`https://graph.facebook.com/v23.0/act_${encodeURIComponent(accountId)}/insights?${ip}`);
  const im=new Map((insights.data??[]).map((x:any)=>[String(x.ad_id),x]));
  const campaignBudget=adset.campaign?.daily_budget??null;
