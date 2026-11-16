@@ -219,7 +219,9 @@ function LandingPagesAdmin() {
     } catch {
       toast.error("লিংক কপি করা যায়নি — ব্রাউজারের Clipboard permission পরীক্ষা করুন");
     }
-  };\n\n  const remove = async (id: string) => {
+  };
+
+  const remove = async (id: string) => {
     if (!confirm("ডিলিট?")) return;
     await supabase.from("landing_pages").delete().eq("id", id);
     qc.invalidateQueries({ queryKey: ["admin-landing"] });
@@ -319,6 +321,9 @@ function LandingPagesAdmin() {
                 </button>
                 <button onClick={() => duplicateLandingPage(p as never)} className="flex-1 p-1.5 hover:bg-green-50 text-green-700 rounded text-xs" title="ডুপ্লিকেট">
                   <Copy className="w-3.5 h-3.5 inline" /> ডুপ্লিকেট
+                </button>
+                <button onClick={() => copyLandingPageLink(p.slug)} className="flex-1 p-1.5 hover:bg-blue-50 text-blue-700 rounded text-xs" title="লিংক কপি">
+                  <Link2 className="w-3.5 h-3.5 inline" /> লিংক কপি
                 </button>
                 <button onClick={() => remove(p.id)} className="p-1.5 hover:bg-destructive/10 text-destructive rounded">
                   <Trash2 className="w-3.5 h-3.5" />
