@@ -6,7 +6,7 @@ import { useState } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { supabase } from "@/lib/personal-supabase/client";
 import { toast } from "sonner";
-import { Plus, Trash2, ExternalLink, Edit, X, PackagePlus, Copy, Search, GripVertical } from "lucide-react";
+import { Plus, Trash2, ExternalLink, Edit, X, PackagePlus, Copy, Search, GripVertical, Link2 } from "lucide-react";
 import { uploadToBucket, safeFileName } from "@/lib/storage-upload";
 import {
   mergeContent,
@@ -211,7 +211,7 @@ function LandingPagesAdmin() {
     setEditing(null);
   };
 
-  const remove = async (id: string) => {
+  const copyLandingPageLink = async (slug: string) => {\n    const url = new URL(`/landing/${encodeURIComponent(slug)}`, window.location.origin).toString();\n    try {\n      await navigator.clipboard.writeText(url);\n      toast.success("ল্যান্ডিং পেজের লিংক কপি হয়েছে");\n    } catch {\n      toast.error("লিংক কপি করা যায়নি — ব্রাউজারের Clipboard permission পরীক্ষা করুন");\n    }\n  };\n\n  const remove = async (id: string) => {
     if (!confirm("ডিলিট?")) return;
     await supabase.from("landing_pages").delete().eq("id", id);
     qc.invalidateQueries({ queryKey: ["admin-landing"] });
