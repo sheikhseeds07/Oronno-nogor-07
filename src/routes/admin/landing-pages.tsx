@@ -211,7 +211,15 @@ function LandingPagesAdmin() {
     setEditing(null);
   };
 
-  const copyLandingPageLink = async (slug: string) => {\n    const url = new URL(`/landing/${encodeURIComponent(slug)}`, window.location.origin).toString();\n    try {\n      await navigator.clipboard.writeText(url);\n      toast.success("ল্যান্ডিং পেজের লিংক কপি হয়েছে");\n    } catch {\n      toast.error("লিংক কপি করা যায়নি — ব্রাউজারের Clipboard permission পরীক্ষা করুন");\n    }\n  };\n\n  const remove = async (id: string) => {
+  const copyLandingPageLink = async (slug: string) => {
+    const url = new URL(`/landing/${encodeURIComponent(slug)}`, window.location.origin).toString();
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("ল্যান্ডিং পেজের লিংক কপি হয়েছে");
+    } catch {
+      toast.error("লিংক কপি করা যায়নি — ব্রাউজারের Clipboard permission পরীক্ষা করুন");
+    }
+  };\n\n  const remove = async (id: string) => {
     if (!confirm("ডিলিট?")) return;
     await supabase.from("landing_pages").delete().eq("id", id);
     qc.invalidateQueries({ queryKey: ["admin-landing"] });
