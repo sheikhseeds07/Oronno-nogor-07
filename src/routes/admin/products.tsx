@@ -40,6 +40,25 @@ function Products() {
     },
   });
 
+  const { data: landingProductIds } = useQuery({
+    queryKey: ["admin-landing-linked-product-ids"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("landing_pages").select("product_id,addons").limit(1000);
+      if (error) throw error;
+      const ids = new Set<string>();
+      for (const page of data ?? []) {
+        if (typeof page.product_id === "string" && page.product_id) ids.add(page.product_id);
+        const addons = Array.isArray(page.addons) ? page.addons as { product_id?: string }[] : [];
+        for (const addon of addons) {
+          if (typeof addon?.product_id === "string" && addon.product_id) ids.add(addon.product_id);
+        }
+      }
+      return Array.from(ids);
+    },
+  });
+
+  const landingProducts = products?.filter((product) => !!product.id && landingProductIds?.includes(product.id)) ?? [];
+
   const { data: categories } = useQuery({
     queryKey: ["admin-cats"],
     queryFn: async () => (await supabase.from("categories").select(CATEGORIES_COLUMNS).order("display_order").limit(100)).data ?? [],
@@ -77,7 +96,7 @@ function Products() {
         <button type="button" role="tab" aria-selected={activeSection === "all"} onClick={() => setActiveSection("all")} className={`px-4 py-2 rounded-lg text-sm font-semibold border ${activeSection === "all" ? "bg-brand text-white border-brand" : "bg-white text-foreground hover:bg-muted"}`}>All Product</button>
       </div>
 
-      {activeSection === "all" ? <>
+      {activeSection !== "home" ? <>
       <input placeholder="খুঁজুন..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full md:w-80 border rounded-lg px-3 py-2 mb-4" />
 
       <div className="bg-white border rounded-xl overflow-hidden">
@@ -87,7 +106,7 @@ function Products() {
               <tr><th className="text-left p-3">ছবি</th><th className="text-left p-3">নাম</th><th className="text-left p-3">ক্যাটাগরি</th><th className="text-right p-3">দাম</th><th className="text-right p-3">স্টক</th><th className="text-center p-3">পপুলার</th><th className="text-center p-3">স্ট্যাটাস</th><th className="text-right p-3">অ্যাকশন</th></tr>
             </thead>
             <tbody>
-              {products?.map((p) => (
+              {(activeSection === "landing" ? landingProducts : products ?? []).map((p) => (
                 <tr key={p.id} className="border-t">
                   <td className="p-3"><SafeImage src={p.images?.[0] || "/placeholder.svg"} className="w-12 h-12 object-cover rounded" alt="" /></td>
                   <td className="p-3 font-semibold">{p.name}</td>
@@ -106,12 +125,12 @@ function Products() {
                   </td>
                 </tr>
               ))}
-              {!products?.length && <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">কোনো প্রোডাক্ট নেই</td></tr>}
+              {!(activeSection === "landing" ? landingProducts : products ?? []).length && <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">{activeSection === "landing" ? "কোনো Landing Page-এ যুক্ত প্রোডাক্ট নেই" : "কোনো প্রোডাক্ট নেই"}</td></tr>}
             </tbody>
           </table>
         </div>
       </div>
-      </> : <div className="bg-white border rounded-xl p-8 text-center text-muted-foreground">এই সেকশনের প্রোডাক্ট আলাদা করার ব্যবস্থা পরবর্তী ধাপে যুক্ত হবে।</div>}
+      </> : <div className="bg-white border rounded-xl p-8 text-center text-muted-foreground">Home Product-এর তালিকা পরবর্তী ধাপে যুক্ত হবে।</div>}
 
       {editing && <ProductModal product={editing} categories={categories ?? []} onClose={() => setEditing(null)} onSaved={() => {
           qc.invalidateQueries({ queryKey: ["admin-products"] });
