@@ -1,7 +1,9 @@
 {
   "name": "tanstack_start_ts",
   "private": true,
-  "sideEffects": false,
+  "sideEffects": [
+    "./src/lib/crypto-polyfill.ts"
+  ],
   "type": "module",
   "packageManager": "bun@1.2.15",
   "scripts": {
