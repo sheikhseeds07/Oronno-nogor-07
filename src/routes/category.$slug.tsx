@@ -124,7 +124,8 @@ function CategoryPage() {
       last = now;
       if (now >= pausedUntil) {
         el.scrollLeft += delta * speed;
-        if (el.scrollLeft >= el.scrollWidth - el.clientWidth - 1) el.scrollLeft = 0;
+        const loopWidth = el.scrollWidth / 2;
+        if (loopWidth > 0 && el.scrollLeft >= loopWidth) el.scrollLeft -= loopWidth;
       }
       raf = requestAnimationFrame(tick);
     };
