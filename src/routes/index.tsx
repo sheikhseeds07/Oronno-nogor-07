@@ -164,7 +164,7 @@ function Home() {
 
   return (
     <SiteLayout>
-      <style>{`@keyframes homeCategoryMarquee { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-50%, 0, 0); } }`}</style>
+      <style>{`@keyframes homeCategoryMarqueeRTL { from { transform: translate3d(-50%, 0, 0); } to { transform: translate3d(0, 0, 0); } }`}</style>
 
       {banners && banners.length > 0 && (
         <section className="bg-background">
@@ -231,7 +231,7 @@ function Home() {
             <div className="relative mx-auto max-w-7xl overflow-hidden">
               <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-7 bg-gradient-to-r from-background to-transparent sm:w-12" />
               <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-7 bg-gradient-to-l from-background to-transparent sm:w-12" />
-              <div className="flex w-max gap-2.5 py-0.5 sm:gap-3 sm:py-1" style={{ animation: categories.length > 1 ? "homeCategoryMarquee 30s linear infinite reverse" : "none" }}>
+              <div className="flex w-max gap-2.5 py-0.5 sm:gap-3 sm:py-1" style={{ animation: categories.length > 1 ? "homeCategoryMarqueeRTL 30s linear infinite" : "none" }}>
                 {marqueeCategories.map((category, index) => (
                   <Link key={`${category.id}-${index}`} to="/category/$slug" params={{ slug: category.slug }} className="group w-[104px] shrink-0 rounded-xl border border-border/60 bg-card p-1.5 text-center shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-md sm:w-[132px] sm:rounded-2xl sm:p-2">
                     <div className="mb-1.5 aspect-square overflow-hidden rounded-lg bg-brand-light/30 ring-1 ring-black/5 sm:mb-2 sm:rounded-xl">
