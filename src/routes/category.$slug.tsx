@@ -27,7 +27,7 @@ export const Route = createFileRoute("/category/$slug")({
     const children = (childrenRes.data ?? []) as Array<{ id: string }>;
     queryClient.setQueryData(["cat-children", cat.id], children);
     const ids = [cat.id, ...children.map((c) => c.id)];
-    const productsRes = await supabase.from("products").select("id,name,slug,price,sale_price,images,stock,short_description,description").eq("is_active", true).in("category_id", ids).order("created_at", { ascending: false });
+    const productsRes = await supabase.from("products").select("id,name,slug,price,sale_price,images,stock,short_description,description").eq("is_active", true).eq("display_section", "home").in("category_id", ids).order("created_at", { ascending: false });
     queryClient.setQueryData(["cat-products", cat.id, children.map((c) => c.id).join(",")], productsRes.data ?? []);
     return null;
   },
@@ -113,6 +113,7 @@ function CategoryPage() {
         .from("products")
         .select("id,name,slug,price,sale_price,images,stock,short_description,description")
         .eq("is_active", true)
+        .eq("display_section", "home")
         .in("category_id", ids)
         .order("created_at", { ascending: false });
       if (error) throw error;
