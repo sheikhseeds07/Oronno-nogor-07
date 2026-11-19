@@ -1,5 +1,6 @@
 import { logger } from "@/lib/logger";
-import "@/lib/crypto-polyfill";
+import { ensureCryptoRandomUUID } from "@/lib/crypto-polyfill";
+ensureCryptoRandomUUID();
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Outlet, Link, createRootRouteWithContext, useRouter, HeadContent, Scripts } from "@tanstack/react-router";
 import { useEffect } from "react";
