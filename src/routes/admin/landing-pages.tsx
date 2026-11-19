@@ -272,6 +272,7 @@ function LandingPagesAdmin() {
         price: data.price,
         stock: 100,
         is_active: true,
+        display_section: "landing",
         category_id: data.category_id || null,
         images: data.image ? [data.image] : [],
       })
