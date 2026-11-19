@@ -112,9 +112,9 @@ function CategoryPage() {
     let raf = 0;
     let last = performance.now();
     let pausedUntil = 0;
-    const speed = 0.18;
+    const speed = 0.12;
 
-    const pause = () => { pausedUntil = performance.now() + 2800; };
+    const pause = () => { pausedUntil = performance.now() + 2200; };
     el.addEventListener("pointerdown", pause, { passive: true });
     el.addEventListener("touchstart", pause, { passive: true });
     el.addEventListener("mouseenter", pause, { passive: true });
@@ -146,9 +146,7 @@ function CategoryPage() {
         @keyframes catShine{0%{transform:translateX(-130%)}100%{transform:translateX(130%)}}
         .cat-slide{animation:catSlide .35s ease both}
         .cat-float{animation:catFloat 3s ease-in-out infinite}
-        .cat-shine{position:relative;overflow:hidden}
-        .cat-shine:after{content:"";position:absolute;inset:0;width:28%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent);transform:translateX(-130%);animation:catShine 5s ease-in-out infinite;pointer-events:none}
-        .subcat-scroll{scroll-behavior:smooth;overscroll-behavior-x:contain;scrollbar-width:none;-ms-overflow-style:none}
+        .subcat-scroll{overscroll-behavior-x:contain;scrollbar-width:none;-ms-overflow-style:none;will-change:scroll-position}
         .subcat-scroll::-webkit-scrollbar{display:none}
         @media(prefers-reduced-motion:reduce){.cat-slide,.cat-float,.cat-shine:after{animation:none!important}.subcat-scroll{scroll-behavior:auto}}
       `}</style>
@@ -175,33 +173,22 @@ function CategoryPage() {
           {cat && (
             <section className="cat-slide mx-auto mt-2 max-w-6xl">
               <div className="cat-shine rounded-2xl border border-brand/15 bg-white/95 px-2.5 py-2 shadow-[0_3px_16px_rgba(85,40,55,.05)] sm:px-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="cat-float h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-brand-light/40 p-0.5 ring-1 ring-brand/15 sm:h-11 sm:w-11">
-                    {cat.image_url ? <SafeImage src={toImg(cat.image_url)} alt={cat.name} className="h-full w-full rounded-[10px] object-cover" loading="eager" /> : <div className="flex h-full w-full items-center justify-center text-base">🌱</div>}
-                  </div>
-                  <div className="min-w-0 shrink-0">
-                    <div className="flex items-center gap-1 text-[8px] font-bold uppercase tracking-[.16em] text-brand/70"><Sparkles className="h-2.5 w-2.5" /> SHEIKH SEEDS</div>
-                    <h1 className="text-base font-black leading-tight text-brand-dark sm:text-lg">{cat.name}</h1>
-                  </div>
-
-                  {children.length > 0 && (
-                    <div className="relative min-w-0 flex-1 overflow-hidden">
-                      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-3 bg-gradient-to-r from-white/95 to-transparent" />
-                      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-7 bg-gradient-to-l from-white via-white/80 to-transparent" />
-                      {children.length > 2 && <div className="pointer-events-none absolute right-1 top-1/2 z-20 flex -translate-y-1/2 items-center gap-0.5 rounded-full bg-brand/90 px-1.5 py-1 text-[8px] font-black text-white shadow-sm"><ChevronRight className="h-2.5 w-2.5" /></div>}
-                      <div ref={subcatRef} className="subcat-scroll overflow-x-auto"><div className="flex min-w-max justify-start gap-1.5 pr-7">
-                        {children.map((child, i) => <Link key={child.id} to="/category/$slug" params={{ slug: child.slug }} style={{ animationDelay: `${i * 35}ms` }} className="cat-slide group flex h-9 shrink-0 items-center gap-1 rounded-full border border-border/80 bg-[#fffdfd] px-2.5 text-[11px] font-bold shadow-sm transition-all duration-300 hover:border-brand hover:bg-brand hover:text-white active:scale-95"><span className="h-5 w-5 overflow-hidden rounded-full bg-brand-light/40 ring-1 ring-black/5">{child.image_url ? <SafeImage src={toImg(child.image_url)} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" /> : <span className="flex h-full w-full items-center justify-center text-[9px]">🌿</span>}</span><span className="max-w-[75px] truncate">{child.name}</span><ChevronRight className="h-3 w-3 opacity-40" /></Link>)}
-                      </div></div>
+                <div className="flex items-center gap-2.5"          {cat && children.length > 0 && (
+            <section className="cat-slide mx-auto mt-2 max-w-6xl">
+              <div className="rounded-2xl border border-brand/10 bg-white/95 p-2 shadow-sm">
+                <div className="relative w-full overflow-hidden">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-3 bg-gradient-to-r from-white to-transparent" />
+                  <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-5 bg-gradient-to-l from-white via-white/75 to-transparent" />
+                  <div ref={subcatRef} className="subcat-scroll overflow-x-auto">
+                    <div className="flex min-w-max justify-start gap-1.5 pr-6">
+                      {children.map((child, i) => <Link key={child.id} to="/category/$slug" params={{ slug: child.slug }} style={{ animationDelay: `${i * 25}ms` }} className="cat-slide group flex h-9 shrink-0 items-center gap-1 rounded-full border border-border/80 bg-[#fffdfd] px-2.5 text-[11px] font-bold shadow-sm transition-colors duration-200 hover:border-brand hover:bg-brand hover:text-white active:scale-[.98]"><span className="h-5 w-5 overflow-hidden rounded-full bg-brand-light/40 ring-1 ring-black/5">{child.image_url ? <SafeImage src={toImg(child.image_url)} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" /> : <span className="flex h-full w-full items-center justify-center text-[9px]">🌿</span>}</span><span className="max-w-[90px] truncate">{child.name}</span><ChevronRight className="h-3 w-3 opacity-40" /></Link>)}
+                      {children.map((child, i) => <Link key={`loop-${child.id}`} to="/category/$slug" params={{ slug: child.slug }} style={{ animationDelay: `${i * 25}ms` }} aria-hidden="true" tabIndex={-1} className="cat-slide group flex h-9 shrink-0 items-center gap-1 rounded-full border border-border/80 bg-[#fffdfd] px-2.5 text-[11px] font-bold shadow-sm transition-colors duration-200 hover:border-brand hover:bg-brand hover:text-white active:scale-[.98]"><span className="h-5 w-5 overflow-hidden rounded-full bg-brand-light/40 ring-1 ring-black/5">{child.image_url ? <SafeImage src={toImg(child.image_url)} alt="" className="h-full w-full object-cover" loading="lazy" /> : <span className="flex h-full w-full items-center justify-center text-[9px]">🌿</span>}</span><span className="max-w-[90px] truncate">{child.name}</span><ChevronRight className="h-3 w-3 opacity-40" /></Link>)}
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
             </section>
-          )}
-
-          {products.length > 0 ? (
-            <section className="mt-4 sm:mt-6">
-              <div className="mb-3 flex items-end justify-between sm:mb-4"><div><div className="flex items-center gap-1.5 text-[10px] font-bold tracking-widest text-brand/70"><Leaf className="h-3.5 w-3.5" /> COLLECTION</div><h2 className="mt-0.5 text-xl font-black tracking-tight text-brand-dark sm:text-2xl">পণ্যসমূহ</h2></div><span className="rounded-full bg-brand/8 px-3 py-1 text-[10px] font-bold text-brand">{products.length}টি পণ্য</span></div>
+          )}iv><h2 className="mt-0.5 text-xl font-black tracking-tight text-brand-dark sm:text-2xl">পণ্যসমূহ</h2></div><span className="rounded-full bg-brand/8 px-3 py-1 text-[10px] font-bold text-brand">{products.length}টি পণ্য</span></div>
               <div className="grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">{products.map((p) => <ProductCard key={p.id} p={p} />)}</div>
             </section>
           ) : <div className="mx-auto mt-6 max-w-md rounded-3xl border border-dashed border-border bg-white py-12 text-center text-muted-foreground"><Leaf className="mx-auto mb-2 h-7 w-7 opacity-50" /><p className="font-semibold">কোনো পণ্য নেই</p></div>}
