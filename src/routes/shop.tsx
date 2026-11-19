@@ -1,7 +1,7 @@
 import { createFileRoute, useSearch, Link } from "@tanstack/react-router";
 import { keepPreviousData, queryOptions, useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
-import { Apple, Flower2, Grid3X3, Leaf, Shovel, Sparkles, Sprout, Wheat, Wrench, Layers3, Home, Globe2, ChevronRight } from "lucide-react";
+import { Apple, Flower2, Leaf, Shovel, Sparkles, Sprout, Wheat, Wrench, Layers3, Home, Globe2, ChevronRight } from "lucide-react";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { ProductCard, type Product } from "@/components/shop/ProductCard";
 import { supabase } from "@/lib/personal-supabase/client";
@@ -117,7 +117,7 @@ function Shop() {
                 {key:"landing",label:"Landing Page Product",icon:Layers3},
                 {key:"all",label:"All Product",icon:Globe2},
               ].map((tab,i)=>{
-                const active = (tab.key==="home-product" ? section==="home"&&!cat&&!q : section===tab.key&&(tab.key!=="categories"||!cat&&!q));
+                const active = (tab.key==="home-product" ? section==="home"&&!cat&&!q : section===tab.key&&(tab.key!=="categories"||true));
                 const toSection: ShopSection = tab.key==="home-product" ? "home" : tab.key==="categories" ? "categories" : tab.key==="landing" ? "landing" : "all";
                 return <Link key={tab.key} to="/shop" search={{section:toSection,cat:undefined,q} as never} className={`flex min-h-[52px] items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-center text-[10px] font-extrabold transition-all sm:min-h-[60px] sm:rounded-2xl sm:text-xs ${active?"bg-gradient-to-br from-[#123d2a] to-[#2f7048] text-white shadow-md":"bg-slate-50 text-slate-600 hover:bg-emerald-50 hover:text-emerald-900"}`}>
                   <tab.icon className="h-4 w-4 shrink-0 sm:h-[18px] sm:w-[18px]"/><span>{tab.label}</span>
