@@ -12,7 +12,7 @@ async function getHomeDataFallback(): Promise<HomeData> {
   const [bannersRes, categoriesRes, popularRes] = await Promise.all([
     supabase.from("banners").select("id,title,image_url,link_url").eq("is_active", true).order("display_order").limit(8),
     supabase.from("categories").select("id,slug,name,image_url,parent_id,is_hidden_from_home").order("display_order").order("created_at"),
-    supabase.from("products").select(cols).eq("is_active", true).eq("is_popular", true).order("created_at", { ascending: false }).limit(12),
+    supabase.from("products").select(cols).eq("is_active", true).eq("display_section", "home").eq("is_popular", true).order("created_at", { ascending: false }).limit(12),
   ]);
   const allCategories = (categoriesRes.data ?? []) as Array<HomeCategory & { parent_id: string | null; is_hidden_from_home: boolean }>;
   const categories = allCategories.filter((c) => c.parent_id === null && !c.is_hidden_from_home).map(({ parent_id: _p, is_hidden_from_home: _h, ...c }) => c);
