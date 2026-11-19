@@ -29,6 +29,7 @@ function Products() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<Product | null>(null);
   const [search, setSearch] = useState("");
+  const [activeSection, setActiveSection] = useState<"home" | "landing" | "all">("all");
 
   const { data: products } = useQuery({
     queryKey: ["admin-products", search],
@@ -70,6 +71,13 @@ function Products() {
           <Plus className="w-4 h-4" /> নতুন প্রোডাক্ট
         </button>
       </div>
+      <div className="flex flex-wrap gap-2 mb-4" role="tablist" aria-label="প্রোডাক্ট সেকশন">
+        <button type="button" role="tab" aria-selected={activeSection === "home"} onClick={() => setActiveSection("home")} className={`px-4 py-2 rounded-lg text-sm font-semibold border ${activeSection === "home" ? "bg-brand text-white border-brand" : "bg-white text-foreground hover:bg-muted"}`}>Home Product</button>
+        <button type="button" role="tab" aria-selected={activeSection === "landing"} onClick={() => setActiveSection("landing")} className={`px-4 py-2 rounded-lg text-sm font-semibold border ${activeSection === "landing" ? "bg-brand text-white border-brand" : "bg-white text-foreground hover:bg-muted"}`}>Landing Page Product</button>
+        <button type="button" role="tab" aria-selected={activeSection === "all"} onClick={() => setActiveSection("all")} className={`px-4 py-2 rounded-lg text-sm font-semibold border ${activeSection === "all" ? "bg-brand text-white border-brand" : "bg-white text-foreground hover:bg-muted"}`}>All Product</button>
+      </div>
+
+      {activeSection === "all" ? <>
       <input placeholder="খুঁজুন..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full md:w-80 border rounded-lg px-3 py-2 mb-4" />
 
       <div className="bg-white border rounded-xl overflow-hidden">
@@ -103,6 +111,7 @@ function Products() {
           </table>
         </div>
       </div>
+      </> : <div className="bg-white border rounded-xl p-8 text-center text-muted-foreground">এই সেকশনের প্রোডাক্ট আলাদা করার ব্যবস্থা পরবর্তী ধাপে যুক্ত হবে।</div>}
 
       {editing && <ProductModal product={editing} categories={categories ?? []} onClose={() => setEditing(null)} onSaved={() => {
           qc.invalidateQueries({ queryKey: ["admin-products"] });
