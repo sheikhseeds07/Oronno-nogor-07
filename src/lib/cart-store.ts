@@ -57,11 +57,25 @@ export const useCart = create<CartState>()(
 
 let cartHydrationPromise: Promise<void> | null = null;
 
-export function hydrateCartStore() {
+export function hydrateCartStore(): Promise<void> {
   if (useCart.persist.hasHydrated()) return Promise.resolve();
   if (!cartHydrationPromise) {
-    cartHydrationPromise = useCart.persist.rehydrate().finally(() => {
-      cartHydrationPromise = null;
+    cartHydrationPromise = new Promise<void>((resolve, reject) => {
+      let unsubscribe: (() => void) | undefined;
+      const finish = () => {
+        unsubscribe?.();
+        cartHydrationPromise = null;
+        resolve();
+      };
+      unsubscribe = useCart.persist.onFinishHydration(finish);
+      try {
+        useCart.persist.rehydrate();
+        if (useCart.persist.hasHydrated()) finish();
+      } catch (error) {
+        unsubscribe?.();
+        cartHydrationPromise = null;
+        reject(error);
+      }
     });
   }
   return cartHydrationPromise;
