@@ -171,10 +171,7 @@ function CategoryPage() {
             </div>
           </nav>
 
-          {cat && (
-            <section className="cat-slide mx-auto mt-2 max-w-6xl">
-              <div className="cat-shine rounded-2xl border border-brand/15 bg-white/95 px-2.5 py-2 shadow-[0_3px_16px_rgba(85,40,55,.05)] sm:px-3">
-                <div className="flex items-center gap-2.5"          {cat && children.length > 0 && (
+          {cat && children.length > 0 && (
             <section className="cat-slide mx-auto mt-2 max-w-6xl">
               <div className="rounded-2xl border border-brand/10 bg-white/95 p-2 shadow-sm">
                 <div className="relative w-full overflow-hidden">
@@ -183,13 +180,20 @@ function CategoryPage() {
                   <div ref={subcatRef} className="subcat-scroll overflow-x-auto">
                     <div className="flex min-w-max justify-start gap-1.5 pr-6">
                       {children.map((child, i) => <Link key={child.id} to="/category/$slug" params={{ slug: child.slug }} style={{ animationDelay: `${i * 25}ms` }} className="cat-slide group flex h-9 shrink-0 items-center gap-1 rounded-full border border-border/80 bg-[#fffdfd] px-2.5 text-[11px] font-bold shadow-sm transition-colors duration-200 hover:border-brand hover:bg-brand hover:text-white active:scale-[.98]"><span className="h-5 w-5 overflow-hidden rounded-full bg-brand-light/40 ring-1 ring-black/5">{child.image_url ? <SafeImage src={toImg(child.image_url)} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" /> : <span className="flex h-full w-full items-center justify-center text-[9px]">🌿</span>}</span><span className="max-w-[90px] truncate">{child.name}</span><ChevronRight className="h-3 w-3 opacity-40" /></Link>)}
-                      {children.map((child, i) => <Link key={`loop-${child.id}`} to="/category/$slug" params={{ slug: child.slug }} style={{ animationDelay: `${i * 25}ms` }} aria-hidden="true" tabIndex={-1} className="cat-slide group flex h-9 shrink-0 items-center gap-1 rounded-full border border-border/80 bg-[#fffdfd] px-2.5 text-[11px] font-bold shadow-sm transition-colors duration-200 hover:border-brand hover:bg-brand hover:text-white active:scale-[.98]"><span className="h-5 w-5 overflow-hidden rounded-full bg-brand-light/40 ring-1 ring-black/5">{child.image_url ? <SafeImage src={toImg(child.image_url)} alt="" className="h-full w-full object-cover" loading="lazy" /> : <span className="flex h-full w-full items-center justify-center text-[9px]">🌿</span>}</span><span className="max-w-[90px] truncate">{child.name}</span><ChevronRight className="h-3 w-3 opacity-40" /></Link>)}
+                      {children.map((child, i) => <Link key={`loop-${child.id}`} to="/category/$slug" params={{ slug: child.slug }} style={{ animationDelay: `${i * 25}ms` }} aria-hidden="true" tabIndex={-1} className="pointer-events-none cat-slide group flex h-9 shrink-0 items-center gap-1 rounded-full border border-border/80 bg-[#fffdfd] px-2.5 text-[11px] font-bold shadow-sm"><span className="h-5 w-5 overflow-hidden rounded-full bg-brand-light/40 ring-1 ring-black/5">{child.image_url ? <SafeImage src={toImg(child.image_url)} alt="" className="h-full w-full object-cover" loading="lazy" /> : <span className="flex h-full w-full items-center justify-center text-[9px]">🌿</span>}</span><span className="max-w-[90px] truncate">{child.name}</span><ChevronRight className="h-3 w-3 opacity-40" /></Link>)}
                     </div>
                   </div>
                 </div>
               </div>
             </section>
-          )}iv><h2 className="mt-0.5 text-xl font-black tracking-tight text-brand-dark sm:text-2xl">পণ্যসমূহ</h2></div><span className="rounded-full bg-brand/8 px-3 py-1 text-[10px] font-bold text-brand">{products.length}টি পণ্য</span></div>
+          )}
+
+          {products.length > 0 ? (
+            <section className="cat-slide mx-auto mt-5 max-w-6xl">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h2 className="mt-0.5 text-xl font-black tracking-tight text-brand-dark sm:text-2xl">পণ্যসমূহ</h2>
+                <span className="rounded-full bg-brand/8 px-3 py-1 text-[10px] font-bold text-brand">{products.length}টি পণ্য</span>
+              </div>
               <div className="grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">{products.map((p) => <ProductCard key={p.id} p={p} />)}</div>
             </section>
           ) : <div className="mx-auto mt-6 max-w-md rounded-3xl border border-dashed border-border bg-white py-12 text-center text-muted-foreground"><Leaf className="mx-auto mb-2 h-7 w-7 opacity-50" /><p className="font-semibold">কোনো পণ্য নেই</p></div>}
