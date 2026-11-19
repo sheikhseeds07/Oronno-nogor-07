@@ -1,4 +1,5 @@
 import { SafeImage } from "@/components/SafeImage";
+import { safeUUID } from "@/lib/uuid";
 import { LANDING_PAGES_COLUMNS } from "@/lib/read-columns";
 import { useEffect, useMemo, useState, useRef, type ReactElement, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
@@ -214,7 +215,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
       return;
     }
     try {
-      if (!landingCheckoutSessionRef.current) landingCheckoutSessionRef.current = crypto.randomUUID();
+      if (!landingCheckoutSessionRef.current) landingCheckoutSessionRef.current = safeUUID();
       const seedItem = { id: seedProductId, name: current.name, price: current.price, quantity: 1 };
       const nutrimixItem = { id: p.id, name: p.name, price: p.price, quantity: 1 };
       if (!landingInitiateCheckoutRef.current) {
