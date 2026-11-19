@@ -21,7 +21,7 @@ export const Route = createFileRoute("/product/$slug")({
   loader: async ({ params, context }) => {
     const queryClient = (context as { queryClient?: import("@tanstack/react-query").QueryClient }).queryClient;
     if (!queryClient || queryClient.getQueryData(["product", params.slug])) return null;
-    const { data } = await supabase.from("products").select(`${PRODUCTS_COLUMNS}, categories(name,slug)`).eq("slug", params.slug).maybeSingle();
+    const { data } = await supabase.from("products").select(`${PRODUCTS_COLUMNS}, categories(name,slug)`).eq("slug", params.slug).eq("display_section", "home").maybeSingle();
     if (data) queryClient.setQueryData(["product", params.slug], data);
     return null;
   },
@@ -39,7 +39,7 @@ function ProductPage() {
   const { data: p, isLoading } = useQuery({
     queryKey: ["product", slug],
     queryFn: async () => {
-      const { data } = await supabase.from("products").select(`${PRODUCTS_COLUMNS}, categories(name,slug)`).eq("slug", slug).maybeSingle();
+      const { data } = await supabase.from("products").select(`${PRODUCTS_COLUMNS}, categories(name,slug)`).eq("slug", slug).eq("display_section", "home").maybeSingle();
       if (data) return data;
       const { fallbackProducts } = await import("@/lib/fallback-shop");
       return (fallbackProducts.find((item) => item.slug === slug) ?? null) as unknown as typeof data;
@@ -56,7 +56,7 @@ function ProductPage() {
     queryKey: ["related-products", p?.id, p?.category_id], enabled: !!p,
     queryFn: async () => {
       if (!p) return [] as Product[];
-      let query = supabase.from("products").select("id,name,slug,price,sale_price,images,stock,short_description,description").eq("is_active", true).neq("id", p.id);
+      let query = supabase.from("products").select("id,name,slug,price,sale_price,images,stock,short_description,description").eq("is_active", true).eq("display_section", "home").neq("id", p.id);
       if (p.category_id) query = query.eq("category_id", p.category_id);
       const { data, error } = await query.order("created_at", { ascending: false }).limit(4);
       if (error) throw error;
