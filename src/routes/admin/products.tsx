@@ -17,6 +17,7 @@ type Product = {
   description?: string; short_description?: string;
   price: number; sale_price?: number | null; cost?: number | null; stock: number;
   category_id?: string | null; images?: string[];
+  display_section: "home" | "landing";
   is_active?: boolean; is_featured?: boolean; is_popular?: boolean;
   categories?: { name?: string } | null;
 };
@@ -40,25 +41,8 @@ function Products() {
     },
   });
 
-  const { data: landingProductIds } = useQuery({
-    queryKey: ["admin-landing-linked-product-ids"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("landing_pages").select("product_id,addons").limit(1000);
-      if (error) throw error;
-      const ids = new Set<string>();
-      for (const page of data ?? []) {
-        if (typeof page.product_id === "string" && page.product_id) ids.add(page.product_id);
-        const addons = Array.isArray(page.addons) ? page.addons as { product_id?: string }[] : [];
-        for (const addon of addons) {
-          if (typeof addon?.product_id === "string" && addon.product_id) ids.add(addon.product_id);
-        }
-      }
-      return Array.from(ids);
-    },
-  });
-
-  const landingProducts = products?.filter((product) => !!product.id && landingProductIds?.includes(product.id)) ?? [];
-  const homeProducts = products?.filter((product) => !!product.id && !landingProductIds?.includes(product.id)) ?? [];
+  const homeProducts = products?.filter((product) => product.display_section === "home") ?? [];
+  const landingProducts = products?.filter((product) => product.display_section === "landing") ?? [];
 
   const { data: categories } = useQuery({
     queryKey: ["admin-cats"],
@@ -87,7 +71,7 @@ function Products() {
     <AdminLayout>
       <div className="flex items-center justify-between mb-4 gap-3">
         <h1 className="text-2xl font-bold">প্রোডাক্ট</h1>
-        <button onClick={() => setEditing({ name: "", slug: "", price: 0, cost: 0, stock: 0, images: [], is_active: true, is_popular: false })} className="bg-brand text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2">
+        <button onClick={() => setEditing({ name: "", slug: "", price: 0, cost: 0, stock: 0, images: [], is_active: true, is_popular: false, display_section: "home" })} className="bg-brand text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2">
           <Plus className="w-4 h-4" /> নতুন প্রোডাক্ট
         </button>
       </div>
@@ -171,6 +155,7 @@ function ProductModal({ product, categories, onClose, onSaved, onAdded }: { prod
       cost: Number(p.cost ?? 0), stock: Number(p.stock), category_id: p.category_id || null,
       images: p.images ?? [], is_active: p.is_active ?? true, is_featured: p.is_featured ?? false,
       is_popular: p.is_popular ?? false,
+      display_section: p.display_section,
     };
     const { error } = p.id
       ? await supabase.from("products").update(payload as never).eq("id", p.id)
@@ -179,7 +164,7 @@ function ProductModal({ product, categories, onClose, onSaved, onAdded }: { prod
     if (error) return toast.error(error.message);
     toast.success("সংরক্ষণ হয়েছে");
     if (addAnother) {
-      setP({ name: "", slug: "", price: 0, cost: 0, stock: 0, images: [], is_active: true, is_popular: false, category_id: p.category_id ?? null });
+      setP({ name: "", slug: "", price: 0, cost: 0, stock: 0, images: [], is_active: true, is_popular: false, category_id: p.category_id ?? null, display_section: "home" });
       onAdded?.();
     } else {
       onSaved();
@@ -202,6 +187,14 @@ function ProductModal({ product, categories, onClose, onSaved, onAdded }: { prod
             <div><label className="text-sm font-medium">প্রোডাক্ট কস্ট</label><input type="number" min="0" step="0.01" value={p.cost ?? 0} onChange={(e) => setP({ ...p, cost: Number(e.target.value) || 0 })} className="w-full border rounded-lg px-3 py-2 mt-1" placeholder="প্রতি ইউনিট কস্ট" /></div>
             <div><label className="text-sm font-medium">স্টক</label><input type="number" value={p.stock} onChange={(e) => setP({ ...p, stock: +e.target.value })} className="w-full border rounded-lg px-3 py-2 mt-1" /></div>
             <div><label className="text-sm font-medium">SKU</label><input value={p.sku ?? ""} onChange={(e) => setP({ ...p, sku: e.target.value })} className="w-full border rounded-lg px-3 py-2 mt-1" /></div>
+          </div>
+          <div>
+            <label className="text-sm font-medium">প্রোডাক্ট সেকশন *</label>
+            <select value={p.display_section} onChange={(e) => setP({ ...p, display_section: e.target.value as "home" | "landing" })} className="w-full border rounded-lg px-3 py-2 mt-1">
+              <option value="home">Home Page Product</option>
+              <option value="landing">Landing Page Product</option>
+            </select>
+            <p className="mt-1 text-xs text-muted-foreground">এখান থেকে যেকোনো সময় প্রোডাক্টের সেকশন পরিবর্তন করতে পারবেন।</p>
           </div>
           <div><label className="text-sm font-medium">ক্যাটাগরি</label>
             <select value={p.category_id ?? ""} onChange={(e) => setP({ ...p, category_id: e.target.value || null })} className="w-full border rounded-lg px-3 py-2 mt-1">
