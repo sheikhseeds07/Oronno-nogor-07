@@ -55,6 +55,14 @@ export const useCart = create<CartState>()(
   ),
 );
 
+let cartHydrationPromise: Promise<void> | null = null;
+
 export function hydrateCartStore() {
-  return useCart.persist.rehydrate();
+  if (useCart.persist.hasHydrated()) return Promise.resolve();
+  if (!cartHydrationPromise) {
+    cartHydrationPromise = useCart.persist.rehydrate().finally(() => {
+      cartHydrationPromise = null;
+    });
+  }
+  return cartHydrationPromise;
 }
