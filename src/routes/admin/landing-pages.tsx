@@ -204,6 +204,7 @@ function LandingPagesAdmin() {
     const savedSlug = editing.slug;
     await Promise.all([
       qc.invalidateQueries({ queryKey: ["admin-landing"] }),
+      qc.invalidateQueries({ queryKey: ["admin-landing-linked-product-ids"] }),
       qc.invalidateQueries({ queryKey: ["landing-clean", savedSlug] }),
       qc.invalidateQueries({ queryKey: ["landing-all-product", savedSlug] }),
       qc.invalidateQueries({ queryKey: ["landing-template", savedSlug] }),
