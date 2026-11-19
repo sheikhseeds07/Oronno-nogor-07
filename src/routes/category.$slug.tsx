@@ -1,7 +1,7 @@
 import { SafeImage } from "@/components/SafeImage";
 import { createFileRoute, useParams, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { ProductCard, type Product } from "@/components/shop/ProductCard";
 import { supabase } from "@/lib/personal-supabase/client";
@@ -38,7 +38,6 @@ type CategoryRow = { id: string; name: string; slug: string; image_url: string |
 
 function CategoryPage() {
   const { slug } = useParams({ from: "/category/$slug" });
-  const subcatRef = useRef<HTMLDivElement>(null);
 
   const { data: categories = [] } = useQuery({
     queryKey: ["cat-list"],
@@ -86,6 +85,23 @@ function CategoryPage() {
     },
   });
 
+  const { data: siblingCategories = [] } = useQuery({
+    queryKey: ["cat-siblings", cat?.parent_id, cat?.id],
+    enabled: Boolean(cat?.parent_id), staleTime: 10 * 60 * 1000, gcTime: 30 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("categories") as any).select("id,name,slug,image_url,parent_id,display_order").eq("parent_id", cat!.parent_id).order("display_order").order("created_at");
+      if (error) throw error;
+      return (data ?? []) as CategoryRow[];
+    },
+  });
+  const { data: parentCategory } = useQuery({
+    queryKey: ["cat-parent", cat?.parent_id], enabled: Boolean(cat?.parent_id), staleTime: 10 * 60 * 1000, gcTime: 30 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("categories") as any).select("id,name,slug").eq("id", cat!.parent_id).maybeSingle();
+      if (error) throw error;
+      return data as { id: string; name: string; slug: string } | null;
+    },
+  });
   const { data: products = [] } = useQuery({
     queryKey: ["cat-products", cat?.id, children.map((c) => c.id).join(",")],
     enabled: Boolean(cat?.id),
@@ -104,40 +120,6 @@ function CategoryPage() {
     },
   });
 
-  // Slowly reveal that more subcategories exist. Stops while the user interacts.
-  useEffect(() => {
-    const el = subcatRef.current;
-    if (!el || children.length < 3 || el.scrollWidth <= el.clientWidth + 4) return;
-
-    let raf = 0;
-    let last = performance.now();
-    let pausedUntil = 0;
-    const speed = 0.12;
-
-    const pause = () => { pausedUntil = performance.now() + 2200; };
-    el.addEventListener("pointerdown", pause, { passive: true });
-    el.addEventListener("touchstart", pause, { passive: true });
-    el.addEventListener("mouseenter", pause, { passive: true });
-
-    const tick = (now: number) => {
-      const delta = Math.min(now - last, 50);
-      last = now;
-      if (now >= pausedUntil) {
-        el.scrollLeft += delta * speed;
-        const loopWidth = el.scrollWidth / 2;
-        if (loopWidth > 0 && el.scrollLeft >= loopWidth) el.scrollLeft -= loopWidth;
-      }
-      raf = requestAnimationFrame(tick);
-    };
-
-    raf = requestAnimationFrame(tick);
-    return () => {
-      cancelAnimationFrame(raf);
-      el.removeEventListener("pointerdown", pause);
-      el.removeEventListener("touchstart", pause);
-      el.removeEventListener("mouseenter", pause);
-    };
-  }, [children.length]);
 
   return (
     <SiteLayout>
@@ -145,11 +127,13 @@ function CategoryPage() {
         @keyframes catSlide{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
         @keyframes catFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
         @keyframes catShine{0%{transform:translateX(-130%)}100%{transform:translateX(130%)}}
+        @keyframes subcatMarquee{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}
+        .subcat-track{display:flex;width:max-content;min-width:max-content;animation:subcatMarquee var(--marquee-duration,90s) linear infinite;will-change:transform;transform:translateZ(0)}
+        .subcat-marquee:hover .subcat-track,.subcat-marquee:focus-within .subcat-track{animation-play-state:paused}
+        .subcat-marquee{contain:layout paint;touch-action:pan-y}
         .cat-slide{animation:catSlide .35s ease both}
         .cat-float{animation:catFloat 3s ease-in-out infinite}
-        .subcat-scroll{overscroll-behavior-x:contain;scrollbar-width:none;-ms-overflow-style:none;will-change:scroll-position}
-        .subcat-scroll::-webkit-scrollbar{display:none}
-        @media(prefers-reduced-motion:reduce){.cat-slide,.cat-float,.cat-shine:after{animation:none!important}.subcat-scroll{scroll-behavior:auto}}
+        @media(prefers-reduced-motion:reduce){.cat-slide,.cat-float,.cat-shine:after{animation:none!important}.subcat-track{animation:none!important}}
       `}</style>
 
       <main className="min-h-screen bg-gradient-to-b from-[#fffafb] via-background to-background">
@@ -171,22 +155,29 @@ function CategoryPage() {
             </div>
           </nav>
 
-          {cat && children.length > 0 && (
-            <section className="cat-slide mx-auto mt-2 max-w-6xl">
-              <div className="rounded-2xl border border-brand/10 bg-white/95 p-2 shadow-sm">
-                <div className="relative w-full overflow-hidden">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-3 bg-gradient-to-r from-white to-transparent" />
-                  <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-5 bg-gradient-to-l from-white via-white/75 to-transparent" />
-                  <div ref={subcatRef} className="subcat-scroll overflow-x-auto">
-                    <div className="flex min-w-max justify-start gap-1.5 pr-6">
-                      {children.map((child, i) => <Link key={child.id} to="/category/$slug" params={{ slug: child.slug }} style={{ animationDelay: `${i * 25}ms` }} className="cat-slide group flex h-9 shrink-0 items-center gap-1 rounded-full border border-border/80 bg-[#fffdfd] px-2.5 text-[11px] font-bold shadow-sm transition-colors duration-200 hover:border-brand hover:bg-brand hover:text-white active:scale-[.98]"><span className="h-5 w-5 overflow-hidden rounded-full bg-brand-light/40 ring-1 ring-black/5">{child.image_url ? <SafeImage src={toImg(child.image_url)} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" /> : <span className="flex h-full w-full items-center justify-center text-[9px]">🌿</span>}</span><span className="max-w-[90px] truncate">{child.name}</span><ChevronRight className="h-3 w-3 opacity-40" /></Link>)}
-                      {children.map((child, i) => <Link key={`loop-${child.id}`} to="/category/$slug" params={{ slug: child.slug }} style={{ animationDelay: `${i * 25}ms` }} aria-hidden="true" tabIndex={-1} className="pointer-events-none cat-slide group flex h-9 shrink-0 items-center gap-1 rounded-full border border-border/80 bg-[#fffdfd] px-2.5 text-[11px] font-bold shadow-sm"><span className="h-5 w-5 overflow-hidden rounded-full bg-brand-light/40 ring-1 ring-black/5">{child.image_url ? <SafeImage src={toImg(child.image_url)} alt="" className="h-full w-full object-cover" loading="lazy" /> : <span className="flex h-full w-full items-center justify-center text-[9px]">🌿</span>}</span><span className="max-w-[90px] truncate">{child.name}</span><ChevronRight className="h-3 w-3 opacity-40" /></Link>)}
+          {cat && (cat.parent_id ? siblingCategories.length > 0 : children.length > 0) && (() => {
+            const items = cat.parent_id ? siblingCategories : children;
+            const duration = Math.max(55, items.length * 8);
+            return (
+              <section className="cat-slide mx-auto mt-2 max-w-6xl">
+                <div className="flex min-w-0 items-center gap-2 rounded-2xl border border-brand/10 bg-white/95 p-2 shadow-sm">
+                  {cat.parent_id && <div className="flex max-w-[34%] shrink-0 items-center border-r border-brand/10 pr-2"><span className="max-w-full truncate text-xs font-black text-brand-dark">{parentCategory?.name ?? "ক্যাটাগরি"}</span></div>}
+                  <div className="subcat-marquee relative min-w-0 flex-1 overflow-hidden" style={{ ["--marquee-duration" as string]: duration + "s" }}>
+                    <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-3 bg-gradient-to-r from-white to-transparent" />
+                    <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-4 bg-gradient-to-l from-white to-transparent" />
+                    <div className="subcat-track gap-1.5 pr-1">
+                      {[...items, ...items].map((item, i) => (
+                        <Link key={(i < items.length ? "primary-" : "repeat-") + item.id} to="/category/$slug" params={{ slug: item.slug }} aria-label={item.name} className={"group flex h-9 shrink-0 items-center gap-1 rounded-full border px-2.5 text-[11px] font-bold shadow-sm transition-colors duration-200 hover:border-brand hover:bg-brand hover:text-white active:scale-[.98] " + (item.slug === slug ? "border-brand bg-brand text-white" : "border-border/80 bg-[#fffdfd]")}>
+                          <span className="h-5 w-5 overflow-hidden rounded-full bg-brand-light/40 ring-1 ring-black/5">{item.image_url ? <SafeImage src={toImg(item.image_url)} alt="" className="h-full w-full object-cover" loading="lazy" /> : <span className="flex h-full w-full items-center justify-center text-[9px]">🌿</span>}</span>
+                          <span className="max-w-[90px] truncate">{item.name}</span><ChevronRight className="h-3 w-3 opacity-40" />
+                        </Link>
+                      ))}
                     </div>
                   </div>
                 </div>
-              </div>
-            </section>
-          )}
+              </section>
+            );
+          })()}
 
           {products.length > 0 ? (
             <section className="cat-slide mx-auto mt-5 max-w-6xl">
