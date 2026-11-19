@@ -45,7 +45,7 @@ export function TikTokPixel() {
     window.__oronnoTikTokOwner = true;
     const initialClickId = new URLSearchParams(window.location.search).get("ttclid");
     if (initialClickId) writeAttributionCookie("_ttclid", initialClickId);
-    if (!readCookie("_tt_external_id")) writeAttributionCookie("_tt_external_id", safeUUID());
+    if (!readCookie("_tt_external_id")) writeAttributionCookie("_tt_external_id", crypto.randomUUID());
     let lastPath = "";
     let enabled = false;
     const send: TikTokBridge = (event, properties = {}, eventId = safeUUID() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`) => {

@@ -76,9 +76,9 @@ function Products() {
         </button>
       </div>
       <div className="flex flex-wrap gap-2 mb-4" role="tablist" aria-label="প্রোডাক্ট সেকশন">
-        <button type="button" role="tab" aria-selected={activeSection === "home"} onClick={() => setActiveSection("home")} className={`px-4 py-2 rounded-lg text-sm font-semibold border ${activeSection === "home" ? "bg-brand text-white border-brand" : "bg-white text-foreground hover:bg-muted"}`}>Home Product</button>
-        <button type="button" role="tab" aria-selected={activeSection === "landing"} onClick={() => setActiveSection("landing")} className={`px-4 py-2 rounded-lg text-sm font-semibold border ${activeSection === "landing" ? "bg-brand text-white border-brand" : "bg-white text-foreground hover:bg-muted"}`}>Landing Page Product</button>
-        <button type="button" role="tab" aria-selected={activeSection === "all"} onClick={() => setActiveSection("all")} className={`px-4 py-2 rounded-lg text-sm font-semibold border ${activeSection === "all" ? "bg-brand text-white border-brand" : "bg-white text-foreground hover:bg-muted"}`}>All Product</button>
+        <button type="button" role="tab" aria-selected={activeSection === "home"} onClick={() => setActiveSection("home")} className={`px-4 py-2 rounded-lg text-sm font-semibold border ${activeSection === "home" ? "bg-brand text-white border-brand" : "bg-white text-foreground hover:bg-muted"}`}>Home Product <span className="ml-1 opacity-80">({homeProducts.length})</span></button>
+        <button type="button" role="tab" aria-selected={activeSection === "landing"} onClick={() => setActiveSection("landing")} className={`px-4 py-2 rounded-lg text-sm font-semibold border ${activeSection === "landing" ? "bg-brand text-white border-brand" : "bg-white text-foreground hover:bg-muted"}`}>Landing Page Product <span className="ml-1 opacity-80">({landingProducts.length})</span></button>
+        <button type="button" role="tab" aria-selected={activeSection === "all"} onClick={() => setActiveSection("all")} className={`px-4 py-2 rounded-lg text-sm font-semibold border ${activeSection === "all" ? "bg-brand text-white border-brand" : "bg-white text-foreground hover:bg-muted"}`}>All Product <span className="ml-1 opacity-80">({products?.length ?? 0})</span></button>
       </div>
 
       {<>

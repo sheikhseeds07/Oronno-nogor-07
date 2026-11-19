@@ -1,5 +1,4 @@
 import { SafeImage } from "@/components/SafeImage";
-import { safeUUID } from "@/lib/uuid";
 import { LANDING_PAGES_COLUMNS, LANDING_PRODUCT_COLUMNS } from "@/lib/read-columns";
 import { useNavigate } from "@tanstack/react-router";
 import { landingBaseSlug } from "@/lib/landing-slug";
@@ -191,7 +190,7 @@ export function CleanLandingPage({slug}:{slug:string}){
   const p={id:"landing-popup-nutrimix",name:C.nutrimix_offer_name||"NUTRIMIX - গাছের খাদ্য",price:Number(C.nutrimix_offer_price)||0,sale_price:Number(C.nutrimix_offer_price)||0,old_price:Number(C.nutrimix_offer_old_price)||0,images:C.nutrimix_offer_image?[C.nutrimix_offer_image]:[]};
   if(!p.name||p.price<=0){toast.error("Popup Product-এর নাম ও দাম সেট করুন");return;}
   try{
-    if(!landingCheckoutSessionRef.current)landingCheckoutSessionRef.current=safeUUID();
+    if(!landingCheckoutSessionRef.current)landingCheckoutSessionRef.current=crypto.randomUUID();
     const seedItem={id:selected.product_id,name:selected.name,price:selected.price,quantity:1};
     const nutrimixItem={id:p.id,name:p.name,price:p.price,quantity:1};
     if(!landingInitiateCheckoutRef.current){landingInitiateCheckoutRef.current=true;trackInitiateCheckout([seedItem],total);}
