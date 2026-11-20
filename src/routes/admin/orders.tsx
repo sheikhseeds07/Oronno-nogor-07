@@ -3425,7 +3425,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
               <textarea rows={2} value={address} onChange={(e) => setAddress(e.target.value)} className="w-full border rounded-lg px-3 py-2 text-sm bg-blue-50/40" />
             </div>
             <div className="sm:col-span-3">
-              <label className="text-xs font-semibold mb-1 block">Shipping Note</label>
+              <label className="text-xs font-semibold mb-1 block">কাস্টমারের ঐচ্ছিক নোট</label>
               <textarea rows={3} value={shippingNote} onChange={(e) => setShippingNote(e.target.value)} maxLength={350} className="w-full border rounded-lg px-3 py-2 text-sm" />
               <div className="text-[11px] text-right text-muted-foreground">{shippingNote.length}/350</div>
             </div>
