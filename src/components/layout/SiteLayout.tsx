@@ -46,6 +46,13 @@ export function SiteLayout({ children }: Props) {
   }, [cartSubtotal, isSeedOfferPage, landingPage, isProfile, isCheckout, isCart]);
 
   useEffect(() => {
+    if (!offerPopup) return;
+    const autoCloseAfter = offerPopup === "intro" ? 15000 : 10000;
+    const timer = window.setTimeout(() => setOfferPopup(null), autoCloseAfter);
+    return () => window.clearTimeout(timer);
+  }, [offerPopup]);
+
+  useEffect(() => {
     if (!isProfile) return;
     const onClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement | null;
