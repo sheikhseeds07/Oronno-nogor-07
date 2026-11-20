@@ -2492,7 +2492,7 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
       <div className="space-y-4">
         <div className="bg-white border rounded-xl p-4 space-y-3">
           <h3 className="font-bold">কাস্টমার তথ্য</h3>
-          <input className="w-full border rounded-lg px-3 py-2 text-sm" type="tel" inputMode="numeric" maxLength={11} placeholder="ফোন নাম্বার *" value={phone} onChange={(e) => setPhone(e.target.value.replace(/[^0-9০-৯]/g, "").slice(0, 11))} />
+          <input className="w-full border rounded-lg px-3 py-2 text-sm" type="tel" inputMode="numeric" maxLength={11} placeholder="ফোন নাম্বার *" value={phone} onChange={(e) => setPhone(e.target.value.replace(/[০-৯]/g, (digit) => String("০১২৩৪৫৬৭৮৯".indexOf(digit))).replace(/[^0-9]/g, "").slice(0, 11))} />
           <input className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="বিকল্প নাম্বার (অপশনাল)" value={alternativePhone} maxLength={11} inputMode="numeric" onChange={(e) => setAlternativePhone(e.target.value.replace(/[^0-9০-৯]/g, "").slice(0, 11))} />
           <input className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="নাম *" value={name} onChange={(e) => setName(e.target.value)} />
           <textarea className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="ঠিকানা" rows={2} value={address} onChange={(e) => setAddress(e.target.value)} />
