@@ -48,7 +48,7 @@ function Checkout() {
     submitLockRef.current = true;
     setSubmitting(true);
     setNutrimixPopupOpen(false);
-    const orderItems = [...items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity })), ...(includeNutrimix ? [{ id: "home-nutrimix-popup", name: String(settings.home_nutrimix_product_name || 'NUTRIMIX - "অনুখাদ্য" 200 GM'), price: Math.max(1, Number(settings.home_nutrimix_product_price) || 200), quantity: 1 }] : [])];
+    const orderItems = [...items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, is_freebie: i.is_freebie })), ...(includeNutrimix ? [{ id: "home-nutrimix-popup", name: String(settings.home_nutrimix_product_name || 'NUTRIMIX - "অনুখাদ্য" 200 GM'), price: Math.max(1, Number(settings.home_nutrimix_product_price) || 200), quantity: 1 }] : [])];
     const orderTotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0) + delivery;
     try {
       const result = await runFinalizeHomeIntent({ data: { intent_id: homeIntentIdRef.current, include_nutrimix: includeNutrimix, emit_purchase: true, ...getFbContext() } });
