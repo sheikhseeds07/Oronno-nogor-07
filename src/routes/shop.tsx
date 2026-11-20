@@ -151,7 +151,7 @@ function Shop() {
         {products.length > 0 ? (
           <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-3 lg:grid-cols-4">
             {products.map((p, i) => (
-              <div key={p.id} className="shop-product-reveal" style={{ animationDelay: `${Math.min(i * 35, 350)}ms` }}><ProductCard p={p} /></div>
+              <div key={p.id} className="shop-product-reveal" style={{ animationDelay: `${Math.min(i * 35, 350)}ms` }}><ProductCard p={p} priority={i < 2} /></div>
             ))}
           </div>
         ) : (
