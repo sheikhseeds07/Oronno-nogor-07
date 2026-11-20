@@ -18,6 +18,7 @@ import { mergeContent, DEFAULT_FEATURES, DEFAULT_WHY, type Feature, type WhyItem
 import { toImg, imgFallback } from "@/lib/img";
 import { isValidBdPhone, phoneSubmitError } from "@/lib/bd-phone";
 import { Button } from "@/components/ui/button";
+import { LpOptionalOrderFields } from "@/components/landing/lp-shared";
 import brandLogoFile from "@/assets/logo.jpg";
 import arannyaLogo from "@/assets/arannya-nogor-logo.png.asset.json";
 import { GuaranteePopup } from "@/components/landing/GuaranteePopup";
@@ -47,7 +48,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
   const landingCheckoutSessionRef = useRef<string | null>(null);
   const landingInitiateCheckoutRef = useRef(false);
   const [formInView, setFormInView] = useState(false);
-  const [form, setForm] = useState({ name: "", phone: "", address: "" });
+  const [form, setForm] = useState({ name: "", phone: "", address: "", altPhone: "", note: "" });
   const [formErrors, setFormErrors] = useState<{name?:string;phone?:string;address?:string}>({});
   // The route loader already fetched this row fresh on the server for this very
   // request, so hydration must not spend the visitor's bandwidth re-fetching it.
@@ -201,6 +202,10 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
       toast.error(phoneSubmitError(form.phone));
       return;
     }
+    if (form.altPhone && !isValidBdPhone(form.altPhone)) {
+      toast.error(phoneSubmitError(form.altPhone));
+      return;
+    }
     const p = {
       id: "landing-popup-nutrimix",
       name: C.nutrimix_offer_name || "NUTRIMIX - গাছের খাদ্য",
@@ -230,7 +235,8 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
           delivery_fee: shipping,
           seed_items: [seedItem],
           nutrimix_item: nutrimixItem,
-          notes: null,
+          notes: form.note || null,
+          alternative_phone: form.altPhone || null,
           ...getFbContext(),
         },
       });
@@ -298,6 +304,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
     } else {
       if (!form.name || !form.address) return toast.error("নাম ও ঠিকানা পূরণ করুন");
       if (!isValidBdPhone(form.phone)) return toast.error(phoneSubmitError(form.phone));
+      if (form.altPhone && !isValidBdPhone(form.altPhone)) return toast.error(phoneSubmitError(form.altPhone));
     }
     if (!current) return;
     if (!isNutrimix && !skipNutrimixPopup && C.nutrimix_popup_enabled !== false) {
@@ -309,7 +316,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
     try {
       const items = [{ id: current.product_id || `offer-${selected}`, name: current.name, price: current.price, quantity: 1 }];
       trackInitiateCheckout(items, total);
-      const order = await runPlaceOrder({ data: { customer_name: form.name, customer_phone: normalizedPhone, customer_address: form.address, delivery_fee: shipping, items, notes: null, ...getFbContext() } });
+      const order = await runPlaceOrder({ data: { customer_name: form.name, customer_phone: normalizedPhone, customer_address: form.address, delivery_fee: shipping, items, notes: form.note || null, alternative_phone: form.altPhone || null, ...getFbContext() } });
       orderCreatedRef.current = true;
       trackPurchase(items, total, order.id);
       toast.success("অর্ডার সফল হয়েছে!");
@@ -565,6 +572,9 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
                 <div className="sm:col-span-2">
                   <CheckoutField label="সম্পূর্ণ ঠিকানা" icon={<MapPin />} error={isNutrimix ? formErrors.address : undefined}><textarea required id="nutrimix-address" rows={2} value={form.address} onChange={event => { setForm({ ...form, address: event.target.value }); setFormErrors((errors) => ({ ...errors, address: "" })); }} placeholder="গ্রাম/এলাকা, থানা, জেলা" /></CheckoutField>
                 </div>
+              </div>
+              <div className="mt-4">
+                <LpOptionalOrderFields altPhone={form.altPhone} note={form.note} onAltPhoneChange={value => setForm(current => ({ ...current, altPhone: value }))} onNoteChange={value => setForm(current => ({ ...current, note: value }))} themeColor="var(--all-product-primary)" />
               </div>
             </div>
 
