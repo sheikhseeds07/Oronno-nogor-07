@@ -62,7 +62,8 @@ function CategoryPage() {
 
   const { data: cat } = useQuery({
     queryKey: ["cat", slug],
-    staleTime: 10 * 60 * 1000,
+    staleTime: 0,
+    refetchOnMount: "always",
     gcTime: 30 * 60 * 1000,
     queryFn: async () => {
       const { data, error } = await (supabase.from("categories") as any)
@@ -74,10 +75,11 @@ function CategoryPage() {
     },
   });
 
-  const { data: children = [] } = useQuery({
+  const { data: children = [], isFetching: isChildrenFetching } = useQuery({
     queryKey: ["cat-children", cat?.id],
     enabled: Boolean(cat?.id),
-    staleTime: 10 * 60 * 1000,
+    staleTime: 0,
+    refetchOnMount: "always",
     gcTime: 30 * 60 * 1000,
     queryFn: async () => {
       const { data, error } = await (supabase.from("categories") as any)
@@ -137,10 +139,11 @@ function CategoryPage() {
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
   }, [cat?.id, cat?.parent_id, children.length, siblingCategories.length]);
-  const { data: products = [] } = useQuery({
+  const { data: products = [], isFetching: isProductsFetching } = useQuery({
     queryKey: ["cat-products", cat?.id, children.map((c) => c.id).join(",")],
     enabled: Boolean(cat?.id),
-    staleTime: 2 * 60 * 1000,
+    staleTime: 0,
+    refetchOnMount: "always",
     gcTime: 15 * 60 * 1000,
     queryFn: async () => {
       const ids = [cat!.id, ...children.map((c) => c.id)];
@@ -166,7 +169,6 @@ function CategoryPage() {
         .subcat-marquee{contain:layout paint;touch-action:pan-y;cursor:grab;scrollbar-width:none;-ms-overflow-style:none;isolation:isolate}
         .subcat-marquee::-webkit-scrollbar{display:none}
         .subcat-marquee.is-dragging{cursor:grabbing;user-select:none}
-        .subcat-marquee:after{content:"";position:absolute;z-index:2;top:0;right:0;bottom:0;width:22px;pointer-events:none;background:linear-gradient(270deg,rgba(255,255,255,.98) 0%,rgba(255,255,255,.78) 38%,rgba(255,255,255,0) 100%)}
         .cat-slide{animation:catSlide .35s ease both}
         .cat-float{animation:catFloat 3s ease-in-out infinite}
         @media(prefers-reduced-motion:reduce){.cat-slide,.cat-float,.cat-shine:after{animation:none!important}}
@@ -244,7 +246,7 @@ function CategoryPage() {
               </div>
               <div className="grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">{products.map((p) => <ProductCard key={p.id} p={p} />)}</div>
             </section>
-          ) : <div className="mx-auto mt-6 max-w-md rounded-3xl border border-dashed border-border bg-white py-12 text-center text-muted-foreground"><Leaf className="mx-auto mb-2 h-7 w-7 opacity-50" /><p className="font-semibold">কোনো পণ্য নেই</p></div>}
+          ) : (isChildrenFetching || isProductsFetching) ? <div className="mx-auto mt-6 max-w-md py-12 text-center text-muted-foreground"><p className="font-semibold">পণ্য লোড হচ্ছে...</p></div> : <div className="mx-auto mt-6 max-w-md rounded-3xl border border-dashed border-border bg-white py-12 text-center text-muted-foreground"><Leaf className="mx-auto mb-2 h-7 w-7 opacity-50" /><p className="font-semibold">কোনো পণ্য নেই</p></div>}
         </div>
       </main>
     </SiteLayout>
