@@ -2592,7 +2592,7 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
 }
 
 /* ───────────────── Detail / Open Order Modal ───────────────── */
-type DetailItem = { id: string; product_id: string | null; product_name: string; quantity: number; price: number; subtotal: number };
+type DetailItem = { id: string; product_id: string | null; product_name: string; quantity: number; price: number; subtotal: number; is_freebie?: boolean };
 type DetailOrder = {
   id: string; invoice_no: string | null; status: OrderStatus;
   customer_name: string; customer_phone: string; alternative_phone?: string | null; customer_address: string | null;
@@ -3223,7 +3223,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
           delivery_fee: deliveryCharge,
           discount,
           total: grand,
-          items: items.map((i) => ({ product_id: i.product_id, product_name: i.product_name, price: Number(i.price), quantity: i.quantity })),
+          items: items.map((i) => ({ product_id: i.product_id, product_name: i.product_name, price: Number(i.price), quantity: i.quantity, is_freebie: !!i.is_freebie })),
         },
       });
       toast.success(confirm ? "অর্ডার তৈরি হয়েছে — অর্ডার লিস্টে গেছে" : "অর্ডার আপডেট হয়েছে");
@@ -3480,7 +3480,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
                 {items.map((i, idx) => (
                   <div key={i.id} className="border rounded-lg p-2">
                     <div className="flex items-start justify-between gap-2">
-                      <div className="text-sm font-semibold flex-1">{i.product_name}</div>
+                      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2"><span className="text-sm font-semibold">{i.product_name}</span>{i.is_freebie && <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700">🎁 ফ্রি গিফট</span>}</div>
                       <button onClick={() => removeItem(idx)} className="p-1.5 text-red-600 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4" /></button>
                     </div>
                     <div className="grid grid-cols-3 gap-2 mt-2 text-xs">
