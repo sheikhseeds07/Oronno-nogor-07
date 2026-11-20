@@ -30,15 +30,37 @@ export const Route = createFileRoute("/category/$slug")({
     const children = (childrenRes.data ?? []) as CategoryRow[];
     queryClient.setQueryData(["cat", params.slug], cat);
     queryClient.setQueryData(["cat-children", cat.id], children);
-    const ids = [cat.id, ...children.map((c) => c.id)];
-    const productsRes = await supabase.from("products").select("id,name,slug,price,sale_price,images,stock,short_description,description").eq("is_active", true).eq("display_section", "home").in("category_id", ids).order("created_at", { ascending: false });
-    queryClient.setQueryData(["cat-products", cat.id, children.map((c) => c.id).join(",")], productsRes.data ?? []);
+    const categoryProducts = await fetchCategoryProducts(cat.id, children.map((c) => c.id));
+    queryClient.setQueryData(["cat-products", cat.id], categoryProducts);
     return null;
   },
   component: CategoryPage,
 });
 
 type CategoryRow = { id: string; name: string; slug: string; image_url: string | null; parent_id: string | null; display_order: number };
+
+async function fetchCategoryProducts(categoryId: string, childIds?: string[]): Promise<Product[]> {
+  let ids = childIds;
+  if (!ids) {
+    const { data: children, error: childrenError } = await (supabase.from("categories") as any)
+      .select("id")
+      .eq("parent_id", categoryId);
+    if (childrenError) throw childrenError;
+    ids = (children ?? []).map((child: { id: string }) => child.id);
+  }
+
+  const { data, error } = await supabase
+    .from("products")
+    .select("id,name,slug,price,sale_price,images,stock,short_description,description")
+    .eq("is_active", true)
+    .eq("display_section", "home")
+    .eq("is_offer", false)
+    .eq("is_archived", false)
+    .in("category_id", [categoryId, ...ids])
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as unknown as Product[];
+}
 
 function CategoryPage() {
   const { slug } = useParams({ from: "/category/$slug" });
@@ -142,23 +164,14 @@ function CategoryPage() {
     return () => cancelAnimationFrame(frame);
   }, [cat?.id, cat?.parent_id, children.length, siblingCategories.length]);
   const { data: products = [], isFetching: isProductsFetching } = useQuery({
-    queryKey: ["cat-products", cat?.id, children.map((c) => c.id).join(",")],
-    enabled: Boolean(cat?.id) && !isCategoryFetching && !isChildrenFetching,
+    // Stable per-category key: child-query timing must never switch the
+    // product query between an empty-child key and the completed-child key.
+    queryKey: ["cat-products", cat?.id],
+    enabled: Boolean(cat?.id),
     staleTime: 0,
     refetchOnMount: "always",
     gcTime: 15 * 60 * 1000,
-    queryFn: async () => {
-      const ids = [cat!.id, ...children.map((c) => c.id)];
-      const { data, error } = await supabase
-        .from("products")
-        .select("id,name,slug,price,sale_price,images,stock,short_description,description")
-        .eq("is_active", true)
-        .eq("display_section", "home")
-        .in("category_id", ids)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as unknown as Product[];
-    },
+    queryFn: () => fetchCategoryProducts(cat!.id),
   });
 
 
