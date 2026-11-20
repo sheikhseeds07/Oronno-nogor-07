@@ -135,7 +135,7 @@ export const ProductCard = memo(function ProductCard({ p }: { p: Product }) {
 
         <div className="flex flex-1 flex-col p-2 sm:p-2.5">
           <button type="button" onClick={() => setOpen(true)} className="block w-full text-left" aria-label={`${p.name} Quick View খুলুন`}>
-            <h3 className="min-h-[2.3rem] whitespace-normal break-words [overflow-wrap:anywhere] text-[12px] font-bold leading-[1.45] text-foreground transition-colors group-hover:text-brand sm:text-sm">{p.name}</h3>
+            <h3 lang="bn" className="min-h-[2.3rem] w-full whitespace-normal break-normal [overflow-wrap:normal] [word-break:normal] [text-indent:0] text-left font-sans text-[12.5px] font-semibold leading-[1.6] tracking-normal text-foreground transition-colors group-hover:text-brand sm:text-sm sm:leading-[1.65]">{p.name}</h3>
           </button>
 
           <div className="mt-auto flex items-baseline justify-center gap-1.5 pt-1.5 text-center">
