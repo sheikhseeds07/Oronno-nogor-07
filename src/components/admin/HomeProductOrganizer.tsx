@@ -20,7 +20,7 @@ export function HomeProductOrganizer({ products, categories }: { products: Produ
     return products.some((p) => p.category_id === root.id || (p.category_id && ids.includes(p.category_id)));
   }), [categories, products]);
   const root = roots.find((c) => c.id === rootId) ?? null;
-  const subs = root ? categories.filter((c) => c.parent_id === root.id).filter((c) => products.some((p) => p.category_id === c.id)) : [];
+  const subs = root ? categories.filter((c) => c.parent_id === root.id) : [];
   const direct = root ? products.filter((p) => p.category_id === root.id) : [];
   const sub = subs.find((c) => c.id === subId) ?? null;
   const subProducts = sub ? products.filter((p) => p.category_id === sub.id) : [];
