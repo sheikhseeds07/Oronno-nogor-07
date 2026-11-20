@@ -58,7 +58,7 @@ async function fetchCategoryProducts(categoryId: string, childIds?: string[]): P
       .eq("is_archived", false)
       .in("category_id", [categoryId, ...ids])
       .order("created_at", { ascending: false }),
-    (supabase.from("categories") as any).select("id,parent_id,display_order").limit(200),
+    (supabase.from("categories") as any).select("id,parent_id,display_order").limit(100),
   ]);
   if (error) throw error;
   if (categoryError) throw categoryError;
