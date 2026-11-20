@@ -198,12 +198,40 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   const { data: blocked, error: blockCheckError } = await supabaseAdmin.rpc("is_blocked_visitor", { p_ip: clientIp ?? undefined, p_phone: customerPhone });
   if (!blockCheckError && blocked === true) throw new Error(`${BLOCKED_ORDER_CODE}: ${BLOCKED_ORDER_MESSAGE}`);
 
+  // Home NUTRIMIX is an independent, settings-backed order line. Never trust
+  // the browser's name or price, and never resolve it through public.products.
+  const HOME_NUTRIMIX_ITEM_ID = "home-nutrimix-popup";
+  const requestedHomeNutrimix = data.items.filter((item) => item.id === HOME_NUTRIMIX_ITEM_ID);
+  let orderItems = data.items;
+  if (requestedHomeNutrimix.length > 0) {
+    if (requestedHomeNutrimix.length !== 1 || requestedHomeNutrimix[0].quantity !== 1) {
+      throw new Error("NUTRIMIX অফারটি সঠিক নয়");
+    }
+    const { data: settingsRow, error: settingsError } = await supabaseAdmin
+      .from("site_settings")
+      .select("settings")
+      .maybeSingle();
+    if (settingsError) throw new Error("NUTRIMIX অফার যাচাই করা যায়নি");
+    const homeSettings = (settingsRow?.settings ?? {}) as Record<string, unknown>;
+    if (homeSettings.home_nutrimix_popup_enabled !== true) {
+      throw new Error("NUTRIMIX অফারটি বর্তমানে চালু নেই");
+    }
+    const offerName = String(homeSettings.home_nutrimix_product_name || 'NUTRIMIX - "অনুখাদ্য" 200 GM').trim();
+    const offerPrice = Number(homeSettings.home_nutrimix_product_price ?? 200);
+    if (!offerName || !Number.isFinite(offerPrice) || offerPrice <= 0 || offerPrice > 10000000) {
+      throw new Error("NUTRIMIX অফারের নাম বা দাম সঠিক নয়");
+    }
+    orderItems = data.items.map((item) => item.id === HOME_NUTRIMIX_ITEM_ID
+      ? { ...item, name: offerName, price: offerPrice, quantity: 1 }
+      : item);
+  }
+
   const { data: orderId, error: orderError } = await supabaseAdmin.rpc("place_public_order", {
     p_customer_name: data.customer_name.trim(),
     p_customer_phone: customerPhone,
     p_customer_address: data.customer_address.trim(),
     p_delivery_fee: effectiveDeliveryFee,
-    p_items: data.items,
+    p_items: orderItems,
     p_notes: data.notes ?? null,
     p_client_ip: clientIp,
     p_device_id: deviceId,
@@ -216,10 +244,10 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
     throw new Error(rpcMessage || "Order create failed");
   }
   if (!orderId || typeof orderId !== "string") throw new Error("Order create failed");
-  const total = data.items.reduce((sum, item) => sum + item.price * item.quantity, 0) + effectiveDeliveryFee;
+  const total = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0) + effectiveDeliveryFee;
   try {
     const userAgent = getRequestHeader("user-agent") ?? null;
-    await sendPurchaseEvent({ orderId, value: total, currency: "BDT", phone: customerPhone, name: data.customer_name, city: data.district ?? data.thana ?? null, country: "bd", contents: data.items.map((i) => ({ id: i.id, quantity: i.quantity, price: i.price })), clientIp, userAgent, fbp: data.fbp ?? null, fbc: data.fbc ?? null, eventSourceUrl: data.source_url ?? null } as never);
+    await sendPurchaseEvent({ orderId, value: total, currency: "BDT", phone: customerPhone, name: data.customer_name, city: data.district ?? data.thana ?? null, country: "bd", contents: orderItems.map((i) => ({ id: i.id, quantity: i.quantity, price: i.price })), clientIp, userAgent, fbp: data.fbp ?? null, fbc: data.fbc ?? null, eventSourceUrl: data.source_url ?? null } as never);
     await sendTikTokPurchase({ orderId, value: total, phone: customerPhone, contents: data.items.map((i) => ({ id: i.id, quantity: i.quantity, price: i.price })), clientIp, userAgent, eventSourceUrl: data.source_url ?? null, ttclid: getCookie("_ttclid") ?? null, ttp: getCookie("_ttp") ?? null });
   } catch (e) { logger.error("[placeOrder] CAPI dispatch failed:", e); }
 
