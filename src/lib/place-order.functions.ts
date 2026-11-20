@@ -270,6 +270,7 @@ export const placeLandingOrder = createServerFn({ method: "POST" }).inputValidat
     p_notes: data.notes ?? null,
     p_client_ip: clientIp,
     p_device_id: deviceId,
+    p_alternative_phone: data.alternative_phone ?? null,
   } as never);
   if (intentError || !intentId || typeof intentId !== "string") {
     const rpcMessage = intentError?.message ?? "";
