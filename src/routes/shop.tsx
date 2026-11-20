@@ -48,7 +48,7 @@ const shopCategoriesOptions = () => queryOptions({
 const shopProductsOptions = (q?: string, cat?: string) => queryOptions({
   queryKey: ["shop-products", q, cat],
   // Keep hydrated SSR catalog data stable; refresh only when invalidated or stale.
-  staleTime: 5 * 60_000,
+  staleTime: 30_000,
   refetchOnMount: true,
   queryFn: async () => {
     let categoryIds: string[] | null = null;
