@@ -90,17 +90,22 @@ function mediaHarness({ get, cache, binding = true }) {
 function req(key = 'product-images/missing.webp', headers) { return new Request(`https://sheikhseeds.com/media?asset=${encodeURIComponent(key)}`, { headers }); }
 function memoryCache() {
   const map = new Map();
-  return { match: async key => map.get(key.url)?.clone(), put: async (key, response) => { map.set(key.url, response.clone()); } };
+  return { match: async key => map.get(key.url)?.clone(), put: async (key, response) => { map.set(key.url, response.clone()); }, delete: async key => map.delete(key.url) };
 }
-await checkAsync('R2 miss returns cached placeholder and never contacts Supabase', async () => {
-  const h = mediaHarness({ get: () => null, cache: memoryCache() });
+await checkAsync('R2 misses are not cached and a later upload becomes visible', async () => {
+  let object = null;
+  const cache = memoryCache();
+  const h = mediaHarness({ get: () => object, cache });
   const first = await h.serve(req());
   assert.equal(first.status, 302);
   assert.equal(first.headers.get('Location'), '/placeholder.png');
-  const repeated = await h.serve(req());
-  assert.equal(repeated.status, 302);
-  assert.equal(repeated.headers.get('X-Oronno-Media-Cache'), 'HIT');
-  assert.equal(h.pulls(), 1);
+  assert.equal(first.headers.get('Cache-Control'), 'private, no-store');
+  object = { body: new Response('uploaded-image').body, writeHttpMetadata: headers => headers.set('Content-Type', 'image/webp') };
+  const second = await h.serve(req());
+  assert.equal(second.status, 200);
+  assert.equal(await second.text(), 'uploaded-image');
+  assert.equal(second.headers.get('X-Oronno-Media-Cache'), 'MISS');
+  assert.equal(h.pulls(), 2);
 });
 await checkAsync('R2 binding/read failure returns once without logging', async () => {
   const noBinding = mediaHarness({ get: () => null, binding: false });
