@@ -175,7 +175,7 @@ function CategoryPage() {
       <main className="min-h-screen bg-gradient-to-b from-[#fffafb] via-background to-background">
         <div className="container mx-auto max-w-7xl px-3 pb-8 pt-2 sm:px-5 sm:pt-4">
           <nav className="-mx-3 overflow-x-auto px-3 pb-1 scrollbar-none sm:-mx-5 sm:px-5" aria-label="প্রধান ক্যাটাগরি">
-            <div className="flex min-w-max justify-center gap-1.5">
+            <div className="flex min-w-max justify-start gap-1.5">
               <Link to="/shop" className="cat-slide flex h-11 items-center justify-center rounded-xl border border-border/80 bg-white px-3 text-[13px] font-extrabold shadow-sm transition-all hover:-translate-y-0.5">সব</Link>
               {categories.map((c, i) => {
                 const active = c.slug === slug;
