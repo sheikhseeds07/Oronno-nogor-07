@@ -9,7 +9,7 @@ type R2ObjectLike = {
   writeHttpMetadata?: (headers: Headers) => void;
 };
 type R2BucketLike = { get(key: string): Promise<R2ObjectLike | null> };
-type EdgeCache = { match(key: Request): Promise<Response | undefined>; put(key: Request, response: Response): Promise<void> };
+type EdgeCache = { match(key: Request): Promise<Response | undefined>; put(key: Request, response: Response): Promise<void>; delete?(key: Request): Promise<boolean> };
 type Snapshot = { body: ArrayBuffer; headers: Headers };
 const inflight = new Map<string, Promise<Snapshot | null>>();
 
@@ -21,7 +21,7 @@ function response(body: BodyInit | null, status: number, policy: string, initial
 }
 
 function placeholderResponse() {
-  return response(null, 302, "public, max-age=60, s-maxage=60", new Headers({ Location: R2_IMAGE_PLACEHOLDER }));
+  return response(null, 302, "private, no-store", new Headers({ Location: R2_IMAGE_PLACEHOLDER }));
 }
 
 async function readR2(bucket: R2BucketLike, key: string): Promise<Snapshot | null> {
@@ -56,6 +56,12 @@ async function serveMedia(request: Request): Promise<Response> {
   const cacheKey = new Request(cacheUrl, { method: "GET" });
   let delivered: Response | undefined;
   try { delivered = await cache?.match(cacheKey); } catch { /* cache failures do not fail media */ }
+  if (delivered && !delivered.ok) {
+    // Older deployments could cache a temporary R2 miss as a 302 placeholder.
+    // Discard that negative cache entry so a later successful upload can appear.
+    try { await cache?.delete?.(cacheKey); } catch { /* cache failures do not fail media */ }
+    delivered = undefined;
+  }
   if (!delivered) {
     const bucket = getCloudflareR2Bucket<R2BucketLike>();
     if (!bucket) return placeholderResponse();
@@ -64,7 +70,10 @@ async function serveMedia(request: Request): Promise<Response> {
       ? placeholderResponse()
       : response(object.body, 200, "public, max-age=31536000, s-maxage=31536000, immutable", object.headers);
     delivered.headers.set("X-Oronno-Media-Cache", "MISS");
-    try { await cache?.put(cacheKey, delivered.clone()); } catch { /* return the R2 result */ }
+    // Cache only real image bytes. A missing object must never poison the key.
+    if (delivered.status === 200) {
+      try { await cache?.put(cacheKey, delivered.clone()); } catch { /* return the R2 result */ }
+    }
   } else {
     delivered = new Response(delivered.body, delivered);
     delivered.headers.set("X-Oronno-Media-Cache", "HIT");
