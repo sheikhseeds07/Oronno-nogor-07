@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { Apple, Flower2, Grid3X3, Leaf, Shovel, Sparkles, Sprout, Wheat, Wrench } from "lucide-react";
 import { SiteLayout } from "@/components/layout/SiteLayout";
 import { ProductCard, type Product } from "@/components/shop/ProductCard";
-import { supabase } from "@/lib/personal-supabase/client";
+import { publicSupabase } from "@/lib/personal-supabase/client";
 import { trackSearch } from "@/lib/fbq";
 
 export const Route = createFileRoute("/shop")({
@@ -39,7 +39,7 @@ const shopCategoriesOptions = () => queryOptions({
   queryKey: ["shop-categories"],
   staleTime: 10 * 60_000,
   queryFn: async () => {
-    const { data, error } = await (supabase.from("categories") as any).select("id,name,slug,parent_id").is("parent_id", null).eq("is_hidden_from_home", false).order("display_order").order("created_at").limit(100);
+    const { data, error } = await (publicSupabase.from("categories") as any).select("id,name,slug,parent_id").is("parent_id", null).eq("is_hidden_from_home", false).order("display_order").order("created_at").limit(100);
     if (error) throw error;
     return (data ?? []) as ShopCategory[];
   },
@@ -47,20 +47,20 @@ const shopCategoriesOptions = () => queryOptions({
 
 const shopProductsOptions = (q?: string, cat?: string) => queryOptions({
   queryKey: ["shop-products", q, cat],
-  // Always refresh Shop listings so recently edited product images do not remain stale.
-  staleTime: 0,
-  refetchOnMount: "always",
+  // Keep hydrated SSR catalog data stable; refresh only when invalidated or stale.
+  staleTime: 5 * 60_000,
+  refetchOnMount: true,
   queryFn: async () => {
     let categoryIds: string[] | null = null;
     if (cat) {
-      const { data: selected, error: selectedError } = await (supabase.from("categories") as any).select("id").eq("slug", cat).maybeSingle();
+      const { data: selected, error: selectedError } = await (publicSupabase.from("categories") as any).select("id").eq("slug", cat).maybeSingle();
       if (selectedError) throw selectedError;
       if (!selected?.id) return [] as Product[];
-      const { data: children, error: childError } = await (supabase.from("categories") as any).select("id").eq("parent_id", selected.id);
+      const { data: children, error: childError } = await (publicSupabase.from("categories") as any).select("id").eq("parent_id", selected.id);
       if (childError) throw childError;
       categoryIds = [selected.id, ...((children ?? []) as Array<{ id: string }>).map((c) => c.id)];
     }
-    let query = supabase.from("products").select("id,name,slug,price,sale_price,images,stock,short_description,description").eq("is_active", true).eq("is_offer", false).eq("is_archived", false).eq("display_section", "home");
+    let query = publicSupabase.from("products").select("id,name,slug,price,sale_price,images,stock,short_description,description").eq("is_active", true).eq("is_offer", false).eq("is_archived", false).eq("display_section", "home");
     if (categoryIds) query = query.in("category_id", categoryIds);
     if (q) query = query.ilike("name", `%${q}%`);
     const { data, error } = await query.order("created_at", { ascending: false });
