@@ -16,7 +16,7 @@ import { getFbContext } from "@/lib/fb-context";
 import { FacebookPixel } from "@/components/layout/FacebookPixel";
 import { mergeContent, DEFAULT_FEATURES, DEFAULT_WHY, type Feature, type WhyItem } from "@/lib/landing-content";
 import { toImg, imgFallback } from "@/lib/img";
-import { isValidBdPhone, phoneSubmitError } from "@/lib/bd-phone";
+import { isValidBdPhone, phoneSubmitError, toAsciiDigits } from "@/lib/bd-phone";
 import { Button } from "@/components/ui/button";
 import { LpOptionalOrderFields } from "@/components/landing/lp-shared";
 import brandLogoFile from "@/assets/logo.jpg";
@@ -568,7 +568,7 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <CheckoutField label="আপনার নাম" icon={<User />} error={isNutrimix ? formErrors.name : undefined}><input required id="nutrimix-name" value={form.name} onChange={event => { setForm({ ...form, name: event.target.value }); setFormErrors((errors) => ({ ...errors, name: "" })); }} placeholder="আপনার পুরো নাম" /></CheckoutField>
-                <CheckoutField label="মোবাইল নম্বর" icon={<Phone />} error={isNutrimix ? formErrors.phone : undefined}><input required id="nutrimix-phone" type="tel" inputMode="numeric" autoComplete="tel" maxLength={isNutrimix ? 24 : 11} value={form.phone} onChange={event => { const phone = isNutrimix ? event.target.value.slice(0, 24) : normalizeNutrimixPhone(event.target.value); setForm(current => ({ ...current, phone })); setFormErrors(errors => ({ ...errors, phone: "" })); }} placeholder="01XXXXXXXXX" /></CheckoutField>
+                <CheckoutField label="মোবাইল নম্বর" icon={<Phone />} error={isNutrimix ? formErrors.phone : undefined}><input required id="nutrimix-phone" type="tel" inputMode="numeric" autoComplete="tel" maxLength={11} value={form.phone} onChange={event => { const phone = toAsciiDigits(event.target.value).replace(/[^\d]/g, "").slice(0, 11); setForm(current => ({ ...current, phone })); setFormErrors(errors => ({ ...errors, phone: "" })); }} placeholder="01XXXXXXXXX" /></CheckoutField>
                 <div className="sm:col-span-2">
                   <CheckoutField label="সম্পূর্ণ ঠিকানা" icon={<MapPin />} error={isNutrimix ? formErrors.address : undefined}><textarea required id="nutrimix-address" rows={2} value={form.address} onChange={event => { setForm({ ...form, address: event.target.value }); setFormErrors((errors) => ({ ...errors, address: "" })); }} placeholder="গ্রাম/এলাকা, থানা, জেলা" /></CheckoutField>
                 </div>
@@ -746,7 +746,7 @@ function normalizeNutrimixPhone(value: string) {
   const bn = "০১২৩৪৫৬৭৮৯";
   const ascii = String(value ?? "").replace(/[০-৯]/g, (digit) => String(bn.indexOf(digit)));
   const digits = ascii.replace(/\D/g, "");
-  return (digits.startsWith("880") ? "0" + digits.slice(3) : digits).slice(0, 11);
+  return digits.startsWith("880") ? "0" + digits.slice(3) : digits;
 }
 
 function bnDigits(value: number) { return String(value).padStart(2, "0").replace(/\d/g, (d) => "০১২৩৪৫৬৭৮৯"[Number(d)]); }
