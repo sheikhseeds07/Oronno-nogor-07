@@ -40,6 +40,7 @@ const LandingIntentInputSchema = z.object({
   checkout_session_id: z.string().uuid(),
   customer_name: z.string().min(1).max(255),
   customer_phone: BdPhoneSchema,
+  alternative_phone: BdPhoneSchema.optional().nullable(),
   customer_address: z.string().min(1).max(1000),
   delivery_fee: z.number().min(0).max(10000),
   seed_items: z.array(ItemSchema).min(1).max(100),
@@ -104,6 +105,7 @@ export const createLandingCheckoutIntent = createServerFn({ method: "POST" }).in
     p_notes: data.notes ?? null,
     p_client_ip: clientIp,
     p_device_id: deviceId,
+    p_alternative_phone: data.alternative_phone ?? null,
   } as never);
   if (error) {
     if (/blocked/i.test(error.message ?? "")) throw new Error(BLOCKED_ORDER_MESSAGE);
