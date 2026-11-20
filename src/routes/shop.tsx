@@ -39,7 +39,7 @@ const shopCategoriesOptions = () => queryOptions({
   queryKey: ["shop-categories"],
   staleTime: 10 * 60_000,
   queryFn: async () => {
-    const { data, error } = await (publicSupabase.from("categories") as any).select("id,name,slug,parent_id,display_order").order("display_order").order("created_at").limit(200);
+    const { data, error } = await (publicSupabase.from("categories") as any).select("id,name,slug,parent_id,display_order").order("display_order").order("created_at").limit(100);
     if (error) throw error;
     return (data ?? []) as ShopCategory[];
   },
@@ -65,7 +65,7 @@ const shopProductsOptions = (q?: string, cat?: string) => queryOptions({
     if (q) query = query.ilike("name", `%${q}%`);
     const [{ data, error }, { data: categoryRows, error: categoryError }] = await Promise.all([
       query.order("created_at", { ascending: false }),
-      (publicSupabase.from("categories") as any).select("id,parent_id,display_order").limit(200),
+      (publicSupabase.from("categories") as any).select("id,parent_id,display_order").limit(100),
     ]);
     if (error) throw error;
     if (categoryError) throw categoryError;
