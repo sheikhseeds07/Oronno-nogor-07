@@ -105,7 +105,7 @@ export const ProductCard = memo(function ProductCard({ p, priority = false }: { 
   const [justAdded, setJustAdded] = useState(false);
   const imageRef = useRef<HTMLButtonElement | null>(null);
   const regularPrice = p.sale_price ?? p.price;
-  const canTakeFree = isSeed && (inCart?.is_freebie || freeLimit > freeCount);
+  const canTakeFree = isSeed && (inCart?.is_freebie || (!inCart && freeLimit > freeCount));
   const price = inCart?.is_freebie || canTakeFree ? 0 : regularPrice;
   const discount = p.sale_price ? Math.round(((p.price - p.sale_price) / p.price) * 100) : 0;
   const img = p.images?.[0] || "/placeholder.svg";
@@ -160,9 +160,7 @@ export const ProductCard = memo(function ProductCard({ p, priority = false }: { 
           </div>
 
           <div className="mt-2.5">
-            {inCart && canTakeFree && !inCart.is_freebie ? (
-              <button onClick={() => addItem(true)} className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-amber-400 bg-amber-50 text-xs font-extrabold text-amber-900">ফ্রিতে নিন — ফ্রি বীজ হিসেবে যোগ করুন</button>
-            ) : inCart ? (
+            {inCart ? (
               <div className="flex h-9 items-center justify-between overflow-hidden rounded-xl border-2 border-brand bg-brand/5 shadow-[0_3px_10px_-7px_rgba(20,83,45,.55)]">
                 <button onClick={() => (inCart.quantity <= 1 ? remove(p.id) : setQty(p.id, inCart.quantity - 1))} className="flex h-full w-9 items-center justify-center text-brand transition-colors hover:bg-brand-light/70 active:scale-90" aria-label="কমান"><Minus className="h-3.5 w-3.5" /></button>
                 <span className="text-xs font-extrabold text-brand-dark">{bnDigits(inCart.quantity)}</span>
