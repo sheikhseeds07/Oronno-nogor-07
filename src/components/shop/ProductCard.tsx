@@ -89,7 +89,7 @@ function flyProductToCart(image: string, source: HTMLElement) {
   window.setTimeout(() => layer.remove(), 820);
 }
 
-export const ProductCard = memo(function ProductCard({ p }: { p: Product }) {
+export const ProductCard = memo(function ProductCard({ p, priority = false }: { p: Product; priority?: boolean }) {
   const add = useCart((s) => s.add);
   const setQty = useCart((s) => s.setQty);
   const remove = useCart((s) => s.remove);
@@ -122,7 +122,8 @@ export const ProductCard = memo(function ProductCard({ p }: { p: Product }) {
             alt=""
             width={500}
             height={500}
-            loading="lazy"
+            loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : "auto"}
             decoding="async"
 
             className="h-full w-full object-cover transition duration-500 ease-out group-hover:scale-[1.045]"
