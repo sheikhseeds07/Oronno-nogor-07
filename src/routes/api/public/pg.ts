@@ -75,7 +75,7 @@ export const Route = createFileRoute("/api/public/pg")({
         if (!rpc) {
           const target = new URL(path, "https://placeholder.invalid");
           const limit = Number(target.searchParams.get("limit") ?? 100);
-          if (!Number.isInteger(limit) || limit < 1 || limit > 100) return noStore("Limit must be 1..100", 400);
+          if (!Number.isInteger(limit) || limit < 0 || limit > 100) return noStore("Limit must be 0..100", 400);
           target.searchParams.set("limit", String(limit));
           path = target.pathname + target.search;
         }
