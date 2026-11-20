@@ -3407,7 +3407,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
                 </button>
               </div>
               <div>
-                <label className="text-xs font-semibold mb-1 block">Alternative Phone (Optional)</label>
+                <label className="text-xs font-semibold mb-1 block">বিকল্প নাম্বার (অপশনাল)</label>
                 <input value={alternativePhoneVal} onChange={(e) => setAlternativePhoneVal(e.target.value)} placeholder="বিকল্প মোবাইল নাম্বার" className="w-full border rounded-lg px-3 py-2 text-sm bg-blue-50/40" />
               </div>
             </div>
