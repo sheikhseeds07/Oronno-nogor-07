@@ -2259,7 +2259,16 @@ function OrdersTableRows({
                         aria-label="কাস্টমারের তথ্য কপি করুন"
                       ><Copy className="w-3 h-3" /></button>
                     </div>
-                    {o.alternative_phone && <div className="flex items-center gap-2 text-xs"><span className="font-mono text-slate-600">{o.alternative_phone}</span><a href={`tel:${o.alternative_phone}`} className="p-1 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100" title="বিকল্প নাম্বারে কল"><Phone className="w-3 h-3" /></a>{waNumber(o.alternative_phone) && <a href={`https://wa.me/${waNumber(o.alternative_phone)}`} target="_blank" rel="noreferrer" className="p-1 rounded-full bg-green-50 text-green-600 hover:bg-green-100" title="বিকল্প নাম্বারে WhatsApp"><MessageCircle className="w-3 h-3" /></a>}</div><div className="font-semibold">{o.customer_name}</div>
+                    {o.alternative_phone && (
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="font-mono text-slate-600">{o.alternative_phone}</span>
+                        <a href={`tel:${o.alternative_phone}`} className="p-1 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100" title="বিকল্প নাম্বারে কল"><Phone className="w-3 h-3" /></a>
+                        {waNumber(o.alternative_phone) && (
+                          <a href={`https://wa.me/${waNumber(o.alternative_phone)}`} target="_blank" rel="noreferrer" className="p-1 rounded-full bg-green-50 text-green-600 hover:bg-green-100" title="বিকল্প নাম্বারে WhatsApp"><MessageCircle className="w-3 h-3" /></a>
+                        )}
+                      </div>
+                    )}
+                    <div className="font-semibold">{o.customer_name}</div>
                     <div className="text-xs text-muted-foreground break-words leading-relaxed">
                       {[o.customer_address, o.thana, o.district].filter(Boolean).join(", ")}
                     </div>
