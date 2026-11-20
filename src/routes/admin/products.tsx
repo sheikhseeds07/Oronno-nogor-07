@@ -66,7 +66,7 @@ function Products() {
   const removeSelected = async () => {
     const ids = selectedIds.filter((id) => visibleIds.includes(id));
     if (!ids.length) return toast.error("আগে প্রোডাক্ট সিলেক্ট করুন");
-    if (!confirm(`সিলেক্ট করা ${ids.length}টি প্রোডাক্ট ডিলিট করবেন? এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।`)) return;
+    if (!confirm(`সিলেক্ট করা ${ids.length}টি প্রোডাক্ট ডিলিট করবেন? এগুলো কোনো অফারে যুক্ত থাকলে শুধু অফারের সঙ্গে প্রোডাক্টের সংযোগ মুছে যাবে; অফার ও অর্ডারের রেকর্ড অক্ষত থাকবে। এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।`)) return;
     const { error } = await supabase.from("products").delete().in("id", ids);
     if (error) return toast.error(`ডিলিট করা যায়নি: ${error.message}`);
     setSelectedIds((current) => current.filter((id) => !ids.includes(id)));
