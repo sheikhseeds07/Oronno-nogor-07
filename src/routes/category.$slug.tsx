@@ -166,9 +166,7 @@ function CategoryPage() {
         .subcat-marquee{contain:layout paint;touch-action:pan-y;cursor:grab;scrollbar-width:none;-ms-overflow-style:none;isolation:isolate}
         .subcat-marquee::-webkit-scrollbar{display:none}
         .subcat-marquee.is-dragging{cursor:grabbing;user-select:none}
-        .subcat-marquee:before,.subcat-marquee:after{content:"";position:absolute;z-index:2;top:0;bottom:0;width:22px;pointer-events:none}
-        .subcat-marquee:before{left:0;background:linear-gradient(90deg,rgba(255,255,255,.98) 0%,rgba(255,255,255,.78) 38%,rgba(255,255,255,0) 100%)}
-        .subcat-marquee:after{right:0;background:linear-gradient(270deg,rgba(255,255,255,.98) 0%,rgba(255,255,255,.78) 38%,rgba(255,255,255,0) 100%)}
+        .subcat-marquee:after{content:"";position:absolute;z-index:2;top:0;right:0;bottom:0;width:22px;pointer-events:none;background:linear-gradient(270deg,rgba(255,255,255,.98) 0%,rgba(255,255,255,.78) 38%,rgba(255,255,255,0) 100%)}
         .cat-slide{animation:catSlide .35s ease both}
         .cat-float{animation:catFloat 3s ease-in-out infinite}
         @media(prefers-reduced-motion:reduce){.cat-slide,.cat-float,.cat-shine:after{animation:none!important}}
