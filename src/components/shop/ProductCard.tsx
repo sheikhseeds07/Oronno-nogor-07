@@ -4,7 +4,7 @@ import { memo, useRef, useState } from "react";
 import { taka, bnDigits } from "@/lib/format";
 import { useCart } from "@/lib/cart-store";
 import { trackAddToCart } from "@/lib/fbq";
-import { toImg, IMAGE_PLACEHOLDER } from "@/lib/img";
+import { toImg, imgSrcSet, IMAGE_PLACEHOLDER } from "@/lib/img";
 import { ProductQuickView } from "./ProductQuickView";
 
 export type Product = {
@@ -100,7 +100,7 @@ export const ProductCard = memo(function ProductCard({ p, priority = false }: { 
   const price = p.sale_price ?? p.price;
   const discount = p.sale_price ? Math.round(((p.price - p.sale_price) / p.price) * 100) : 0;
   const img = p.images?.[0] || "/placeholder.svg";
-  const imageSrc = toImg(img, { w: 500, q: 78 });
+  const imageSrc = toImg(img);
 
   const addItem = () => {
     if (p.stock <= 0) return;
@@ -117,6 +117,7 @@ export const ProductCard = memo(function ProductCard({ p, priority = false }: { 
         <button ref={imageRef} onClick={() => setOpen(true)} className="relative block aspect-square w-full overflow-hidden bg-muted text-left" aria-label={`${p.name} বিস্তারিত দেখুন`}>
           <SafeImage
             src={imageSrc}
+            srcSet={imgSrcSet(img, [500, 800, 1000])}
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 220px"
             alt=""
             width={500}
