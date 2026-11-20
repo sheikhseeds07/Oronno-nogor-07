@@ -8,7 +8,7 @@ import { hydrateCartStore, useCart } from "@/lib/cart-store";
 import { taka } from "@/lib/format";
 import { supabase } from "@/lib/personal-supabase/client";
 import { toImg } from "@/lib/img";
-import { placeOrder } from "@/lib/place-order.functions";
+import { placeOrder, createHomeCheckoutIntent, finalizeLandingCheckoutIntent } from "@/lib/place-order.functions";
 import { clearCheckoutSessionId, useCheckoutAutofill } from "@/lib/useCheckoutAutofill";
 import { toast } from "sonner";
 import { trackInitiateCheckout, trackPurchase } from "@/lib/fbq";
@@ -34,44 +34,90 @@ function Checkout() {
     void hydrateCartStore().then(() => { if (active) setCartReady(true); });
     return () => { active = false; };
   }, []);
-  const items = useCart((s) => s.items); const setQty = useCart((s) => s.setQty); const remove = useCart((s) => s.remove); const subtotal = useCart((s) => s.subtotal()); const clear = useCart((s) => s.clear); const navigate = useNavigate(); const runPlaceOrder = useServerFn(placeOrder);
+  const items = useCart((s) => s.items); const setQty = useCart((s) => s.setQty); const remove = useCart((s) => s.remove); const subtotal = useCart((s) => s.subtotal()); const clear = useCart((s) => s.clear); const navigate = useNavigate(); const runPlaceOrder = useServerFn(placeOrder); const runCreateHomeIntent = useServerFn(createHomeCheckoutIntent); const runFinalizeHomeIntent = useServerFn(finalizeLandingCheckoutIntent);
   const { data: settingsRow, isFetching: settingsLoading } = useQuery({ ...publicSiteSettingsQuery, staleTime: 0, refetchOnMount: "always", refetchOnWindowFocus: true }); const settings = ((settingsRow?.settings as DeliverySettings) ?? {}) as DeliverySettings; const deliveryInfo = getDeliveryInfo(subtotal, settings.delivery_rules); const delivery = deliveryInfo.delivery; const total = deliveryInfo.total;
   const [submitting, setSubmitting] = useState(false); const [nutrimixPopupOpen, setNutrimixPopupOpen] = useState(false); const [nutrimixChoice, setNutrimixChoice] = useState<boolean | null>(null); const [noteOpen, setNoteOpen] = useState(false); const [altPhoneOpen, setAltPhoneOpen] = useState(false); const [form, setForm] = useState({ name: "", phone: "", altPhone: "", address: "", note: "", zone: "all" }); const [phoneErr, setPhoneErr] = useState(""); const [blockedOpen, setBlockedOpen] = useState(false); const [repeatOrderMessage, setRepeatOrderMessage] = useState(""); const [repeatOrderSeconds, setRepeatOrderSeconds] = useState(0);
-  const placedSuccessfully = useRef(false); const submitLockRef = useRef(false); const phoneValid = PHONE_RE.test(normalizeBdPhone(form.phone)); const firedICRef = useRef(false);
+  const placedSuccessfully = useRef(false); const submitLockRef = useRef(false); const homeIntentIdRef = useRef<string | null>(null); const phoneValid = PHONE_RE.test(normalizeBdPhone(form.phone)); const firedICRef = useRef(false);
   useEffect(() => { if (repeatOrderSeconds <= 0) return; const timer = window.setInterval(() => setRepeatOrderSeconds((seconds) => Math.max(0, seconds - 1)), 1000); return () => window.clearInterval(timer); }, [repeatOrderSeconds > 0]);
   useEffect(() => { if (repeatOrderSeconds === 0) setRepeatOrderMessage(""); }, [repeatOrderSeconds]);
   useEffect(() => { if (firedICRef.current || items.length === 0) return; firedICRef.current = true; trackInitiateCheckout(items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, is_freebie: i.is_freebie })), total); }, [items.length]);
   const { checkoutSessionId } = useCheckoutAutofill({ form, setForm: (updater) => setForm((f) => updater(f) as typeof f), items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, is_freebie: i.is_freebie })), subtotal, total, deliveryFee: delivery, zone: "সারাদেশে হোম ডেলিভারি" });
   useEffect(() => { if (!phoneValid || items.length === 0 || typeof window === "undefined") return; const saveAbandonedCheckout = () => { if (placedSuccessfully.current || !PHONE_RE.test(normalizeBdPhone(form.phone)) || items.length === 0) return; const payload = { phone: normalizeBdPhone(form.phone), customer_name: form.name.trim(), customer_address: form.address.trim(), delivery_zone: "সারাদেশে হোম ডেলিভারি", delivery_fee: delivery, subtotal, total, note: form.note.trim(), items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity })) }; try { navigator.sendBeacon("/api/public/incomplete", new Blob([JSON.stringify(payload)], { type: "application/json" })); } catch { fetch("/api/public/incomplete", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), keepalive: true }).catch(() => {}); } }; window.addEventListener("pagehide", saveAbandonedCheckout); return () => window.removeEventListener("pagehide", saveAbandonedCheckout); }, [phoneValid, form.phone, form.name, form.address, form.note, delivery, subtotal, total, items]);
-  const submit = async (e?: React.FormEvent, forcedNutrimixChoice?: boolean) => {
+  const completeHomeIntent = async (includeNutrimix: boolean) => {
+    if (!homeIntentIdRef.current || submitLockRef.current || placedSuccessfully.current) return;
+    submitLockRef.current = true;
+    setSubmitting(true);
+    setNutrimixPopupOpen(false);
+    const orderItems = [...items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity })), ...(includeNutrimix ? [{ id: "home-nutrimix-popup", name: String(settings.home_nutrimix_product_name || 'NUTRIMIX - "অনুখাদ্য" 200 GM'), price: Math.max(1, Number(settings.home_nutrimix_product_price) || 200), quantity: 1 }] : [])];
+    const orderTotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0) + delivery;
+    try {
+      const result = await runFinalizeHomeIntent({ data: { intent_id: homeIntentIdRef.current, include_nutrimix: includeNutrimix, emit_purchase: true, ...getFbContext() } });
+      placedSuccessfully.current = true;
+      if (typeof window !== "undefined") trackPurchase(orderItems, orderTotal, result.id);
+      clearCheckoutSessionId(checkoutSessionId);
+      clear();
+      toast.success("অর্ডার সফল হয়েছে!");
+      navigate({ to: "/order/$id", params: { id: result.id } });
+    } catch (err) {
+      submitLockRef.current = false;
+      setSubmitting(false);
+      if (isBlockedOrderError(err)) { setBlockedOpen(true); return; }
+      toast.error("অর্ডার করতে সমস্যা: " + (err instanceof Error ? err.message : "অজানা"));
+    }
+  };
+  useEffect(() => {
+    if (!nutrimixPopupOpen || !homeIntentIdRef.current) return;
+    let hiddenTimer: number | undefined;
+    const fallback = window.setTimeout(() => { void completeHomeIntent(false); }, 120000);
+    const onPageHide = () => { void completeHomeIntent(false); };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden" && hiddenTimer === undefined) hiddenTimer = window.setTimeout(() => { void completeHomeIntent(false); }, 3000);
+      else if (document.visibilityState === "visible" && hiddenTimer !== undefined) { window.clearTimeout(hiddenTimer); hiddenTimer = undefined; }
+    };
+    const onPopState = () => { void completeHomeIntent(false); };
+    window.addEventListener("pagehide", onPageHide);
+    window.addEventListener("popstate", onPopState);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.clearTimeout(fallback);
+      if (hiddenTimer !== undefined) window.clearTimeout(hiddenTimer);
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("popstate", onPopState);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [nutrimixPopupOpen]);
+  const submit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (items.length === 0) return toast.error("কার্ট খালি");
     if (!form.name.trim()) return toast.error("নাম দিন");
-    if (!phoneValid) { const msg = toAsciiDigits(form.phone).replace(/[^\d]/g, "").length > 11 ? PHONE_MAX_ERROR : PHONE_ERROR; setPhoneErr(msg); return toast.error(msg); }
+    if (!phoneValid) { const msg = toAsciiDigits(form.phone).replace(/[^\\d]/g, "").length > 11 ? PHONE_MAX_ERROR : PHONE_ERROR; setPhoneErr(msg); return toast.error(msg); }
     if (form.altPhone.trim() && !PHONE_RE.test(form.altPhone)) return toast.error(PHONE_ERROR);
     if (!form.address.trim()) return toast.error("ঠিকানা দিন");
     if (settingsLoading) return toast.error("অফার সেটিংস লোড হচ্ছে, একটু পর আবার চেষ্টা করুন");
-    const includeNutrimix = forcedNutrimixChoice ?? nutrimixChoice;
-    if (settings.home_nutrimix_popup_enabled === true && includeNutrimix === null) {
-      setNutrimixPopupOpen(true);
-      return;
-    }
     if (submitLockRef.current) return;
     submitLockRef.current = true;
     setSubmitting(true);
-    const nutrimixItem = {
-      id: "home-nutrimix-popup",
-      name: String(settings.home_nutrimix_product_name || 'NUTRIMIX - "অনুখাদ্য" 200 GM'),
-      price: Math.max(1, Number(settings.home_nutrimix_product_price) || 200),
-      quantity: 1,
-    };
-    const orderItems = includeNutrimix && settings.home_nutrimix_popup_enabled === true ? [...items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity })), nutrimixItem] : items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity }));
-    const orderSubtotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0); const orderDelivery = getDeliveryInfo(orderSubtotal, settings.delivery_rules).delivery; const orderTotal = orderSubtotal + orderDelivery;
     try {
+      if (settings.home_nutrimix_popup_enabled === true) {
+        const { data: { session } } = await supabase.auth.getSession();
+        const intent = await runCreateHomeIntent({ data: {
+          checkout_session_id: checkoutSessionId || crypto.randomUUID(),
+          customer_name: form.name.trim(), customer_phone: normalizeBdPhone(form.phone),
+          alternative_phone: form.altPhone.trim() ? normalizeBdPhone(form.altPhone) : null,
+          customer_address: form.address.trim(), delivery_fee: delivery,
+          seed_items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, is_freebie: i.is_freebie })),
+          notes: form.note?.trim() || null, ...getFbContext(),
+        } });
+        homeIntentIdRef.current = intent.id;
+        setNutrimixPopupOpen(true);
+        submitLockRef.current = false;
+        setSubmitting(false);
+        return;
+      }
       const { data: { session } } = await supabase.auth.getSession();
-      const result = await runPlaceOrder({ data: { customer_name: form.name.trim(), customer_phone: normalizeBdPhone(form.phone), alternative_phone: form.altPhone.trim() ? normalizeBdPhone(form.altPhone) : null, customer_address: form.address.trim(), district: null, thana: null, notes: form.note?.trim() || null, delivery_fee: orderDelivery, created_by: session?.user?.id ?? null, checkout_session_id: checkoutSessionId || null, items: orderItems, ...getFbContext() } });
+      const result = await runPlaceOrder({ data: { customer_name: form.name.trim(), customer_phone: normalizeBdPhone(form.phone), alternative_phone: form.altPhone.trim() ? normalizeBdPhone(form.altPhone) : null, customer_address: form.address.trim(), district: null, thana: null, notes: form.note?.trim() || null, delivery_fee: delivery, created_by: session?.user?.id ?? null, checkout_session_id: checkoutSessionId || null, items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity })), ...getFbContext() } });
       placedSuccessfully.current = true;
-      if (typeof window !== "undefined") trackPurchase(orderItems, orderTotal, result.id);
+      trackPurchase(items, total, result.id);
       clearCheckoutSessionId(checkoutSessionId);
       clear();
       toast.success("অর্ডার সফল হয়েছে!");
@@ -117,7 +163,7 @@ function Checkout() {
       </form>
     </div>
     <div className="fixed inset-x-3 bottom-3 z-50 lg:hidden"><button type="button" onClick={() => document.querySelector("form")?.requestSubmit()} disabled={submitting} className="co-btn co-submit flex h-13 w-full items-center justify-between rounded-xl bg-gradient-to-r from-brand to-brand-dark px-4 text-white shadow-2xl"><span className="flex items-center gap-2 text-sm font-black"><CheckCircle2 className="h-4.5 w-4.5" />{submitting ? "অর্ডার প্রসেস হচ্ছে…" : "অর্ডার কনফার্ম করুন"}</span><span className="rounded-lg bg-white/15 px-2.5 py-1.5 text-xs font-black">{taka(total)}</span></button></div>
-    {nutrimixPopupOpen && settings.home_nutrimix_popup_enabled === true && <div className="fixed inset-0 z-[110] grid place-items-center bg-slate-950/65 p-4 backdrop-blur-sm" onMouseDown={(e)=>{if(e.target===e.currentTarget)setNutrimixPopupOpen(false)}}><div role="dialog" aria-modal="true" aria-labelledby="home-nutrimix-heading" className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-emerald-100 bg-white shadow-2xl"><button type="button" onClick={()=>setNutrimixPopupOpen(false)} aria-label="বন্ধ করুন" className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full bg-white/90 text-slate-500 shadow"><X className="h-5 w-5"/></button><div className="bg-gradient-to-br from-emerald-50 via-white to-amber-50 px-5 pb-5 pt-6 text-center"><div className="mx-auto mb-3 flex h-36 w-36 items-center justify-center overflow-hidden rounded-2xl border border-emerald-100 bg-white p-2 shadow-sm"><SafeImage src={toImg(String(settings.home_nutrimix_product_image || "/media?asset=site-assets%2Flanding-1790850378884-72373.webp"))} alt={String(settings.home_nutrimix_product_name || "NUTRIMIX")} className="h-full w-full object-contain"/></div><div className="mb-2 inline-flex rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-extrabold tracking-wide text-emerald-800">বিশেষ অফার 🌱</div><h3 id="home-nutrimix-heading" className="text-xl font-black leading-snug text-slate-900">{String(settings.home_nutrimix_popup_heading || 'বীজের সাথে “অনুখাদ্য” নিন 🌱')}</h3><p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600">{String(settings.home_nutrimix_popup_description || 'আপনার অর্ডারের সাথে মাত্র ৳২০০ যোগ করেই গাছের নিয়মিত পরিচর্যার জন্য 🎁“অনুখাদ্য” /NUTRIMIX - নিয়ে নিন।')}</p><div className="mt-3 flex items-center justify-center gap-2"><span className="text-2xl font-black text-emerald-800">{taka(Math.max(1,Number(settings.home_nutrimix_product_price)||200))}</span>{Number(settings.home_nutrimix_product_old_price)>0&&<span className="text-sm font-semibold text-slate-400 line-through">{taka(Number(settings.home_nutrimix_product_old_price))}</span>}</div><p className="mt-1 text-[11px] font-semibold text-slate-500">আপনার অর্ডারের সাথে এই পণ্যটি যোগ হবে</p></div><div className="grid gap-2 p-4 pt-0"><button type="button" disabled={submitting} onClick={()=>{setNutrimixChoice(true);setNutrimixPopupOpen(false);void submit(undefined,true)}} className="min-h-12 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-800 px-4 py-3 text-sm font-extrabold text-white shadow-lg disabled:opacity-60">{String(settings.home_nutrimix_accept_text || "🎁 বীজের সাথে অনুখাদ্যও নিন")}</button><button type="button" disabled={submitting} onClick={()=>{setNutrimixChoice(false);setNutrimixPopupOpen(false);void submit(undefined,false)}} className="min-h-11 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-60">{String(settings.home_nutrimix_decline_text || "না, আমি শুধু বীজই নিবো")}</button></div></div></div>}
+    {nutrimixPopupOpen && settings.home_nutrimix_popup_enabled === true && <div className="fixed inset-0 z-[110] grid place-items-center bg-slate-950/65 p-4 backdrop-blur-sm" onMouseDown={(e)=>{if(e.target===e.currentTarget)void completeHomeIntent(false)}}><div role="dialog" aria-modal="true" aria-labelledby="home-nutrimix-heading" className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-emerald-100 bg-white shadow-2xl"><button type="button" onClick={()=>void completeHomeIntent(false)} aria-label="বন্ধ করুন" className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full bg-white/90 text-slate-500 shadow"><X className="h-5 w-5"/></button><div className="bg-gradient-to-br from-emerald-50 via-white to-amber-50 px-5 pb-5 pt-6 text-center"><div className="mx-auto mb-3 flex h-36 w-36 items-center justify-center overflow-hidden rounded-2xl border border-emerald-100 bg-white p-2 shadow-sm"><SafeImage src={toImg(String(settings.home_nutrimix_product_image || "/media?asset=site-assets%2Flanding-1790850378884-72373.webp"))} alt={String(settings.home_nutrimix_product_name || "NUTRIMIX")} className="h-full w-full object-contain"/></div><div className="mb-2 inline-flex rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-extrabold tracking-wide text-emerald-800">বিশেষ অফার 🌱</div><h3 id="home-nutrimix-heading" className="text-xl font-black leading-snug text-slate-900">{String(settings.home_nutrimix_popup_heading || 'বীজের সাথে “অনুখাদ্য” নিন 🌱')}</h3><p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600">{String(settings.home_nutrimix_popup_description || 'আপনার অর্ডারের সাথে মাত্র ৳২০০ যোগ করেই গাছের নিয়মিত পরিচর্যার জন্য 🎁“অনুখাদ্য” /NUTRIMIX - নিয়ে নিন।')}</p><div className="mt-3 flex items-center justify-center gap-2"><span className="text-2xl font-black text-emerald-800">{taka(Math.max(1,Number(settings.home_nutrimix_product_price)||200))}</span>{Number(settings.home_nutrimix_product_old_price)>0&&<span className="text-sm font-semibold text-slate-400 line-through">{taka(Number(settings.home_nutrimix_product_old_price))}</span>}</div><p className="mt-1 text-[11px] font-semibold text-slate-500">আপনার অর্ডারের সাথে এই পণ্যটি যোগ হবে</p></div><div className="grid gap-2 p-4 pt-0"><button type="button" disabled={submitting} onClick={()=>void completeHomeIntent(true)} className="min-h-12 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-800 px-4 py-3 text-sm font-extrabold text-white shadow-lg disabled:opacity-60">{String(settings.home_nutrimix_accept_text || "🎁 বীজের সাথে অনুখাদ্যও নিন")}</button><button type="button" disabled={submitting} onClick={()=>void completeHomeIntent(false)} className="min-h-11 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-60">{String(settings.home_nutrimix_decline_text || "না, আমি শুধু বীজই নিবো")}</button></div></div></div>}
     {blockedOpen && <div className="fixed inset-0 z-[100] grid place-items-center bg-black/55 p-4 backdrop-blur-sm" onMouseDown={(e) => {if(e.target===e.currentTarget)setBlockedOpen(false)}}><div className="w-full max-w-md rounded-[28px] bg-white p-6 shadow-2xl"><div className="flex justify-between"><div className="grid h-12 w-12 place-items-center rounded-2xl bg-red-50 text-red-500"><ShieldCheck className="h-6 w-6" /></div><button type="button" onClick={() => setBlockedOpen(false)} className="grid h-9 w-9 place-items-center rounded-full text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button></div><h3 className="mt-4 text-lg font-black">অর্ডারটি নেওয়া যাচ্ছে না</h3><p className="mt-2 whitespace-pre-line text-sm leading-6 text-muted-foreground">{BLOCKED_ORDER_MESSAGE}</p><button type="button" onClick={() => setBlockedOpen(false)} className="mt-5 h-11 w-full rounded-xl bg-brand font-black text-white">ঠিক আছে</button></div></div>}
     {repeatOrderSeconds > 0 && <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/60 p-4 backdrop-blur-sm"><div className="w-full max-w-md rounded-[30px] bg-white p-6 text-center shadow-2xl"><div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-brand-light text-2xl">⏳</div><h3 className="mt-4 text-xl font-black">একটু অপেক্ষা করুন</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">{repeatOrderMessage}</p><div className="my-5 rounded-2xl bg-slate-50 py-4"><div className="text-3xl font-black tracking-[.12em] text-brand-dark">{formatCountdown(repeatOrderSeconds)}</div></div><p className="text-[11px] font-semibold text-muted-foreground">সময় শেষ হলে আবার অর্ডার করতে পারবেন।</p></div></div>}
   </SiteLayout>;
