@@ -302,45 +302,52 @@ div[style*="homeCategoryMarquee"] > button > div:nth-child(2) { order:1;margin-b
 }
 
 .theme-fruit {
-  --background: #fff8ef;
-  --foreground: #38251f;
-  --card: #ffffff;
-  --card-foreground: #38251f;
-  --popover: #ffffff;
-  --popover-foreground: #38251f;
-  --primary: #d93650;
+  --background: #fff7f1;
+  --foreground: #452b35;
+  --card: #fffdfb;
+  --card-foreground: #452b35;
+  --popover: #fffdfb;
+  --popover-foreground: #452b35;
+  --primary: #ed4268;
   --primary-foreground: #ffffff;
-  --secondary: #f59e0b;
-  --secondary-foreground: #422006;
-  --muted: #fff0df;
-  --muted-foreground: #80665a;
-  --accent: #65a30d;
-  --accent-foreground: #ffffff;
-  --destructive: #dc2626;
+  --secondary: #ffbd59;
+  --secondary-foreground: #593515;
+  --muted: #fff0e7;
+  --muted-foreground: #896b70;
+  --accent: #a7c957;
+  --accent-foreground: #29451d;
+  --destructive: #dc3545;
   --destructive-foreground: #ffffff;
-  --border: #f1dfd1;
-  --input: #f1dfd1;
-  --ring: #d93650;
-  --surface: #fff1e5;
-  --surface-foreground: #80665a;
-  --sidebar: #fff4e8;
-  --sidebar-foreground: #38251f;
-  --sidebar-primary: #d93650;
+  --border: #f5d9d5;
+  --input: #f5d9d5;
+  --ring: #ed4268;
+  --surface: #fff0e8;
+  --surface-foreground: #896b70;
+  --sidebar: #fff5ed;
+  --sidebar-foreground: #452b35;
+  --sidebar-primary: #ed4268;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #ffe4d6;
-  --sidebar-accent-foreground: #7f1d1d;
-  --sidebar-border: #f1dfd1;
-  --sidebar-ring: #d93650;
-  --brand: #d93650;
-  --brand-dark: #a91f3a;
-  --brand-light: #ffe1d6;
-  --success: #4d9b38;
-  --warning: #e99a18;
-  --chart-1: #d93650;
-  --chart-2: #f59e0b;
-  --chart-3: #65a30d;
-  --chart-4: #0d9488;
-  --chart-5: #9333ea;
+  --sidebar-accent: #ffe3d6;
+  --sidebar-accent-foreground: #7c2942;
+  --sidebar-border: #f5d9d5;
+  --sidebar-ring: #ed4268;
+  --brand: #ed4268;
+  --brand-dark: #c92e55;
+  --brand-light: #ffe0e4;
+  --success: #5b9b45;
+  --warning: #f2a93b;
+  --chart-1: #ed4268;
+  --chart-2: #ffbd59;
+  --chart-3: #a7c957;
+  --chart-4: #43a89b;
+  --chart-5: #a56bb5;
+}
+.theme-fruit body {
+  background-color: var(--background);
+  background-image:
+    radial-gradient(ellipse at 8% 0%, rgba(255, 190, 89, .16), transparent 34%),
+    radial-gradient(ellipse at 95% 18%, rgba(237, 66, 104, .10), transparent 32%),
+    radial-gradient(ellipse at 45% 100%, rgba(167, 201, 87, .10), transparent 38%);
 }
 
 .theme-sunset {
