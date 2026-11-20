@@ -49,17 +49,32 @@ async function fetchCategoryProducts(categoryId: string, childIds?: string[]): P
     ids = (children ?? []).map((child: { id: string }) => child.id);
   }
 
-  const { data, error } = await supabase
-    .from("products")
-    .select("id,name,slug,price,sale_price,images,stock,short_description,description")
-    .eq("is_active", true)
-    .eq("display_section", "home")
-    .eq("is_offer", false)
-    .eq("is_archived", false)
-    .in("category_id", [categoryId, ...ids])
-    .order("created_at", { ascending: false });
+  const [{ data, error }, { data: categoryRows, error: categoryError }] = await Promise.all([
+    supabase.from("products")
+      .select("id,name,slug,price,sale_price,images,stock,short_description,description,category_id,sort_order,created_at")
+      .eq("is_active", true)
+      .eq("display_section", "home")
+      .eq("is_offer", false)
+      .eq("is_archived", false)
+      .in("category_id", [categoryId, ...ids])
+      .order("created_at", { ascending: false }),
+    (supabase.from("categories") as any).select("id,parent_id,display_order").limit(200),
+  ]);
   if (error) throw error;
-  return (data ?? []) as unknown as Product[];
+  if (categoryError) throw categoryError;
+  const categoryMap = new Map((categoryRows ?? []).map((c: { id: string; parent_id: string | null; display_order: number }) => [c.id, c]));
+  const sorted = (data ?? []).slice().sort((a: any, b: any) => {
+    const ac = a.category_id ? categoryMap.get(a.category_id) : null;
+    const bc = b.category_id ? categoryMap.get(b.category_id) : null;
+    const aSubOrder = ac?.parent_id ? (ac.display_order ?? 9999) : -1;
+    const bSubOrder = bc?.parent_id ? (bc.display_order ?? 9999) : -1;
+    if (aSubOrder !== bSubOrder) return aSubOrder - bSubOrder;
+    const ao = a.sort_order == null ? Number.MAX_SAFE_INTEGER : Number(a.sort_order);
+    const bo = b.sort_order == null ? Number.MAX_SAFE_INTEGER : Number(b.sort_order);
+    if (ao !== bo) return ao - bo;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+  return sorted as unknown as Product[];
 }
 
 function CategoryPage() {
