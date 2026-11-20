@@ -1,5 +1,5 @@
 import { createFileRoute, useSearch, Link } from "@tanstack/react-router";
-import { keepPreviousData, queryOptions, useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { Apple, Flower2, Grid3X3, Leaf, Shovel, Sparkles, Sprout, Wheat, Wrench } from "lucide-react";
 import { SiteLayout } from "@/components/layout/SiteLayout";
@@ -47,7 +47,9 @@ const shopCategoriesOptions = () => queryOptions({
 
 const shopProductsOptions = (q?: string, cat?: string) => queryOptions({
   queryKey: ["shop-products", q, cat],
-  staleTime: 5 * 60_000,
+  // Always refresh Shop listings so recently edited product images do not remain stale.
+  staleTime: 0,
+  refetchOnMount: "always",
   queryFn: async () => {
     let categoryIds: string[] | null = null;
     if (cat) {
@@ -88,7 +90,7 @@ function Shop() {
   }, [q]);
 
   const { data: categories = [] } = useQuery(shopCategoriesOptions());
-  const { data: products = [] } = useQuery({ ...shopProductsOptions(q, cat), placeholderData: keepPreviousData });
+  const { data: products = [] } = useQuery(shopProductsOptions(q, cat));
 
   const activeCat = categories.find((c) => c.slug === cat);
   const heading = q ? `"${q}" এর ফলাফল` : activeCat ? activeCat.name : "সকল পণ্য";
