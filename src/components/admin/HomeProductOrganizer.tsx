@@ -43,7 +43,7 @@ export function HomeProductOrganizer({ products, categories }: { products: Produ
     qc.invalidateQueries({ queryKey: ["admin-products"] });
     qc.invalidateQueries({ queryKey: ["shop-products"] });
   };
-  const reorder = <T extends { id: string }>(items: T[], targetId: string, persist: (next: T[]) => void) => {
+  const reorder = <T extends { id: string },>(items: T[], targetId: string, persist: (next: T[]) => void) => {
     if (!dragId) return;
     const from = items.findIndex((item) => item.id === dragId);
     const to = items.findIndex((item) => item.id === targetId);
