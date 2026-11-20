@@ -9,6 +9,8 @@ export type CartItem = {
   image: string;
   quantity: number;
   stock: number;
+  category_id?: string | null;
+  is_freebie?: boolean;
 };
 
 type CartState = {
@@ -32,7 +34,7 @@ export const useCart = create<CartState>()(
         if (existing) {
           set({
             items: get().items.map((i) =>
-              i.id === item.id ? { ...i, quantity: Math.min(i.quantity + qty, item.stock || 999) } : i,
+              i.id === item.id ? { ...i, price: item.is_freebie ? 0 : i.price, is_freebie: item.is_freebie ? true : i.is_freebie, category_id: item.category_id ?? i.category_id, quantity: Math.min(i.quantity + qty, item.stock || 999) } : i,
             ),
             bumpKey: get().bumpKey + 1,
           });
