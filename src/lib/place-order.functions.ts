@@ -154,6 +154,56 @@ export const finalizeLandingCheckoutIntent = createServerFn({ method: "POST" }).
   return { id: orderId };
 });
 
+
+const HomeCheckoutIntentInputSchema = z.object({
+  checkout_session_id: z.string().uuid(),
+  customer_name: z.string().min(1).max(255),
+  customer_phone: BdPhoneSchema,
+  alternative_phone: BdPhoneSchema.optional().nullable(),
+  customer_address: z.string().min(1).max(1000),
+  delivery_fee: z.number().min(0).max(10000),
+  seed_items: z.array(ItemSchema).min(1).max(100),
+  notes: z.string().max(2000).optional().nullable(),
+  fbp: z.string().max(200).optional().nullable(),
+  fbc: z.string().max(500).optional().nullable(),
+  source_url: z.string().max(2000).optional().nullable(),
+});
+export const createHomeCheckoutIntent = createServerFn({ method: "POST" })
+  .inputValidator((input) => HomeCheckoutIntentInputSchema.parse(input))
+  .handler(async ({ data }) => {
+    const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
+    const deviceId = getOrderDeviceId();
+    const { data: row, error: settingsError } = await supabaseAdmin.from("site_settings").select("settings").maybeSingle();
+    if (settingsError) throw new Error("অফার সেটিংস যাচাই করা যায়নি");
+    const settings = (row?.settings ?? {}) as Record<string, unknown>;
+    if (settings.home_nutrimix_popup_enabled !== true) throw new Error("NUTRIMIX অফারটি বর্তমানে চালু নেই");
+    const name = String(settings.home_nutrimix_product_name || 'NUTRIMIX - "অনুখাদ্য" 200 GM').trim();
+    const price = Number(settings.home_nutrimix_product_price ?? 200);
+    if (!name || !Number.isFinite(price) || price <= 0 || price > 10000000) throw new Error("NUTRIMIX অফারের নাম বা দাম সঠিক নয়");
+    const nutrimixItem = { id: "home-nutrimix-popup", name, price, quantity: 1 };
+    const { data: intentId, error } = await supabaseAdmin.rpc("create_landing_checkout_intent", {
+      p_checkout_session_id: data.checkout_session_id,
+      p_customer_name: data.customer_name.trim(),
+      p_customer_phone: data.customer_phone,
+      p_customer_address: data.customer_address.trim(),
+      p_delivery_fee: data.delivery_fee,
+      p_seed_items: data.seed_items,
+      p_nutrimix_item: nutrimixItem,
+      p_notes: data.notes ?? null,
+      p_client_ip: clientIp,
+      p_device_id: deviceId,
+      p_alternative_phone: data.alternative_phone ?? null,
+    } as never);
+    if (error || !intentId || typeof intentId !== "string") throw new Error(error?.message || "Checkout intent create failed");
+    try {
+      await supabaseAdmin.rpc("set_landing_intent_tracking" as never, {
+        p_intent_id: intentId, p_fbp: data.fbp ?? null, p_fbc: data.fbc ?? null,
+        p_user_agent: getRequestHeader("user-agent") ?? null, p_source_url: data.source_url ?? null,
+      } as never);
+    } catch (e) { logger.error("[createHomeCheckoutIntent] tracking save failed:", e); }
+    return { id: intentId };
+  });
+
 export const placeOrder = createServerFn({ method: "POST" }).inputValidator((input: Input) => InputSchema.parse(input)).handler(async ({ data }) => {
   const customerPhone = data.customer_phone;
   const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
