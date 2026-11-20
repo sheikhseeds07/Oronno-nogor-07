@@ -118,12 +118,20 @@ export const Route = createFileRoute("/api/public/pg")({
         if (range) headers.set("Range", range);
         if (method === "POST") headers.set("Content-Type", "application/json");
 
-        const origin = await fetch(supabaseUrl + path, {
+        const originUrl = supabaseUrl + path;
+        const originCacheKey = isProductRead
+          ? `${originUrl}${originUrl.includes("?") ? "&" : "?"}__cache_v=products-v2`
+          : undefined;
+        const origin = await fetch(originUrl, {
           method,
           headers,
           body: method === "POST" ? (body ?? "{}") : undefined,
           signal: AbortSignal.timeout(10_000),
-          ...({ cf: { cacheEverything: true, cacheTtl: path.includes("/rpc/get_home_data_v1") ? HOME_RPC_TTL_SECONDS : isLandingRead ? LANDING_TTL_SECONDS : isProductRead ? PRODUCTS_TTL_SECONDS : EDGE_TTL_SECONDS } } as RequestInit),
+          ...({ cf: {
+            cacheEverything: true,
+            cacheTtl: path.includes("/rpc/get_home_data_v1") ? HOME_RPC_TTL_SECONDS : isLandingRead ? LANDING_TTL_SECONDS : isProductRead ? PRODUCTS_TTL_SECONDS : EDGE_TTL_SECONDS,
+            ...(originCacheKey ? { cacheKey: originCacheKey } : {}),
+          } } as RequestInit),
         });
 
         const payload = await origin.text();
