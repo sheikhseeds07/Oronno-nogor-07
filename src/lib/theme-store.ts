@@ -9,6 +9,7 @@ export type SiteTheme = {
 export const SITE_THEMES: SiteTheme[] = [
   { id: "default", name: "ডিফল্ট", className: null, dark: false, colors: ["#185C3A", "#DCEBDD", "#F8F6EE"] },
   { id: "sunset", name: "সানসেট", className: "theme-sunset", dark: false, colors: ["#e6185f", "#f97316", "#f7f4f3"] },
+  { id: "fruit", name: "ফল", className: "theme-fruit", dark: false, colors: ["#D93650", "#F59E0B", "#FFF7ED"] },
 ];
 
 const STORAGE_KEY = "site-theme";
