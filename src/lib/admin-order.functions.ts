@@ -4,7 +4,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/lib/personal-supabase/auth-middleware";
 import { supabaseAdmin } from "@/lib/personal-supabase/client.server";
 
-const AdminItemSchema = z.object({ product_id: z.string().uuid().optional().nullable(), product_name: z.string().min(1).max(500), price: z.number().min(0).max(10_000_000), quantity: z.number().int().min(1).max(1000) });
+const AdminItemSchema = z.object({ product_id: z.string().uuid().optional().nullable(), product_name: z.string().min(1).max(500), price: z.number().min(0).max(10_000_000), quantity: z.number().int().min(1).max(1000), is_freebie: z.boolean().optional().default(false) });
 const OrderFieldsSchema = z.object({ customer_name: z.string().min(1).max(255), customer_phone: z.string().regex(/^[0-9]{11}$/, "মেইন ফোন নাম্বার অবশ্যই ১১ সংখ্যার হতে হবে"), alternative_phone: z.string().max(32).optional().nullable(), customer_address: z.string().max(1000).optional().nullable(), thana: z.string().max(100).optional().nullable(), district: z.string().max(100).optional().nullable(), notes: z.string().max(2000).optional().nullable(), subtotal: z.number().min(0).max(10_000_000), delivery_fee: z.number().min(0).max(100_000), discount: z.number().min(0).max(10_000_000).default(0), total: z.number().min(0).max(10_000_000), items: z.array(AdminItemSchema).min(1).max(100) });
 const ManualOrderSchema = OrderFieldsSchema;
 const UpdateOrderSchema = OrderFieldsSchema.extend({ id: z.string().uuid(), confirm: z.boolean().default(false) });
@@ -26,7 +26,7 @@ export const cancelOrders = createServerFn({ method: "POST" }).middleware([requi
 
 async function replaceOrderItems(orderId: string, items: z.infer<typeof AdminItemSchema>[]) {
   const { error: deleteError } = await supabaseAdmin.from("order_items").delete().eq("order_id", orderId); if (deleteError) throw new Error(deleteError.message);
-  const rows = items.map((item) => ({ order_id: orderId, product_id: item.product_id ?? null, product_name: item.product_name, price: item.price, quantity: item.quantity, subtotal: item.price * item.quantity }));
+  const rows = items.map((item) => ({ order_id: orderId, product_id: item.product_id ?? null, product_name: item.product_name, price: item.price, quantity: item.quantity, subtotal: item.price * item.quantity, is_freebie: item.is_freebie ?? false }));
   const { error: insertError } = await supabaseAdmin.from("order_items").insert(rows); if (insertError) throw new Error(insertError.message);
 }
 
