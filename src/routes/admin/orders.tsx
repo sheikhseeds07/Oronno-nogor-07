@@ -1603,7 +1603,7 @@ type OrderItemRow = {
 
 type OrderRow = {
   id: string; invoice_no: string | null; customer_name: string;
-  customer_phone: string; customer_address?: string | null;
+  customer_phone: string; alternative_phone?: string | null; customer_address?: string | null;
   thana?: string | null; district?: string | null;
   created_at: string; updated_at?: string | null; total: number; status: OrderStatus;
   courier_consignment?: string | null; courier_display_name?: string | null; printed_at?: string | null;
@@ -2259,7 +2259,7 @@ function OrdersTableRows({
                         aria-label="কাস্টমারের তথ্য কপি করুন"
                       ><Copy className="w-3 h-3" /></button>
                     </div>
-                    <div className="font-semibold">{o.customer_name}</div>
+                    {o.alternative_phone && <div className="flex items-center gap-2 text-xs"><span className="font-mono text-slate-600">{o.alternative_phone}</span><a href={`tel:${o.alternative_phone}`} className="p-1 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100" title="বিকল্প নাম্বারে কল"><Phone className="w-3 h-3" /></a>{waNumber(o.alternative_phone) && <a href={`https://wa.me/${waNumber(o.alternative_phone)}`} target="_blank" rel="noreferrer" className="p-1 rounded-full bg-green-50 text-green-600 hover:bg-green-100" title="বিকল্প নাম্বারে WhatsApp"><MessageCircle className="w-3 h-3" /></a>}</div><div className="font-semibold">{o.customer_name}</div>
                     <div className="text-xs text-muted-foreground break-words leading-relaxed">
                       {[o.customer_address, o.thana, o.district].filter(Boolean).join(", ")}
                     </div>
@@ -2582,7 +2582,7 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
 type DetailItem = { id: string; product_id: string | null; product_name: string; quantity: number; price: number; subtotal: number };
 type DetailOrder = {
   id: string; invoice_no: string | null; status: OrderStatus;
-  customer_name: string; customer_phone: string; customer_address: string | null;
+  customer_name: string; customer_phone: string; alternative_phone?: string | null; customer_address: string | null;
   thana: string | null; district: string | null; notes: string | null;
   subtotal: number; delivery_fee: number; discount: number; total: number;
   created_at: string; order_items: DetailItem[];
@@ -2892,6 +2892,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
   // Editable form state
   const [name, setName] = useState("");
   const [phoneVal, setPhoneVal] = useState("");
+  const [alternativePhoneVal, setAlternativePhoneVal] = useState("");
   const [address, setAddress] = useState("");
   const [shippingNote, setShippingNote] = useState("");
   const [discount, setDiscount] = useState(0);
@@ -3041,6 +3042,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
     if (!detail) return;
     setName(detail.customer_name);
     setPhoneVal(detail.customer_phone);
+    setAlternativePhoneVal(detail.alternative_phone ?? "");
     setAddress([detail.customer_address, detail.thana, detail.district].filter(Boolean).join(", "));
     setShippingNote(detail.notes ?? "");
     setDiscount(Number(detail.discount) || 0);
@@ -3157,6 +3159,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
               invoice_no: invoices[0],
               customer_name: name,
               customer_phone: phoneVal,
+              alternative_phone: alternativePhoneVal.trim() || null,
               customer_address: address || null,
               thana: null,
               district: detail.district,
@@ -3198,6 +3201,7 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
           confirm,
           customer_name: name,
           customer_phone: phoneVal,
+          alternative_phone: alternativePhoneVal.trim() || null,
           customer_address: address,
           thana: detail.thana,
           district: detail.district,
@@ -3419,6 +3423,10 @@ function DetailModal({ id, onClose, onConfirmed }: { id: string; onClose: () => 
                 )}
               </div>
               <BlockCustomerButton name={name} phone={phoneVal} orderId={detail.id} />
+            </div>
+            <div className="sm:col-span-3">
+              <label className="text-xs font-semibold mb-1 block">Alternative Phone (Optional)</label>
+              <input value={alternativePhoneVal} onChange={(e) => setAlternativePhoneVal(e.target.value)} placeholder="বিকল্প মোবাইল নাম্বার" className="w-full border rounded-lg px-3 py-2 text-sm bg-blue-50/40" />
             </div>
             <div className="sm:col-span-3">
               <label className="text-xs font-semibold mb-1 block">Address</label>
