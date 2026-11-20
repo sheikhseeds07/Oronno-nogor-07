@@ -22,11 +22,13 @@ export const Route = createFileRoute("/category/$slug")({
       (supabase.from("categories") as any).select(columns).eq("slug", params.slug).maybeSingle(),
     ]);
     queryClient.setQueryData(["cat-list"], listRes.data ?? []);
-    const cat = (catRes.data ?? null) as { id: string } | null;
-    queryClient.setQueryData(["cat", params.slug], cat);
+    const cat = (catRes.data ?? null) as CategoryRow | null;
     if (!cat) return null;
+    // Cache the complete category row; an id-only cache entry causes the
+    // client query to briefly render with incomplete category metadata.
     const childrenRes = await (supabase.from("categories") as any).select(columns).eq("parent_id", cat.id).order("display_order").order("created_at");
-    const children = (childrenRes.data ?? []) as Array<{ id: string }>;
+    const children = (childrenRes.data ?? []) as CategoryRow[];
+    queryClient.setQueryData(["cat", params.slug], cat);
     queryClient.setQueryData(["cat-children", cat.id], children);
     const ids = [cat.id, ...children.map((c) => c.id)];
     const productsRes = await supabase.from("products").select("id,name,slug,price,sale_price,images,stock,short_description,description").eq("is_active", true).eq("display_section", "home").in("category_id", ids).order("created_at", { ascending: false });
@@ -60,7 +62,7 @@ function CategoryPage() {
     },
   });
 
-  const { data: cat } = useQuery({
+  const { data: cat, isFetching: isCategoryFetching } = useQuery({
     queryKey: ["cat", slug],
     staleTime: 0,
     refetchOnMount: "always",
@@ -141,7 +143,7 @@ function CategoryPage() {
   }, [cat?.id, cat?.parent_id, children.length, siblingCategories.length]);
   const { data: products = [], isFetching: isProductsFetching } = useQuery({
     queryKey: ["cat-products", cat?.id, children.map((c) => c.id).join(",")],
-    enabled: Boolean(cat?.id),
+    enabled: Boolean(cat?.id) && !isCategoryFetching && !isChildrenFetching,
     staleTime: 0,
     refetchOnMount: "always",
     gcTime: 15 * 60 * 1000,
