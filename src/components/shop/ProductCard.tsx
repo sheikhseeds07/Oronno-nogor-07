@@ -92,12 +92,12 @@ function flyProductToCart(image: string, source: HTMLElement) {
 
 export const ProductCard = memo(function ProductCard({ p, priority = false }: { p: Product; priority?: boolean }) {
   const add = useCart((s) => s.add);
-  const cartSubtotal = useCart((s) => s.subtotal());
   const cartItems = useCart((s) => s.items);
   const seedCategoryIds = ["8a87866b-6556-4320-92aa-18e72d5b57da", "8e74bf59-fc97-4992-9f10-f9e7f5808c32", "5edc0b7e-73c7-4380-863d-73b79347ab72", "dbc8403f-96ce-4496-9ff0-dde0b16d4c92"];
   const isSeed = Boolean(p.category_id && seedCategoryIds.includes(p.category_id));
-  const freeLimit = cartSubtotal >= 1000 ? 2 : cartSubtotal >= 500 ? 1 : 0;
-  const freeCount = cartItems.filter((item) => item.price === 0).reduce((sum, item) => sum + item.quantity, 0);
+  const paidSubtotal = cartItems.filter((item) => !item.is_freebie).reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const freeLimit = paidSubtotal >= 1000 ? 2 : paidSubtotal >= 500 ? 1 : 0;
+  const freeCount = cartItems.filter((item) => item.is_freebie).reduce((sum, item) => sum + item.quantity, 0);
   const setQty = useCart((s) => s.setQty);
   const remove = useCart((s) => s.remove);
   const inCart = useCart((s) => s.items.find((i) => i.id === p.id));
@@ -105,16 +105,18 @@ export const ProductCard = memo(function ProductCard({ p, priority = false }: { 
   const [justAdded, setJustAdded] = useState(false);
   const imageRef = useRef<HTMLButtonElement | null>(null);
   const regularPrice = p.sale_price ?? p.price;
-  const price = isSeed && freeLimit > freeCount ? 0 : regularPrice;
+  const canTakeFree = isSeed && (inCart?.is_freebie || freeLimit > freeCount);
+  const price = inCart?.is_freebie || canTakeFree ? 0 : regularPrice;
   const discount = p.sale_price ? Math.round(((p.price - p.sale_price) / p.price) * 100) : 0;
   const img = p.images?.[0] || "/placeholder.svg";
   const imageSrc = toImg(img);
 
-  const addItem = () => {
+  const addItem = (asFreebie = false) => {
     if (p.stock <= 0) return;
     if (imageRef.current) flyProductToCart(img, imageRef.current);
-    add({ id: p.id, name: p.name, slug: p.slug, price, image: img, stock: p.stock });
-    if (price > 0) trackAddToCart({ id: p.id, name: p.name, price, quantity: 1 });
+    const selectedPrice = asFreebie ? 0 : regularPrice;
+    add({ id: p.id, name: p.name, slug: p.slug, price: selectedPrice, image: img, stock: p.stock, category_id: p.category_id, is_freebie: asFreebie });
+    if (selectedPrice > 0) trackAddToCart({ id: p.id, name: p.name, price: selectedPrice, quantity: 1 });
     setJustAdded(true);
     window.setTimeout(() => setJustAdded(false), 1400);
   };
@@ -158,16 +160,18 @@ export const ProductCard = memo(function ProductCard({ p, priority = false }: { 
           </div>
 
           <div className="mt-2.5">
-            {inCart ? (
+            {inCart && canTakeFree && !inCart.is_freebie ? (
+              <button onClick={() => addItem(true)} className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-amber-400 bg-amber-50 text-xs font-extrabold text-amber-900">ফ্রিতে নিন — ফ্রি বীজ হিসেবে যোগ করুন</button>
+            ) : inCart ? (
               <div className="flex h-9 items-center justify-between overflow-hidden rounded-xl border-2 border-brand bg-brand/5 shadow-[0_3px_10px_-7px_rgba(20,83,45,.55)]">
                 <button onClick={() => (inCart.quantity <= 1 ? remove(p.id) : setQty(p.id, inCart.quantity - 1))} className="flex h-full w-9 items-center justify-center text-brand transition-colors hover:bg-brand-light/70 active:scale-90" aria-label="কমান"><Minus className="h-3.5 w-3.5" /></button>
                 <span className="text-xs font-extrabold text-brand-dark">{bnDigits(inCart.quantity)}</span>
-                <button onClick={() => setQty(p.id, Math.min(inCart.quantity + 1, p.stock || 999))} className="flex h-full w-9 items-center justify-center text-brand transition-colors hover:bg-brand-light/70 active:scale-90" aria-label="বাড়ান"><Plus className="h-3.5 w-3.5" /></button>
+                <button disabled={Boolean(inCart.is_freebie && freeCount >= freeLimit)} onClick={() => setQty(p.id, Math.min(inCart.quantity + 1, p.stock || 999))} className="flex h-full w-9 items-center justify-center text-brand transition-colors hover:bg-brand-light/70 active:scale-90" aria-label="বাড়ান"><Plus className="h-3.5 w-3.5" /></button>
               </div>
             ) : (
               <button
                 disabled={p.stock <= 0}
-                onClick={addItem}
+                onClick={() => addItem(price === 0)}
                 className={`group/cart relative flex h-10 w-full items-center justify-center gap-2 overflow-hidden rounded-xl border text-[11px] font-extrabold tracking-[-0.01em] transition-all duration-300 active:scale-[.975] disabled:cursor-not-allowed disabled:opacity-45 sm:h-10 sm:text-xs ${justAdded
                   ? "border-brand bg-brand text-white shadow-[0_7px_18px_-9px_rgba(20,83,45,.8)]"
                   : "border-brand/60 bg-gradient-to-r from-brand via-brand to-brand-dark text-white shadow-[0_6px_16px_-10px_rgba(20,83,45,.9)] hover:-translate-y-0.5 hover:border-brand hover:shadow-[0_10px_22px_-10px_rgba(20,83,45,.9)]"
