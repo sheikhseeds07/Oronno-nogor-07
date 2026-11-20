@@ -36,9 +36,16 @@ async function liveFetch(input: RequestInfo | URL, init?: RequestInit) {
   }
 
   if (typeof window === "undefined" && isPublicAnonRead(rawUrl, LIVE_DATABASE_URL, method, hasUserToken)) {
-    const isLandingRead = new URL(rawUrl).pathname === "/rest/v1/landing_pages";
-    const cacheTtl = isLandingRead ? 300 : 3600;
-    const cacheKey = isLandingRead ? `${rawUrl}${rawUrl.includes("?") ? "&" : "?"}__cache_v=landing-v3` : undefined;
+    const readPath = new URL(rawUrl).pathname;
+    const isLandingRead = readPath === "/rest/v1/landing_pages";
+    const isProductRead = readPath === "/rest/v1/products";
+    // Product images are edited frequently; do not let old image arrays persist for an hour.
+    const cacheTtl = isLandingRead ? 300 : isProductRead ? 30 : 3600;
+    const cacheKey = isLandingRead
+      ? `${rawUrl}${rawUrl.includes("?") ? "&" : "?"}__cache_v=landing-v3`
+      : isProductRead
+        ? `${rawUrl}${rawUrl.includes("?") ? "&" : "?"}__cache_v=products-v2`
+        : undefined;
     return fetch(input, { ...init, headers, cf: { cacheEverything: true, cacheTtl, ...(cacheKey ? { cacheKey } : {}) } } as RequestInit);
   }
 
