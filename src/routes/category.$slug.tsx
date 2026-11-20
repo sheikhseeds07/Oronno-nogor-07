@@ -124,8 +124,13 @@ function CategoryPage() {
       const delta = Math.min(40, time - previous);
       previous = time;
       if (!subcatPausedRef.current && !subcatDragRef.current) {
-        const half = el.scrollWidth / 2;
-        if (half > 0) { el.scrollLeft += (22 * delta) / 1000; if (el.scrollLeft >= half) el.scrollLeft -= half; }
+        // Ten identical sets keep the scrollable track wider than the viewport
+        // even when a category has only one or two subcategories.
+        const setWidth = el.scrollWidth / 10;
+        if (setWidth > 0 && el.scrollWidth - el.clientWidth >= setWidth) {
+          el.scrollLeft += (22 * delta) / 1000;
+          if (el.scrollLeft >= setWidth) el.scrollLeft -= setWidth;
+        }
       }
       frame = requestAnimationFrame(tick);
     };
@@ -187,7 +192,6 @@ function CategoryPage() {
 
           {cat && (cat.parent_id ? siblingCategories.length > 0 : children.length > 0) && (() => {
             const items = cat.parent_id ? siblingCategories : children;
-            const duration = Math.max(55, items.length * 8);
             return (
               <section className="cat-slide mx-auto mt-2 max-w-6xl">
                 <div className="flex min-w-0 items-center gap-2 rounded-2xl border border-brand/10 bg-white/95 p-2 shadow-sm">
@@ -217,11 +221,9 @@ function CategoryPage() {
                       subcatScrollerRef.current?.classList.remove("is-dragging");
                     }}
 >
-                    <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-3 bg-gradient-to-r from-white to-transparent" />
-                    <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-4 bg-gradient-to-l from-white to-transparent" />
                     <div className="flex w-max min-w-max gap-1.5 pr-1">
-                      {[...items, ...items].map((item, i) => (
-                        <Link key={(i < items.length ? "primary-" : "repeat-") + item.id} to="/category/$slug" params={{ slug: item.slug }} aria-label={item.name} className={"group flex h-9 shrink-0 items-center gap-1 rounded-full border px-2.5 text-[11px] font-bold shadow-sm transition-colors duration-200 hover:border-brand hover:bg-brand hover:text-white active:scale-[.98] " + (item.slug === slug ? "border-brand bg-brand text-white" : "border-border/80 bg-[#fffdfd]")}>
+                      {Array.from({ length: 10 }, (_, copy) => items.map((item) => ({ ...item, _copy: copy }))).flat().map((item, i) => (
+                        <Link key={"copy-" + item._copy + "-" + item.id} to="/category/$slug" params={{ slug: item.slug }} aria-label={item.name} className={"group flex h-9 shrink-0 items-center gap-1 rounded-full border px-2.5 text-[11px] font-bold shadow-sm transition-colors duration-200 hover:border-brand hover:bg-brand hover:text-white active:scale-[.98] " + (item.slug === slug ? "border-brand bg-brand text-white" : "border-border/80 bg-[#fffdfd]")}>
                           <span className="h-5 w-5 overflow-hidden rounded-full bg-brand-light/40 ring-1 ring-black/5">{item.image_url ? <SafeImage src={toImg(item.image_url)} alt="" className="h-full w-full object-cover" loading="lazy" /> : <span className="flex h-full w-full items-center justify-center text-[9px]">🌿</span>}</span>
                           <span className="max-w-[90px] truncate">{item.name}</span><ChevronRight className="h-3 w-3 opacity-40" />
                         </Link>
