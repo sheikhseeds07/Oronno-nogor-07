@@ -2,7 +2,7 @@ import { SafeImage } from "@/components/SafeImage";
 import { CATEGORIES_COLUMNS, PRODUCTS_COLUMNS } from "@/lib/read-columns";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { supabase } from "@/lib/personal-supabase/client";
 import { taka } from "@/lib/format";
@@ -169,20 +169,32 @@ function Products() {
 function ProductModal({ product, categories, onClose, onSaved, onAdded }: { product: Product; categories: { id: string; name: string }[]; onClose: () => void; onSaved: () => void; onAdded?: () => void }) {
   const [p, setP] = useState<Product>(product);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const uploadInProgress = useRef(false);
 
   const upload = async (files: FileList | null) => {
-    if (!files) return;
-    const newImgs = [...(p.images ?? [])];
-    for (const file of Array.from(files)) {
-      try {
-        const url = await uploadToBucket("product-images", safeFileName(file.name), file);
-        newImgs.push(url);
-      } catch (e) { toast.error(e instanceof Error ? e.message : "আপলোড হয়নি"); continue; }
+    if (!files || uploadInProgress.current) return;
+    uploadInProgress.current = true;
+    setUploading(true);
+    const uploaded: string[] = [];
+    try {
+      for (const file of Array.from(files)) {
+        try {
+          const url = await uploadToBucket("product-images", safeFileName(file.name), file);
+          uploaded.push(url);
+        } catch (e) { toast.error(e instanceof Error ? e.message : "আপলোড হয়নি"); }
+      }
+      if (uploaded.length) {
+        setP((current) => ({ ...current, images: [...(current.images ?? []), ...uploaded] }));
+      }
+    } finally {
+      uploadInProgress.current = false;
+      setUploading(false);
     }
-    setP({ ...p, images: newImgs });
   };
 
   const save = async (addAnother = false) => {
+    if (uploadInProgress.current) return toast.error("ছবি আপলোড শেষ হওয়া পর্যন্ত অপেক্ষা করুন");
     if (!p.name) return toast.error("নাম দিন");
     setSaving(true);
     const payload = {
@@ -243,7 +255,8 @@ function ProductModal({ product, categories, onClose, onSaved, onAdded }: { prod
           <div><label className="text-sm font-medium">পূর্ণ ডেসক্রিপশন</label><textarea rows={5} value={p.description ?? ""} onChange={(e) => setP({ ...p, description: e.target.value })} className="w-full border rounded-lg px-3 py-2 mt-1" /></div>
           <div>
             <label className="text-sm font-medium">ছবি</label>
-            <input type="file" accept="image/*" multiple onChange={(e) => upload(e.target.files)} className="block mt-1 text-sm" />
+            <input type="file" accept="image/*" multiple disabled={uploading} onChange={(e) => { upload(e.target.files); e.currentTarget.value = ""; }} className="block mt-1 text-sm disabled:opacity-50" />
+            {uploading && <p className="mt-1 text-xs font-semibold text-amber-700">ছবি R2-তে আপলোড হচ্ছে—শেষ না হওয়া পর্যন্ত সংরক্ষণ করবেন না।</p>}
             <div className="grid grid-cols-4 gap-2 mt-2">
               {p.images?.map((src, i) => (
                 <div key={i} className="relative aspect-square">
@@ -260,8 +273,8 @@ function ProductModal({ product, categories, onClose, onSaved, onAdded }: { prod
         </div>
         <div className="p-4 border-t flex flex-wrap gap-2 justify-end sticky bottom-0 bg-white">
           <button onClick={onClose} className="px-4 py-2 border rounded-lg">ক্যান্সেল</button>
-          {!p.id && <button disabled={saving} onClick={() => save(true)} className="px-4 py-2 border-2 border-brand text-brand rounded-lg font-semibold disabled:opacity-50">সংরক্ষণ + নতুন</button>}
-          <button disabled={saving} onClick={() => save(false)} className="px-4 py-2 bg-brand text-white rounded-lg font-semibold disabled:opacity-50">{saving ? "সংরক্ষণ..." : "সংরক্ষণ করুন"}</button>
+          {!p.id && <button disabled={saving || uploading} onClick={() => save(true)} className="px-4 py-2 border-2 border-brand text-brand rounded-lg font-semibold disabled:opacity-50">সংরক্ষণ + নতুন</button>}
+          <button disabled={saving || uploading} onClick={() => save(false)} className="px-4 py-2 bg-brand text-white rounded-lg font-semibold disabled:opacity-50">{uploading ? "ছবি আপলোড হচ্ছে..." : saving ? "সংরক্ষণ..." : "সংরক্ষণ করুন"}</button>
         </div>
       </div>
     </div>
