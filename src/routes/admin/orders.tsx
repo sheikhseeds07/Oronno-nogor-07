@@ -2339,6 +2339,7 @@ type Cart = { product_id: string | null; product_name: string; price: number; qu
 function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [alternativePhone, setAlternativePhone] = useState("");
   const [address, setAddress] = useState("");
   const [thana, setThana] = useState("");
   const [district, setDistrict] = useState("");
@@ -2441,6 +2442,7 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
         data: {
           customer_name: name,
           customer_phone: phone,
+          alternative_phone: alternativePhone.trim() || null,
           customer_address: address,
           thana,
           district,
@@ -2490,6 +2492,7 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
         <div className="bg-white border rounded-xl p-4 space-y-3">
           <h3 className="font-bold">কাস্টমার তথ্য</h3>
           <input className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="ফোন নাম্বার *" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <input className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="বিকল্প নাম্বার (অপশনাল)" value={alternativePhone} maxLength={11} inputMode="numeric" onChange={(e) => setAlternativePhone(e.target.value.replace(/[^0-9০-৯]/g, "").slice(0, 11))} />
           <input className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="নাম *" value={name} onChange={(e) => setName(e.target.value)} />
           <textarea className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="ঠিকানা" rows={2} value={address} onChange={(e) => setAddress(e.target.value)} />
           <div className="grid grid-cols-2 gap-2">
