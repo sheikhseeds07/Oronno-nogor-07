@@ -172,7 +172,9 @@ export const ProductCard = memo(function ProductCard({ p, priority = false }: { 
                 onClick={() => addItem(price === 0)}
                 className={`group/cart relative flex h-10 w-full items-center justify-center gap-2 overflow-hidden rounded-xl border text-[11px] font-extrabold tracking-[-0.01em] transition-all duration-300 active:scale-[.975] disabled:cursor-not-allowed disabled:opacity-45 sm:h-10 sm:text-xs ${justAdded
                   ? "border-brand bg-brand text-white shadow-[0_7px_18px_-9px_rgba(20,83,45,.8)]"
-                  : "border-brand/60 bg-gradient-to-r from-brand via-brand to-brand-dark text-white shadow-[0_6px_16px_-10px_rgba(20,83,45,.9)] hover:-translate-y-0.5 hover:border-brand hover:shadow-[0_10px_22px_-10px_rgba(20,83,45,.9)]"
+                  : price === 0
+                    ? "border-orange-300 bg-gradient-to-r from-orange-400 via-rose-500 to-fuchsia-600 text-white shadow-[0_7px_20px_-8px_rgba(225,75,90,.75)] hover:-translate-y-0.5 hover:border-rose-400 hover:shadow-[0_11px_24px_-9px_rgba(225,75,90,.8)]"
+                    : "border-brand/60 bg-gradient-to-r from-brand via-brand to-brand-dark text-white shadow-[0_6px_16px_-10px_rgba(20,83,45,.9)] hover:-translate-y-0.5 hover:border-brand hover:shadow-[0_10px_22px_-10px_rgba(20,83,45,.9)]"
                 }`}
               >
                 <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/15 to-transparent transition-transform duration-700 group-hover/cart:translate-x-full" />
