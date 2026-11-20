@@ -46,7 +46,7 @@ export const sendOrdersToSteadfast = createServerFn({ method: "POST" })
     const deliveryNote = typeof siteSettings.delivery_note === "string" ? siteSettings.delivery_note : "";
 
     const { data: orders } = await supabaseAdmin.from("orders")
-      .select("id,invoice_no,customer_name,customer_phone,customer_address,thana,district,total,courier_consignment")
+      .select("id,invoice_no,customer_name,customer_phone,alternative_phone,customer_address,thana,district,total,courier_consignment")
       .in("id", data.orderIds);
 
     const shortName = (n: string) => (n || "").split(/[|–—(]/)[0].replace(/\s+/g, " ").trim().slice(0, 28);
@@ -104,6 +104,7 @@ export const sendOrdersToSteadfast = createServerFn({ method: "POST" })
         invoice,
         recipient_name: (o.customer_name || "").slice(0, 100),
         recipient_phone: (o.customer_phone || "").replace(/\D/g, "").slice(-11),
+        alternative_phone: (o.alternative_phone || "").replace(/\D/g, "").slice(-11) || undefined,
         recipient_address: [o.customer_address, o.thana, o.district].filter(Boolean).join(", ").slice(0, 240),
         cod_amount: Number(o.total) || 0,
       };
