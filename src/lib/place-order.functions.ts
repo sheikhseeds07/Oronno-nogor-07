@@ -14,7 +14,7 @@ const normalizeBdPhoneServer = (value: string) => {
   const ascii = String(value ?? "").replace(/[০-৯]/g, (digit) => String(bn.indexOf(digit)));
   const digits = ascii.replace(/\D/g, "");
   const local = digits.startsWith("880") ? "0" + digits.slice(3) : digits;
-  return local.slice(0, 11);
+  return local;
 };
 const ORDER_DEVICE_COOKIE = "hng-device-id";
 
@@ -28,7 +28,7 @@ function getOrderDeviceId(): string | null {
 const ItemSchema = z.object({ id: z.string().min(1).max(64), name: z.string().min(1).max(500), price: z.number().min(0).max(10_000_000), quantity: z.number().int().min(1).max(1000) });
 const BdPhoneSchema = z.preprocess(
   (value) => typeof value === "string" ? normalizeBdPhoneServer(value) : value,
-  z.string().regex(PHONE_RE, "Invalid Bangladesh mobile number. Use 01XXXXXXXXX."),
+  z.string().regex(PHONE_RE, "সঠিক ১১ ডিজিটের বাংলাদেশি মোবাইল নাম্বার দিন (01XXXXXXXXX)"),
 );
 const InputSchema = z.object({ customer_name: z.string().min(1).max(255), customer_phone: BdPhoneSchema, alternative_phone: BdPhoneSchema.optional().nullable(), customer_address: z.string().min(1).max(1000), district: z.string().max(100).optional().nullable(), thana: z.string().max(100).optional().nullable(), notes: z.string().max(2000).optional().nullable(), delivery_fee: z.number().min(0).max(10000).default(50), items: z.array(ItemSchema).min(1).max(100), created_by: z.string().uuid().optional().nullable(), fbp: z.string().max(200).optional().nullable(), fbc: z.string().max(500).optional().nullable(), source_url: z.string().max(2000).optional().nullable(), checkout_session_id: z.string().max(200).optional().nullable() });
 type Input = z.infer<typeof InputSchema>;
