@@ -61,6 +61,14 @@ function createLiveClient(storageKey: string): TypedSupabaseClient {
 export const staffSupabase = createLiveClient("ss_staff_auth_frtzlibogmethppqmhtr_v1");
 export const customerSupabase = createLiveClient("ss_customer_auth_frtzlibogmethppqmhtr_v1");
 
+// Public storefront reads must never inherit a staff/customer login session.
+// This keeps SSR and browser Shop queries on the same anonymous RLS path.
+export const publicSupabase = createClient<Database>(LIVE_DATABASE_URL, LIVE_DATABASE_KEY, {
+  db: { schema: "public" },
+  global: { fetch: liveFetch },
+  auth: { debug: false, persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+});
+
 function activeClient() {
   if (typeof window === "undefined") return staffSupabase;
   const path = window.location.pathname;
