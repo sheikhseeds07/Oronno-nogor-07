@@ -24,7 +24,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const progressTarget = freeRule?.min_order ?? (delivery === 0 ? subtotal : 0);
   const progressPercent = progressTarget > 0 ? Math.min(100, Math.max(0, (subtotal / progressTarget) * 100)) : 100;
   const [minimumOpen, setMinimumOpen] = useState(false);
-  const isHome = typeof window !== "undefined" && window.location.pathname === "/";
+  const enforceMinimumOrder = typeof window !== "undefined" && (window.location.pathname === "/" || window.location.pathname === "/shop");
   const amountRemaining = Math.max(0, minimumHomeOrder - subtotal);
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   if (!open) return null;
 
   const goToCheckout = () => {
-    if (isHome && subtotal < minimumHomeOrder) { setMinimumOpen(true); return; }
+    if (enforceMinimumOrder && subtotal < minimumHomeOrder) { setMinimumOpen(true); return; }
     onClose();
     window.location.href = "/checkout";
   };
@@ -75,7 +75,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
         )}
       </aside>
 
-      {minimumOpen && isHome && (
+      {minimumOpen && enforceMinimumOrder && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center px-3 sm:px-4" role="dialog" aria-modal="true" aria-labelledby="minimum-order-title">
           <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-[3px] animate-fade-in" onClick={() => setMinimumOpen(false)} />
           <div className="relative w-full max-w-[350px] overflow-hidden rounded-[22px] border border-white/80 bg-white shadow-[0_24px_70px_-20px_rgba(15,23,42,.55)] animate-[homeMinPop_.34s_cubic-bezier(.16,1,.3,1)_both]">
