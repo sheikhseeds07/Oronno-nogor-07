@@ -24,7 +24,9 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const progressTarget = freeRule?.min_order ?? (delivery === 0 ? subtotal : 0);
   const progressPercent = progressTarget > 0 ? Math.min(100, Math.max(0, (subtotal / progressTarget) * 100)) : 100;
   const [minimumOpen, setMinimumOpen] = useState(false);
-  const enforceMinimumOrder = typeof window !== "undefined" && (window.location.pathname === "/" || window.location.pathname === "/shop");
+  const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
+  const isLandingPage = currentPath === "/landing" || currentPath.startsWith("/landing/");
+  const enforceMinimumOrder = typeof window !== "undefined" && !isLandingPage;
   const amountRemaining = Math.max(0, minimumHomeOrder - subtotal);
 
   useEffect(() => {
