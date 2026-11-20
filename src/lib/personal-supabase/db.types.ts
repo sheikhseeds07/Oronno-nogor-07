@@ -1413,6 +1413,7 @@ export type Database = {
           customer_address: string | null
           customer_name: string
           customer_phone: string
+          alternative_phone: string | null
           delivery_fee: number
           discount: number
           district: string | null
@@ -1444,6 +1445,7 @@ export type Database = {
           customer_address?: string | null
           customer_name: string
           customer_phone: string
+          alternative_phone?: string | null
           delivery_fee?: number
           discount?: number
           district?: string | null
@@ -1475,6 +1477,7 @@ export type Database = {
           customer_address?: string | null
           customer_name?: string
           customer_phone?: string
+          alternative_phone?: string | null
           delivery_fee?: number
           discount?: number
           district?: string | null
