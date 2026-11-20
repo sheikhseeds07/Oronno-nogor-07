@@ -205,6 +205,7 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
     p_notes: data.notes ?? null,
     p_client_ip: clientIp,
     p_device_id: deviceId,
+    p_alternative_phone: data.alternative_phone ?? null,
   } as never);
 
   if (orderError) {
@@ -213,9 +214,6 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
     throw new Error(rpcMessage || "Order create failed");
   }
   if (!orderId || typeof orderId !== "string") throw new Error("Order create failed");
-  const { error: altPhoneSaveError } = await supabaseAdmin.from("orders").update({ alternative_phone: data.alternative_phone ?? null }).eq("id", orderId);
-  if (altPhoneSaveError) throw new Error("বিকল্প নাম্বার সেভ করা যায়নি: " + altPhoneSaveError.message);
-
   const total = data.items.reduce((sum, item) => sum + item.price * item.quantity, 0) + effectiveDeliveryFee;
   try {
     const userAgent = getRequestHeader("user-agent") ?? null;
