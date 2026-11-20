@@ -1,11 +1,19 @@
 import { supabase } from "@/lib/personal-supabase/client";
 
 // All new website media is uploaded straight to Cloudflare R2.
-// Images are still compressed client-side before the upload so storage and
-// delivery stay small. There is no Supabase Storage fallback.
-const MAX_IMAGE_DIMENSION = 1400;
-const WEBP_QUALITY = 0.76;
-const OPTIMIZABLE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+// Normalize large raster uploads to WebP before they reach R2. The bucket
+// policy keeps product files compact while preserving enough pixels for detail views.
+const IMAGE_POLICIES: Record<string, { maxDimension: number; quality: number }> = {
+  "product-images": { maxDimension: 1200, quality: 0.8 },
+  "category-images": { maxDimension: 1000, quality: 0.8 },
+  "banners": { maxDimension: 1920, quality: 0.82 },
+  "landing-images": { maxDimension: 1600, quality: 0.8 },
+  "blog-images": { maxDimension: 1600, quality: 0.8 },
+  "customer-profiles": { maxDimension: 800, quality: 0.78 },
+  "review-images": { maxDimension: 1200, quality: 0.8 },
+};
+const DEFAULT_IMAGE_POLICY = { maxDimension: 1400, quality: 0.8 };
+const OPTIMIZABLE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
 
 type PreparedUpload = { path: string; file: File };
 
@@ -15,7 +23,7 @@ function replaceExtension(path: string, extension: string): string {
   return dot > slash ? `${path.slice(0, dot)}.${extension}` : `${path}.${extension}`;
 }
 
-async function optimizeImageUpload(path: string, file: File): Promise<PreparedUpload> {
+async function optimizeImageUpload(bucket: string, path: string, file: File): Promise<PreparedUpload> {
   if (!OPTIMIZABLE_IMAGE_TYPES.has(file.type) || typeof document === "undefined" || typeof createImageBitmap !== "function") {
     return { path, file };
   }
@@ -23,8 +31,9 @@ async function optimizeImageUpload(path: string, file: File): Promise<PreparedUp
   let bitmap: ImageBitmap | null = null;
   try {
     bitmap = await createImageBitmap(file);
+    const policy = IMAGE_POLICIES[bucket] ?? DEFAULT_IMAGE_POLICY;
     const largestSide = Math.max(bitmap.width, bitmap.height);
-    const scale = Math.min(1, MAX_IMAGE_DIMENSION / largestSide);
+    const scale = Math.min(1, policy.maxDimension / largestSide);
     const width = Math.max(1, Math.round(bitmap.width * scale));
     const height = Math.max(1, Math.round(bitmap.height * scale));
     const canvas = document.createElement("canvas");
@@ -33,7 +42,7 @@ async function optimizeImageUpload(path: string, file: File): Promise<PreparedUp
     const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return { path, file };
     ctx.drawImage(bitmap, 0, 0, width, height);
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", WEBP_QUALITY));
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", policy.quality));
     if (!blob) return { path, file };
 
     if (blob.size < file.size) {
@@ -59,7 +68,7 @@ export async function uploadToBucket(
   file: File,
   opts?: { upsert?: boolean },
 ): Promise<string> {
-  const prepared = await optimizeImageUpload(path, file);
+  const prepared = await optimizeImageUpload(bucket, path, file);
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   if (!token) throw new Error("আপলোড করতে লগইন করুন");
