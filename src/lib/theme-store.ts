@@ -9,7 +9,6 @@ export type SiteTheme = {
 export const SITE_THEMES: SiteTheme[] = [
   { id: "default", name: "ডিফল্ট", className: null, dark: false, colors: ["#185C3A", "#DCEBDD", "#F8F6EE"] },
   { id: "sunset", name: "সানসেট", className: "theme-sunset", dark: false, colors: ["#e6185f", "#f97316", "#f7f4f3"] },
-  { id: "fruit", name: "ফলের স্বপ্ন", className: "theme-fruit", dark: false, colors: ["#F04468", "#FFB347", "#A3C94A"] },
 ];
 
 const STORAGE_KEY = "site-theme";
@@ -67,6 +66,7 @@ export function applyTheme(id: string) {
   if (theme.className) root.classList.add(theme.className);
   root.classList.toggle("dark", theme.dark);
   try { localStorage.setItem(STORAGE_KEY, theme.id); } catch { /* ignore */ }
+  window.dispatchEvent(new CustomEvent("site-theme-change", { detail: theme.id }));
 }
 
 export function getStoredTheme(): string {
