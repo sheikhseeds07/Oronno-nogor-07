@@ -4,11 +4,11 @@ import { supabase } from "@/lib/personal-supabase/client";
 export type HomeBanner = { id: string; title: string | null; image_url: string; link_url: string | null };
 export type HomeCategory = { id: string; slug: string; name: string; image_url: string | null };
 export type HomeSubcategory = HomeCategory & { parent_id: string };
-export type HomeProduct = { id: string; slug: string; name: string; price: number; sale_price: number | null; images: string[]; stock: number; is_featured: boolean };
+export type HomeProduct = { id: string; slug: string; name: string; price: number; sale_price: number | null; images: string[]; stock: number; is_featured: boolean; category_id: string | null };
 export type HomeData = { banners: HomeBanner[]; categories: HomeCategory[]; subcategories: HomeSubcategory[]; products: HomeProduct[] };
 
 async function getHomeDataFallback(): Promise<HomeData> {
-  const cols = "id,slug,name,price,sale_price,images,stock,is_featured";
+  const cols = "id,slug,name,price,sale_price,images,stock,is_featured,category_id";
   const [bannersRes, categoriesRes, popularRes] = await Promise.all([
     supabase.from("banners").select("id,title,image_url,link_url").eq("is_active", true).order("display_order").limit(8),
     supabase.from("categories").select("id,slug,name,image_url,parent_id,is_hidden_from_home").order("display_order").order("created_at"),
