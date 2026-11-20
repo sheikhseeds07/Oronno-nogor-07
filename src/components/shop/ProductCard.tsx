@@ -182,6 +182,7 @@ export const ProductCard = memo(function ProductCard({ p, priority = false }: { 
                 <span className="relative">{justAdded ? "কার্টে যোগ হয়েছে" : price === 0 ? "ফ্রিতে নিন" : "কার্টে যোগ করুন"}</span>
               </button>
             )}
+            {inCart && !inCart.is_freebie && isSeed && freeLimit > freeCount && <p className="mt-1.5 text-center text-[9px] font-semibold leading-relaxed text-amber-700">ফ্রি নিতে চাইলে আগে এই পণ্যটি কার্ট থেকে সরিয়ে আবার “ফ্রিতে নিন” চাপুন।</p>}
           </div>
         </div>
       </article>
