@@ -30,19 +30,20 @@ export function SiteLayout({ children }: Props) {
   const [offerPopup, setOfferPopup] = useState<"intro" | "500" | "1000" | null>(null);
   const lastOffer = useRef(0);
   const landingPage = pathname === "/landing" || pathname.startsWith("/landing/");
+  const isSeedOfferPage = pathname === "/" || pathname === "/shop" || pathname.startsWith("/category/");
   useEffect(() => {
-    if (landingPage || isProfile || isCheckout || isCart) return;
-    if (!sessionStorage.getItem("oronno-seed-offer-intro")) {
-      const timer = window.setTimeout(() => { setOfferPopup("intro"); sessionStorage.setItem("oronno-seed-offer-intro", "1"); }, 2600);
+    if (!isSeedOfferPage || landingPage || isProfile || isCheckout || isCart) return;
+    if (cartSubtotal < 500 && !sessionStorage.getItem("oronno-seed-offer-intro")) {
+      const timer = window.setTimeout(() => { if (cartSubtotal < 500) setOfferPopup("intro"); sessionStorage.setItem("oronno-seed-offer-intro", "1"); }, 2600);
       return () => window.clearTimeout(timer);
     }
-  }, [landingPage, isProfile, isCheckout, isCart]);
+  }, [isSeedOfferPage, landingPage, isProfile, isCheckout, isCart, cartSubtotal]);
   useEffect(() => {
-    if (landingPage || isProfile || isCheckout || isCart) return;
+    if (!isSeedOfferPage || landingPage || isProfile || isCheckout || isCart) return;
     const level = cartSubtotal >= 1000 ? 1000 : cartSubtotal >= 500 ? 500 : 0;
     if (level > lastOffer.current) { lastOffer.current = level; setOfferPopup(level === 1000 ? "1000" : "500"); }
     if (level === 0) lastOffer.current = 0;
-  }, [cartSubtotal, landingPage, isProfile, isCheckout, isCart]);
+  }, [cartSubtotal, isSeedOfferPage, landingPage, isProfile, isCheckout, isCart]);
 
   useEffect(() => {
     if (!isProfile) return;
