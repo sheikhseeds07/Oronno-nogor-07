@@ -15,6 +15,7 @@ export type Product = {
   sale_price: number | null;
   images: string[] | null;
   stock: number;
+  category_id?: string | null;
   description?: string;
   short_description?: string;
 };
@@ -91,13 +92,20 @@ function flyProductToCart(image: string, source: HTMLElement) {
 
 export const ProductCard = memo(function ProductCard({ p, priority = false }: { p: Product; priority?: boolean }) {
   const add = useCart((s) => s.add);
+  const cartSubtotal = useCart((s) => s.subtotal());
+  const cartItems = useCart((s) => s.items);
+  const seedCategoryIds = ["8a87866b-6556-4320-92aa-18e72d5b57da", "8e74bf59-fc97-4992-9f10-f9e7f5808c32", "5edc0b7e-73c7-4380-863d-73b79347ab72", "dbc8403f-96ce-4496-9ff0-dde0b16d4c92"];
+  const isSeed = Boolean(p.category_id && seedCategoryIds.includes(p.category_id));
+  const freeLimit = cartSubtotal >= 1000 ? 2 : cartSubtotal >= 500 ? 1 : 0;
+  const freeCount = cartItems.filter((item) => item.price === 0).reduce((sum, item) => sum + item.quantity, 0);
   const setQty = useCart((s) => s.setQty);
   const remove = useCart((s) => s.remove);
   const inCart = useCart((s) => s.items.find((i) => i.id === p.id));
   const [open, setOpen] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
   const imageRef = useRef<HTMLButtonElement | null>(null);
-  const price = p.sale_price ?? p.price;
+  const regularPrice = p.sale_price ?? p.price;
+  const price = isSeed && freeLimit > freeCount ? 0 : regularPrice;
   const discount = p.sale_price ? Math.round(((p.price - p.sale_price) / p.price) * 100) : 0;
   const img = p.images?.[0] || "/placeholder.svg";
   const imageSrc = toImg(img);
@@ -106,7 +114,7 @@ export const ProductCard = memo(function ProductCard({ p, priority = false }: { 
     if (p.stock <= 0) return;
     if (imageRef.current) flyProductToCart(img, imageRef.current);
     add({ id: p.id, name: p.name, slug: p.slug, price, image: img, stock: p.stock });
-    trackAddToCart({ id: p.id, name: p.name, price, quantity: 1 });
+    if (price > 0) trackAddToCart({ id: p.id, name: p.name, price, quantity: 1 });
     setJustAdded(true);
     window.setTimeout(() => setJustAdded(false), 1400);
   };
@@ -140,7 +148,7 @@ export const ProductCard = memo(function ProductCard({ p, priority = false }: { 
           </button>
 
           <div className="mt-auto flex items-center justify-center gap-2 pt-2 text-center">
-            <span className="inline-flex min-h-7 items-center rounded-lg bg-brand/8 px-2 py-1 text-[17px] font-extrabold leading-none tracking-tight text-brand-dark ring-1 ring-inset ring-brand/10 sm:text-lg">{taka(price)}</span>
+            <span className="inline-flex min-h-7 items-center rounded-lg bg-brand/8 px-2 py-1 text-[17px] font-extrabold leading-none tracking-tight text-brand-dark ring-1 ring-inset ring-brand/10 sm:text-lg">{price === 0 ? "ফ্রি" : taka(price)}</span>
             {p.sale_price && p.sale_price < p.price && (
               <span className="inline-flex flex-col items-start justify-center gap-0.5 leading-none">
                 <span className="text-[9px] font-medium text-muted-foreground/80 sm:text-[10px]">আগের দাম</span>
@@ -169,7 +177,7 @@ export const ProductCard = memo(function ProductCard({ p, priority = false }: { 
                 <span className={`relative flex h-6 w-6 items-center justify-center rounded-full border border-white/20 bg-white/10 transition-all duration-300 ${justAdded ? "scale-110 bg-white/15" : "group-hover/cart:scale-110 group-hover/cart:bg-white/15"}`}>
                   {justAdded ? <Check className="h-3.5 w-3.5" /> : <ShoppingCart className="h-3.5 w-3.5 transition-transform duration-300 group-hover/cart:-rotate-6" />}
                 </span>
-                <span className="relative">{justAdded ? "কার্টে যোগ হয়েছে" : "কার্টে যোগ করুন"}</span>
+                <span className="relative">{justAdded ? "কার্টে যোগ হয়েছে" : price === 0 ? "ফ্রিতে নিন" : "কার্টে যোগ করুন"}</span>
               </button>
             )}
           </div>
