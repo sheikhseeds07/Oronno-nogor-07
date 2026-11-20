@@ -47,7 +47,7 @@ function Checkout() {
     e?.preventDefault();
     if (items.length === 0) return toast.error("কার্ট খালি");
     if (!form.name.trim()) return toast.error("নাম দিন");
-    if (!phoneValid) { const msg = toAsciiDigits(form.phone).replace(/[^\\d]/g, "").length > 11 ? PHONE_MAX_ERROR : PHONE_ERROR; setPhoneErr(msg); return toast.error(msg); }
+    if (!phoneValid) { const msg = toAsciiDigits(form.phone).replace(/[^\d]/g, "").length > 11 ? PHONE_MAX_ERROR : PHONE_ERROR; setPhoneErr(msg); return toast.error(msg); }
     if (form.altPhone.trim() && !PHONE_RE.test(form.altPhone)) return toast.error(PHONE_ERROR);
     if (!form.address.trim()) return toast.error("ঠিকানা দিন");
     const includeNutrimix = forcedNutrimixChoice ?? nutrimixChoice;
