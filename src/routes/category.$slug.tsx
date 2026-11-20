@@ -7,7 +7,7 @@ import { ProductCard, type Product } from "@/components/shop/ProductCard";
 import { supabase } from "@/lib/personal-supabase/client";
 import { toImg } from "@/lib/img";
 import { applyTheme } from "@/lib/theme-store";
-import { useLayoutEffect } from "react";
+import { useLayoutEffect, useEffect, useRef } from "react";
 import { Leaf, ChevronRight, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/category/$slug")({
@@ -40,6 +40,9 @@ type CategoryRow = { id: string; name: string; slug: string; image_url: string |
 
 function CategoryPage() {
   const { slug } = useParams({ from: "/category/$slug" });
+  const subcatScrollerRef = useRef<HTMLDivElement>(null);
+  const subcatPausedRef = useRef(false);
+  const subcatDragRef = useRef<{ pointerId: number; startX: number; startScroll: number } | null>(null);
 
   const { data: categories = [] } = useQuery({
     queryKey: ["cat-list"],
@@ -111,6 +114,24 @@ function CategoryPage() {
     applyTheme(isFlowerOrFruit ? "sunset" : "default");
   }, [cat?.id, cat?.name, cat?.slug]);
 
+  useEffect(() => {
+    const el = subcatScrollerRef.current;
+    if (!el) return;
+    let frame = 0;
+    let previous = 0;
+    const tick = (time: number) => {
+      if (!previous) previous = time;
+      const delta = Math.min(40, time - previous);
+      previous = time;
+      if (!subcatPausedRef.current && !subcatDragRef.current) {
+        const half = el.scrollWidth / 2;
+        if (half > 0) { el.scrollLeft += (22 * delta) / 1000; if (el.scrollLeft >= half) el.scrollLeft -= half; }
+      }
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [cat?.id, cat?.parent_id, children.length, siblingCategories.length]);
   const { data: products = [] } = useQuery({
     queryKey: ["cat-products", cat?.id, children.map((c) => c.id).join(",")],
     enabled: Boolean(cat?.id),
@@ -137,13 +158,12 @@ function CategoryPage() {
         @keyframes catSlide{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
         @keyframes catFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
         @keyframes catShine{0%{transform:translateX(-130%)}100%{transform:translateX(130%)}}
-        @keyframes subcatMarquee{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}
-        .subcat-track{display:flex;width:max-content;min-width:max-content;animation:subcatMarquee var(--marquee-duration,90s) linear infinite;will-change:transform;transform:translateZ(0)}
-        .subcat-marquee:hover .subcat-track,.subcat-marquee:focus-within .subcat-track{animation-play-state:paused}
-        .subcat-marquee{contain:layout paint;touch-action:pan-y}
+        .subcat-marquee{contain:layout paint;touch-action:pan-y;cursor:grab;scrollbar-width:none;-ms-overflow-style:none}
+        .subcat-marquee::-webkit-scrollbar{display:none}
+        .subcat-marquee.is-dragging{cursor:grabbing;user-select:none}
         .cat-slide{animation:catSlide .35s ease both}
         .cat-float{animation:catFloat 3s ease-in-out infinite}
-        @media(prefers-reduced-motion:reduce){.cat-slide,.cat-float,.cat-shine:after{animation:none!important}.subcat-track{animation:none!important}}
+        @media(prefers-reduced-motion:reduce){.cat-slide,.cat-float,.cat-shine:after{animation:none!important}}
       `}</style>
 
       <main className="min-h-screen bg-gradient-to-b from-[#fffafb] via-background to-background">
@@ -172,10 +192,34 @@ function CategoryPage() {
               <section className="cat-slide mx-auto mt-2 max-w-6xl">
                 <div className="flex min-w-0 items-center gap-2 rounded-2xl border border-brand/10 bg-white/95 p-2 shadow-sm">
                   {cat.parent_id && <div className="flex max-w-[34%] shrink-0 items-center border-r border-brand/10 pr-2"><span className="max-w-full truncate text-xs font-black text-brand-dark">{parentCategory?.name ?? "ক্যাটাগরি"}</span></div>}
-                  <div className="subcat-marquee relative min-w-0 flex-1 overflow-hidden" style={{ ["--marquee-duration" as string]: duration + "s" }}>
+                  <div
+                    ref={subcatScrollerRef}
+                    className="subcat-marquee relative min-w-0 flex-1 overflow-x-auto overscroll-x-contain"
+                    onPointerDown={(event) => {
+                      if (event.pointerType === "mouse" && event.button !== 0) return;
+                      const el = subcatScrollerRef.current; if (!el) return;
+                      subcatPausedRef.current = true;
+                      subcatDragRef.current = { pointerId: event.pointerId, startX: event.clientX, startScroll: el.scrollLeft };
+                      el.setPointerCapture(event.pointerId); el.classList.add("is-dragging");
+                    }}
+                    onPointerMove={(event) => {
+                      const drag = subcatDragRef.current; const el = subcatScrollerRef.current;
+                      if (!drag || !el || drag.pointerId !== event.pointerId) return;
+                      el.scrollLeft = drag.startScroll - (event.clientX - drag.startX);
+                    }}
+                    onPointerUp={(event) => {
+                      if (subcatDragRef.current?.pointerId !== event.pointerId) return;
+                      subcatDragRef.current = null; subcatPausedRef.current = false;
+                      subcatScrollerRef.current?.classList.remove("is-dragging");
+                    }}
+                    onPointerCancel={() => {
+                      subcatDragRef.current = null; subcatPausedRef.current = false;
+                      subcatScrollerRef.current?.classList.remove("is-dragging");
+                    }}
+>
                     <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-3 bg-gradient-to-r from-white to-transparent" />
                     <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-4 bg-gradient-to-l from-white to-transparent" />
-                    <div className="subcat-track gap-1.5 pr-1">
+                    <div className="flex w-max min-w-max gap-1.5 pr-1">
                       {[...items, ...items].map((item, i) => (
                         <Link key={(i < items.length ? "primary-" : "repeat-") + item.id} to="/category/$slug" params={{ slug: item.slug }} aria-label={item.name} className={"group flex h-9 shrink-0 items-center gap-1 rounded-full border px-2.5 text-[11px] font-bold shadow-sm transition-colors duration-200 hover:border-brand hover:bg-brand hover:text-white active:scale-[.98] " + (item.slug === slug ? "border-brand bg-brand text-white" : "border-border/80 bg-[#fffdfd]")}>
                           <span className="h-5 w-5 overflow-hidden rounded-full bg-brand-light/40 ring-1 ring-black/5">{item.image_url ? <SafeImage src={toImg(item.image_url)} alt="" className="h-full w-full object-cover" loading="lazy" /> : <span className="flex h-full w-full items-center justify-center text-[9px]">🌿</span>}</span>
