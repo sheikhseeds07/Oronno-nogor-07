@@ -10,7 +10,12 @@ import { toast } from "sonner";
 import { Plus, Edit, Trash2, X, Star } from "lucide-react";
 import { uploadToBucket, safeFileName } from "@/lib/storage-upload";
 
-export const Route = createFileRoute("/admin/products")({ component: Products });
+export const Route = createFileRoute("/admin/products")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    section: search.section === "home" || search.section === "landing" ? search.section : "all",
+  }),
+  component: Products,
+});
 
 type Product = {
   id?: string; name: string; slug: string; sku?: string;
@@ -30,7 +35,11 @@ function Products() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<Product | null>(null);
   const [search, setSearch] = useState("");
-  const [activeSection, setActiveSection] = useState<"home" | "landing" | "all">("all");
+  const { section: activeSection } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const setActiveSection = (section: "home" | "landing" | "all") => {
+    void navigate({ search: (previous) => ({ ...previous, section }), replace: true });
+  };
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const { data: products } = useQuery({
