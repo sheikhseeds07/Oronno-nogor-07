@@ -33,13 +33,13 @@ export const Route = createFileRoute("/shop")({
   component: Shop,
 });
 
-type ShopCategory = { id: string; name: string; slug: string; parent_id: string | null };
+type ShopCategory = { id: string; name: string; slug: string; parent_id: string | null; display_order: number };
 
 const shopCategoriesOptions = () => queryOptions({
   queryKey: ["shop-categories"],
   staleTime: 10 * 60_000,
   queryFn: async () => {
-    const { data, error } = await (publicSupabase.from("categories") as any).select("id,name,slug,parent_id").is("parent_id", null).eq("is_hidden_from_home", false).order("display_order").order("created_at").limit(100);
+    const { data, error } = await (publicSupabase.from("categories") as any).select("id,name,slug,parent_id,display_order").order("display_order").order("created_at").limit(200);
     if (error) throw error;
     return (data ?? []) as ShopCategory[];
   },
@@ -60,12 +60,36 @@ const shopProductsOptions = (q?: string, cat?: string) => queryOptions({
       if (childError) throw childError;
       categoryIds = [selected.id, ...((children ?? []) as Array<{ id: string }>).map((c) => c.id)];
     }
-    let query = publicSupabase.from("products").select("id,name,slug,price,sale_price,images,stock,short_description,description").eq("is_active", true).eq("is_offer", false).eq("is_archived", false).eq("display_section", "home");
+    let query = publicSupabase.from("products").select("id,name,slug,price,sale_price,images,stock,short_description,description,category_id,sort_order,created_at").eq("is_active", true).eq("is_offer", false).eq("is_archived", false).eq("display_section", "home");
     if (categoryIds) query = query.in("category_id", categoryIds);
     if (q) query = query.ilike("name", `%${q}%`);
-    const { data, error } = await query.order("created_at", { ascending: false });
+    const [{ data, error }, { data: categoryRows, error: categoryError }] = await Promise.all([
+      query.order("created_at", { ascending: false }),
+      (publicSupabase.from("categories") as any).select("id,parent_id,display_order").limit(200),
+    ]);
     if (error) throw error;
-    return (data ?? []) as unknown as Product[];
+    if (categoryError) throw categoryError;
+    const categoryMap = new Map((categoryRows ?? []).map((c: { id: string; parent_id: string | null; display_order: number }) => [c.id, c]));
+    const roots = (categoryRows ?? []).filter((c: { parent_id: string | null }) => !c.parent_id).sort((a: any, b: any) => a.display_order - b.display_order);
+    const rootPosition = new Map(roots.map((c: any, index: number) => [c.id, index]));
+    const subPosition = new Map((categoryRows ?? []).filter((c: { parent_id: string | null }) => Boolean(c.parent_id)).map((c: any) => [c.id, c.display_order]));
+    const ordered = (data ?? []).slice().sort((a: any, b: any) => {
+      const ac = a.category_id ? categoryMap.get(a.category_id) : null;
+      const bc = b.category_id ? categoryMap.get(b.category_id) : null;
+      const ar = ac?.parent_id ? categoryMap.get(ac.parent_id) : ac;
+      const br = bc?.parent_id ? categoryMap.get(bc.parent_id) : bc;
+      const aRoot = ar ? (rootPosition.get(ar.id) ?? 9999) : 9999;
+      const bRoot = br ? (rootPosition.get(br.id) ?? 9999) : 9999;
+      if (aRoot !== bRoot) return aRoot - bRoot;
+      const aSub = ac?.parent_id ? (subPosition.get(ac.id) ?? 9999) : -1;
+      const bSub = bc?.parent_id ? (subPosition.get(bc.id) ?? 9999) : -1;
+      if (aSub !== bSub) return aSub - bSub;
+      const ao = a.sort_order == null ? Number.MAX_SAFE_INTEGER : Number(a.sort_order);
+      const bo = b.sort_order == null ? Number.MAX_SAFE_INTEGER : Number(b.sort_order);
+      if (ao !== bo) return ao - bo;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+    return ordered as unknown as Product[];
   },
 });
 const categoryIcons = [Sprout, Wrench, Wheat, Flower2, Leaf, Apple, Shovel, Sparkles];
