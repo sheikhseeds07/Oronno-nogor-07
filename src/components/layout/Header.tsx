@@ -64,6 +64,14 @@ export function Header() {
   const submit = (e: React.FormEvent) => { e.preventDefault(); navigate({ to: "/shop", search: { q } as never }); closeDrawer(); };
   useEffect(() => { if (!drawer) return; const prev = document.body.style.overflow; document.body.style.overflow = "hidden"; return () => { document.body.style.overflow = prev; }; }, [drawer]);
   useLayoutEffect(() => { const t = getStoredTheme(); setTheme(t); applyTheme(t); }, []);
+  useEffect(() => {
+    const syncTheme = (event: Event) => {
+      const next = (event as CustomEvent<string>).detail;
+      if (typeof next === "string") setTheme(next);
+    };
+    window.addEventListener("site-theme-change", syncTheme);
+    return () => window.removeEventListener("site-theme-change", syncTheme);
+  }, []);
   useEffect(() => { void hydrateCartStore(); }, []);
 
   const logoNode = brandLogo ? (
