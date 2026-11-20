@@ -10,6 +10,7 @@ import { taka } from "@/lib/format";
 import { format } from "date-fns";
 import { CheckCircle2, Clock3, MapPin, Package, Phone, Truck, X } from "lucide-react";
 import { BrandLoader } from "./BrandLoader";
+import { useCart } from "@/lib/cart-store";
 
 const statusBn: Record<string, string> = { pending: "অপেক্ষমাণ", confirmed: "কনফার্মড", processing: "প্রস্তুত হচ্ছে", shipped: "ডেলিভারিতে", delivered: "ডেলিভারি সম্পন্ন", cancelled: "বাতিল", web_pending: "অপেক্ষমাণ", rts: "RTS", pending_return: "রিটার্ন প্রসেস", returned: "রিটার্ন সম্পন্ন", partial: "আংশিক ডেলিভারি", hold: "হোল্ড" };
 const steps = ["pending", "confirmed", "processing", "shipped", "delivered"];
@@ -25,6 +26,23 @@ export function SiteLayout({ children }: Props) {
   const isKaralaLanding = pathname === "/landing/karala";
   const isCleanShell = isProfile || isOdcLanding || isKaralaLanding;
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const cartSubtotal = useCart((s) => s.subtotal());
+  const [offerPopup, setOfferPopup] = useState<"intro" | "500" | "1000" | null>(null);
+  const lastOffer = useRef(0);
+  const landingPage = pathname === "/landing" || pathname.startsWith("/landing/");
+  useEffect(() => {
+    if (landingPage || isProfile || isCheckout || isCart) return;
+    if (!sessionStorage.getItem("oronno-seed-offer-intro")) {
+      const timer = window.setTimeout(() => { setOfferPopup("intro"); sessionStorage.setItem("oronno-seed-offer-intro", "1"); }, 2600);
+      return () => window.clearTimeout(timer);
+    }
+  }, [landingPage, isProfile, isCheckout, isCart]);
+  useEffect(() => {
+    if (landingPage || isProfile || isCheckout || isCart) return;
+    const level = cartSubtotal >= 1000 ? 1000 : cartSubtotal >= 500 ? 500 : 0;
+    if (level > lastOffer.current) { lastOffer.current = level; setOfferPopup(level === 1000 ? "1000" : "500"); }
+    if (level === 0) lastOffer.current = 0;
+  }, [cartSubtotal, landingPage, isProfile, isCheckout, isCart]);
 
   useEffect(() => {
     if (!isProfile) return;
@@ -83,6 +101,8 @@ export function SiteLayout({ children }: Props) {
       {isOdcLanding && <style>{`.odc-landing-main > :first-child { margin-top: 0 !important; }.odc-landing-main > :first-child > :first-child { margin-top: 0 !important; padding-top: 0 !important; }.odc-landing-main section:first-child { margin-top: 0 !important; }.odc-landing-main section:first-child > :first-child { margin-top: 0 !important; padding-top: 0 !important; }`}</style>}
       {!isCleanShell && <Footer />}
       <VisitTracker />
+      {offerPopup && <div className="fixed inset-0 z-[250] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onMouseDown={(e) => { if (e.target === e.currentTarget) setOfferPopup(null); }}><section lang="bn" className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-amber-200/70 bg-gradient-to-br from-white via-emerald-50 to-amber-50 p-6 text-center shadow-2xl" style={{ fontFamily: "'Noto Serif Bengali', 'Hind Siliguri', serif" }}><button onClick={() => setOfferPopup(null)} aria-label="বন্ধ করুন" className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-slate-600 shadow"><X className="h-4 w-4" /></button><div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-700 text-2xl text-white shadow-lg">✿</div>{offerPopup === "intro" ? <><p className="text-xl font-black text-emerald-900">বিশেষ বীজ কেনাকাটার অফার!</p><p className="mt-3 text-sm font-semibold leading-7 text-slate-700">৫০০ টাকার বীজ অর্ডারে ডেলিভারি চার্জ ফ্রি + ১ প্যাকেট বীজ ফ্রি।</p><p className="mt-1 text-sm font-semibold leading-7 text-slate-700">১,০০০ টাকার অর্ডারে ডেলিভারি চার্জ ফ্রি + ২ প্যাকেট বীজ ফ্রি।</p></> : <><p className="text-xl font-black text-emerald-900">অভিনন্দন! 🎉</p><p className="mt-3 text-sm font-semibold leading-7 text-slate-700">আপনি {offerPopup === "1000" ? "১,০০০" : "৫০০"} টাকার অর্ডার কার্টে জমা করেছেন। এখন বীজ ক্যাটাগরি থেকে {offerPopup === "1000" ? "২ প্যাকেট" : "১ প্যাকেট"} বীজ সম্পূর্ণ ফ্রিতে নিন!</p></>}<p className="mt-2 text-xs text-emerald-800">শুধুমাত্র বীজ ক্যাটাগরির পণ্যে প্রযোজ্য</p><button onClick={() => setOfferPopup(null)} className="mt-5 w-full rounded-xl bg-emerald-800 px-5 py-3 text-sm font-black text-white shadow-lg">ঠিক আছে</button></section></div>}
+
       <SeoFromSettings />
 
       {isProfile && selectedOrderId && <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/55 p-0 backdrop-blur-sm animate-in fade-in duration-200 sm:items-center sm:p-4" onMouseDown={e => { if (e.target === e.currentTarget) setSelectedOrderId(null); }}>
