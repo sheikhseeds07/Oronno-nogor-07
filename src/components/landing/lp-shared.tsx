@@ -97,7 +97,33 @@ export function LpOrderNote({ text = "নিশ্চিন্তে অর্�
   return <div className="lp-order-note"><ShieldCheck className="w-4 h-4" /><span>{text}</span></div>;
 }
 
-export type LpCheckoutValues = { name: string; phone: string; address: string };
+export type LpCheckoutValues = { name: string; phone: string; address: string; altPhone: string; note: string };
+
+export function LpOptionalOrderFields({ altPhone, note, onAltPhoneChange, onNoteChange, themeColor = "#166534" }: {
+  altPhone: string; note: string; onAltPhoneChange: (value: string) => void; onNoteChange: (value: string) => void; themeColor?: string;
+}) {
+  const [noteOpen, setNoteOpen] = useState(Boolean(note));
+  const [altPhoneOpen, setAltPhoneOpen] = useState(Boolean(altPhone));
+  const toggleClass = "flex w-full items-center gap-2.5 text-left text-xs font-semibold text-slate-700 transition";
+  const boxClass = "rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2 transition";
+  const fieldClass = "mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium outline-none transition focus:border-emerald-500";
+  return <div className="grid gap-2 sm:grid-cols-2">
+    <div className={boxClass}>
+      <button type="button" aria-pressed={noteOpen} onClick={() => { const next = !noteOpen; setNoteOpen(next); if (!next) onNoteChange(""); }} className={toggleClass} style={{ color: noteOpen ? themeColor : undefined }}>
+        <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full border bg-white transition" style={{ borderColor: noteOpen ? themeColor : "#94a3b8", background: noteOpen ? themeColor : "white", color: "white" }}>{noteOpen && <Check className="h-3 w-3" />}</span>
+        <span>নোট যোগ করুন <span className="ml-1 text-[10px] font-medium text-slate-400">(ঐচ্ছিক)</span></span>
+      </button>
+      {noteOpen && <textarea value={note} onChange={e => onNoteChange(e.target.value)} rows={2} maxLength={2000} className={fieldClass + " resize-none"} placeholder="ডেলিভারি সংক্রান্ত কোনো নির্দেশনা থাকলে লিখুন" />}
+    </div>
+    <div className={boxClass}>
+      <button type="button" aria-pressed={altPhoneOpen} onClick={() => { const next = !altPhoneOpen; setAltPhoneOpen(next); if (!next) onAltPhoneChange(""); }} className={toggleClass} style={{ color: altPhoneOpen ? themeColor : undefined }}>
+        <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full border bg-white transition" style={{ borderColor: altPhoneOpen ? themeColor : "#94a3b8", background: altPhoneOpen ? themeColor : "white", color: "white" }}>{altPhoneOpen && <Check className="h-3 w-3" />}</span>
+        <span>বিকল্প নাম্বার যোগ করুন <span className="ml-1 text-[10px] font-medium text-slate-400">(ঐচ্ছিক)</span></span>
+      </button>
+      {altPhoneOpen && <input value={altPhone} maxLength={11} inputMode="tel" autoComplete="tel-national" onChange={e => onAltPhoneChange(toAsciiDigits(e.target.value).replace(/\\D/g, "").slice(0, 11))} className={fieldClass + " h-10 text-sm"} placeholder="বিকল্প মোবাইল নাম্বার" />}
+    </div>
+  </div>;
+}
 
 export function LpCheckoutCard({ formId, onSubmit, values, onChange, packages, selectedPkg, onSelectPkg, themeColor, subtotal, deliveryFee, total, submitting, submitText = "অর্ডার কনফার্ম করুন", packageTitle = "প্যাকেজ সিলেক্ট করুন", hideSubmit = false }: {
   formId: string; onSubmit: (e: React.FormEvent) => void; values: LpCheckoutValues; onChange: (k: keyof LpCheckoutValues, v: string) => void;
@@ -112,6 +138,7 @@ export function LpCheckoutCard({ formId, onSubmit, values, onChange, packages, s
       <div><label className="text-[13px] font-semibold text-slate-900 block mb-1.5">আপনার নাম</label><div className="relative"><User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input required value={values.name} onChange={e => onChange("name", e.target.value)} placeholder="আপনার নাম" className={inputCls} /></div></div>
       <div><label className="text-[13px] font-semibold text-slate-900 block mb-1.5">ফোন নম্বর</label><div className="relative"><Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input ref={phoneRef} required type="tel" inputMode="numeric" maxLength={16} value={values.phone} onChange={e => { const v = toAsciiDigits(e.target.value).replace(/[^\d]/g, "").slice(0, 16); onChange("phone", v); setPhoneErr(p => (p && isValidBdPhone(v) ? "" : p)); }} aria-invalid={Boolean(phoneErr)} placeholder="01XXXXXXXXX" className={`w-full border rounded-lg pl-10 pr-3 py-2.5 text-sm outline-none transition ${phoneErr ? "border-red-500 bg-red-50/60 focus:border-red-500" : "border-slate-200 bg-slate-50/60 focus:bg-white focus:border-emerald-500"}`} />{phoneErr && <p className="mt-1 text-[12px] font-medium text-red-600">{phoneErr}</p>}</div></div>
       <div><label className="text-[13px] font-semibold text-slate-900 block mb-1.5">ডেলিভারি ঠিকানা</label><div className="relative"><MapPin className="w-4 h-4 absolute left-3 top-3 text-slate-400" /><textarea required rows={3} value={values.address} onChange={e => onChange("address", e.target.value)} placeholder="গ্রাম/এলাকা, থানা, জেলা" className={inputCls + " resize-none"} /></div></div>
+      <LpOptionalOrderFields altPhone={values.altPhone} note={values.note} onAltPhoneChange={value => onChange("altPhone", value)} onNoteChange={value => onChange("note", value)} themeColor={themeColor} />
       <LpPackageSelector packages={packages} selected={selectedPkg} onSelect={onSelectPkg} themeColor={themeColor} title={packageTitle} />
       <div className="lp-inline-selector"><div className="lp-inline-title">পেমেন্ট মাধ্যম</div><div className="lp-inline-options">
         <div className="lp-inline-option w-full flex items-center gap-2 border text-left bg-white" style={{ borderColor: themeColor, background: themeColor + "0D", boxShadow: `0 0 0 1px ${themeColor}` }}>
