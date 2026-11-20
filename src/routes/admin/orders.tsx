@@ -2435,6 +2435,7 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
 
   const submit = async () => {
     if (!name || !phone) return toast.error("নাম ও ফোন দিন");
+    if (normalizePhone(phone).length !== 11) return toast.error("মেইন ফোন নাম্বার অবশ্যই ১১ সংখ্যার হতে হবে");
     if (!items.length) return toast.error("অন্তত একটি প্রোডাক্ট যোগ করুন");
     setSaving(true);
     try {
@@ -2491,7 +2492,7 @@ function NewOrderPanel({ onCreated }: { onCreated: () => void }) {
       <div className="space-y-4">
         <div className="bg-white border rounded-xl p-4 space-y-3">
           <h3 className="font-bold">কাস্টমার তথ্য</h3>
-          <input className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="ফোন নাম্বার *" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <input className="w-full border rounded-lg px-3 py-2 text-sm" type="tel" inputMode="numeric" maxLength={11} placeholder="ফোন নাম্বার *" value={phone} onChange={(e) => setPhone(e.target.value.replace(/[^0-9০-৯]/g, "").slice(0, 11))} />
           <input className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="বিকল্প নাম্বার (অপশনাল)" value={alternativePhone} maxLength={11} inputMode="numeric" onChange={(e) => setAlternativePhone(e.target.value.replace(/[^0-9০-৯]/g, "").slice(0, 11))} />
           <input className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="নাম *" value={name} onChange={(e) => setName(e.target.value)} />
           <textarea className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="ঠিকানা" rows={2} value={address} onChange={(e) => setAddress(e.target.value)} />
