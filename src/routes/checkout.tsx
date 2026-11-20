@@ -35,7 +35,7 @@ function Checkout() {
     return () => { active = false; };
   }, []);
   const items = useCart((s) => s.items); const setQty = useCart((s) => s.setQty); const remove = useCart((s) => s.remove); const subtotal = useCart((s) => s.subtotal()); const clear = useCart((s) => s.clear); const navigate = useNavigate(); const runPlaceOrder = useServerFn(placeOrder);
-  const { data: settingsRow } = useQuery(publicSiteSettingsQuery); const settings = ((settingsRow?.settings as DeliverySettings) ?? {}) as DeliverySettings; const deliveryInfo = getDeliveryInfo(subtotal, settings.delivery_rules); const delivery = deliveryInfo.delivery; const total = deliveryInfo.total;
+  const { data: settingsRow, isLoading: settingsLoading } = useQuery({ ...publicSiteSettingsQuery, staleTime: 0, refetchOnMount: "always", refetchOnWindowFocus: true }); const settings = ((settingsRow?.settings as DeliverySettings) ?? {}) as DeliverySettings; const deliveryInfo = getDeliveryInfo(subtotal, settings.delivery_rules); const delivery = deliveryInfo.delivery; const total = deliveryInfo.total;
   const [submitting, setSubmitting] = useState(false); const [nutrimixPopupOpen, setNutrimixPopupOpen] = useState(false); const [nutrimixChoice, setNutrimixChoice] = useState<boolean | null>(null); const [noteOpen, setNoteOpen] = useState(false); const [altPhoneOpen, setAltPhoneOpen] = useState(false); const [form, setForm] = useState({ name: "", phone: "", altPhone: "", address: "", note: "", zone: "all" }); const [phoneErr, setPhoneErr] = useState(""); const [blockedOpen, setBlockedOpen] = useState(false); const [repeatOrderMessage, setRepeatOrderMessage] = useState(""); const [repeatOrderSeconds, setRepeatOrderSeconds] = useState(0);
   const placedSuccessfully = useRef(false); const submitLockRef = useRef(false); const phoneValid = PHONE_RE.test(normalizeBdPhone(form.phone)); const firedICRef = useRef(false);
   useEffect(() => { if (repeatOrderSeconds <= 0) return; const timer = window.setInterval(() => setRepeatOrderSeconds((seconds) => Math.max(0, seconds - 1)), 1000); return () => window.clearInterval(timer); }, [repeatOrderSeconds > 0]);
@@ -50,6 +50,7 @@ function Checkout() {
     if (!phoneValid) { const msg = toAsciiDigits(form.phone).replace(/[^\d]/g, "").length > 11 ? PHONE_MAX_ERROR : PHONE_ERROR; setPhoneErr(msg); return toast.error(msg); }
     if (form.altPhone.trim() && !PHONE_RE.test(form.altPhone)) return toast.error(PHONE_ERROR);
     if (!form.address.trim()) return toast.error("ঠিকানা দিন");
+    if (settingsLoading) return toast.error("অফার সেটিংস লোড হচ্ছে, একটু পর আবার চেষ্টা করুন");
     const includeNutrimix = forcedNutrimixChoice ?? nutrimixChoice;
     if (settings.home_nutrimix_popup_enabled === true && includeNutrimix === null) {
       setNutrimixPopupOpen(true);
