@@ -138,9 +138,14 @@ export const ProductCard = memo(function ProductCard({ p }: { p: Product }) {
             <h3 lang="bn" className="min-h-[2.3rem] w-full whitespace-normal break-normal [overflow-wrap:normal] [word-break:normal] [text-indent:0] text-left text-[12.5px] font-bold leading-[1.6] tracking-normal text-foreground transition-colors group-hover:text-brand sm:text-sm sm:leading-[1.65]" style={{ fontFamily: "'Noto Serif Bengali', 'Hind Siliguri', serif" }}>{p.name}</h3>
           </button>
 
-          <div className="mt-auto flex items-baseline justify-center gap-1.5 pt-1.5 text-center">
-            <span className="text-[17px] font-extrabold leading-none tracking-tight text-brand-dark sm:text-lg">{taka(price)}</span>
-            {p.sale_price && p.sale_price < p.price && <span className="text-[10px] leading-none text-muted-foreground line-through sm:text-xs">{taka(p.price)}</span>}
+          <div className="mt-auto flex items-center justify-center gap-2 pt-2 text-center">
+            <span className="inline-flex min-h-7 items-center rounded-lg bg-brand/8 px-2 py-1 text-[17px] font-extrabold leading-none tracking-tight text-brand-dark ring-1 ring-inset ring-brand/10 sm:text-lg">{taka(price)}</span>
+            {p.sale_price && p.sale_price < p.price && (
+              <span className="inline-flex flex-col items-start justify-center gap-0.5 leading-none">
+                <span className="text-[9px] font-medium text-muted-foreground/80 sm:text-[10px]">আগের দাম</span>
+                <span className="text-[11px] font-semibold leading-none text-muted-foreground/75 line-through decoration-muted-foreground/60 sm:text-xs">{taka(p.price)}</span>
+              </span>
+            )}
           </div>
 
           <div className="mt-2.5">
