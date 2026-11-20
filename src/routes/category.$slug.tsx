@@ -84,7 +84,7 @@ function CategoryPage() {
     },
   });
 
-  const { data: cat, isFetching: isCategoryFetching } = useQuery({
+  const { data: cat } = useQuery({
     queryKey: ["cat", slug],
     staleTime: 0,
     refetchOnMount: "always",
