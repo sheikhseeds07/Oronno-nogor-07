@@ -120,7 +120,7 @@ export function LpOptionalOrderFields({ altPhone, note, onAltPhoneChange, onNote
         <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full border bg-white transition" style={{ borderColor: altPhoneOpen ? themeColor : "#94a3b8", background: altPhoneOpen ? themeColor : "white", color: "white" }}>{altPhoneOpen && <Check className="h-3 w-3" />}</span>
         <span>বিকল্প নাম্বার যোগ করুন <span className="ml-1 text-[10px] font-medium text-slate-400">(ঐচ্ছিক)</span></span>
       </button>
-      {altPhoneOpen && <input value={altPhone} maxLength={11} inputMode="tel" autoComplete="tel-national" onChange={e => onAltPhoneChange(toAsciiDigits(e.target.value).replace(/\\D/g, "").slice(0, 11))} className={fieldClass + " h-10 text-sm"} placeholder="বিকল্প মোবাইল নাম্বার" />}
+      {altPhoneOpen && <input value={altPhone} maxLength={11} inputMode="tel" autoComplete="tel-national" onChange={e => onAltPhoneChange(toAsciiDigits(e.target.value).replace(/[^\d]/g, "").slice(0, 11))} className={fieldClass + " h-10 text-sm"} placeholder="বিকল্প মোবাইল নাম্বার" />}
     </div>
   </div>;
 }
