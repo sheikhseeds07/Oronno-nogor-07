@@ -6,6 +6,8 @@ import { SiteLayout } from "@/components/layout/SiteLayout";
 import { ProductCard, type Product } from "@/components/shop/ProductCard";
 import { supabase } from "@/lib/personal-supabase/client";
 import { toImg } from "@/lib/img";
+import { applyTheme } from "@/lib/theme-store";
+import { useLayoutEffect } from "react";
 import { Leaf, ChevronRight, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/category/$slug")({
@@ -102,6 +104,13 @@ function CategoryPage() {
       return data as { id: string; name: string; slug: string } | null;
     },
   });
+  useLayoutEffect(() => {
+    if (!cat) return;
+    const categoryText = `${cat.name} ${cat.slug}`.toLocaleLowerCase("bn");
+    const isFlowerOrFruit = /ফুল|ফল|flower|fruit/.test(categoryText);
+    applyTheme(isFlowerOrFruit ? "sunset" : "default");
+  }, [cat?.id, cat?.name, cat?.slug]);
+
   const { data: products = [] } = useQuery({
     queryKey: ["cat-products", cat?.id, children.map((c) => c.id).join(",")],
     enabled: Boolean(cat?.id),
