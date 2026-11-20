@@ -65,10 +65,10 @@ function Checkout() {
       quantity: 1,
     };
     const orderItems = includeNutrimix && settings.home_nutrimix_popup_enabled === true ? [...items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity })), nutrimixItem] : items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity }));
-    const orderTotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0) + delivery;
+    const orderSubtotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0); const orderDelivery = getDeliveryInfo(orderSubtotal, settings.delivery_rules).delivery; const orderTotal = orderSubtotal + orderDelivery;
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const result = await runPlaceOrder({ data: { customer_name: form.name.trim(), customer_phone: normalizeBdPhone(form.phone), alternative_phone: form.altPhone.trim() ? normalizeBdPhone(form.altPhone) : null, customer_address: form.address.trim(), district: null, thana: null, notes: form.note?.trim() || null, delivery_fee: delivery, created_by: session?.user?.id ?? null, checkout_session_id: checkoutSessionId || null, items: orderItems, ...getFbContext() } });
+      const result = await runPlaceOrder({ data: { customer_name: form.name.trim(), customer_phone: normalizeBdPhone(form.phone), alternative_phone: form.altPhone.trim() ? normalizeBdPhone(form.altPhone) : null, customer_address: form.address.trim(), district: null, thana: null, notes: form.note?.trim() || null, delivery_fee: orderDelivery, created_by: session?.user?.id ?? null, checkout_session_id: checkoutSessionId || null, items: orderItems, ...getFbContext() } });
       placedSuccessfully.current = true;
       if (typeof window !== "undefined") trackPurchase(orderItems, orderTotal, result.id);
       clearCheckoutSessionId(checkoutSessionId);
