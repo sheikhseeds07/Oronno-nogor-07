@@ -1,5 +1,5 @@
 import { SafeImage } from "@/components/SafeImage";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Minus, Plus, Trash2, X, ShoppingBag, Truck, Sparkles, ArrowRight, ShieldCheck } from "lucide-react";
 import { useCart } from "@/lib/cart-store";
@@ -12,6 +12,7 @@ import { getDeliveryInfo } from "@/lib/delivery-rules";
 const DEFAULT_MINIMUM_HOME_ORDER = 200;
 
 export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const navigate = useNavigate();
   const items = useCart((s) => s.items);
   const setQty = useCart((s) => s.setQty);
   const remove = useCart((s) => s.remove);
@@ -41,7 +42,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const goToCheckout = () => {
     if (enforceMinimumOrder && subtotal < minimumHomeOrder) { setMinimumOpen(true); return; }
     onClose();
-    window.location.href = "/checkout";
+    void navigate({ to: "/checkout" });
   };
 
   return (
