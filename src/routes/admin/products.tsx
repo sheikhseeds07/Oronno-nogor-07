@@ -9,6 +9,7 @@ import { taka } from "@/lib/format";
 import { toast } from "sonner";
 import { Plus, Edit, Trash2, X, Star } from "lucide-react";
 import { uploadToBucket, safeFileName } from "@/lib/storage-upload";
+import { HomeProductOrganizer } from "@/components/admin/HomeProductOrganizer";
 
 export const Route = createFileRoute("/admin/products")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -45,7 +46,7 @@ function Products() {
   const { data: products } = useQuery({
     queryKey: ["admin-products", search],
     queryFn: async () => {
-      let q = supabase.from("products").select(`${PRODUCTS_COLUMNS}, categories(name)`).order("created_at", { ascending: false }).limit(200);
+      let q = supabase.from("products").select(`${PRODUCTS_COLUMNS}, categories(name)`).order("sort_order", { ascending: true, nullsFirst: false }).order("created_at", { ascending: false }).limit(1000);
       if (search) q = q.ilike("name", `%${search}%`);
       return ((await q).data ?? []) as Product[];
     },
@@ -113,7 +114,7 @@ function Products() {
         <button type="button" role="tab" aria-selected={activeSection === "all"} onClick={() => setActiveSection("all")} className={`px-4 py-2 rounded-lg text-sm font-semibold border ${activeSection === "all" ? "bg-brand text-white border-brand" : "bg-white text-foreground hover:bg-muted"}`}>All Product <span className="ml-1 opacity-80">({products?.length ?? 0})</span></button>
       </div>
 
-      {<>
+      {activeSection === "home" ? <HomeProductOrganizer products={homeProducts as Array<{ id: string; name: string; category_id: string | null; sort_order?: number | null; price: number; sale_price?: number | null; images?: string[] }>} categories={(categories ?? []) as Array<{ id: string; name: string; slug: string; parent_id: string | null; display_order: number }>} /> : <>
       <input placeholder="খুঁজুন..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full md:w-80 border rounded-lg px-3 py-2 mb-4" />
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-white p-3">
