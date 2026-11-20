@@ -25,7 +25,7 @@ function getOrderDeviceId(): string | null {
   setCookie(ORDER_DEVICE_COOKIE, id, { path: "/", maxAge: 31536000, sameSite: "lax" });
   return id;
 }
-const ItemSchema = z.object({ id: z.string().min(1).max(64), name: z.string().min(1).max(500), price: z.number().min(0).max(10_000_000), quantity: z.number().int().min(1).max(1000) });
+const ItemSchema = z.object({ id: z.string().min(1).max(64), name: z.string().min(1).max(500), price: z.number().min(0).max(10_000_000), quantity: z.number().int().min(1).max(1000), is_freebie: z.boolean().optional() });
 const BdPhoneSchema = z.preprocess(
   (value) => typeof value === "string" ? normalizeBdPhoneServer(value) : value,
   z.string().regex(PHONE_RE, "সঠিক ১১ ডিজিটের বাংলাদেশি মোবাইল নাম্বার দিন (01XXXXXXXXX)"),
