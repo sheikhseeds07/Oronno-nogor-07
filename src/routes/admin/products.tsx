@@ -31,6 +31,7 @@ function Products() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [search, setSearch] = useState("");
   const [activeSection, setActiveSection] = useState<"home" | "landing" | "all">("all");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const { data: products } = useQuery({
     queryKey: ["admin-products", search],
@@ -43,6 +44,9 @@ function Products() {
 
   const homeProducts = products?.filter((product) => product.display_section === "home") ?? [];
   const landingProducts = products?.filter((product) => product.display_section === "landing") ?? [];
+  const visibleProducts = activeSection === "landing" ? landingProducts : activeSection === "home" ? homeProducts : products ?? [];
+  const visibleIds = visibleProducts.flatMap((product) => product.id ? [product.id] : []);
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.includes(id));
 
   const { data: categories } = useQuery({
     queryKey: ["admin-cats"],
@@ -57,6 +61,25 @@ function Products() {
     toast.success(next ? "পপুলার পণ্যে যোগ হয়েছে" : "পপুলার পণ্য থেকে সরানো হয়েছে");
     qc.invalidateQueries({ queryKey: ["admin-products"] });
     qc.invalidateQueries({ queryKey: ["home-data-v1"] });
+  };
+
+  const removeSelected = async () => {
+    const ids = selectedIds.filter((id) => visibleIds.includes(id));
+    if (!ids.length) return toast.error("আগে প্রোডাক্ট সিলেক্ট করুন");
+    if (!confirm(`সিলেক্ট করা ${ids.length}টি প্রোডাক্ট ডিলিট করবেন? এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।`)) return;
+    const { error } = await supabase.from("products").delete().in("id", ids);
+    if (error) return toast.error(`ডিলিট করা যায়নি: ${error.message}`);
+    setSelectedIds((current) => current.filter((id) => !ids.includes(id)));
+    toast.success(`${ids.length}টি প্রোডাক্ট ডিলিট হয়েছে`);
+    qc.invalidateQueries({ queryKey: ["admin-products"] });
+    qc.invalidateQueries({ queryKey: ["home-data-v1"] });
+    qc.invalidateQueries({ queryKey: ["admin-landing-pages"] });
+  };
+
+  const toggleVisibleSelection = () => {
+    setSelectedIds((current) => allVisibleSelected
+      ? current.filter((id) => !visibleIds.includes(id))
+      : [...new Set([...current, ...visibleIds])]);
   };
 
   const remove = async (id: string) => {
@@ -84,15 +107,29 @@ function Products() {
       {<>
       <input placeholder="খুঁজুন..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full md:w-80 border rounded-lg px-3 py-2 mb-4" />
 
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-white p-3">
+        <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold">
+          <input type="checkbox" checked={allVisibleSelected} onChange={toggleVisibleSelection} disabled={visibleIds.length === 0} className="h-4 w-4 accent-emerald-700" />
+          সব সিলেক্ট করুন <span className="text-muted-foreground font-normal">({visibleIds.length}টি)</span>
+        </label>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-muted-foreground">{selectedIds.filter((id) => visibleIds.includes(id)).length}টি সিলেক্ট করা</span>
+          <button type="button" onClick={removeSelected} disabled={!selectedIds.some((id) => visibleIds.includes(id))} className="inline-flex items-center gap-1.5 rounded-lg bg-destructive px-3 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">
+            <Trash2 className="h-4 w-4" /> সিলেক্ট করা ডিলিট
+          </button>
+        </div>
+      </div>
+
       <div className="bg-white border rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted">
-              <tr><th className="text-left p-3">ছবি</th><th className="text-left p-3">নাম</th><th className="text-left p-3">ক্যাটাগরি</th><th className="text-right p-3">দাম</th><th className="text-right p-3">স্টক</th><th className="text-center p-3">পপুলার</th><th className="text-center p-3">স্ট্যাটাস</th><th className="text-right p-3">অ্যাকশন</th></tr>
+              <tr><th className="p-3"><input aria-label="সব প্রোডাক্ট সিলেক্ট করুন" type="checkbox" checked={allVisibleSelected} onChange={toggleVisibleSelection} disabled={visibleIds.length === 0} className="h-4 w-4 accent-emerald-700" /></th><th className="text-left p-3">ছবি</th><th className="text-left p-3">নাম</th><th className="text-left p-3">ক্যাটাগরি</th><th className="text-right p-3">দাম</th><th className="text-right p-3">স্টক</th><th className="text-center p-3">পপুলার</th><th className="text-center p-3">স্ট্যাটাস</th><th className="text-right p-3">অ্যাকশন</th></tr>
             </thead>
             <tbody>
-              {(activeSection === "landing" ? landingProducts : activeSection === "home" ? homeProducts : products ?? []).map((p) => (
-                <tr key={p.id} className="border-t">
+              {visibleProducts.map((p) => (
+                <tr key={p.id} className={`border-t ${p.id && selectedIds.includes(p.id) ? "bg-emerald-50/60" : ""}`}>
+                  <td className="p-3"><input aria-label={`${p.name} সিলেক্ট করুন`} type="checkbox" checked={!!p.id && selectedIds.includes(p.id)} onChange={(e) => p.id && setSelectedIds((current) => e.target.checked ? [...new Set([...current, p.id!])] : current.filter((id) => id !== p.id))} className="h-4 w-4 accent-emerald-700" /></td>
                   <td className="p-3"><SafeImage src={p.images?.[0] || "/placeholder.svg"} className="w-12 h-12 object-cover rounded" alt="" /></td>
                   <td className="p-3 font-semibold">{p.name}</td>
                   <td className="p-3 text-xs">{p.categories?.name ?? "-"}</td>
@@ -110,7 +147,7 @@ function Products() {
                   </td>
                 </tr>
               ))}
-              {!(activeSection === "landing" ? landingProducts : activeSection === "home" ? homeProducts : products ?? []).length && <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">{activeSection === "landing" ? "কোনো Landing Page-এ যুক্ত প্রোডাক্ট নেই" : activeSection === "home" ? "কোনো Home Product নেই" : "কোনো প্রোডাক্ট নেই"}</td></tr>}
+              {!visibleProducts.length && <tr><td colSpan={9} className="p-8 text-center text-muted-foreground">{activeSection === "landing" ? "কোনো Landing Page-এ যুক্ত প্রোডাক্ট নেই" : activeSection === "home" ? "কোনো Home Product নেই" : "কোনো প্রোডাক্ট নেই"}</td></tr>}
             </tbody>
           </table>
         </div>
