@@ -109,6 +109,7 @@ export const ProductCard = memo(function ProductCard({ p, priority = false }: { 
   const price = inCart?.is_freebie || canTakeFree ? 0 : regularPrice;
   const discount = p.sale_price ? Math.round(((p.price - p.sale_price) / p.price) * 100) : 0;
   const img = p.images?.[0] || "/placeholder.svg";
+  const isVideoMedia = (src: string) => /\.(mp4|webm|ogg|mov|m4v)(?:$|[?#])/i.test(src);
   const imageSrc = toImg(img);
 
   const addItem = (asFreebie = false) => {
@@ -125,19 +126,22 @@ export const ProductCard = memo(function ProductCard({ p, priority = false }: { 
     <>
       <article className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border/70 bg-white shadow-[0_5px_18px_-14px_rgba(20,83,45,.5)] transition-all duration-300 hover:-translate-y-0.5 hover:border-brand/25 hover:shadow-[0_12px_28px_-16px_rgba(20,83,45,.42)]">
         <button ref={imageRef} onClick={() => setOpen(true)} className="relative block aspect-square w-full overflow-hidden bg-muted text-left" aria-label={`${p.name} বিস্তারিত দেখুন`}>
-          <SafeImage
-            src={imageSrc}
-            srcSet={imgSrcSet(img, [500, 800, 1000])}
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 220px"
-            alt=""
-            width={500}
-            height={500}
-            loading={priority ? "eager" : "lazy"}
-            fetchPriority={priority ? "high" : "auto"}
-            decoding="async"
-
-            className="h-full w-full object-cover transition duration-500 ease-out group-hover:scale-[1.045]"
-          />
+          {isVideoMedia(img) ? (
+            <video src={img} autoPlay muted loop playsInline preload={priority ? "auto" : "metadata"} aria-label="পণ্যের ভিডিও" className="h-full w-full object-cover" />
+          ) : (
+            <SafeImage
+              src={imageSrc}
+              srcSet={imgSrcSet(img, [500, 800, 1000])}
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 220px"
+              alt=""
+              width={500}
+              height={500}
+              loading={priority ? "eager" : "lazy"}
+              fetchPriority={priority ? "high" : "auto"}
+              decoding="async"
+              className="h-full w-full object-cover transition duration-500 ease-out group-hover:scale-[1.045]"
+            />
+          )}
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-black/10 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
           {discount > 0 && <span className="absolute left-1.5 top-1.5 inline-flex items-center gap-0.5 rounded-lg bg-destructive px-2 py-1 text-[10px] font-extrabold text-white shadow-sm sm:left-2 sm:top-2 sm:text-xs"><Sparkles className="h-3 w-3" /> -{discount}%</span>}
           {p.stock > 0 && p.stock <= 5 && <span className="absolute bottom-1.5 right-1.5 rounded-full bg-white/92 px-2 py-0.5 text-[9px] font-bold text-brand-dark shadow-sm backdrop-blur">শেষ {bnDigits(p.stock)} টি</span>}
