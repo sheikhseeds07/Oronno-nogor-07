@@ -14,6 +14,7 @@ import { toastAddedToCart } from "@/lib/cart-toast";
 import { trackAddToCart, trackViewContent } from "@/lib/fbq";
 import { toImg, imgSrcSet } from "@/lib/img";
 import { ProductTabs } from "@/components/community/ProductTabs";
+import { publicSiteSettingsQuery } from "@/lib/site-settings-query";
 
 export const Route = createFileRoute("/product/$slug")({
   // Fetch on the server so the product HTML ships with the first response
@@ -32,6 +33,10 @@ function ProductPage() {
   const { slug } = useParams({ from: "/product/$slug" });
   const navigate = useNavigate();
   const add = useCart((s) => s.add);
+  const cartSubtotal = useCart((s) => s.subtotal());
+  const [minimumOrderOpen, setMinimumOrderOpen] = useState(false);
+  const { data: siteSettingsRow } = useQuery(publicSiteSettingsQuery);
+  const minimumHomeOrder = Math.max(0, Math.floor(Number(siteSettingsRow?.settings?.minimum_home_order ?? 200) || 200));
   const [qty, setQty] = useState(1);
   const [activeImg, setActiveImg] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -76,11 +81,20 @@ function ProductPage() {
   if (!p) return <SiteLayout><div className="container mx-auto px-3 py-10 text-center">পণ্য পাওয়া যায়নি</div></SiteLayout>;
 
   const addToCart = () => { add({ id: p.id, name: p.name, slug: p.slug, price, image: images[0], stock: p.stock }, qty); trackAddToCart({ id: p.id, name: p.name, price, quantity: qty }); toastAddedToCart(p.name); };
-  const buyNow = () => { add({ id: p.id, name: p.name, slug: p.slug, price, image: images[0], stock: p.stock }, qty); trackAddToCart({ id: p.id, name: p.name, price, quantity: qty }); navigate({ to: "/checkout" }); };
+  const buyNow = () => {
+    const nextSubtotal = cartSubtotal + price * qty;
+    add({ id: p.id, name: p.name, slug: p.slug, price, image: images[0], stock: p.stock }, qty);
+    trackAddToCart({ id: p.id, name: p.name, price, quantity: qty });
+    const currentPath = window.location.pathname;
+    const isLandingPage = currentPath === "/landing" || currentPath.startsWith("/landing/");
+    if (!isLandingPage && nextSubtotal < minimumHomeOrder) { setMinimumOrderOpen(true); return; }
+    navigate({ to: "/checkout" });
+  };
   const shareProduct = async () => { const url = window.location.href; try { if (navigator.share) await navigator.share({ title: p.name, text: "Sheikh Seeds-এর এই পণ্যটি দেখুন", url }); else { await navigator.clipboard.writeText(url); setCopied(true); window.setTimeout(() => setCopied(false), 1600); } } catch {} };
 
   return (
     <SiteLayout>
+      {minimumOrderOpen && <div className="fixed inset-0 z-[260] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="product-minimum-order-title" onMouseDown={(e) => { if (e.target === e.currentTarget) setMinimumOrderOpen(false); }}><section className="relative w-full max-w-[360px] overflow-hidden rounded-[24px] border border-white/80 bg-white p-5 text-center shadow-2xl"><div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand via-emerald-400 to-amber-400"/><button type="button" onClick={() => setMinimumOrderOpen(false)} aria-label="পপআপ বন্ধ করুন" className="absolute right-3 top-3 rounded-full bg-slate-100 p-1.5 text-slate-500">×</button><div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-brand text-white"><ShoppingCart className="h-6 w-6"/></div><p className="mb-1 text-[10px] font-extrabold text-brand-dark">ন্যূনতম অর্ডার</p><h3 id="product-minimum-order-title" className="text-lg font-black text-slate-900">ন্যূনতম {taka(minimumHomeOrder)} টাকার পণ্য কিনতে হবে</h3><p className="mt-2 text-xs leading-5 text-slate-500">আমরা আপনাদের জন্য পাইকারি দামে পণ্য দিচ্ছি, তাই অর্ডারের জন্য ন্যূনতম {taka(minimumHomeOrder)} টাকার পণ্য নিতে হবে।</p><div className="mt-4 grid grid-cols-2 gap-2 text-left"><div className="rounded-xl border bg-slate-50 p-3"><p className="text-[9px] font-bold text-slate-400">বর্তমান কার্ট</p><strong className="text-base text-brand-dark">{taka(cartSubtotal + price * qty)}</strong></div><div className="rounded-xl border border-amber-100 bg-amber-50 p-3"><p className="text-[9px] font-bold text-amber-700">আরও কিনতে হবে</p><strong className="text-base text-amber-700">{taka(Math.max(0, minimumHomeOrder - cartSubtotal - price * qty))}</strong></div></div><button type="button" onClick={() => setMinimumOrderOpen(false)} className="mt-4 w-full rounded-xl bg-gradient-to-r from-brand to-brand-dark px-4 py-3 text-sm font-extrabold text-white">আরও পণ্য কিনুন</button></section></div>}
       <style>{`
         @keyframes productEntrance{from{opacity:0;transform:translateY(12px) scale(.99)}to{opacity:1;transform:none}}
         @keyframes productGlow{0%,100%{box-shadow:0 0 0 0 rgba(22,163,74,.08)}50%{box-shadow:0 0 0 6px rgba(22,163,74,0)}}
