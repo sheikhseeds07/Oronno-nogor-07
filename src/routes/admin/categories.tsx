@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { supabase } from "@/lib/personal-supabase/client";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { Plus, Edit, Trash2, ChevronRight, ArrowLeft, GripVertical } from "lucide-react";
 import { uploadToBucket, safeFileName } from "@/lib/storage-upload";
 
 export const Route = createFileRoute("/admin/categories")({ component: Categories });
@@ -32,12 +32,15 @@ type CategoryEditor = {
 };
 
 function slugify(s: string) {
-  return s.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-").slice(0, 60) || `c-${Date.now()}`;
+  return s.toLowerCase().trim().replace(/[^\\w\\s-]/g, "").replace(/\\s+/g, "-").slice(0, 60) || `c-${Date.now()}`;
 }
 
 function Categories() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<CategoryEditor | null>(null);
+  const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [savingOrder, setSavingOrder] = useState(false);
 
   const { data: cats = [] } = useQuery({
     queryKey: ["admin-cats-page"],
@@ -52,16 +55,54 @@ function Categories() {
   });
 
   const roots = useMemo(() => cats.filter((c) => !c.parent_id), [cats]);
-  const parentName = (parentId: string | null) => cats.find((c) => c.id === parentId)?.name;
+  const selectedParent = roots.find((c) => c.id === selectedParentId) ?? null;
+  const visibleCategories = useMemo(
+    () => selectedParent ? cats.filter((c) => c.parent_id === selectedParent.id) : roots,
+    [cats, roots, selectedParent],
+  );
+
+  const refreshCategories = () => {
+    qc.invalidateQueries({ queryKey: ["admin-cats-page"] });
+    qc.invalidateQueries({ queryKey: ["home-data"] });
+    qc.invalidateQueries({ queryKey: ["nav-categories"] });
+  };
 
   const remove = async (id: string) => {
     if (!confirm("ডিলিট?")) return;
     const { error } = await supabase.from("categories").delete().eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("ক্যাটাগরি ডিলিট হয়েছে");
-    qc.invalidateQueries({ queryKey: ["admin-cats-page"] });
-    qc.invalidateQueries({ queryKey: ["home-data"] });
-    qc.invalidateQueries({ queryKey: ["nav-categories"] });
+    refreshCategories();
+  };
+
+  const saveOrder = async (ordered: CategoryRow[]) => {
+    setSavingOrder(true);
+    try {
+      const results = await Promise.all(ordered.map((category, index) =>
+        (supabase.from("categories") as any).update({ display_order: (index + 1) * 10 }).eq("id", category.id)
+      ));
+      const failed = results.find((result: any) => result.error);
+      if (failed?.error) throw failed.error;
+      refreshCategories();
+      toast.success("ক্যাটাগরির ক্রম সংরক্ষণ হয়েছে");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "ক্রম সংরক্ষণ করা যায়নি");
+      refreshCategories();
+    } finally {
+      setSavingOrder(false);
+      setDraggedId(null);
+    }
+  };
+
+  const handleDrop = (targetId: string) => {
+    if (!draggedId || draggedId === targetId || savingOrder) return;
+    const reordered = [...visibleCategories];
+    const from = reordered.findIndex((item) => item.id === draggedId);
+    const to = reordered.findIndex((item) => item.id === targetId);
+    if (from < 0 || to < 0) return setDraggedId(null);
+    const [moved] = reordered.splice(from, 1);
+    reordered.splice(to, 0, moved);
+    void saveOrder(reordered);
   };
 
   const save = async () => {
@@ -74,7 +115,6 @@ function Categories() {
       image_url: editing.image_url ?? null,
       display_order: editing.display_order ?? 0,
       parent_id: editing.parent_id || null,
-      // Subcategories live inside their parent and never render as separate home cards.
       is_hidden_from_home: isChild ? true : (editing.is_hidden_from_home ?? false),
     };
 
@@ -86,79 +126,102 @@ function Categories() {
     if (error) return toast.error(error.message);
     toast.success("সংরক্ষণ হয়েছে");
     setEditing(null);
-    qc.invalidateQueries({ queryKey: ["admin-cats-page"] });
-    qc.invalidateQueries({ queryKey: ["home-data"] });
-    qc.invalidateQueries({ queryKey: ["nav-categories"] });
+    refreshCategories();
   };
 
   const upload = async (file: File) => {
     try {
       const url = await uploadToBucket("category-images", safeFileName(file.name), file);
-      setEditing(editing ? { ...editing, image_url: url } : null);
+      setEditing((current) => current ? { ...current, image_url: url } : null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "আপলোড হয়নি");
     }
   };
 
+  const openEditor = (category?: CategoryRow, parentId: string | null = null) => {
+    setEditing(category ? {
+      id: category.id,
+      name: category.name,
+      slug: category.slug,
+      image_url: category.image_url ?? undefined,
+      display_order: category.display_order,
+      parent_id: category.parent_id,
+      is_hidden_from_home: category.is_hidden_from_home,
+    } : { name: "", slug: "", parent_id: parentId, is_hidden_from_home: Boolean(parentId) });
+  };
+
   return (
     <AdminLayout>
-      <div className="flex justify-between items-center mb-2">
-        <div>
+      <div className="flex flex-wrap justify-between items-center gap-3 mb-2">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold">ক্যাটাগরি</h1>
-          <p className="text-sm text-muted-foreground mt-1">মূল ক্যাটাগরির ভিতরে সাব-ক্যাটাগরি তৈরি করুন এবং কোন মূল ক্যাটাগরি হোমে দেখাবে সেটি নিয়ন্ত্রণ করুন।</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {selectedParent ? `“${selectedParent.name}” এর সাব-ক্যাটাগরি` : "মূল ক্যাটাগরি নির্বাচন করে তার সাব-ক্যাটাগরি দেখুন।"}
+          </p>
         </div>
         <button
-          onClick={() => setEditing({ name: "", slug: "", parent_id: null, is_hidden_from_home: false })}
+          onClick={() => openEditor(undefined, selectedParent?.id ?? null)}
           className="bg-brand text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 shrink-0"
         >
-          <Plus className="w-4 h-4" /> নতুন
+          <Plus className="w-4 h-4" /> {selectedParent ? "সাব-ক্যাটাগরি যোগ" : "মূল ক্যাটাগরি যোগ"}
         </button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
-        {cats.map((c) => (
-          <div key={c.id} className="bg-white border rounded-xl p-3">
-            <div className="aspect-square bg-muted rounded-lg mb-2 overflow-hidden">
-              {c.image_url ? (
-                <SafeImage src={c.image_url} className="w-full h-full object-cover" alt="" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-3xl">🌱</div>
-              )}
-            </div>
-            <div className="font-semibold">{c.name}</div>
-            <div className="text-xs text-muted-foreground">/{c.slug}</div>
-            <div className="mt-2 flex flex-wrap gap-1">
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-muted">
-                {c.parent_id ? `সাব: ${parentName(c.parent_id) ?? "মূল ক্যাটাগরি"}` : "মূল ক্যাটাগরি"}
-              </span>
-              {!c.parent_id && (
-                <span className={`text-[11px] px-2 py-0.5 rounded-full ${c.is_hidden_from_home ? "bg-muted text-muted-foreground" : "bg-green-100 text-green-700"}`}>
-                  {c.is_hidden_from_home ? "হোমে লুকানো" : "হোমে দেখাবে"}
-                </span>
-              )}
-            </div>
-            <div className="flex gap-1 mt-2">
-              <button
-                onClick={() => setEditing({
-                  id: c.id,
-                  name: c.name,
-                  slug: c.slug,
-                  image_url: c.image_url ?? undefined,
-                  display_order: c.display_order,
-                  parent_id: c.parent_id,
-                  is_hidden_from_home: c.is_hidden_from_home,
-                })}
-                className="flex-1 p-1.5 hover:bg-muted rounded text-sm"
-              >
-                <Edit className="w-4 h-4 inline" />
-              </button>
-              <button onClick={() => remove(c.id)} className="flex-1 p-1.5 hover:bg-destructive/10 text-destructive rounded text-sm">
-                <Trash2 className="w-4 h-4 inline" />
-              </button>
-            </div>
-          </div>
-        ))}
+      {selectedParent && (
+        <button onClick={() => setSelectedParentId(null)} className="inline-flex items-center gap-2 text-sm font-semibold text-brand hover:underline mt-3 mb-2">
+          <ArrowLeft className="w-4 h-4" /> সব মূল ক্যাটাগরিতে ফিরুন
+        </button>
+      )}
+
+      <div className="flex items-center justify-between gap-2 mt-5 mb-3">
+        <h2 className="font-semibold">{selectedParent ? "সাব-ক্যাটাগরি" : "মেইন ক্যাটাগরি"} ({visibleCategories.length})</h2>
+        <span className="text-xs text-muted-foreground">{savingOrder ? "ক্রম সংরক্ষণ হচ্ছে…" : "☰ ধরে টেনে উপর-নিচে সাজান"}</span>
       </div>
+
+      {visibleCategories.length === 0 ? (
+        <div className="border border-dashed rounded-xl p-8 text-center text-sm text-muted-foreground">
+          {selectedParent ? "এই মেইন ক্যাটাগরিতে এখনো কোনো সাব-ক্যাটাগরি নেই।" : "এখনো কোনো মেইন ক্যাটাগরি নেই।"}
+          <div className="mt-3">
+            <button onClick={() => openEditor(undefined, selectedParent?.id ?? null)} className="text-brand font-semibold">+ নতুন যোগ করুন</button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {visibleCategories.map((category) => {
+            const childCount = cats.filter((item) => item.parent_id === category.id).length;
+            return (
+              <div
+                key={category.id}
+                draggable={!savingOrder}
+                onDragStart={() => setDraggedId(category.id)}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={(event) => { event.preventDefault(); handleDrop(category.id); }}
+                onDragEnd={() => setDraggedId(null)}
+                className={`flex items-center gap-3 rounded-xl border bg-white p-3 transition ${draggedId === category.id ? "opacity-40 border-brand" : "hover:border-brand/50"}`}
+              >
+                <div className="cursor-grab touch-none text-muted-foreground" title="টেনে সাজান">
+                  <GripVertical className="w-5 h-5" />
+                </div>
+                <div className="w-14 h-14 shrink-0 rounded-lg bg-muted overflow-hidden">
+                  {category.image_url ? <SafeImage src={category.image_url} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full flex items-center justify-center text-2xl">🌱</div>}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold truncate">{category.name}</div>
+                  <div className="text-xs text-muted-foreground truncate">/{category.slug}</div>
+                  {!selectedParent && <div className="text-xs text-muted-foreground mt-1">{childCount}টি সাব-ক্যাটাগরি · {category.is_hidden_from_home ? "হোমে লুকানো" : "হোমে দেখাবে"}</div>}
+                </div>
+                {!selectedParent && (
+                  <button onClick={() => setSelectedParentId(category.id)} className="inline-flex items-center gap-1 rounded-lg bg-muted px-3 py-2 text-sm font-medium hover:bg-muted/70">
+                    ভিতরে দেখুন <ChevronRight className="w-4 h-4" />
+                  </button>
+                )}
+                <button onClick={() => openEditor(category)} className="p-2 rounded-lg hover:bg-muted" title="এডিট"><Edit className="w-4 h-4" /></button>
+                <button onClick={() => remove(category.id)} className="p-2 rounded-lg text-destructive hover:bg-destructive/10" title="ডিলিট"><Trash2 className="w-4 h-4" /></button>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {editing && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-3" onClick={() => setEditing(null)}>
