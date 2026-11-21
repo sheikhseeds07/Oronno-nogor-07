@@ -54,8 +54,8 @@ function ProductPage() {
   const price = p ? (p.sale_price ?? p.price) : 0;
   const oldPrice = p?.sale_price && p.sale_price < p.price ? p.price : null;
   const discount = oldPrice ? Math.round(((oldPrice - price) / oldPrice) * 100) : 0;
-  const images: string[] = p?.images?.length ? p.images : ["/placeholder.svg"];\n  const isVideoMedia = (src: string) => /\\.(mp4|webm|ogg|mov|m4v)(?:$|[?#])/i.test(src);
-  const imagesKey = images.join(",");
+  const images: string[] = p?.images?.length ? p.images : ["/placeholder.svg"];
+  const isVideoMedia = (src: string) => /\.(mp4|webm|ogg|mov|m4v)(?:$|[?#])/i.test(src);
 
   const { data: relatedProducts = [] } = useQuery({
     queryKey: ["related-products", p?.id, p?.category_id], enabled: !!p,
