@@ -56,6 +56,7 @@ function ProductPage() {
   const discount = oldPrice ? Math.round(((oldPrice - price) / oldPrice) * 100) : 0;
   const images: string[] = p?.images?.length ? p.images : ["/placeholder.svg"];
   const isVideoMedia = (src: string) => /\.(mp4|webm|ogg|mov|m4v)(?:$|[?#])/i.test(src);
+  const imagesKey = images.join(",");
 
   const { data: relatedProducts = [] } = useQuery({
     queryKey: ["related-products", p?.id, p?.category_id], enabled: !!p,
