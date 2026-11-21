@@ -198,8 +198,8 @@ function ProductModal({ product, categories, onClose, onSaved, onAdded }: { prod
             toast.error(`${file.name}: শুধু ছবি বা ভিডিও আপলোড করা যাবে`);
             continue;
           }
-          if (isVideo && file.size > 100 * 1024 * 1024) {
-            toast.error(`${file.name}: ভিডিও সর্বোচ্চ ১০০MB হতে পারবে`);
+          if (isVideo && file.size > 90 * 1024 * 1024) {
+            toast.error(`${file.name}: ভিডিও সর্বোচ্চ ৯০MB হতে পারবে`);
             continue;
           }
           const url = await uploadToBucket("product-images", safeFileName(file.name), file);
