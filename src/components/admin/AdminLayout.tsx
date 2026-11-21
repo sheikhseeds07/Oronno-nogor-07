@@ -181,6 +181,49 @@ const adminHeaderAnnouncementCss = `
 }
 `;
 
+const adminThemeIsolationCss = `
+.admin-theme-scope {
+  color-scheme: light;
+  --background: oklch(0.975 0.008 155);
+  --foreground: oklch(0.22 0.025 155);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.025 155);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.025 155);
+  --brand: oklch(0.48 0.13 150);
+  --brand-dark: oklch(0.36 0.11 150);
+  --brand-light: oklch(0.92 0.045 150);
+  --primary: oklch(0.48 0.13 150);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.94 0.018 150);
+  --secondary-foreground: oklch(0.30 0.06 150);
+  --muted: oklch(0.95 0.012 155);
+  --muted-foreground: oklch(0.49 0.025 155);
+  --accent: oklch(0.92 0.045 150);
+  --accent-foreground: oklch(0.28 0.07 150);
+  --destructive: oklch(0.58 0.21 25);
+  --destructive-foreground: oklch(1 0 0);
+  --success: oklch(0.58 0.14 150);
+  --warning: oklch(0.72 0.12 80);
+  --border: oklch(0.89 0.015 155);
+  --input: oklch(0.89 0.015 155);
+  --ring: oklch(0.48 0.13 150);
+  --chart-1: oklch(0.48 0.13 150);
+  --chart-2: oklch(0.68 0.12 80);
+  --chart-3: oklch(0.58 0.16 25);
+  --chart-4: oklch(0.55 0.12 230);
+  --chart-5: oklch(0.55 0.12 285);
+  --sidebar: oklch(0.99 0.004 155);
+  --sidebar-foreground: oklch(0.22 0.025 155);
+  --sidebar-primary: oklch(0.48 0.13 150);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.92 0.045 150);
+  --sidebar-accent-foreground: oklch(0.28 0.07 150);
+  --sidebar-border: oklch(0.89 0.015 155);
+  --sidebar-ring: oklch(0.48 0.13 150);
+}
+`;
+
 const SIDEBAR_COLLAPSED_KEY = "admin-sidebar-collapsed";
 
 export function AdminLayout({ children, headerExtra }: { children: React.ReactNode; headerExtra?: React.ReactNode }) {
@@ -262,8 +305,8 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
   const visibleNav = allowedNav;
   if (!pageAllowed) return <div className="min-h-screen flex items-center justify-center bg-muted px-4">{firstAllowed ? <div className="text-sm text-muted-foreground">এক মুহূর্ত…</div> : <div className="max-w-md rounded-xl border bg-card p-6 text-center shadow-sm"><h1 className="text-xl font-bold text-brand-dark">কোনো অনুমতি দেওয়া হয়নি</h1><p className="mt-2 text-sm text-muted-foreground">আপনার জন্য এখনো কোনো অংশের অনুমতি দেওয়া হয়নি। CEO-কে জানান।</p><button onClick={() => navigate({ to: "/" })} className="mt-5 rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-primary-foreground">হোমে যান</button></div>}</div>;
   const logout = async () => { await supabase.auth.signOut(); navigate({ to: "/" }); };
-  return <div data-admin-route={loc.pathname} className="flex min-h-screen bg-muted">
-    {<style>{adminHeaderAnnouncementCss}</style>}{loc.pathname === "/admin/orders" && <style>{orderUiCss}</style>}
+  return <div data-admin-route={loc.pathname} className="admin-theme-scope flex min-h-screen bg-muted">
+    {<style>{adminThemeIsolationCss}</style>}<style>{adminHeaderAnnouncementCss}</style>{loc.pathname === "/admin/orders" && <style>{orderUiCss}</style>}
     <aside className={`fixed lg:sticky lg:top-0 top-0 left-0 h-screen z-50 overflow-hidden bg-[#101827] border-r border-white/10 shadow-2xl shadow-slate-950/30 transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)] ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} ${collapsed ? "w-20" : "w-72"}`}>
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_15%_5%,rgba(16,185,129,.22),transparent_32%),radial-gradient(circle_at_90%_18%,rgba(59,130,246,.20),transparent_30%),radial-gradient(circle_at_70%_78%,rgba(139,92,246,.18),transparent_34%),radial-gradient(circle_at_10%_95%,rgba(6,182,212,.14),transparent_28%)]" />
       <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(135deg,rgba(255,255,255,.055),transparent_28%,rgba(255,255,255,.015)_60%,rgba(255,255,255,.04))]" />
