@@ -20,7 +20,7 @@ const STAFF_BUCKETS = new Set([
 ]);
 const CUSTOMER_BUCKETS = new Set(["customer-profiles", "review-images", "community-media"]);
 const ALLOWED_BUCKETS = new Set([...STAFF_BUCKETS, ...CUSTOMER_BUCKETS]);
-const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+const MAX_UPLOAD_BYTES = 90 * 1024 * 1024;
 
 type R2BucketLike = {
   head: (key: string) => Promise<unknown | null>;
