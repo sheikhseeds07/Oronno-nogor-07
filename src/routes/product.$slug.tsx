@@ -123,7 +123,11 @@ function ProductPage() {
           <div className="relative bg-gradient-to-b from-brand-light/20 via-white to-brand-light/5 p-2 sm:p-3 md:p-3.5">
             <div className="relative aspect-square overflow-hidden rounded-[13px] border border-black/5 bg-white shadow-inner">
               <div className="product-image-glow pointer-events-none absolute -inset-5 rounded-full bg-brand/10 blur-3xl" />
-              {isVideoMedia(images[activeImg]) ? (\n                <video key={images[activeImg]} src={images[activeImg]} controls playsInline preload="metadata" aria-label={`${p.name} ভিডিও`} className="relative z-10 h-full w-full object-contain bg-black" />\n              ) : (\n                <SafeImage src={toImg(images[activeImg], { w: 1000, q: 84 })} srcSet={imgSrcSet(images[activeImg], [500, 800, 1000, 1200])} sizes="(max-width: 768px) 100vw, 540px" alt={p.name} width={1000} height={1000} fetchPriority="high" decoding="async" className="relative z-10 h-full w-full object-cover transition duration-700 hover:scale-[1.025]" />\n              )}
+              {isVideoMedia(images[activeImg]) ? (
+                <video key={images[activeImg]} src={images[activeImg]} controls playsInline preload="metadata" aria-label={`${p.name} ভিডিও`} className="relative z-10 h-full w-full object-contain bg-black" />
+              ) : (
+                <SafeImage src={toImg(images[activeImg], { w: 1000, q: 84 })} srcSet={imgSrcSet(images[activeImg], [500, 800, 1000, 1200])} sizes="(max-width: 768px) 100vw, 540px" alt={p.name} width={1000} height={1000} fetchPriority="high" decoding="async" className="relative z-10 h-full w-full object-cover transition duration-700 hover:scale-[1.025]" />
+              )}
               {discount > 0 && <span className="product-badge absolute left-2.5 top-2.5 z-20 inline-flex items-center gap-1 rounded-full bg-destructive px-2.5 py-1 text-[10px] font-extrabold text-white shadow-lg"><Sparkles className="h-3 w-3 animate-pulse" /> {bnDigits(discount)}% ছাড়</span>}
               {p.stock <= 0 && <span className="absolute inset-0 z-20 flex items-center justify-center bg-black/45 text-sm font-extrabold text-white backdrop-blur-[2px]">স্টক শেষ</span>}
               <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-px overflow-hidden bg-white/20"><span className="product-live-line block h-full w-1/3 bg-gradient-to-r from-transparent via-white/80 to-transparent" /></div>
