@@ -124,7 +124,7 @@ function ProductPage() {
             <div className="relative aspect-square overflow-hidden rounded-[13px] border border-black/5 bg-white shadow-inner">
               <div className="product-image-glow pointer-events-none absolute -inset-5 rounded-full bg-brand/10 blur-3xl" />
               {isVideoMedia(images[activeImg]) ? (
-                <video key={images[activeImg]} src={images[activeImg]} controls playsInline preload="metadata" aria-label={`${p.name} ভিডিও`} className="relative z-10 h-full w-full object-contain bg-black" />
+                <video key={images[activeImg]} src={images[activeImg]} autoPlay muted loop playsInline controls preload="auto" aria-label={`${p.name} ভিডিও`} className="relative z-10 h-full w-full object-contain bg-black" />
               ) : (
                 <SafeImage src={toImg(images[activeImg], { w: 1000, q: 84 })} srcSet={imgSrcSet(images[activeImg], [500, 800, 1000, 1200])} sizes="(max-width: 768px) 100vw, 540px" alt={p.name} width={1000} height={1000} fetchPriority="high" decoding="async" className="relative z-10 h-full w-full object-cover transition duration-700 hover:scale-[1.025]" />
               )}
