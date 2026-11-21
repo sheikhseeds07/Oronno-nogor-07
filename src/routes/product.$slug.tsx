@@ -9,7 +9,7 @@ import { SiteLayout } from "@/components/layout/SiteLayout";
 import { supabase } from "@/lib/personal-supabase/client";
 import { taka, bnDigits } from "@/lib/format";
 import { useCart } from "@/lib/cart-store";
-import { Minus, Plus, ShoppingCart, Zap, ShieldCheck, Truck, BadgeCheck, PackageCheck, ChevronLeft, Share2, Check, Sparkles } from "lucide-react";
+import { Minus, Plus, ShoppingCart, Zap, ShieldCheck, Truck, BadgeCheck, PackageCheck, ChevronLeft, Share2, Check, Sparkles, Film } from "lucide-react";
 import { toastAddedToCart } from "@/lib/cart-toast";
 import { trackAddToCart, trackViewContent } from "@/lib/fbq";
 import { toImg, imgSrcSet } from "@/lib/img";
