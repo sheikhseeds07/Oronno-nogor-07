@@ -7,7 +7,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { supabase } from "@/lib/personal-supabase/client";
 import { taka } from "@/lib/format";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, X, Star } from "lucide-react";
+import { Plus, Edit, Trash2, X, Star, Film } from "lucide-react";
 import { uploadToBucket, safeFileName } from "@/lib/storage-upload";
 import { HomeProductOrganizer } from "@/components/admin/HomeProductOrganizer";
 
@@ -192,6 +192,16 @@ function ProductModal({ product, categories, onClose, onSaved, onAdded }: { prod
     try {
       for (const file of Array.from(files)) {
         try {
+          const isImage = file.type.startsWith("image/");
+          const isVideo = file.type.startsWith("video/");
+          if (!isImage && !isVideo) {
+            toast.error(`${file.name}: শুধু ছবি বা ভিডিও আপলোড করা যাবে`);
+            continue;
+          }
+          if (isVideo && file.size > 100 * 1024 * 1024) {
+            toast.error(`${file.name}: ভিডিও সর্বোচ্চ ১০০MB হতে পারবে`);
+            continue;
+          }
           const url = await uploadToBucket("product-images", safeFileName(file.name), file);
           uploaded.push(url);
         } catch (e) { toast.error(e instanceof Error ? e.message : "আপলোড হয়নি"); }
@@ -266,16 +276,25 @@ function ProductModal({ product, categories, onClose, onSaved, onAdded }: { prod
           <div><label className="text-sm font-medium">শর্ট ডেসক্রিপশন</label><textarea rows={2} value={p.short_description ?? ""} onChange={(e) => setP({ ...p, short_description: e.target.value })} className="w-full border rounded-lg px-3 py-2 mt-1" /></div>
           <div><label className="text-sm font-medium">পূর্ণ ডেসক্রিপশন</label><textarea rows={5} value={p.description ?? ""} onChange={(e) => setP({ ...p, description: e.target.value })} className="w-full border rounded-lg px-3 py-2 mt-1" /></div>
           <div>
-            <label className="text-sm font-medium">ছবি</label>
-            <input type="file" accept="image/*" multiple disabled={uploading} onChange={(e) => { upload(e.target.files); e.currentTarget.value = ""; }} className="block mt-1 text-sm disabled:opacity-50" />
-            {uploading && <p className="mt-1 text-xs font-semibold text-amber-700">ছবি R2-তে আপলোড হচ্ছে—শেষ না হওয়া পর্যন্ত সংরক্ষণ করবেন না।</p>}
-            <div className="grid grid-cols-4 gap-2 mt-2">
-              {p.images?.map((src, i) => (
-                <div key={i} className="relative aspect-square">
-                  <SafeImage src={src} className="w-full h-full object-cover rounded" alt="" />
-                  <button onClick={() => setP({ ...p, images: p.images?.filter((_, j) => j !== i) })} className="absolute top-1 right-1 bg-destructive text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">×</button>
-                </div>
-              ))}
+            <label className="text-sm font-medium">প্রোডাক্ট ছবি / ভিডিও</label>
+            <input type="file" accept="image/*,video/*" multiple disabled={uploading} onChange={(e) => { upload(e.target.files); e.currentTarget.value = ""; }} className="block mt-1 text-sm disabled:opacity-50" />
+            <p className="mt-1 text-xs text-muted-foreground">একসাথে ছবি ও ভিডিও আপলোড করতে পারবেন। ভিডিও সর্বোচ্চ ১০০MB। MP4 / WebM ভিডিও ব্যবহার করুন।</p>
+            {uploading && <p className="mt-1 text-xs font-semibold text-amber-700">ছবি / ভিডিও R2-তে আপলোড হচ্ছে—শেষ না হওয়া পর্যন্ত সংরক্ষণ করবেন না।</p>}
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mt-2">
+              {p.images?.map((src, i) => {
+                const isVideo = /\\.(mp4|webm|ogg|mov|m4v)(?:$|[?#])/i.test(src);
+                return (
+                  <div key={i} className="relative aspect-square overflow-hidden rounded bg-muted">
+                    {isVideo ? (
+                      <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-slate-900 text-white">
+                        <Film className="h-7 w-7" />
+                        <span className="px-1 text-center text-[10px]">ভিডিও {i + 1}</span>
+                      </div>
+                    ) : <SafeImage src={src} className="w-full h-full object-cover" alt="" />}
+                    <button onClick={() => setP((current) => ({ ...current, images: current.images?.filter((_, j) => j !== i) }))} className="absolute top-1 right-1 bg-destructive text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">×</button>
+                  </div>
+                );
+              })}
             </div>
           </div>
           <div className="flex flex-wrap gap-4">
