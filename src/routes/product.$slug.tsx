@@ -36,7 +36,8 @@ function ProductPage() {
   const cartSubtotal = useCart((s) => s.subtotal());
   const [minimumOrderOpen, setMinimumOrderOpen] = useState(false);
   const { data: siteSettingsRow } = useQuery(publicSiteSettingsQuery);
-  const minimumHomeOrder = Math.max(0, Math.floor(Number(siteSettingsRow?.settings?.minimum_home_order ?? 200) || 200));
+  const configuredMinimumHomeOrder = Number(siteSettingsRow?.settings?.minimum_home_order ?? 200);
+  const minimumHomeOrder = Number.isFinite(configuredMinimumHomeOrder) ? Math.max(0, Math.floor(configuredMinimumHomeOrder)) : 200;
   const [qty, setQty] = useState(1);
   const [activeImg, setActiveImg] = useState(0);
   const [copied, setCopied] = useState(false);
