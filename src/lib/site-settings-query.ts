@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/personal-supabase/client";
-import { readPublicSettingsCache, writePublicSettingsCache } from "@/lib/public-settings-cache";
+import { writePublicSettingsCache } from "@/lib/public-settings-cache";
 
 export type PublicSiteSettings = Record<string, unknown> & {
   site_name?: string;
@@ -22,8 +22,6 @@ export type PublicSiteSettings = Record<string, unknown> & {
 
 export type PublicSiteSettingsRow = { settings: PublicSiteSettings } | null;
 
-let serverSettingsCache: { at: number; value: PublicSiteSettingsRow } | null = null;
-const SERVER_SETTINGS_TTL_MS = 5 * 60_000;
 
 /**
  * Public settings are configuration, not long-lived content. In particular,
@@ -33,17 +31,11 @@ const SERVER_SETTINGS_TTL_MS = 5 * 60_000;
  */
 export const publicSiteSettingsQuery = {
   queryKey: ["site-settings-public"] as const,
-  initialData: (): PublicSiteSettingsRow | undefined => {
-    const cached = readPublicSettingsCache<PublicSiteSettings>();
-    return cached ? { settings: cached } : undefined;
-  },
   queryFn: async (): Promise<PublicSiteSettingsRow> => {
-    if (typeof window === "undefined" && serverSettingsCache && Date.now() - serverSettingsCache.at < SERVER_SETTINGS_TTL_MS) return serverSettingsCache.value;
     const { data, error } = await supabase.from("site_settings").select("settings").maybeSingle();
     if (error) throw error;
     const settings = (data?.settings as PublicSiteSettings | null) ?? {};
     const value = { settings };
-    if (typeof window === "undefined") serverSettingsCache = { at: Date.now(), value };
     writePublicSettingsCache(settings);
     return value;
   },
