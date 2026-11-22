@@ -47,9 +47,10 @@ export const publicSiteSettingsQuery = {
     writePublicSettingsCache(settings);
     return value;
   },
-  // Settings are configuration. A 5-minute revalidation window cuts repeated
-  // reads while still making admin changes visible quickly.
-  staleTime: 5 * 60_000,
+  // Delivery/minimum-order settings must reflect the latest admin value on
+  // each public-page visit; cached data is only used for the initial paint.
+  staleTime: 0,
+  refetchOnMount: "always",
   gcTime: 12 * 60 * 60_000,
   refetchOnMount: false,
   refetchOnWindowFocus: false,
