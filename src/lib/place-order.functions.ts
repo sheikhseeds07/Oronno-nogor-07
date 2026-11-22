@@ -52,7 +52,7 @@ async function saveOrderMarketingSource(orderId: string, inputSource?: string | 
 
 async function saveIntentMarketingSource(intentId: string, inputSource?: string | null) {
   const marketingSource = resolveMarketingSource(inputSource);
-  const { error } = await supabaseAdmin.from("landing_checkout_intents").update({ marketing_source: marketingSource }).eq("id", intentId);
+  const { error } = await (supabaseAdmin as any).from("landing_checkout_intents").update({ marketing_source: marketingSource }).eq("id", intentId);
   if (error) logger.error("[intent attribution] failed to save marketing source:", error.message);
 }
 
