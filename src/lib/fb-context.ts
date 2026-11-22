@@ -56,9 +56,9 @@ function classifyMarketingUrl(rawUrl: string): MarketingSource | null {
     if (params.has("ttclid") || ["tiktok", "tiktok_ads", "tt"].includes(utm)) return "tiktok_ads";
     if (["google", "bing", "yahoo", "duckduckgo"].includes(utm)) return "organic";
     const host = url.hostname.toLowerCase();
-    if (/(^|\\.)((facebook|fb|instagram)\\.com|fb\\.me)$/.test(host)) return "facebook_ads";
-    if (/(^|\\.)tiktok\\.com$/.test(host)) return "tiktok_ads";
-    if (/(^|\\.)(google|bing|yahoo|duckduckgo)\\./.test(host)) return "organic";
+    if (/(^|\.)((facebook|fb|instagram)\.com|fb\.me)$/.test(host)) return "facebook_ads";
+    if (/(^|\.)tiktok\.com$/.test(host)) return "tiktok_ads";
+    if (/(^|\.)(google|bing|yahoo|duckduckgo)\./.test(host)) return "organic";
   } catch { /* Ignore malformed URLs. */ }
   return null;
 }
