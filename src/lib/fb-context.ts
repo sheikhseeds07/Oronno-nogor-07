@@ -50,10 +50,16 @@ function readMarketingSourceFromUrl(): MarketingSource | null {
   if (typeof window === "undefined") return null;
   const params = new URLSearchParams(window.location.search);
   const utm = (params.get("utm_source") || "").toLowerCase();
-  if (params.has("fbclid") || ["facebook", "facebook_ads", "meta", "instagram"].includes(utm)) return "facebook_ads";
-  if (params.has("ttclid") || ["tiktok", "tiktok_ads"].includes(utm)) return "tiktok_ads";
+  if (params.has("fbclid") || ["facebook", "facebook_ads", "meta", "meta_ads", "instagram", "instagram_ads", "fb", "ig"].includes(utm)) return "facebook_ads";
+  if (params.has("ttclid") || ["tiktok", "tiktok_ads", "tt"].includes(utm)) return "tiktok_ads";
   if (["google", "bing", "yahoo"].includes(utm)) return "organic";
   if (utm) return "organic";
+  try {
+    const referrerHost = document.referrer ? new URL(document.referrer).hostname.toLowerCase() : "";
+    if (/(^|\\.)((facebook|fb|instagram)\\.com|fb\\.me)$/.test(referrerHost)) return "facebook_ads";
+    if (/(^|\\.)tiktok\\.com$/.test(referrerHost)) return "tiktok_ads";
+    if (/(^|\\.)(google|bing|yahoo)\\./.test(referrerHost)) return "organic";
+  } catch { /* Ignore malformed referrers. */ }
   return null;
 }
 
