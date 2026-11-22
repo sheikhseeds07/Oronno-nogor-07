@@ -23,7 +23,7 @@ export const Route = createFileRoute("/checkout")({ component: Checkout, head: (
 const PHONE_RE = /^01[3-9][0-9]{8}$/;
 const PHONE_ERROR = "সঠিক ১১ ডিজিটের বাংলাদেশি মোবাইল নাম্বার দিন (01XXXXXXXXX)";
 const PHONE_MAX_ERROR = "সর্বোচ্চ ১১ ডিজিটের নাম্বার দেওয়া যাবে";
-type DeliverySettings = { delivery_rules?: Array<{ id: string; min_order: number; fee: number }>; home_nutrimix_popup_enabled?: boolean; home_nutrimix_product_name?: string; home_nutrimix_product_price?: number; home_nutrimix_product_old_price?: number; home_nutrimix_product_image?: string; home_nutrimix_popup_heading?: string; home_nutrimix_popup_description?: string; home_nutrimix_accept_text?: string; home_nutrimix_decline_text?: string };
+type DeliverySettings = { minimum_home_order?: number; delivery_rules?: Array<{ id: string; min_order: number; fee: number }>; home_nutrimix_popup_enabled?: boolean; home_nutrimix_product_name?: string; home_nutrimix_product_price?: number; home_nutrimix_product_old_price?: number; home_nutrimix_product_image?: string; home_nutrimix_popup_heading?: string; home_nutrimix_popup_description?: string; home_nutrimix_accept_text?: string; home_nutrimix_decline_text?: string };
 function parseRepeatWait(message: string): number | null { const match = message.match(/(\d+)\s*মিনিট\s*অপেক্ষা/i); if (!match) return null; const minutes = Number(match[1]); return Number.isFinite(minutes) && minutes > 0 ? minutes * 60 : null; }
 function formatCountdown(seconds: number) { const h = Math.floor(seconds / 3600); const m = Math.floor((seconds % 3600) / 60); const s = seconds % 60; return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`; }
 
@@ -35,7 +35,7 @@ function Checkout() {
     return () => { active = false; };
   }, []);
   const items = useCart((s) => s.items); const setQty = useCart((s) => s.setQty); const remove = useCart((s) => s.remove); const subtotal = useCart((s) => s.subtotal()); const clear = useCart((s) => s.clear); const navigate = useNavigate(); const runPlaceOrder = useServerFn(placeOrder); const runCreateHomeIntent = useServerFn(createHomeCheckoutIntent); const runFinalizeHomeIntent = useServerFn(finalizeLandingCheckoutIntent);
-  const { data: settingsRow, isFetching: settingsLoading } = useQuery({ ...publicSiteSettingsQuery, staleTime: 0, refetchOnMount: "always", refetchOnWindowFocus: true }); const settings = ((settingsRow?.settings as DeliverySettings) ?? {}) as DeliverySettings; const deliveryInfo = getDeliveryInfo(subtotal, settings.delivery_rules); const delivery = deliveryInfo.delivery; const total = deliveryInfo.total;
+  const { data: settingsRow, isFetching: settingsLoading } = useQuery({ ...publicSiteSettingsQuery, staleTime: 0, refetchOnMount: "always", refetchOnWindowFocus: true }); const settings = ((settingsRow?.settings as DeliverySettings) ?? {}) as DeliverySettings; const configuredMinimumHomeOrder = Number(settings.minimum_home_order ?? 200); const minimumHomeOrder = Number.isFinite(configuredMinimumHomeOrder) ? Math.max(0, Math.floor(configuredMinimumHomeOrder)) : 200; const deliveryInfo = getDeliveryInfo(subtotal, settings.delivery_rules); const delivery = deliveryInfo.delivery; const total = deliveryInfo.total;
   const [submitting, setSubmitting] = useState(false); const [nutrimixPopupOpen, setNutrimixPopupOpen] = useState(false); const [noteOpen, setNoteOpen] = useState(false); const [altPhoneOpen, setAltPhoneOpen] = useState(false); const [form, setForm] = useState({ name: "", phone: "", altPhone: "", address: "", note: "", zone: "all" }); const [phoneErr, setPhoneErr] = useState(""); const [blockedOpen, setBlockedOpen] = useState(false); const [repeatOrderMessage, setRepeatOrderMessage] = useState(""); const [repeatOrderSeconds, setRepeatOrderSeconds] = useState(0);
   const placedSuccessfully = useRef(false); const submitLockRef = useRef(false); const homeIntentIdRef = useRef<string | null>(null); const phoneValid = PHONE_RE.test(normalizeBdPhone(form.phone)); const firedICRef = useRef(false);
   useEffect(() => { if (repeatOrderSeconds <= 0) return; const timer = window.setInterval(() => setRepeatOrderSeconds((seconds) => Math.max(0, seconds - 1)), 1000); return () => window.clearInterval(timer); }, [repeatOrderSeconds > 0]);
@@ -93,7 +93,8 @@ function Checkout() {
     if (!phoneValid) { const msg = toAsciiDigits(form.phone).replace(/[^\\d]/g, "").length > 11 ? PHONE_MAX_ERROR : PHONE_ERROR; setPhoneErr(msg); return toast.error(msg); }
     if (form.altPhone.trim() && !PHONE_RE.test(form.altPhone)) return toast.error(PHONE_ERROR);
     if (!form.address.trim()) return toast.error("ঠিকানা দিন");
-    if (settingsLoading) return toast.error("অফার সেটিংস লোড হচ্ছে, একটু পর আবার চেষ্টা করুন");
+    if (settingsLoading) return toast.error("সেটিংস লোড হচ্ছে, একটু পর আবার চেষ্টা করুন");
+    if (minimumHomeOrder > 0 && subtotal < minimumHomeOrder) return toast.error(`ন্যূনতম ${minimumHomeOrder} টাকার পণ্য অর্ডার করতে হবে। আরও ${Math.max(0, minimumHomeOrder - subtotal)} টাকার পণ্য যোগ করুন।`);
     if (submitLockRef.current) return;
     submitLockRef.current = true;
     setSubmitting(true);
