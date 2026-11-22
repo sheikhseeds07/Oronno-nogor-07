@@ -35,9 +35,16 @@ type Input = z.infer<typeof InputSchema>;
 const LandingOrderInputSchema = InputSchema.extend({ landing_slug: z.string().min(1).max(200) });
 
 
-function resolveMarketingSource(inputSource?: string | null): "facebook_ads" | "tiktok_ads" | "organic" | "direct" | "unknown" {
-  // Prefer the explicit client attribution sent with the checkout request.
+function resolveMarketingSource(inputSource?: string | null, sourceUrl?: string | null): "facebook_ads" | "tiktok_ads" | "organic" | "direct" | "unknown" {
+  // Prefer explicit client attribution, then inspect the original landing URL.
   if (inputSource === "facebook_ads" || inputSource === "tiktok_ads" || inputSource === "organic" || inputSource === "direct") return inputSource;
+  try {
+    const params = new URL(sourceUrl || "").searchParams;
+    const utm = (params.get("utm_source") || "").toLowerCase();
+    if (params.has("fbclid") || ["facebook", "facebook_ads", "meta", "meta_ads", "instagram", "instagram_ads", "fb", "ig"].includes(utm)) return "facebook_ads";
+    if (params.has("ttclid") || ["tiktok", "tiktok_ads", "tt"].includes(utm)) return "tiktok_ads";
+    if (["google", "bing", "yahoo"].includes(utm)) return "organic";
+  } catch { /* A missing or invalid source URL is not fatal. */ }
   if (getCookie("_fbc")) return "facebook_ads";
   if (getCookie("_ttclid")) return "tiktok_ads";
   const saved = getCookie("_oronno_marketing_source");
@@ -45,14 +52,14 @@ function resolveMarketingSource(inputSource?: string | null): "facebook_ads" | "
   return "unknown";
 }
 
-async function saveOrderMarketingSource(orderId: string, inputSource?: string | null) {
-  const marketingSource = resolveMarketingSource(inputSource);
+async function saveOrderMarketingSource(orderId: string, inputSource?: string | null, sourceUrl?: string | null) {
+  const marketingSource = resolveMarketingSource(inputSource, sourceUrl);
   const { error } = await supabaseAdmin.from("orders").update({ marketing_source: marketingSource }).eq("id", orderId);
   if (error) logger.error("[order attribution] failed to save marketing source:", error.message);
 }
 
-async function saveIntentMarketingSource(intentId: string, inputSource?: string | null) {
-  const marketingSource = resolveMarketingSource(inputSource);
+async function saveIntentMarketingSource(intentId: string, inputSource?: string | null, sourceUrl?: string | null) {
+  const marketingSource = resolveMarketingSource(inputSource, sourceUrl);
   const { error } = await (supabaseAdmin as any).from("landing_checkout_intents").update({ marketing_source: marketingSource }).eq("id", intentId);
   if (error) logger.error("[intent attribution] failed to save marketing source:", error.message);
 }
@@ -137,7 +144,7 @@ export const createLandingCheckoutIntent = createServerFn({ method: "POST" }).in
     throw new Error(error.message || "Checkout intent create failed");
   }
   if (!intentId || typeof intentId !== "string") throw new Error("Checkout intent create failed");
-  await saveIntentMarketingSource(intentId, data.marketing_source);
+  await saveIntentMarketingSource(intentId, data.marketing_source, data.source_url);
   // Keep ad-click details so a timer-finalized order still sends an attributable Purchase.
   try {
     await supabaseAdmin.rpc("set_landing_intent_tracking" as never, {
@@ -224,7 +231,7 @@ export const createHomeCheckoutIntent = createServerFn({ method: "POST" })
       p_alternative_phone: data.alternative_phone ?? null,
     } as never);
     if (error || !intentId || typeof intentId !== "string") throw new Error(error?.message || "Checkout intent create failed");
-    await saveIntentMarketingSource(intentId, data.marketing_source);
+    await saveIntentMarketingSource(intentId, data.marketing_source, data.source_url);
     try {
       await supabaseAdmin.rpc("set_landing_intent_tracking" as never, {
         p_intent_id: intentId, p_fbp: data.fbp ?? null, p_fbc: data.fbc ?? null,
@@ -324,7 +331,7 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
     throw new Error(rpcMessage || "Order create failed");
   }
   if (!orderId || typeof orderId !== "string") throw new Error("Order create failed");
-  await saveOrderMarketingSource(orderId, data.marketing_source);
+  await saveOrderMarketingSource(orderId, data.marketing_source, data.source_url);
   const total = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0) + effectiveDeliveryFee;
   try {
     const userAgent = getRequestHeader("user-agent") ?? null;
@@ -386,7 +393,7 @@ export const placeLandingOrder = createServerFn({ method: "POST" }).inputValidat
     if (/blocked/i.test(rpcMessage)) throw new Error(`${BLOCKED_ORDER_CODE}: ${BLOCKED_ORDER_MESSAGE}`);
     throw new Error(rpcMessage || "Checkout intent create failed");
   }
-  await saveIntentMarketingSource(intentId, data.marketing_source);
+  await saveIntentMarketingSource(intentId, data.marketing_source, data.source_url);
 
   const { data: orderId, error: orderError } = await supabaseAdmin.rpc("finalize_landing_checkout_intent" as never, {
     p_intent_id: intentId,
@@ -398,7 +405,7 @@ export const placeLandingOrder = createServerFn({ method: "POST" }).inputValidat
     throw new Error(rpcMessage || "Order create failed");
   }
   if (!orderId || typeof orderId !== "string") throw new Error("Order create failed");
-  await saveOrderMarketingSource(orderId, data.marketing_source);
+  await saveOrderMarketingSource(orderId, data.marketing_source, data.source_url);
   const subtotal = offer.price * requested.quantity;
   try {
     const userAgent = getRequestHeader("user-agent") ?? null;
