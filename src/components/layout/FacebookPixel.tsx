@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { getCachedPixelId, setCachedPixelId, flushFbqQueue, trackPageView } from "@/lib/fbq";
+import { captureMarketingSource } from "@/lib/fb-context";
 
 type Props = { eager?: boolean };
 
@@ -53,6 +54,7 @@ export function FacebookPixel({ eager = true }: Props) {
       if (runtime.__oronnoFacebookPixelOwner) return;
       runtime.__oronnoFacebookPixelOwner = true;
 
+      captureMarketingSource();
       const pageView = () => {
         const path = window.location.pathname + window.location.search;
         if (window.location.pathname.startsWith("/admin") || path === lastPath) return;
