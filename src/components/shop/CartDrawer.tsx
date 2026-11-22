@@ -41,7 +41,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   if (!open) return null;
 
   const goToCheckout = () => {
-    if (enforceMinimumOrder && subtotal < minimumHomeOrder) { setMinimumOpen(true); return; }
+    if (enforceMinimumOrder && minimumHomeOrder > 0 && subtotal < minimumHomeOrder) { setMinimumOpen(true); return; }
     onClose();
     void navigate({ to: "/checkout" });
   };
@@ -98,7 +98,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                 <div className="rounded-xl border border-amber-100 bg-amber-50/70 px-2.5 py-2 text-left"><div className="text-[8px] font-bold text-amber-700/70">আরও কিনতে হবে</div><div className="mt-0.5 text-base font-black text-amber-700">{taka(amountRemaining)}</div></div>
               </div>
 
-              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-gradient-to-r from-brand to-emerald-400 transition-[width] duration-500" style={{ width: `${Math.min(100, (subtotal / minimumHomeOrder) * 100)}%` }} /></div>
+              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-gradient-to-r from-brand to-emerald-400 transition-[width] duration-500" style={{ width: `${minimumHomeOrder > 0 ? Math.min(100, (subtotal / minimumHomeOrder) * 100) : 100}%` }} /></div>
               <div className="mt-1 flex justify-between text-[8px] font-bold text-slate-400"><span>বর্তমান {taka(subtotal)}</span><span>ন্যূনতম {taka(minimumHomeOrder)}</span></div>
 
               <Link to="/shop" onClick={() => { setMinimumOpen(false); onClose(); }} className="group mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-brand to-brand-dark text-xs font-extrabold text-white shadow-[0_9px_22px_-11px_rgba(20,83,45,.8)] transition hover:-translate-y-0.5 hover:shadow-[0_13px_26px_-11px_rgba(20,83,45,.85)] active:scale-[.98]">আরও কিছু কিনতে চাই <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" /></Link>
