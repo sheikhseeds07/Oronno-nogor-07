@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/personal-supabase/client";
-import { writePublicSettingsCache } from "@/lib/public-settings-cache";
+import { readPublicSettingsCacheEntry, writePublicSettingsCache } from "@/lib/public-settings-cache";
 
 export type PublicSiteSettings = Record<string, unknown> & {
   site_name?: string;
@@ -22,27 +22,37 @@ export type PublicSiteSettings = Record<string, unknown> & {
 
 export type PublicSiteSettingsRow = { settings: PublicSiteSettings } | null;
 
+let serverSettingsCache: { at: number; value: PublicSiteSettingsRow } | null = null;
+const SETTINGS_CACHE_TTL_MS = 5 * 60_000;
 
 /**
- * Public settings are configuration, not long-lived content. In particular,
- * delivery charges must reflect the admin setting on the next checkout visit.
- * localStorage is kept only for fast first paint; public pages revalidate at
- * a short interval instead of issuing a Supabase request on every mount/focus.
+ * Public settings use a short five-minute cache to protect Supabase from
+ * repeated reads. Browser cache timestamps are preserved so expired values
+ * never become artificially fresh during hydration. Admin saves write through
+ * to both the browser cache and React Query cache.
  */
 export const publicSiteSettingsQuery = {
   queryKey: ["site-settings-public"] as const,
+  initialData: (): PublicSiteSettingsRow | undefined => {
+    const cached = readPublicSettingsCacheEntry<PublicSiteSettings>();
+    return cached ? { settings: cached.value } : undefined;
+  },
+  initialDataUpdatedAt: (): number | undefined =>
+    readPublicSettingsCacheEntry<PublicSiteSettings>()?.savedAt,
   queryFn: async (): Promise<PublicSiteSettingsRow> => {
+    if (typeof window === "undefined" && serverSettingsCache && Date.now() - serverSettingsCache.at < SETTINGS_CACHE_TTL_MS) {
+      return serverSettingsCache.value;
+    }
     const { data, error } = await supabase.from("site_settings").select("settings").maybeSingle();
     if (error) throw error;
     const settings = (data?.settings as PublicSiteSettings | null) ?? {};
     const value = { settings };
+    if (typeof window === "undefined") serverSettingsCache = { at: Date.now(), value };
     writePublicSettingsCache(settings);
     return value;
   },
-  // Delivery/minimum-order settings must reflect the latest admin value on
-  // each public-page visit; cached data is only used for the initial paint.
-  staleTime: 0,
-  refetchOnMount: "always",
+  staleTime: SETTINGS_CACHE_TTL_MS,
+  refetchOnMount: true,
   gcTime: 12 * 60 * 60_000,
   refetchOnWindowFocus: true,
   refetchOnReconnect: true,
