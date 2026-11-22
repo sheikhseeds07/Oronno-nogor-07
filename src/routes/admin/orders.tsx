@@ -689,7 +689,7 @@ function OrdersTable({
         if (!alive || !result || result.error || !result.updatedIds?.length) return;
         const { data: changedRows, error } = await supabase
           .from("orders")
-          .select("id,invoice_no,status,source,customer_name,customer_phone,alternative_phone,customer_address,thana,district,total,courier_consignment,courier_display_name,printed_at,created_at,updated_at,shipped_at,created_by,assigned_to,originated_from_incomplete,originated_from_import,notes,order_items(id,product_name,quantity,price,product_id)")
+          .select("id,invoice_no,status,source,marketing_source,customer_name,customer_phone,alternative_phone,customer_address,thana,district,total,courier_consignment,courier_display_name,printed_at,created_at,updated_at,shipped_at,created_by,assigned_to,originated_from_incomplete,originated_from_import,notes,order_items(id,product_name,quantity,price,product_id)")
           .in("id", result.updatedIds);
         if (error || !changedRows?.length) return;
         const patched = await attachProductImages((changedRows ?? []) as unknown as OrderRow[]);
@@ -722,7 +722,7 @@ function OrdersTable({
     const list = (filter === "all" ? statuses : [filter]).filter((status) => status !== "incomplete");
     let query = supabase
       .from("orders")
-      .select("id,invoice_no,status,source,customer_name,customer_phone,alternative_phone,customer_address,thana,district,total,courier_consignment,courier_display_name,printed_at,created_at,updated_at,shipped_at,created_by,assigned_to,originated_from_incomplete,originated_from_import,notes,order_items(id,product_name,quantity,price,product_id)", { count: "exact" })
+      .select("id,invoice_no,status,source,marketing_source,customer_name,customer_phone,alternative_phone,customer_address,thana,district,total,courier_consignment,courier_display_name,printed_at,created_at,updated_at,shipped_at,created_by,assigned_to,originated_from_incomplete,originated_from_import,notes,order_items(id,product_name,quantity,price,product_id)", { count: "exact" })
       .in("status", list as Exclude<OrderStatus, "incomplete">[]);
     query = mode === "list"
       ? (isShippedFilter
@@ -1602,7 +1602,7 @@ type OrderItemRow = {
 };
 
 type OrderRow = {
-  id: string; invoice_no: string | null; source?: "web" | "manual" | "messenger" | "incomplete" | null; customer_name: string;
+  id: string; invoice_no: string | null; source?: "web" | "manual" | "messenger" | "incomplete" | null; marketing_source?: "facebook_ads" | "tiktok_ads" | "organic" | "direct" | "unknown" | null; customer_name: string;
   customer_phone: string; alternative_phone?: string | null; customer_address?: string | null;
   thana?: string | null; district?: string | null;
   created_at: string; updated_at?: string | null; total: number; status: OrderStatus;
@@ -2301,7 +2301,10 @@ function OrdersTableRows({
                     const sourceMeta = (() => {
                       if (o.source === "manual") return { label: "Manual Order", className: "text-amber-700", Icon: ShoppingCart };
                       if (o.source === "messenger") return { label: "Messenger", className: "text-violet-700", Icon: MessageCircle };
-                      if (o.source === "web") return { label: "Website", className: "text-emerald-700", Icon: Globe };
+                      if (o.marketing_source === "facebook_ads") return { label: "Facebook Ads", className: "text-blue-600", Icon: Globe };
+                      if (o.marketing_source === "tiktok_ads") return { label: "TikTok Ads", className: "text-pink-600", Icon: MessageCircle };
+                      if (o.marketing_source === "organic") return { label: "Organic", className: "text-emerald-700", Icon: Globe };
+                      if (o.marketing_source === "direct") return { label: "Direct", className: "text-slate-600", Icon: Globe };
                       return { label: "Unknown", className: "text-slate-500", Icon: AlertCircle };
                     })();
                     if (lockedByOther) {
