@@ -89,7 +89,7 @@ function ProductPage() {
     trackAddToCart({ id: p.id, name: p.name, price, quantity: qty });
     const currentPath = window.location.pathname;
     const isLandingPage = currentPath === "/landing" || currentPath.startsWith("/landing/");
-    if (!isLandingPage && nextSubtotal < minimumHomeOrder) { setMinimumOrderOpen(true); return; }
+    if (!isLandingPage && minimumHomeOrder > 0 && nextSubtotal < minimumHomeOrder) { setMinimumOrderOpen(true); return; }
     navigate({ to: "/checkout" });
   };
   const shareProduct = async () => { const url = window.location.href; try { if (navigator.share) await navigator.share({ title: p.name, text: "Sheikh Seeds-এর এই পণ্যটি দেখুন", url }); else { await navigator.clipboard.writeText(url); setCopied(true); window.setTimeout(() => setCopied(false), 1600); } } catch {} };
