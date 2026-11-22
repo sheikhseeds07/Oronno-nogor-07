@@ -36,11 +36,12 @@ const LandingOrderInputSchema = InputSchema.extend({ landing_slug: z.string().mi
 
 
 function resolveMarketingSource(inputSource?: string | null): "facebook_ads" | "tiktok_ads" | "organic" | "direct" | "unknown" {
-  const saved = getCookie("_oronno_marketing_source");
-  if (saved === "facebook_ads" || saved === "tiktok_ads" || saved === "organic" || saved === "direct") return saved;
+  // Prefer the explicit client attribution sent with the checkout request.
+  if (inputSource === "facebook_ads" || inputSource === "tiktok_ads" || inputSource === "organic" || inputSource === "direct") return inputSource;
   if (getCookie("_fbc")) return "facebook_ads";
   if (getCookie("_ttclid")) return "tiktok_ads";
-  if (inputSource === "facebook_ads" || inputSource === "tiktok_ads" || inputSource === "organic" || inputSource === "direct") return inputSource;
+  const saved = getCookie("_oronno_marketing_source");
+  if (saved === "facebook_ads" || saved === "tiktok_ads" || saved === "organic" || saved === "direct") return saved;
   return "unknown";
 }
 
@@ -162,7 +163,8 @@ export const finalizeLandingCheckoutIntent = createServerFn({ method: "POST" }).
     throw new Error(error.message || "Order create failed");
   }
   if (!orderId || typeof orderId !== "string") throw new Error("Order create failed");
-  await saveOrderMarketingSource(orderId, data.marketing_source);
+  // finalize_landing_checkout_intent copies the durable attribution saved on
+  // the checkout intent. Do not overwrite it with a late "unknown" browser value.
 
   // The database reads the finalized intent/order and dispatches only when the
   // supplied order ID is exactly linked to this intent. No private table reads
