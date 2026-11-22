@@ -689,7 +689,7 @@ function OrdersTable({
         if (!alive || !result || result.error || !result.updatedIds?.length) return;
         const { data: changedRows, error } = await supabase
           .from("orders")
-          .select("id,invoice_no,status,customer_name,customer_phone,alternative_phone,customer_address,thana,district,total,courier_consignment,courier_display_name,printed_at,created_at,updated_at,shipped_at,created_by,assigned_to,originated_from_incomplete,originated_from_import,notes,order_items(id,product_name,quantity,price,product_id)")
+          .select("id,invoice_no,status,source,customer_name,customer_phone,alternative_phone,customer_address,thana,district,total,courier_consignment,courier_display_name,printed_at,created_at,updated_at,shipped_at,created_by,assigned_to,originated_from_incomplete,originated_from_import,notes,order_items(id,product_name,quantity,price,product_id)")
           .in("id", result.updatedIds);
         if (error || !changedRows?.length) return;
         const patched = await attachProductImages((changedRows ?? []) as unknown as OrderRow[]);
@@ -722,7 +722,7 @@ function OrdersTable({
     const list = (filter === "all" ? statuses : [filter]).filter((status) => status !== "incomplete");
     let query = supabase
       .from("orders")
-      .select("id,invoice_no,status,customer_name,customer_phone,alternative_phone,customer_address,thana,district,total,courier_consignment,courier_display_name,printed_at,created_at,updated_at,shipped_at,created_by,assigned_to,originated_from_incomplete,originated_from_import,notes,order_items(id,product_name,quantity,price,product_id)", { count: "exact" })
+      .select("id,invoice_no,status,source,customer_name,customer_phone,alternative_phone,customer_address,thana,district,total,courier_consignment,courier_display_name,printed_at,created_at,updated_at,shipped_at,created_by,assigned_to,originated_from_incomplete,originated_from_import,notes,order_items(id,product_name,quantity,price,product_id)", { count: "exact" })
       .in("status", list as Exclude<OrderStatus, "incomplete">[]);
     query = mode === "list"
       ? (isShippedFilter
@@ -1602,7 +1602,7 @@ type OrderItemRow = {
 };
 
 type OrderRow = {
-  id: string; invoice_no: string | null; customer_name: string;
+  id: string; invoice_no: string | null; source?: "web" | "manual" | "messenger" | "incomplete" | null; customer_name: string;
   customer_phone: string; alternative_phone?: string | null; customer_address?: string | null;
   thana?: string | null; district?: string | null;
   created_at: string; updated_at?: string | null; total: number; status: OrderStatus;
@@ -2298,6 +2298,12 @@ function OrdersTableRows({
                     };
                     const creatorName = o.created_by ? creatorMap?.get(o.created_by) : undefined;
                     const assignedName = o.assigned_to ? creatorMap?.get(o.assigned_to) : undefined;
+                    const sourceMeta = (() => {
+                      if (o.source === "manual") return { label: "Manual Order", className: "text-amber-700", Icon: ShoppingCart };
+                      if (o.source === "messenger") return { label: "Messenger", className: "text-violet-700", Icon: MessageCircle };
+                      if (o.source === "web") return { label: "Website", className: "text-emerald-700", Icon: Globe };
+                      return { label: "Unknown", className: "text-slate-500", Icon: AlertCircle };
+                    })();
                     if (lockedByOther) {
                       return (
                         <div className="flex flex-col items-end">
@@ -2307,6 +2313,7 @@ function OrdersTableRows({
                           </Link>
                           {isAdmin && assignedName && <span className="text-[10px] text-slate-600 font-semibold mt-1 max-w-[150px] truncate">Assigned to: {assignedName}</span>}
                         {creatorName && <span className="text-[10px] text-red-600 font-semibold mt-1 max-w-[150px] truncate">Created by: {creatorName}</span>}
+                        {<span className={`inline-flex items-center justify-end gap-1 text-[10px] font-semibold mt-1 max-w-[150px] truncate ${sourceMeta.className}`} title={`Order source: ${sourceMeta.label}`}><sourceMeta.Icon className="w-3 h-3 shrink-0" />{sourceMeta.label}</span>}
                         </div>
                       );
                     }
@@ -2317,6 +2324,7 @@ function OrdersTableRows({
                         </Link>
                         {isAdmin && assignedName && <span className="text-[10px] text-slate-600 font-semibold mt-1 max-w-[150px] truncate">Assigned to: {assignedName}</span>}
                         {creatorName && <span className="text-[10px] text-red-600 font-semibold mt-1 max-w-[150px] truncate">Created by: {creatorName}</span>}
+                        {<span className={`inline-flex items-center justify-end gap-1 text-[10px] font-semibold mt-1 max-w-[150px] truncate ${sourceMeta.className}`} title={`Order source: ${sourceMeta.label}`}><sourceMeta.Icon className="w-3 h-3 shrink-0" />{sourceMeta.label}</span>}
                       </div>
                     );
                   })()}
