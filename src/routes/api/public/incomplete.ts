@@ -33,6 +33,24 @@ export const Route = createFileRoute("/api/public/incomplete")({
             })),
           });
           if (error) throw error;
+          if (data) {
+            const update: Record<string, string> = {};
+            const sourceUrl = typeof body?.source_url === "string" ? body.source_url.slice(0, 2000) : "";
+            const inputSource = String(body?.marketing_source ?? "");
+            const classified = /fbclid=|utm_source=(fb|ig|facebook|instagram|meta)([&#]|$)/i.test(sourceUrl)
+              ? "facebook_ads"
+              : /ttclid=|utm_source=(tiktok|tt)([&#]|$)/i.test(sourceUrl)
+                ? "tiktok_ads"
+                : ["facebook_ads", "tiktok_ads", "organic", "direct"].includes(inputSource)
+                  ? inputSource
+                  : "";
+            if (classified) update.marketing_source = classified;
+            if (sourceUrl) update.source_url = sourceUrl;
+            if (Object.keys(update).length) {
+              const { error: attributionError } = await supabaseAdmin.from("incomplete_orders").update(update).eq("id", data);
+              if (attributionError) logger.error("[incomplete] attribution save failed", attributionError.message);
+            }
+          }
           return Response.json({ ok: true, id: data });
         } catch (error) {
           logger.error("[incomplete] save failed", error);
