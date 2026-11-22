@@ -114,7 +114,7 @@ function Products() {
         <button type="button" role="tab" aria-selected={activeSection === "all"} onClick={() => setActiveSection("all")} className={`px-4 py-2 rounded-lg text-sm font-semibold border ${activeSection === "all" ? "bg-brand text-white border-brand" : "bg-white text-foreground hover:bg-muted"}`}>All Product <span className="ml-1 opacity-80">({products?.length ?? 0})</span></button>
       </div>
 
-      {activeSection === "home" ? <HomeProductOrganizer products={homeProducts as Array<{ id: string; name: string; category_id: string | null; sort_order?: number | null; price: number; sale_price?: number | null; images?: string[] }>} categories={(categories ?? []) as Array<{ id: string; name: string; slug: string; parent_id: string | null; display_order: number }>} /> : <>
+      {activeSection === "home" ? <HomeProductOrganizer products={homeProducts as Product[]} categories={(categories ?? []) as Array<{ id: string; name: string; slug: string; parent_id: string | null; display_order: number }>} onEdit={(product) => setEditing(product as Product)} /> : <>
       <input placeholder="খুঁজুন..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full md:w-80 border rounded-lg px-3 py-2 mb-4" />
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-white p-3">
@@ -152,7 +152,7 @@ function Products() {
                   </td>
                   <td className="p-3 text-center">{p.is_active ? <span className="bg-brand-light text-brand-dark text-xs px-2 py-0.5 rounded">সক্রিয়</span> : <span className="bg-muted text-xs px-2 py-0.5 rounded">নিষ্ক্রিয়</span>}</td>
                   <td className="p-3 text-right">
-                    <button onClick={() => setEditing(p as Product)} className="p-1.5 hover:bg-muted rounded"><Edit className="w-4 h-4" /></button>
+                    <button type="button" onClick={() => setEditing(p as Product)} className="inline-flex items-center gap-1.5 rounded-lg border border-brand/30 bg-brand/5 px-3 py-2 text-xs font-bold text-brand hover:bg-brand hover:text-white"><Edit className="w-3.5 h-3.5" />এডিট</button>
                     <button onClick={() => remove(p.id!)} className="p-1.5 hover:bg-destructive/10 text-destructive rounded"><Trash2 className="w-4 h-4" /></button>
                   </td>
                 </tr>
