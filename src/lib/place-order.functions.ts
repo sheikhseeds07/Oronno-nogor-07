@@ -35,20 +35,36 @@ type Input = z.infer<typeof InputSchema>;
 const LandingOrderInputSchema = InputSchema.extend({ landing_slug: z.string().min(1).max(200) });
 
 
-function resolveMarketingSource(inputSource?: string | null, sourceUrl?: string | null): "facebook_ads" | "tiktok_ads" | "organic" | "direct" | "unknown" {
-  // Prefer explicit client attribution, then inspect the original landing URL.
-  if (inputSource === "facebook_ads" || inputSource === "tiktok_ads" || inputSource === "organic" || inputSource === "direct") return inputSource;
+function classifyMarketingSourceFromUrl(rawUrl?: string | null): "facebook_ads" | "tiktok_ads" | "organic" | null {
+  if (!rawUrl) return null;
   try {
-    const params = new URL(sourceUrl || "").searchParams;
-    const utm = (params.get("utm_source") || "").toLowerCase();
+    const url = new URL(rawUrl);
+    const params = url.searchParams;
+    const utm = (params.get("utm_source") || "").trim().toLowerCase();
     if (params.has("fbclid") || ["facebook", "facebook_ads", "meta", "meta_ads", "instagram", "instagram_ads", "fb", "ig"].includes(utm)) return "facebook_ads";
     if (params.has("ttclid") || ["tiktok", "tiktok_ads", "tt"].includes(utm)) return "tiktok_ads";
-    if (["google", "bing", "yahoo"].includes(utm)) return "organic";
-  } catch { /* A missing or invalid source URL is not fatal. */ }
-  if (getCookie("_fbc")) return "facebook_ads";
-  if (getCookie("_ttclid")) return "tiktok_ads";
+    if (["google", "bing", "yahoo", "duckduckgo"].includes(utm)) return "organic";
+    const host = url.hostname.toLowerCase();
+    if (/(^|\\.)((facebook|fb|instagram)\\.com|fb\\.me)$/.test(host)) return "facebook_ads";
+    if (/(^|\\.)tiktok\\.com$/.test(host)) return "tiktok_ads";
+    if (/(^|\\.)(google|bing|yahoo|duckduckgo)\\./.test(host)) return "organic";
+  } catch { /* A missing or invalid URL is not fatal. */ }
+  return null;
+}
+
+function resolveMarketingSource(inputSource?: string | null, sourceUrl?: string | null): "facebook_ads" | "tiktok_ads" | "organic" | "direct" | "unknown" {
+  // A classified client value is strongest; then inspect the original URL.
+  if (inputSource === "facebook_ads" || inputSource === "tiktok_ads" || inputSource === "organic" || inputSource === "direct") return inputSource;
+  const fromUrl = classifyMarketingSourceFromUrl(sourceUrl);
+  if (fromUrl) return fromUrl;
+  // Keep the durable first-visit attribution ahead of platform click-id cookies:
+  // both networks' cookies can coexist after a customer visits multiple ads.
   const saved = getCookie("_oronno_marketing_source");
   if (saved === "facebook_ads" || saved === "tiktok_ads" || saved === "organic" || saved === "direct") return saved;
+  if (getCookie("_ttclid")) return "tiktok_ads";
+  if (getCookie("_fbc")) return "facebook_ads";
+  const refererSource = classifyMarketingSourceFromUrl(getRequestHeader("referer"));
+  if (refererSource) return refererSource;
   return "unknown";
 }
 
