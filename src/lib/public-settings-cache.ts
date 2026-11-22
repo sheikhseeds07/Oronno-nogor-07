@@ -3,17 +3,21 @@ const TTL_MS = 24 * 60 * 60 * 1000;
 
 type CacheEnvelope<T> = { savedAt: number; value: T };
 
-export function readPublicSettingsCache<T>(): T | undefined {
+export function readPublicSettingsCacheEntry<T>(): CacheEnvelope<T> | undefined {
   if (typeof window === "undefined") return undefined;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return undefined;
     const parsed = JSON.parse(raw) as CacheEnvelope<T>;
     if (!parsed || !parsed.value || Date.now() - parsed.savedAt >= TTL_MS) return undefined;
-    return parsed.value;
+    return parsed;
   } catch {
     return undefined;
   }
+}
+
+export function readPublicSettingsCache<T>(): T | undefined {
+  return readPublicSettingsCacheEntry<T>()?.value;
 }
 
 export function writePublicSettingsCache<T>(value: T) {
