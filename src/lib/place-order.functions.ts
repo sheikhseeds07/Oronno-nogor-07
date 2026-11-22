@@ -50,6 +50,12 @@ async function saveOrderMarketingSource(orderId: string, inputSource?: string | 
   if (error) logger.error("[order attribution] failed to save marketing source:", error.message);
 }
 
+async function saveIntentMarketingSource(intentId: string, inputSource?: string | null) {
+  const marketingSource = resolveMarketingSource(inputSource);
+  const { error } = await supabaseAdmin.from("landing_checkout_intents").update({ marketing_source: marketingSource }).eq("id", intentId);
+  if (error) logger.error("[intent attribution] failed to save marketing source:", error.message);
+}
+
 type LandingAddon = { product_id?: string | null; name?: string; price?: number; delivery_fee?: number | null };
 
 const LandingIntentInputSchema = z.object({
@@ -130,6 +136,7 @@ export const createLandingCheckoutIntent = createServerFn({ method: "POST" }).in
     throw new Error(error.message || "Checkout intent create failed");
   }
   if (!intentId || typeof intentId !== "string") throw new Error("Checkout intent create failed");
+  await saveIntentMarketingSource(intentId, data.marketing_source);
   // Keep ad-click details so a timer-finalized order still sends an attributable Purchase.
   try {
     await supabaseAdmin.rpc("set_landing_intent_tracking" as never, {
@@ -215,6 +222,7 @@ export const createHomeCheckoutIntent = createServerFn({ method: "POST" })
       p_alternative_phone: data.alternative_phone ?? null,
     } as never);
     if (error || !intentId || typeof intentId !== "string") throw new Error(error?.message || "Checkout intent create failed");
+    await saveIntentMarketingSource(intentId, data.marketing_source);
     try {
       await supabaseAdmin.rpc("set_landing_intent_tracking" as never, {
         p_intent_id: intentId, p_fbp: data.fbp ?? null, p_fbc: data.fbc ?? null,
@@ -376,6 +384,7 @@ export const placeLandingOrder = createServerFn({ method: "POST" }).inputValidat
     if (/blocked/i.test(rpcMessage)) throw new Error(`${BLOCKED_ORDER_CODE}: ${BLOCKED_ORDER_MESSAGE}`);
     throw new Error(rpcMessage || "Checkout intent create failed");
   }
+  await saveIntentMarketingSource(intentId, data.marketing_source);
 
   const { data: orderId, error: orderError } = await supabaseAdmin.rpc("finalize_landing_checkout_intent" as never, {
     p_intent_id: intentId,
