@@ -30,9 +30,25 @@ const BdPhoneSchema = z.preprocess(
   (value) => typeof value === "string" ? normalizeBdPhoneServer(value) : value,
   z.string().regex(PHONE_RE, "সঠিক ১১ ডিজিটের বাংলাদেশি মোবাইল নাম্বার দিন (01XXXXXXXXX)"),
 );
-const InputSchema = z.object({ customer_name: z.string().min(1).max(255), customer_phone: BdPhoneSchema, alternative_phone: BdPhoneSchema.optional().nullable(), customer_address: z.string().min(1).max(1000), district: z.string().max(100).optional().nullable(), thana: z.string().max(100).optional().nullable(), notes: z.string().max(2000).optional().nullable(), delivery_fee: z.number().min(0).max(10000).default(50), items: z.array(ItemSchema).min(1).max(100), created_by: z.string().uuid().optional().nullable(), fbp: z.string().max(200).optional().nullable(), fbc: z.string().max(500).optional().nullable(), source_url: z.string().max(2000).optional().nullable(), checkout_session_id: z.string().max(200).optional().nullable() });
+const InputSchema = z.object({ customer_name: z.string().min(1).max(255), customer_phone: BdPhoneSchema, alternative_phone: BdPhoneSchema.optional().nullable(), customer_address: z.string().min(1).max(1000), district: z.string().max(100).optional().nullable(), thana: z.string().max(100).optional().nullable(), notes: z.string().max(2000).optional().nullable(), delivery_fee: z.number().min(0).max(10000).default(50), items: z.array(ItemSchema).min(1).max(100), created_by: z.string().uuid().optional().nullable(), fbp: z.string().max(200).optional().nullable(), fbc: z.string().max(500).optional().nullable(), source_url: z.string().max(2000).optional().nullable(), marketing_source: z.enum(["facebook_ads","tiktok_ads","organic","direct","unknown"]).optional(), checkout_session_id: z.string().max(200).optional().nullable() });
 type Input = z.infer<typeof InputSchema>;
 const LandingOrderInputSchema = InputSchema.extend({ landing_slug: z.string().min(1).max(200) });
+
+
+function resolveMarketingSource(inputSource?: string | null): "facebook_ads" | "tiktok_ads" | "organic" | "direct" | "unknown" {
+  const saved = getCookie("_oronno_marketing_source");
+  if (saved === "facebook_ads" || saved === "tiktok_ads" || saved === "organic" || saved === "direct") return saved;
+  if (getCookie("_fbc")) return "facebook_ads";
+  if (getCookie("_ttclid")) return "tiktok_ads";
+  if (inputSource === "facebook_ads" || inputSource === "tiktok_ads" || inputSource === "organic" || inputSource === "direct") return inputSource;
+  return "unknown";
+}
+
+async function saveOrderMarketingSource(orderId: string, inputSource?: string | null) {
+  const marketingSource = resolveMarketingSource(inputSource);
+  const { error } = await supabaseAdmin.from("orders").update({ marketing_source: marketingSource }).eq("id", orderId);
+  if (error) logger.error("[order attribution] failed to save marketing source:", error.message);
+}
 
 type LandingAddon = { product_id?: string | null; name?: string; price?: number; delivery_fee?: number | null };
 
@@ -49,6 +65,7 @@ const LandingIntentInputSchema = z.object({
   fbp: z.string().max(200).optional().nullable(),
   fbc: z.string().max(500).optional().nullable(),
   source_url: z.string().max(2000).optional().nullable(),
+  marketing_source: z.enum(["facebook_ads","tiktok_ads","organic","direct","unknown"]).optional(),
 });
 const LandingFinalizeInputSchema = z.object({
   intent_id: z.string().uuid(),
@@ -57,6 +74,7 @@ const LandingFinalizeInputSchema = z.object({
   fbp: z.string().max(200).optional().nullable(),
   fbc: z.string().max(500).optional().nullable(),
   source_url: z.string().max(2000).optional().nullable(),
+  marketing_source: z.enum(["facebook_ads","tiktok_ads","organic","direct","unknown"]).optional(),
 });
 
 const IncompleteInputSchema = z.object({ customer_name: z.string().max(255).optional().nullable(), customer_phone: BdPhoneSchema, customer_address: z.string().max(1000).optional().nullable(), delivery_zone: z.string().max(100).optional().nullable(), delivery_fee: z.number().min(0).max(10000), subtotal: z.number().min(0).max(10_000_000), total: z.number().min(0).max(10_000_000), note: z.string().max(2000).optional().nullable(), items: z.array(ItemSchema).min(1).max(100) });
@@ -137,6 +155,7 @@ export const finalizeLandingCheckoutIntent = createServerFn({ method: "POST" }).
     throw new Error(error.message || "Order create failed");
   }
   if (!orderId || typeof orderId !== "string") throw new Error("Order create failed");
+  await saveOrderMarketingSource(orderId, data.marketing_source);
 
   // The database reads the finalized intent/order and dispatches only when the
   // supplied order ID is exactly linked to this intent. No private table reads
@@ -167,6 +186,7 @@ const HomeCheckoutIntentInputSchema = z.object({
   fbp: z.string().max(200).optional().nullable(),
   fbc: z.string().max(500).optional().nullable(),
   source_url: z.string().max(2000).optional().nullable(),
+  marketing_source: z.enum(["facebook_ads","tiktok_ads","organic","direct","unknown"]).optional(),
 });
 export const createHomeCheckoutIntent = createServerFn({ method: "POST" })
   .inputValidator((input) => HomeCheckoutIntentInputSchema.parse(input))
@@ -294,6 +314,7 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
     throw new Error(rpcMessage || "Order create failed");
   }
   if (!orderId || typeof orderId !== "string") throw new Error("Order create failed");
+  await saveOrderMarketingSource(orderId, data.marketing_source);
   const total = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0) + effectiveDeliveryFee;
   try {
     const userAgent = getRequestHeader("user-agent") ?? null;
@@ -366,6 +387,7 @@ export const placeLandingOrder = createServerFn({ method: "POST" }).inputValidat
     throw new Error(rpcMessage || "Order create failed");
   }
   if (!orderId || typeof orderId !== "string") throw new Error("Order create failed");
+  await saveOrderMarketingSource(orderId, data.marketing_source);
   const subtotal = offer.price * requested.quantity;
   try {
     const userAgent = getRequestHeader("user-agent") ?? null;
