@@ -52,6 +52,6 @@ export const publicSiteSettingsQuery = {
   staleTime: 0,
   refetchOnMount: "always",
   gcTime: 12 * 60 * 60_000,
-  refetchOnWindowFocus: false,
+  refetchOnWindowFocus: true,
   refetchOnReconnect: true,
 };
