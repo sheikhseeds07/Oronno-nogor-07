@@ -1602,7 +1602,7 @@ type OrderItemRow = {
 };
 
 type OrderRow = {
-  id: string; invoice_no: string | null; source?: "web" | "manual" | "messenger" | "incomplete" | null; marketing_source?: "facebook_ads" | "tiktok_ads" | "organic" | "direct" | "unknown" | null; customer_name: string;
+  id: string; invoice_no: string | null; source?: "web" | "manual" | "messenger" | "incomplete" | null; marketing_source?: "facebook_ads" | "tiktok_ads" | "organic" | "direct" | "unknown" | "manual_order" | null; customer_name: string;
   customer_phone: string; alternative_phone?: string | null; customer_address?: string | null;
   thana?: string | null; district?: string | null;
   created_at: string; updated_at?: string | null; total: number; status: OrderStatus;
