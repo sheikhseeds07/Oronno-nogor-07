@@ -368,6 +368,7 @@ type IncompleteRow = {
   items: { id: string; name: string; price: number; quantity: number }[];
   created_at: string;
   updated_at: string;
+  marketing_source?: "facebook_ads" | "tiktok_ads" | "organic" | "direct" | "unknown" | null;
 };
 
 function IncompleteOrdersPanel() {
@@ -380,7 +381,7 @@ function IncompleteOrdersPanel() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("incomplete_orders")
-        .select("id,phone,customer_name,customer_address,delivery_zone,delivery_fee,subtotal,total,note,items,created_at,updated_at")
+        .select("id,phone,customer_name,customer_address,delivery_zone,delivery_fee,subtotal,total,note,items,created_at,updated_at,marketing_source")
         .order("updated_at", { ascending: false })
         .limit(200);
       if (error) throw new Error(error.message);
@@ -423,6 +424,7 @@ function IncompleteOrdersPanel() {
           delivery_fee: Number(row.delivery_fee),
           discount: 0,
           total: Number(row.total),
+          marketing_source: row.marketing_source ?? "unknown",
           items: row.items.map((it) => ({
             product_id: null,
             product_name: it.name,
