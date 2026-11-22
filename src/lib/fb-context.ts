@@ -75,8 +75,10 @@ export function captureMarketingSource(): MarketingSource {
   // platform click cookie override a more recent TikTok/Facebook visit.
   const saved = readCookie("_oronno_marketing_source") as MarketingSource | null;
   if (saved && ["facebook_ads", "tiktok_ads", "organic", "direct"].includes(saved)) return saved;
-  if (readCookie("_fbc")) return "facebook_ads";
+  // Click-id cookies are a fallback only. The saved source represents the
+  // most recent classified visit and must win over stale cookies from another ad network.
   if (readCookie("_ttclid")) return "tiktok_ads";
+  if (readCookie("_fbc")) return "facebook_ads";
   return "unknown";
 }
 
