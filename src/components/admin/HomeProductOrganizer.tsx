@@ -1,15 +1,15 @@
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, FolderOpen, GripVertical } from "lucide-react";
+import { ChevronLeft, ChevronRight, FolderOpen, GripVertical, Edit } from "lucide-react";
 import { supabase } from "@/lib/personal-supabase/client";
 import { SafeImage } from "@/components/SafeImage";
 import { taka } from "@/lib/format";
 import { toast } from "sonner";
 
 type Category = { id: string; name: string; slug: string; parent_id: string | null; display_order: number };
-type Product = { id: string; name: string; category_id: string | null; sort_order?: number | null; price: number; sale_price?: number | null; images?: string[] };
+type Product = { id: string; name: string; slug: string; stock: number; category_id: string | null; sort_order?: number | null; price: number; sale_price?: number | null; cost?: number | null; images?: string[]; sku?: string; description?: string; short_description?: string; is_active?: boolean; is_featured?: boolean; is_popular?: boolean; display_section?: "home" | "landing"; };
 
-export function HomeProductOrganizer({ products, categories }: { products: Product[]; categories: Category[] }) {
+export function HomeProductOrganizer({ products, categories, onEdit }: { products: Product[]; categories: Category[]; onEdit: (product: Product) => void }) {
   const qc = useQueryClient();
   const [rootId, setRootId] = useState<string | null>(null);
   const [subId, setSubId] = useState<string | null>(null);
@@ -64,7 +64,7 @@ export function HomeProductOrganizer({ products, categories }: { products: Produ
     <div key={item.id} draggable onDragStart={() => setDragId(item.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => { reorder(items, item.id, persistProductOrder); setDragId(null); }} onDragEnd={() => setDragId(null)} className={"flex items-center gap-3 rounded-xl border bg-white p-3 shadow-sm cursor-grab active:cursor-grabbing " + (dragId === item.id ? "opacity-40" : "")}>
       <GripVertical className="h-5 w-5 shrink-0 text-muted-foreground" /><SafeImage src={item.images?.[0] || "/placeholder.svg"} className="h-12 w-12 rounded-lg object-cover" alt="" />
       <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.name}</p><p className="text-xs text-muted-foreground">ক্রম {index + 1}</p></div>
-      <span className="text-sm font-bold">{taka(item.sale_price ?? item.price)}</span>
+      <span className="text-sm font-bold">{taka(item.sale_price ?? item.price)}</span><button type="button" onClick={(event) => { event.stopPropagation(); onEdit(item); }} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-brand/30 bg-brand/5 px-3 py-2 text-xs font-bold text-brand hover:bg-brand hover:text-white" aria-label={`${item.name} এডিট করুন`}><Edit className="h-3.5 w-3.5" />এডিট</button>
     </div>
   );
 
