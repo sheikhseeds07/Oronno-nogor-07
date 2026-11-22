@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { lookupCustomerByPhone, saveIncompleteCheckout } from "./place-order.functions";
+import { getFbContext } from "./fb-context";
 
 const PHONE_RE = /^01[3-9][0-9]{8}$/;
 const LS_PHONE = "ss_last_phone";
@@ -72,6 +73,7 @@ export function useCheckoutAutofill(params: {
       total: Number(params.total) || 0,
       note: form.note || null,
       items: params.items,
+      ...getFbContext(),
     });
     // Skip the network call entirely when nothing changed since the last save.
     if (snapshot === lastSavedRef.current) return;
