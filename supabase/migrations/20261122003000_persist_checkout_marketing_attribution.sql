@@ -12,14 +12,14 @@ begin
   if v_url = '' then return 'unknown'; end if;
   if v_url ~ '(^|[?&])fbclid='
      or v_url ~ '(^|[?&])utm_source=(fb|ig|facebook|facebook_ads|meta|meta_ads|instagram|instagram_ads)([&#]|$)'
-     or v_url ~ '(^|//)([a-z0-9-]+\\.)*(facebook\\.com|fb\\.com|fb\\.me|instagram\\.com)(/|[?#]|$)'
+     or v_url ~ '(^|//)([a-z0-9-]+\.)*(facebook\.com|fb\.com|fb\.me|instagram\.com)(/|[?#]|$)'
   then return 'facebook_ads'; end if;
   if v_url ~ '(^|[?&])ttclid='
      or v_url ~ '(^|[?&])utm_source=(tiktok|tiktok_ads|tt)([&#]|$)'
-     or v_url ~ '(^|//)([a-z0-9-]+\\.)*tiktok\\.com(/|[?#]|$)'
+     or v_url ~ '(^|//)([a-z0-9-]+\.)*tiktok\.com(/|[?#]|$)'
   then return 'tiktok_ads'; end if;
   if v_url ~ '(^|[?&])utm_source=(google|bing|yahoo|duckduckgo)([&#]|$)'
-     or v_url ~ '(^|//)([a-z0-9-]+\\.)*(google|bing|yahoo|duckduckgo)\\.'
+     or v_url ~ '(^|//)([a-z0-9-]+\.)*(google|bing|yahoo|duckduckgo)\.'
   then return 'organic'; end if;
   return 'unknown';
 end;
