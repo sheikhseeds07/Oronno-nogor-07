@@ -67,10 +67,17 @@ export function captureMarketingSource(): MarketingSource {
   if (typeof window === "undefined") return "unknown";
   const fromUrl = readMarketingSourceFromUrl();
   if (fromUrl) writeCookie("_oronno_marketing_source", fromUrl);
+  // Real click IDs must always beat an older saved "unknown" or stale source.
+  if (readCookie("_fbc")) {
+    writeCookie("_oronno_marketing_source", "facebook_ads");
+    return "facebook_ads";
+  }
+  if (readCookie("_ttclid")) {
+    writeCookie("_oronno_marketing_source", "tiktok_ads");
+    return "tiktok_ads";
+  }
   const saved = readCookie("_oronno_marketing_source") as MarketingSource | null;
-  if (saved && ["facebook_ads", "tiktok_ads", "organic", "direct", "unknown"].includes(saved)) return saved;
-  if (readCookie("_fbc")) return "facebook_ads";
-  if (readCookie("_ttclid")) return "tiktok_ads";
+  if (saved && ["facebook_ads", "tiktok_ads", "organic", "direct"].includes(saved)) return saved;
   return "unknown";
 }
 
