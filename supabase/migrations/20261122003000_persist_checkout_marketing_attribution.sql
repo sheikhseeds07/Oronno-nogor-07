@@ -1,3 +1,30 @@
+-- Expand referrer matching to Meta's redirect subdomains (l.facebook.com, lm.facebook.com)
+-- and TikTok redirect subdomains (vm.tiktok.com, vt.tiktok.com).
+create or replace function public.classify_marketing_source(p_url text)
+returns text
+language plpgsql
+immutable
+set search_path = ''
+as $$
+declare
+  v_url text := lower(coalesce(p_url, ''));
+begin
+  if v_url = '' then return 'unknown'; end if;
+  if v_url ~ '(^|[?&])fbclid='
+     or v_url ~ '(^|[?&])utm_source=(fb|ig|facebook|facebook_ads|meta|meta_ads|instagram|instagram_ads)([&#]|$)'
+     or v_url ~ '(^|//)([a-z0-9-]+\\.)*(facebook\\.com|fb\\.com|fb\\.me|instagram\\.com)(/|[?#]|$)'
+  then return 'facebook_ads'; end if;
+  if v_url ~ '(^|[?&])ttclid='
+     or v_url ~ '(^|[?&])utm_source=(tiktok|tiktok_ads|tt)([&#]|$)'
+     or v_url ~ '(^|//)([a-z0-9-]+\\.)*tiktok\\.com(/|[?#]|$)'
+  then return 'tiktok_ads'; end if;
+  if v_url ~ '(^|[?&])utm_source=(google|bing|yahoo|duckduckgo)([&#]|$)'
+     or v_url ~ '(^|//)([a-z0-9-]+\\.)*(google|bing|yahoo|duckduckgo)\\.'
+  then return 'organic'; end if;
+  return 'unknown';
+end;
+$$;
+
 -- Persist acquisition data through checkout snapshots and delayed incomplete-order promotion.
 alter table public.incomplete_orders
   add column if not exists marketing_source text not null default 'unknown',
