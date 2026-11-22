@@ -144,7 +144,16 @@ export const saveIncompleteCheckout = createServerFn({ method: "POST" }).inputVa
   }
   if (/duplicate key value violates unique constraint.*incomplete_orders_phone_active_uq/i.test(error.message ?? "")) {
     const { data: existing } = await supabaseAdmin.from("incomplete_orders").select("id").eq("phone", data.customer_phone).order("updated_at", { ascending: false }).limit(1).maybeSingle();
-    return existing?.id ?? null;
+    if (!existing?.id) return null;
+    const source = resolveMarketingSource(data.marketing_source, data.source_url);
+    const update: Record<string, string> = {};
+    if (source !== "unknown") update.marketing_source = source;
+    if (data.source_url) update.source_url = data.source_url;
+    if (Object.keys(update).length) {
+      const { error: attributionError } = await (supabaseAdmin as any).from("incomplete_orders").update(update).eq("id", existing.id);
+      if (attributionError) logger.error("[saveIncompleteCheckout] duplicate recovery attribution failed:", attributionError.message);
+    }
+    return existing.id;
   }
   logger.error("[saveIncompleteCheckout] snapshot failed:", error.message);
   return null;
