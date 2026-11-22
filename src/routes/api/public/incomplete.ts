@@ -37,13 +37,14 @@ export const Route = createFileRoute("/api/public/incomplete")({
             const update: Record<string, string> = {};
             const sourceUrl = typeof body?.source_url === "string" ? body.source_url.slice(0, 2000) : "";
             const inputSource = String(body?.marketing_source ?? "");
-            const classified = /fbclid=|utm_source=(fb|ig|facebook|instagram|meta)([&#]|$)/i.test(sourceUrl)
-              ? "facebook_ads"
-              : /ttclid=|utm_source=(tiktok|tt)([&#]|$)/i.test(sourceUrl)
-                ? "tiktok_ads"
-                : ["facebook_ads", "tiktok_ads", "organic", "direct"].includes(inputSource)
-                  ? inputSource
-                  : "";
+            const { data: urlSource } = sourceUrl
+              ? await supabaseAdmin.rpc("classify_marketing_source", { p_url: sourceUrl })
+              : { data: "unknown" };
+            const classified = ["facebook_ads", "tiktok_ads", "organic", "direct"].includes(inputSource)
+              ? inputSource
+              : ["facebook_ads", "tiktok_ads", "organic", "direct"].includes(String(urlSource))
+                ? String(urlSource)
+                : "";
             if (classified) update.marketing_source = classified;
             if (sourceUrl) update.source_url = sourceUrl;
             if (Object.keys(update).length) {
