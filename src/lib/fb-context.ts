@@ -63,19 +63,28 @@ function classifyMarketingUrl(rawUrl: string): MarketingSource | null {
   return null;
 }
 
-function readMarketingSourceFromUrl(): MarketingSource | null {
+const ATTRIBUTION_URL_COOKIE = "_oronno_attribution_url";
+
+function readMarketingSourceFromUrl(): { source: MarketingSource; url: string } | null {
   if (typeof window === "undefined") return null;
-  return classifyMarketingUrl(window.location.href)
-    ?? (document.referrer ? classifyMarketingUrl(document.referrer) : null);
+  const currentUrl = window.location.href;
+  const currentSource = classifyMarketingUrl(currentUrl);
+  if (currentSource) return { source: currentSource, url: currentUrl };
+  const referrer = document.referrer || "";
+  const referrerSource = referrer ? classifyMarketingUrl(referrer) : null;
+  if (referrerSource) return { source: referrerSource, url: referrer };
+  return null;
 }
 
 export function captureMarketingSource(): MarketingSource {
   if (typeof window === "undefined") return "unknown";
   const fromUrl = readMarketingSourceFromUrl();
-  // A fresh landing URL wins over every older click cookie.
+  // Save the original ad/referral URL before the visitor navigates to /checkout.
+  // The checkout URL itself is not the acquisition source.
   if (fromUrl) {
-    writeCookie("_oronno_marketing_source", fromUrl);
-    return fromUrl;
+    writeCookie("_oronno_marketing_source", fromUrl.source);
+    writeCookie(ATTRIBUTION_URL_COOKIE, fromUrl.url);
+    return fromUrl.source;
   }
   // Keep the latest known source across navigation; never let an older
   // platform click cookie override a more recent TikTok/Facebook visit.
@@ -99,7 +108,9 @@ export function getFbContext(): FbContext {
   return {
     fbp: ensureFbp(),
     fbc: ensureFbc(),
-    source_url: typeof window !== "undefined" ? window.location.href : null,
+    source_url: typeof window !== "undefined"
+      ? (readCookie(ATTRIBUTION_URL_COOKIE) || window.location.href)
+      : null,
     marketing_source: captureMarketingSource(),
   };
 }
