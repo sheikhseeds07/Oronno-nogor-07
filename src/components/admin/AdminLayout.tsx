@@ -235,10 +235,24 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
   const { data: brandRow, isFetched: brandSettingsFetched } = useQuery({
     queryKey: ["site-settings-public"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("site_settings").select("settings").maybeSingle();
+      // site_settings can contain multiple rows; merge oldest → newest so
+      // newer values win instead of failing maybeSingle() and dropping the logo.
+      const { data, error } = await supabase
+        .from("site_settings")
+        .select("settings")
+        .order("updated_at", { ascending: true });
       if (error) throw error;
-      if (data?.settings) writePublicSettingsCache(data.settings as SiteSettings);
-      return data;
+      const mergedSettings = (data ?? []).reduce(
+        (merged, row) => ({ ...merged, ...((row.settings ?? {}) as SiteSettings) }),
+        {} as SiteSettings,
+      );
+      if (Object.keys(mergedSettings).length) writePublicSettingsCache(mergedSettings);
+      return { settings: mergedSettings };
+    },
+    // Show the last known brand immediately while fresh settings load.
+    initialData: () => {
+      const cached = readPublicSettingsCache<SiteSettings>();
+      return cached ? { settings: cached } : undefined;
     },
     // Settings changes are pushed over the existing Realtime/broadcast channel.
     // Avoid periodic and tab-focus REST reads; the query is invalidated on UPDATE.
