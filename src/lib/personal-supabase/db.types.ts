@@ -1419,6 +1419,7 @@ export type Database = {
           district: string | null
           id: string
           invoice_no: string | null
+          marketing_source: string
           notes: string | null
           originated_from_incomplete: boolean
           originated_from_import: boolean
@@ -1451,6 +1452,7 @@ export type Database = {
           district?: string | null
           id?: string
           invoice_no?: string | null
+          marketing_source?: string
           notes?: string | null
           originated_from_incomplete?: boolean
           originated_from_import?: boolean
@@ -1483,6 +1485,7 @@ export type Database = {
           district?: string | null
           id?: string
           invoice_no?: string | null
+          marketing_source?: string
           notes?: string | null
           originated_from_incomplete?: boolean
           originated_from_import?: boolean
