@@ -4,7 +4,8 @@ import { Header } from "./Header";
 import { Footer } from "./Footer";
 import { VisitTracker } from "./VisitTracker";
 import { SeoFromSettings } from "./SeoFromSettings";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { readPublicSettingsCacheEntry } from "@/lib/public-settings-cache";
 import { supabase } from "@/lib/personal-supabase/client";
 import { taka } from "@/lib/format";
 import { format } from "date-fns";
@@ -18,6 +19,23 @@ const steps = ["pending", "confirmed", "processing", "shipped", "delivered"];
 type Props = { children: React.ReactNode };
 
 export function SiteLayout({ children }: Props) {
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    const syncPublicSettings = () => {
+      const cached = readPublicSettingsCacheEntry<Record<string, unknown>>();
+      if (cached?.value) queryClient.setQueryData(["site-settings-public"], { settings: cached.value });
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === "sheikh_seeds_public_site_settings_v2" || event.key === null) syncPublicSettings();
+    };
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("admin-settings-saved", syncPublicSettings);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("admin-settings-saved", syncPublicSettings);
+    };
+  }, [queryClient]);
+
   const pathname = typeof window !== "undefined" ? window.location.pathname : "";
   const isProfile = pathname === "/profile";
   const isCart = pathname === "/cart";
