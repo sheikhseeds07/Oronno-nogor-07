@@ -13,7 +13,7 @@ import logoUrl from "@/assets/logo.jpg";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { BlockCustomerButton } from "@/components/admin/CustomerBlockList";
-import { Search, Plus, Globe, ListOrdered, Trash2, CheckCircle2, Phone, MessageCircle, ExternalLink, Send, Printer, Copy, X, Loader2, AlertCircle, ShoppingCart, Check, ArrowRightLeft, ArrowUpDown, SlidersHorizontal } from "lucide-react";
+import { Search, Plus, Globe, Facebook, Music2, ListOrdered, Trash2, CheckCircle2, Phone, MessageCircle, ExternalLink, Send, Printer, Copy, X, Loader2, AlertCircle, ShoppingCart, Check, ArrowRightLeft, ArrowUpDown, SlidersHorizontal } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useServerFn } from "@tanstack/react-start";
 import { fetchCourierHistory } from "@/lib/courier-history.functions";
@@ -2301,8 +2301,8 @@ function OrdersTableRows({
                     const sourceMeta = (() => {
                       if (o.source === "manual") return { label: "Manual Order", className: "text-amber-700", Icon: ShoppingCart };
                       if (o.source === "messenger") return { label: "Messenger", className: "text-violet-700", Icon: MessageCircle };
-                      if (o.marketing_source === "facebook_ads") return { label: "Facebook Ads", className: "text-blue-600", Icon: Globe };
-                      if (o.marketing_source === "tiktok_ads") return { label: "TikTok Ads", className: "text-pink-600", Icon: MessageCircle };
+                      if (o.marketing_source === "facebook_ads") return { label: "Facebook Ads", className: "text-blue-600", Icon: Facebook };
+                      if (o.marketing_source === "tiktok_ads") return { label: "TikTok Ads", className: "text-pink-600", Icon: Music2 };
                       if (o.marketing_source === "organic") return { label: "Organic", className: "text-emerald-700", Icon: Globe };
                       if (o.marketing_source === "direct") return { label: "Direct", className: "text-slate-600", Icon: Globe };
                       return { label: "Unknown", className: "text-slate-500", Icon: AlertCircle };
