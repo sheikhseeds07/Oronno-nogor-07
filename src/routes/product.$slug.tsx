@@ -37,7 +37,7 @@ function ProductPage() {
   const [minimumOrderOpen, setMinimumOrderOpen] = useState(false);
   const { data: siteSettingsRow } = useQuery(publicSiteSettingsQuery);
   const configuredMinimumHomeOrder = Number(siteSettingsRow?.settings?.minimum_home_order ?? 200);
-  const minimumHomeOrder = Number.isFinite(configuredMinimumHomeOrder) ? Math.max(0, Math.floor(configuredMinimumHomeOrder)) : 200;
+  const minimumHomeOrder = siteSettingsRow?.settings?.minimum_home_order_enabled === false ? 0 : (Number.isFinite(configuredMinimumHomeOrder) ? Math.max(0, Math.floor(configuredMinimumHomeOrder)) : 200);
   const [qty, setQty] = useState(1);
   const [activeImg, setActiveImg] = useState(0);
   const [copied, setCopied] = useState(false);
