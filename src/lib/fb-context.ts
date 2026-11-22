@@ -66,18 +66,17 @@ function readMarketingSourceFromUrl(): MarketingSource | null {
 export function captureMarketingSource(): MarketingSource {
   if (typeof window === "undefined") return "unknown";
   const fromUrl = readMarketingSourceFromUrl();
-  if (fromUrl) writeCookie("_oronno_marketing_source", fromUrl);
-  // Real click IDs must always beat an older saved "unknown" or stale source.
-  if (readCookie("_fbc")) {
-    writeCookie("_oronno_marketing_source", "facebook_ads");
-    return "facebook_ads";
+  // A fresh landing URL wins over every older click cookie.
+  if (fromUrl) {
+    writeCookie("_oronno_marketing_source", fromUrl);
+    return fromUrl;
   }
-  if (readCookie("_ttclid")) {
-    writeCookie("_oronno_marketing_source", "tiktok_ads");
-    return "tiktok_ads";
-  }
+  // Keep the latest known source across navigation; never let an older
+  // platform click cookie override a more recent TikTok/Facebook visit.
   const saved = readCookie("_oronno_marketing_source") as MarketingSource | null;
   if (saved && ["facebook_ads", "tiktok_ads", "organic", "direct"].includes(saved)) return saved;
+  if (readCookie("_fbc")) return "facebook_ads";
+  if (readCookie("_ttclid")) return "tiktok_ads";
   return "unknown";
 }
 
