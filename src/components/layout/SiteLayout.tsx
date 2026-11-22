@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { CheckCircle2, Clock3, Gift, MapPin, Package, Phone, Truck, X } from "lucide-react";
 import { BrandLoader } from "./BrandLoader";
 import { useCart } from "@/lib/cart-store";
+import { captureMarketingSource } from "@/lib/fb-context";
 
 const statusBn: Record<string, string> = { pending: "অপেক্ষমাণ", confirmed: "কনফার্মড", processing: "প্রস্তুত হচ্ছে", shipped: "ডেলিভারিতে", delivered: "ডেলিভারি সম্পন্ন", cancelled: "বাতিল", web_pending: "অপেক্ষমাণ", rts: "RTS", pending_return: "রিটার্ন প্রসেস", returned: "রিটার্ন সম্পন্ন", partial: "আংশিক ডেলিভারি", hold: "হোল্ড" };
 const steps = ["pending", "confirmed", "processing", "shipped", "delivered"];
@@ -20,6 +21,8 @@ type Props = { children: React.ReactNode };
 
 export function SiteLayout({ children }: Props) {
   const queryClient = useQueryClient();
+  // Capture paid/referral attribution immediately on the first shared site layout mount, before SPA navigation can lose the original URL/referrer.
+  useEffect(() => { captureMarketingSource(); }, []);
   useEffect(() => {
     const syncPublicSettings = () => {
       const cached = readPublicSettingsCacheEntry<Record<string, unknown>>();
