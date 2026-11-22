@@ -978,6 +978,8 @@ export type Database = {
           delivery_zone?: string | null
           id?: string
           ip?: string | null
+          marketing_source?: string
+          source_url?: string | null
           items?: Json
           note?: string | null
           phone?: string
