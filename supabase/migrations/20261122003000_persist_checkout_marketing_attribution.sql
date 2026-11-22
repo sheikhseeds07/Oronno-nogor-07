@@ -43,7 +43,7 @@ begin
 
     if exists (
       select 1 from public.orders o
-      where regexp_replace(o.customer_phone, '\\D', '', 'g') = regexp_replace(r.phone, '\\D', '', 'g')
+      where regexp_replace(o.customer_phone, '[^0-9]', '', 'g') = regexp_replace(r.phone, '[^0-9]', '', 'g')
         and o.created_at >= r.created_at
     ) then
       delete from public.incomplete_orders where id = r.id;
