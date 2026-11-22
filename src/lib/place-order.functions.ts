@@ -410,6 +410,19 @@ export const placeLandingOrder = createServerFn({ method: "POST" }).inputValidat
     throw new Error(rpcMessage || "Checkout intent create failed");
   }
   await saveIntentMarketingSource(intentId, data.marketing_source, data.source_url);
+  // This direct landing-order path also persists the original landing URL so
+  // the database finalizer can classify Meta/TikTok even if client state is lost.
+  try {
+    await supabaseAdmin.rpc("set_landing_intent_tracking" as never, {
+      p_intent_id: intentId,
+      p_fbp: data.fbp ?? null,
+      p_fbc: data.fbc ?? null,
+      p_user_agent: getRequestHeader("user-agent") ?? null,
+      p_source_url: data.source_url ?? null,
+    } as never);
+  } catch (e) {
+    logger.error("[placeLandingOrder] tracking save failed:", e);
+  }
 
   const { data: orderId, error: orderError } = await supabaseAdmin.rpc("finalize_landing_checkout_intent" as never, {
     p_intent_id: intentId,
