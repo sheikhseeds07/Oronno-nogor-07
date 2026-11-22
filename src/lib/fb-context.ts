@@ -44,10 +44,35 @@ function ensureFbc(): string | null {
   }
 }
 
+export type MarketingSource = "facebook_ads" | "tiktok_ads" | "organic" | "direct" | "unknown";
+
+function readMarketingSourceFromUrl(): MarketingSource | null {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  const utm = (params.get("utm_source") || "").toLowerCase();
+  if (params.has("fbclid") || ["facebook", "facebook_ads", "meta", "instagram"].includes(utm)) return "facebook_ads";
+  if (params.has("ttclid") || ["tiktok", "tiktok_ads"].includes(utm)) return "tiktok_ads";
+  if (["google", "bing", "yahoo"].includes(utm)) return "organic";
+  if (utm) return "organic";
+  return null;
+}
+
+export function captureMarketingSource(): MarketingSource {
+  if (typeof window === "undefined") return "unknown";
+  const fromUrl = readMarketingSourceFromUrl();
+  if (fromUrl) writeCookie("_oronno_marketing_source", fromUrl);
+  const saved = readCookie("_oronno_marketing_source") as MarketingSource | null;
+  if (saved && ["facebook_ads", "tiktok_ads", "organic", "direct", "unknown"].includes(saved)) return saved;
+  if (readCookie("_fbc")) return "facebook_ads";
+  if (readCookie("_ttclid")) return "tiktok_ads";
+  return "unknown";
+}
+
 export type FbContext = {
   fbp: string | null;
   fbc: string | null;
   source_url: string | null;
+  marketing_source: MarketingSource;
 };
 
 export function getFbContext(): FbContext {
@@ -55,5 +80,6 @@ export function getFbContext(): FbContext {
     fbp: ensureFbp(),
     fbc: ensureFbc(),
     source_url: typeof window !== "undefined" ? window.location.href : null,
+    marketing_source: captureMarketingSource(),
   };
 }
