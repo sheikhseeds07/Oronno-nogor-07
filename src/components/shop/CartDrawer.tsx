@@ -19,7 +19,8 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const subtotal = useCart((s) => s.subtotal());
   const { data: settingsRow } = useQuery(publicSiteSettingsQuery);
   const settings = (settingsRow?.settings ?? {}) as Record<string, unknown>;
-  const minimumHomeOrder = Math.max(0, Math.floor(Number(settings.minimum_home_order ?? DEFAULT_MINIMUM_HOME_ORDER) || DEFAULT_MINIMUM_HOME_ORDER));
+  const configuredMinimumHomeOrder = Number(settings.minimum_home_order ?? DEFAULT_MINIMUM_HOME_ORDER);
+  const minimumHomeOrder = Number.isFinite(configuredMinimumHomeOrder) ? Math.max(0, Math.floor(configuredMinimumHomeOrder)) : DEFAULT_MINIMUM_HOME_ORDER;
   const deliveryRules = (settingsRow?.settings?.delivery_rules ?? undefined) as Array<{ id: string; min_order: number; fee: number }> | undefined;
   const { delivery, total, freeRule, amountToFree } = getDeliveryInfo(subtotal, deliveryRules);
   const progressTarget = freeRule?.min_order ?? (delivery === 0 ? subtotal : 0);
