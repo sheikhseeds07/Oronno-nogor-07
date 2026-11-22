@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { safeUUID } from "@/lib/uuid";
+import { captureMarketingSource } from "@/lib/fb-context";
 
 type TikTokBridge = (event: string, properties?: Record<string, unknown>, eventId?: string) => string;
 declare global { interface Window { ttq?: any; __oronnoTikTokOwner?: boolean; __oronnoTikTokTrack?: TikTokBridge; } }
@@ -43,6 +44,7 @@ export function TikTokPixel() {
   useEffect(() => {
     if (window.location.pathname.startsWith("/admin") || window.__oronnoTikTokOwner) return;
     window.__oronnoTikTokOwner = true;
+    captureMarketingSource();
     const initialClickId = new URLSearchParams(window.location.search).get("ttclid");
     if (initialClickId) writeAttributionCookie("_ttclid", initialClickId);
     if (!readCookie("_tt_external_id")) writeAttributionCookie("_tt_external_id", crypto.randomUUID());
