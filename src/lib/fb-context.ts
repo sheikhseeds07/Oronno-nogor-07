@@ -46,21 +46,27 @@ function ensureFbc(): string | null {
 
 export type MarketingSource = "facebook_ads" | "tiktok_ads" | "organic" | "direct" | "unknown";
 
+function classifyMarketingUrl(rawUrl: string): MarketingSource | null {
+  try {
+    const url = new URL(rawUrl);
+    const params = url.searchParams;
+    const utm = (params.get("utm_source") || "").trim().toLowerCase();
+    // Click IDs and explicit platform UTMs identify paid social traffic.
+    if (params.has("fbclid") || ["facebook", "facebook_ads", "meta", "meta_ads", "instagram", "instagram_ads", "fb", "ig"].includes(utm)) return "facebook_ads";
+    if (params.has("ttclid") || ["tiktok", "tiktok_ads", "tt"].includes(utm)) return "tiktok_ads";
+    if (["google", "bing", "yahoo", "duckduckgo"].includes(utm)) return "organic";
+    const host = url.hostname.toLowerCase();
+    if (/(^|\\.)((facebook|fb|instagram)\\.com|fb\\.me)$/.test(host)) return "facebook_ads";
+    if (/(^|\\.)tiktok\\.com$/.test(host)) return "tiktok_ads";
+    if (/(^|\\.)(google|bing|yahoo|duckduckgo)\\./.test(host)) return "organic";
+  } catch { /* Ignore malformed URLs. */ }
+  return null;
+}
+
 function readMarketingSourceFromUrl(): MarketingSource | null {
   if (typeof window === "undefined") return null;
-  const params = new URLSearchParams(window.location.search);
-  const utm = (params.get("utm_source") || "").toLowerCase();
-  if (params.has("fbclid") || ["facebook", "facebook_ads", "meta", "meta_ads", "instagram", "instagram_ads", "fb", "ig"].includes(utm)) return "facebook_ads";
-  if (params.has("ttclid") || ["tiktok", "tiktok_ads", "tt"].includes(utm)) return "tiktok_ads";
-  if (["google", "bing", "yahoo"].includes(utm)) return "organic";
-  if (utm) return "organic";
-  try {
-    const referrerHost = document.referrer ? new URL(document.referrer).hostname.toLowerCase() : "";
-    if (/(^|\.)((facebook|fb|instagram)\.com|fb\.me)$/.test(referrerHost)) return "facebook_ads";
-    if (/(^|\.)tiktok\.com$/.test(referrerHost)) return "tiktok_ads";
-    if (/(^|\.)(google|bing|yahoo)\./.test(referrerHost)) return "organic";
-  } catch { /* Ignore malformed referrers. */ }
-  return null;
+  return classifyMarketingUrl(window.location.href)
+    ?? (document.referrer ? classifyMarketingUrl(document.referrer) : null);
 }
 
 export function captureMarketingSource(): MarketingSource {
