@@ -1,6 +1,6 @@
 import { SafeImage } from "@/components/SafeImage";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Minus, Plus, Trash2, X, ShoppingBag, Truck, Sparkles, ArrowRight, ShieldCheck } from "lucide-react";
 import { useCart } from "@/lib/cart-store";
 import { taka, bnDigits } from "@/lib/format";
