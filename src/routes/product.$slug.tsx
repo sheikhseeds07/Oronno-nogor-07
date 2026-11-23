@@ -14,7 +14,6 @@ import { toastAddedToCart } from "@/lib/cart-toast";
 import { trackAddToCart, trackViewContent } from "@/lib/fbq";
 import { toImg, imgSrcSet } from "@/lib/img";
 import { ProductTabs } from "@/components/community/ProductTabs";
-import { publicSiteSettingsQuery } from "@/lib/site-settings-query";
 
 export const Route = createFileRoute("/product/$slug")({
   // Fetch on the server so the product HTML ships with the first response
