@@ -213,10 +213,14 @@ export const createLandingCheckoutIntent = createServerFn({ method: "POST" }).in
 });
 
 export const finalizeLandingCheckoutIntent = createServerFn({ method: "POST" }).inputValidator((input) => LandingFinalizeInputSchema.parse(input)).handler(async ({ data }) => {
-  const { data: intent, error: intentReadError } = await supabaseAdmin
-    .from("landing_checkout_intents").select("customer_phone,device_id").eq("id", data.intent_id).maybeSingle();
-  if (intentReadError || !intent) throw new Error("Checkout intent যাচাই করা যায়নি");
-  await assertCustomerNotBlocked(intent.customer_phone, intent.device_id);
+  const { data: intentBlocked, error: intentBlockError } = await supabaseAdmin.rpc("is_landing_checkout_intent_blocked" as never, {
+    p_intent_id: data.intent_id,
+  } as never);
+  if (intentBlockError) {
+    logger.error("[finalizeLandingCheckoutIntent] block check failed:", intentBlockError.message);
+    throw new Error("ডিভাইস ব্লক স্ট্যাটাস যাচাই করা যায়নি");
+  }
+  if (intentBlocked === true) throw new Error(`${BLOCKED_ORDER_CODE}: ${BLOCKED_ORDER_MESSAGE}`);
   const { data: orderId, error } = await supabaseAdmin.rpc("finalize_landing_checkout_intent", {
     p_intent_id: data.intent_id,
     p_include_nutrimix: data.include_nutrimix,
