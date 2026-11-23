@@ -246,9 +246,12 @@ export const createHomeCheckoutIntent = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
     const deviceId = getOrderDeviceId();
-    const { data: row, error: settingsError } = await supabaseAdmin.from("site_settings").select("settings").maybeSingle();
+    const { data: settingsRows, error: settingsError } = await supabaseAdmin.from("site_settings").select("settings").limit(10);
     if (settingsError) throw new Error("অফার সেটিংস যাচাই করা যায়নি");
-    const settings = (row?.settings ?? {}) as Record<string, unknown>;
+    const rows = Array.isArray(settingsRows) ? settingsRows : [];
+    const settings = rows.reduce((merged, row) => ({ ...merged, ...((row?.settings ?? {}) as Record<string, unknown>) }), {} as Record<string, unknown>);
+    const popupKeys = ["home_nutrimix_popup_enabled", "home_nutrimix_product_name", "home_nutrimix_product_price", "home_nutrimix_product_old_price", "home_nutrimix_product_image", "home_nutrimix_popup_heading", "home_nutrimix_popup_description", "home_nutrimix_accept_text", "home_nutrimix_decline_text"];
+    for (const row of rows) { const rowSettings = (row?.settings ?? {}) as Record<string, unknown>; for (const key of popupKeys) if (key in rowSettings) settings[key] = rowSettings[key]; }
     if (settings.home_nutrimix_popup_enabled !== true) throw new Error("NUTRIMIX অফারটি বর্তমানে চালু নেই");
     const name = String(settings.home_nutrimix_product_name || 'NUTRIMIX - "অনুখাদ্য" 200 GM').trim();
     const price = Number(settings.home_nutrimix_product_price ?? 200);
@@ -331,12 +334,15 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
     if (requestedHomeNutrimix.length !== 1 || requestedHomeNutrimix[0].quantity !== 1) {
       throw new Error("NUTRIMIX অফারটি সঠিক নয়");
     }
-    const { data: settingsRow, error: settingsError } = await supabaseAdmin
+    const { data: settingsRows, error: settingsError } = await supabaseAdmin
       .from("site_settings")
       .select("settings")
-      .maybeSingle();
+      .limit(10);
     if (settingsError) throw new Error("NUTRIMIX অফার যাচাই করা যায়নি");
-    const homeSettings = (settingsRow?.settings ?? {}) as Record<string, unknown>;
+    const rows = Array.isArray(settingsRows) ? settingsRows : [];
+    const homeSettings = rows.reduce((merged, row) => ({ ...merged, ...((row?.settings ?? {}) as Record<string, unknown>) }), {} as Record<string, unknown>);
+    const popupKeys = ["home_nutrimix_popup_enabled", "home_nutrimix_product_name", "home_nutrimix_product_price", "home_nutrimix_product_old_price", "home_nutrimix_product_image", "home_nutrimix_popup_heading", "home_nutrimix_popup_description", "home_nutrimix_accept_text", "home_nutrimix_decline_text"];
+    for (const row of rows) { const rowSettings = (row?.settings ?? {}) as Record<string, unknown>; for (const key of popupKeys) if (key in rowSettings) homeSettings[key] = rowSettings[key]; }
     if (homeSettings.home_nutrimix_popup_enabled !== true) {
       throw new Error("NUTRIMIX অফারটি বর্তমানে চালু নেই");
     }
