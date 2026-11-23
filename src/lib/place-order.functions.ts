@@ -25,6 +25,20 @@ function getOrderDeviceId(): string | null {
   setCookie(ORDER_DEVICE_COOKIE, id, { path: "/", maxAge: 31536000, sameSite: "lax" });
   return id;
 }
+
+async function assertCustomerNotBlocked(phone: string, deviceId: string | null) {
+  const { data: phoneBlocked, error: phoneError } = await supabaseAdmin.rpc("is_blocked_visitor", {
+    p_ip: null, p_phone: phone,
+  } as never);
+  if (phoneError) throw new Error("অর্ডার ব্লক স্ট্যাটাস যাচাই করা যায়নি");
+  const { data: deviceBlocked, error: deviceError } = await supabaseAdmin.rpc("is_blocked_device" as never, {
+    p_device_id: deviceId,
+  } as never);
+  if (deviceError) throw new Error("ডিভাইস ব্লক স্ট্যাটাস যাচাই করা যায়নি");
+  if (phoneBlocked === true || deviceBlocked === true) {
+    throw new Error(`${BLOCKED_ORDER_CODE}: ${BLOCKED_ORDER_MESSAGE}`);
+  }
+}
 const ItemSchema = z.object({ id: z.string().min(1).max(64), name: z.string().min(1).max(500), price: z.number().min(0).max(10_000_000), quantity: z.number().int().min(1).max(1000), is_freebie: z.boolean().optional() });
 const BdPhoneSchema = z.preprocess(
   (value) => typeof value === "string" ? normalizeBdPhoneServer(value) : value,
@@ -163,6 +177,7 @@ export const saveIncompleteCheckout = createServerFn({ method: "POST" }).inputVa
 export const createLandingCheckoutIntent = createServerFn({ method: "POST" }).inputValidator((input) => LandingIntentInputSchema.parse(input)).handler(async ({ data }) => {
   const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
   const deviceId = getOrderDeviceId();
+  await assertCustomerNotBlocked(data.customer_phone, deviceId);
   const { data: intentId, error } = await supabaseAdmin.rpc("create_landing_checkout_intent", {
     p_checkout_session_id: data.checkout_session_id,
     p_customer_name: data.customer_name,
@@ -198,6 +213,10 @@ export const createLandingCheckoutIntent = createServerFn({ method: "POST" }).in
 });
 
 export const finalizeLandingCheckoutIntent = createServerFn({ method: "POST" }).inputValidator((input) => LandingFinalizeInputSchema.parse(input)).handler(async ({ data }) => {
+  const { data: intent, error: intentReadError } = await supabaseAdmin
+    .from("landing_checkout_intents").select("customer_phone,device_id").eq("id", data.intent_id).maybeSingle();
+  if (intentReadError || !intent) throw new Error("Checkout intent যাচাই করা যায়নি");
+  await assertCustomerNotBlocked(intent.customer_phone, intent.device_id);
   const { data: orderId, error } = await supabaseAdmin.rpc("finalize_landing_checkout_intent", {
     p_intent_id: data.intent_id,
     p_include_nutrimix: data.include_nutrimix,
@@ -246,6 +265,7 @@ export const createHomeCheckoutIntent = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
     const deviceId = getOrderDeviceId();
+    await assertCustomerNotBlocked(data.customer_phone, deviceId);
     const { data: settingsRows, error: settingsError } = await supabaseAdmin.from("site_settings").select("settings").limit(10);
     if (settingsError) throw new Error("অফার সেটিংস যাচাই করা যায়নি");
     const rows = Array.isArray(settingsRows) ? settingsRows : [];
@@ -322,8 +342,7 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   // Mobile carriers frequently share one public IP between many unrelated
   // customers. Blocking checkout by phone keeps the fraud block precise and
   // prevents one customer's IP from locking out innocent visitors.
-  const { data: blocked, error: blockCheckError } = await supabaseAdmin.rpc("is_blocked_visitor", { p_ip: clientIp ?? undefined, p_phone: customerPhone });
-  if (!blockCheckError && blocked === true) throw new Error(`${BLOCKED_ORDER_CODE}: ${BLOCKED_ORDER_MESSAGE}`);
+  await assertCustomerNotBlocked(customerPhone, deviceId);
 
   // Home NUTRIMIX is an independent, settings-backed order line. Never trust
   // the browser's name or price, and never resolve it through public.products.
