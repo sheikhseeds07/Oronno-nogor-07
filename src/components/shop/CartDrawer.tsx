@@ -23,7 +23,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const progressPercent = progressTarget > 0 ? Math.min(100, Math.max(0, (subtotal / progressTarget) * 100)) : 100;
 
   useEffect(() => {
-    if (!open) { setMinimumOpen(false); return; }
+    if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = prev; };
