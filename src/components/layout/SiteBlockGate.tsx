@@ -22,7 +22,7 @@ function readDeviceId(): string | null {
   }
 }
 
-/** Blocks the whole site for a blocked IP, blocked device or blocked customer account. */
+/** Blocks the whole site for a blocked browser/device or separately banned customer account. */
 export function SiteBlockGate() {
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const [customerId, setCustomerId] = useState<string | null>(null);
@@ -46,23 +46,11 @@ export function SiteBlockGate() {
   const { data } = useQuery({
     // Block status is security state, but it does not need a request on every\n    // route change or window focus. Reuse the same result across navigation.\n    queryKey: ["site-block-gate", deviceId, customerId],
     enabled: ready && !isAdminArea,
-    staleTime: 5 * 60_000,
+    // Do not persist block status in localStorage: a newly blocked device must
+    // be checked again on the next site visit instead of reusing a 5-minute cache.
+    staleTime: 30_000,
     refetchOnWindowFocus: false,
-    queryFn: async () => {
-      const cacheKey = `site-block-gate:${deviceId ?? "none"}:${customerId ?? "guest"}`;
-      try {
-        const raw = localStorage.getItem(cacheKey);
-        if (raw) {
-          const cached = JSON.parse(raw) as { at?: number; blocked?: boolean };
-          if (typeof cached.at === "number" && Date.now() - cached.at < 5 * 60_000 && typeof cached.blocked === "boolean") {
-            return { blocked: cached.blocked };
-          }
-        }
-      } catch {}
-      const result = await check({ data: { deviceId, customerId } });
-      try { localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), blocked: !!result?.blocked })); } catch {}
-      return result;
-    },
+    queryFn: async () => check({ data: { deviceId, customerId } }),
   });
 
   if (isAdminArea || !data?.blocked) return null;
