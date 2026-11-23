@@ -43,9 +43,17 @@ export const publicSiteSettingsQuery = {
     if (typeof window === "undefined" && serverSettingsCache && Date.now() - serverSettingsCache.at < SETTINGS_CACHE_TTL_MS) {
       return serverSettingsCache.value;
     }
-    const { data, error } = await supabase.from("site_settings").select("settings").maybeSingle();
+    const { data, error } = await supabase.from("site_settings").select("settings").limit(10);
     if (error) throw error;
-    const settings = (data?.settings as PublicSiteSettings | null) ?? {};
+    // Settings have historically been split across multiple rows. Merge them instead of maybeSingle().
+    const rows = Array.isArray(data) ? data : [];
+    const settings = rows.reduce((merged, row) => ({ ...merged, ...((row?.settings as PublicSiteSettings | null) ?? {}) }), {} as PublicSiteSettings);
+    // Prefer any row that explicitly contains the home NUTRIMIX popup configuration.
+    const popupKeys = ["home_nutrimix_popup_enabled", "home_nutrimix_product_name", "home_nutrimix_product_price", "home_nutrimix_product_old_price", "home_nutrimix_product_image", "home_nutrimix_popup_heading", "home_nutrimix_popup_description", "home_nutrimix_accept_text", "home_nutrimix_decline_text"] as const;
+    for (const row of rows) {
+      const rowSettings = (row?.settings as PublicSiteSettings | null) ?? {};
+      for (const key of popupKeys) if (key in rowSettings) (settings as Record<string, unknown>)[key] = rowSettings[key];
+    }
     const value = { settings };
     if (typeof window === "undefined") serverSettingsCache = { at: Date.now(), value };
     writePublicSettingsCache(settings);
