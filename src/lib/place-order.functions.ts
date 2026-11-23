@@ -408,8 +408,7 @@ export const placeLandingOrder = createServerFn({ method: "POST" }).inputValidat
   const customerPhone = data.customer_phone;
   const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
   const deviceId = getOrderDeviceId();
-  const { data: blocked, error: blockCheckError } = await supabaseAdmin.rpc("is_blocked_visitor", { p_ip: clientIp ?? undefined, p_phone: customerPhone });
-  if (!blockCheckError && blocked === true) throw new Error(`${BLOCKED_ORDER_CODE}: ${BLOCKED_ORDER_MESSAGE}`);
+  await assertCustomerNotBlocked(customerPhone, deviceId);
 
   const { data: page, error: pageError } = await supabaseAdmin
     .from("landing_pages")
