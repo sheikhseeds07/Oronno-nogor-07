@@ -22,8 +22,8 @@ export const getSiteBlockStatus = createServerFn({ method: "POST" })
     const db = supabaseAdmin as any;
 
     try {
-      // One boolean-only SECURITY DEFINER RPC checks IP, account and linked-device
-      // blocks without exposing customer_devices/customer_profiles to anon callers.
+      // A boolean-only SECURITY DEFINER RPC checks device and account blocks
+      // without exposing customer_devices/customer_profiles to anon callers.
       const { data: blocked, error } = await db.rpc("get_site_block_status", {
         p_ip: null,
         p_device_id: deviceId,
