@@ -1,6 +1,5 @@
 import { logger } from "@/lib/logger";
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestIP } from "@tanstack/react-start/server";
 import { z } from "zod";
 
 const GateSchema = z.object({
@@ -9,14 +8,13 @@ const GateSchema = z.object({
 });
 
 /**
- * Site entry gate: blocked IP, blocked device or blocked customer account.
- * Same rule for everyone — no owner/staff exemption.
+ * Site entry gate: blocked browser/device or separately banned customer account.
+ * Customer block rules never use shared IP addresses.
  * Returns only a boolean — never any customer data.
  */
 export const getSiteBlockStatus = createServerFn({ method: "POST" })
   .inputValidator((input) => GateSchema.parse(input ?? {}))
   .handler(async ({ data }) => {
-    const requestIp = (getRequestIP({ xForwardedFor: true }) ?? "").replace("::ffff:", "").trim() || null;
     const deviceId = data.deviceId ?? null;
     const customerId = data.customerId ?? null;
 
@@ -24,10 +22,10 @@ export const getSiteBlockStatus = createServerFn({ method: "POST" })
     const db = supabaseAdmin as any;
 
     try {
-      // One boolean-only SECURITY DEFINER RPC checks IP, account and linked-device
-      // blocks without exposing customer_devices/customer_profiles to anon callers.
+      // A boolean-only SECURITY DEFINER RPC checks device and account blocks
+      // without exposing customer_devices/customer_profiles to anon callers.
       const { data: blocked, error } = await db.rpc("get_site_block_status", {
-        p_ip: requestIp,
+        p_ip: null,
         p_device_id: deviceId,
         p_customer_id: customerId,
       });
