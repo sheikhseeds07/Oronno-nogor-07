@@ -369,7 +369,8 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
     <FacebookPixel eager />
     
 
-    <GuaranteePopup slug={slug} logo={logo} brand={brand} nutrimix={isNutrimix} onCta={handleCta} />
+    {/* Keep the legacy order action on the 24/48-seed combo pages; other All Product pages only dismiss this popup. */}
+    <GuaranteePopup slug={slug} logo={logo} brand={brand} nutrimix={isNutrimix} onCta={isNutrimix || isSeedCombo || slug === "seedcombo-copy-mwanao76" ? handleCta : undefined} />
     {page.top_bar_text && (page.planting_steps as { top_bar_enabled?: boolean } | null)?.top_bar_enabled !== false && <div className="bg-all-product-alert px-3 py-0.5 text-center text-xs font-extrabold leading-4 text-all-product-alert-foreground sm:text-sm whitespace-nowrap overflow-hidden text-ellipsis" style={{ fontFamily: '"Noto Serif Bengali", "Hind Siliguri", serif' }}>{page.top_bar_text}</div>}
     <div role="banner" className="sticky top-0 z-40 bg-all-product-surface/92 shadow-[0_2px_14px_-6px_rgba(0,0,0,0.35)] backdrop-blur-xl">
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-all-product-gold/70 to-transparent" />
