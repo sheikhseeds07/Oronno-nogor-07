@@ -49,19 +49,38 @@ export const saveOrderDistributionMembers = createServerFn({ method: "POST" }).m
 
 export const saveOrderDistributionSettings = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator(DistributionSettings.parse).handler(async ({ data, context }) => {
   await assertAdminOrPermission(context.userId, "employees");
-  const { data: current, error: readError } = await supabaseAdmin.from("site_settings").select("id,settings").maybeSingle();
+
+  // site_settings can contain multiple rows. Merge them in the same order
+  // used by the settings UI, then update the newest row without deleting data.
+  const { data: currentRows, error: readError } = await supabaseAdmin
+    .from("site_settings")
+    .select("id,settings,updated_at")
+    .order("updated_at", { ascending: true });
   if (readError) throw new Error(readError.message);
-  const settings = { ...((current?.settings ?? {}) as Record<string, unknown>), order_distribution_enabled: data.enabled, order_distribution_include_incomplete: data.includeIncomplete };
-  const result = current?.id
-    ? await supabaseAdmin.from("site_settings").update({ settings: settings as never }).eq("id", current.id)
-    : await supabaseAdmin.from("site_settings").insert({ settings: settings as never });
+
+  const rows = currentRows ?? [];
+  const mergedSettings = rows.reduce(
+    (merged, row) => ({ ...merged, ...((row.settings ?? {}) as Record<string, unknown>) }),
+    {} as Record<string, unknown>,
+  );
+  const settings = {
+    ...mergedSettings,
+    order_distribution_enabled: data.enabled,
+    order_distribution_include_incomplete: data.includeIncomplete,
+  };
+  const latestRow = rows[rows.length - 1];
+  const now = new Date().toISOString();
+  const result = latestRow?.id
+    ? await supabaseAdmin.from("site_settings").update({ settings: settings as never, updated_at: now }).eq("id", latestRow.id)
+    : await supabaseAdmin.from("site_settings").insert({ settings: settings as never, updated_at: now });
   if (result.error) throw new Error(result.error.message);
+
   const { data: employees, error: employeesError } = await supabaseAdmin.from("employees").select("user_id").eq("is_active", true).not("user_id", "is", null);
   if (employeesError) throw new Error(employeesError.message);
   const allowed = new Set((employees ?? []).map(e => e.user_id).filter(Boolean));
   for (const member of data.members) {
     if (!allowed.has(member.user_id)) continue;
-    const { error } = await supabaseAdmin.from("order_distribution_members").upsert({ ...member, updated_at: new Date().toISOString() });
+    const { error } = await supabaseAdmin.from("order_distribution_members").upsert({ ...member, updated_at: now });
     if (error) throw new Error(error.message);
   }
   return { ok: true };
