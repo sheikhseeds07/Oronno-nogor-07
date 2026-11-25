@@ -99,17 +99,17 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
   return <div className="methi-mix-page min-h-screen overflow-hidden bg-[#fbfdf9] pb-20 text-[#24432d]">
     <FacebookPixel eager />
     <style>{`@import url('https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@400;500;600;700;800&family=Hind+Siliguri:wght@400;500;600;700&display=swap');
-      .methi-mix-page{font-family:'Hind Siliguri','Anek Bangla',sans-serif}.methi-mix-page .methi-hero-title{font-family:'Anek Bangla','Hind Siliguri',sans-serif;font-weight:800;letter-spacing:-.025em}
+      .methi-mix-page{font-family:'Hind Siliguri','Anek Bangla',sans-serif}.methi-mix-page .methi-hero-title{font-family:'Anek Bangla','Hind Siliguri',sans-serif;font-weight:800;letter-spacing:normal;word-spacing:.12em}
       .methi-mix-page button,.methi-mix-page input,.methi-mix-page textarea{font:inherit}
       .methi-mix-page .methi-card{border:1px solid #dce9d8;background:#fff;border-radius:18px}
       @media(prefers-reduced-motion:no-preference){.methi-mix-page .methi-card{transition:transform .2s ease,box-shadow .2s ease}.methi-mix-page .methi-card:hover{transform:translateY(-2px);box-shadow:0 10px 26px #24432d12}}
     `}</style>
     <main className="mx-auto max-w-4xl px-4">
       <section className="py-5 sm:py-8">
-        <h1 className="methi-hero-title mb-4 text-center text-[27px] font-extrabold leading-[1.25] text-[#24432d] sm:text-4xl">
-          মেথি মিক্স
-          <span className="mt-1.5 block text-[21px] font-extrabold text-[#477b4d] sm:text-2xl">১ ফাইল কিনলেই ১ ফাইল ফ্রি!</span>
-          <span className="mx-auto mt-2 block max-w-[540px] rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[15px] font-bold leading-6 text-red-700 sm:text-lg">৭ দিন ব্যবহারের পরও সন্তুষ্ট না হলে ১০০% টাকা ফেরত গ্যারান্টি!</span>
+        <h1 className="methi-hero-title mb-4 text-center text-[27px] font-extrabold leading-[1.35] tracking-normal text-[#24432d] sm:text-4xl" style={{ wordSpacing: "0.12em", letterSpacing: "normal" }}>
+          <span className="block">মেথি মিক্স</span>
+          <span className="mx-auto mt-2 block w-fit max-w-full rounded-lg bg-[#edf5e9] px-4 py-2 text-[20px] font-extrabold leading-[1.5] tracking-normal text-[#477b4d] sm:text-2xl">১ ফাইল কিনলেই ১ ফাইল ফ্রি!</span>
+          <span className="mx-auto mt-2.5 block max-w-[540px] rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-[15px] font-bold leading-[1.6] tracking-normal text-red-700 sm:text-lg">মাত্র ৭ দিনে স্বস্তি না পেলে ১০০% টাকা ফেরত গ্যারান্টি!</span>
         </h1>
         <div className="relative mx-auto max-w-[440px] overflow-hidden rounded-[26px] border border-[#c9ddc3] bg-[#f3f8ef] p-2 shadow-[0_14px_40px_#24432d14]">
           {heroImage ? <SafeImage src={toImg(heroImage,{w:880,q:88})} alt={page.title || "মেথি মিক্স পাউডার"} className="aspect-square w-full rounded-[20px] object-cover"/> :
