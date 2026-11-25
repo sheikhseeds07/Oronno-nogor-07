@@ -118,7 +118,7 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
         <div className="mx-auto mt-3 max-w-[440px] rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 shadow-sm">
           <div className="flex items-center gap-2">
             <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-red-100 text-red-700"><ShieldCheck size={16}/></span>
-            <h2 className="text-[14px] font-extrabold text-red-800">আপনি জানেন কি?</h2>
+            <h2 className="text-[14px] font-extrabold text-red-800">{page.warning_title || "আপনি জানেন কি?"}</h2>
           </div>
           <p className="mt-1.5 text-[12px] font-medium leading-5 text-red-900">{page.description || "দীর্ঘদিন ধরে পেটের অস্বস্তি, বদহজম বা অস্বাভাবিক উপসর্গ থাকলে অবহেলা না করে চিকিৎসকের পরামর্শ নিন।"}</p>
         </div>
@@ -132,8 +132,8 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
             <span className="text-[11px] font-bold tracking-[.16em]">HERBAL CARE</span>
             <Sprout size={19} strokeWidth={2.2} className="scale-x-[-1]" />
           </div>
-          <h2 id="methi-benefits-title" className="methi-hero-title mt-1 text-center text-[23px] font-extrabold text-[#24452a] sm:text-[26px]">মেথি মিক্স পাউডারের উপকারিতা</h2>
-          <p className="mt-1 text-center text-xs text-[#6b8066]">প্রতিদিনের খাবারের সঙ্গে ভেষজ উপাদানের সমন্বয়</p>
+          <h2 id="methi-benefits-title" className="methi-hero-title mt-1 text-center text-[23px] font-extrabold text-[#24452a] sm:text-[26px]">{page.benefits_title || "মেথি মিক্স পাউডারের উপকারিতা"}</h2>
+          <p className="mt-1 text-center text-xs text-[#6b8066]">{page.benefits_subtitle || "প্রতিদিনের খাবারের সঙ্গে ভেষজ উপাদানের সমন্বয়"}</p>
         </div>
         <div className="mx-3 mb-3 overflow-hidden rounded-[17px] border border-[#dce9d8] bg-white/90 sm:mx-5 sm:mb-5">
           {(Array.isArray(page.features) && page.features.length ? page.features : [
@@ -155,22 +155,22 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
       </section>
 
       <section className="border-t border-[#dce9d8] py-7">
-        <h2 className="flex items-center gap-2 text-xl font-bold"><CircleHelp size={20} className="text-[#477b4d]"/> সাধারণ প্রশ্ন</h2>
+        <h2 className="flex items-center gap-2 text-xl font-bold"><CircleHelp size={20} className="text-[#477b4d]"/> {page.faq_heading || "সাধারণ প্রশ্ন"}</h2>
         <div className="mt-3 space-y-2">{(Array.isArray(page.faq) && page.faq.length ? page.faq : DEFAULT_FAQS).map((faq,i)=><div key={faq.q} className="methi-card overflow-hidden"><button onClick={()=>setOpenFaq(openFaq===i?null:i)} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold"><span>{faq.q}</span><ChevronDown size={17} className={"shrink-0 transition "+(openFaq===i?"rotate-180":"")}/></button>{openFaq===i&&<p className="px-4 pb-3 text-xs leading-6 text-[#647a62]">{faq.a}</p>}</div>)}</div>
       </section>
 
       <section id="methi-order" className="scroll-mt-4 border-t border-[#dce9d8] py-7">
         <div className="mx-auto max-w-xl overflow-hidden rounded-[22px] border border-[#c9ddc3] bg-white shadow-sm">
-          <div className="bg-[#24432d] px-5 py-4 text-white"><div className="flex items-center gap-2 text-xs font-semibold text-[#e7f1e1]"><ShoppingBag size={15}/> অর্ডার ফর্ম</div><h2 className="mt-1 text-2xl font-bold">অর্ডার কনফার্ম করুন</h2><p className="mt-1 text-xs text-[#e7f1e1]">১ ফাইল + ১ ফাইল ফ্রি — ৳৫৯৯</p></div>
+          <div className="bg-[#24432d] px-5 py-4 text-white"><div className="flex items-center gap-2 text-xs font-semibold text-[#e7f1e1]"><ShoppingBag size={15}/> {page.order_kicker || "অর্ডার ফর্ম"}</div><h2 className="mt-1 text-2xl font-bold">{page.order_heading || "অর্ডার কনফার্ম করুন"}</h2><p className="mt-1 text-xs text-[#e7f1e1]">{page.order_subtitle || "১ ফাইল + ১ ফাইল ফ্রি — ৳৫৯৯"}</p></div>
           <form id="methi-checkout-form" onSubmit={submit} className="space-y-3 p-4 sm:p-5">
             <div className="flex items-center gap-2.5 rounded-xl border border-[#dce9d8] bg-[#f3f8ef] p-2">
               <div className="h-[62px] w-[62px] shrink-0 overflow-hidden rounded-lg border border-[#dce9d8] bg-white">
-                {chosen?.image ? <SafeImage src={toImg(chosen.image,{w:160,q:80})} alt="মেথি মিক্স পাউডার" className="h-full w-full object-cover"/> : <div className="grid h-full w-full place-items-center text-[#477b4d]"><Sprout size={25}/></div>}
+                {chosen?.image ? <SafeImage src={toImg(chosen.image,{w:160,q:80})} alt={page.product_card_title || "মেথি মিক্স পাউডার"} className="h-full w-full object-cover"/> : <div className="grid h-full w-full place-items-center text-[#477b4d]"><Sprout size={25}/></div>}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-[13px] font-bold leading-5 text-[#24432d]">{chosen?.name || page.title || "মেথি মিক্স পাউডার"}</div>
-                <div className="text-[11px] font-semibold leading-4 text-[#477b4d]">{page.hero_subtitle || "১ ফাইল কিনুন, ১ ফাইল ফ্রি"}</div>
-                <div className="text-[11px] leading-4 text-[#647a62]">২ ফাইলের প্যাকেজ • ৳{chosen?.price || 599}</div>
+                <div className="text-[13px] font-bold leading-5 text-[#24432d]">{page.product_card_title || chosen?.name || page.title || "মেথি মিক্স পাউডার"}</div>
+                <div className="text-[11px] font-semibold leading-4 text-[#477b4d]">{page.product_card_offer || "১ ফাইল কিনুন, ১ ফাইল ফ্রি"}</div>
+                <div className="text-[11px] leading-4 text-[#647a62]">{page.product_card_price || `২ ফাইলের প্যাকেজ • ৳${chosen?.price || 599}`}</div>
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <button type="button" aria-label="পরিমাণ কমান" onClick={()=>setQuantity(q=>Math.max(1,q-1))} className="grid h-7 w-7 place-items-center rounded-full bg-white text-sm font-bold">−</button>
@@ -178,10 +178,10 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
                 <button type="button" aria-label="পরিমাণ বাড়ান" onClick={()=>setQuantity(q=>Math.min(10,q+1))} className="grid h-7 w-7 place-items-center rounded-full bg-white text-sm font-bold">+</button>
               </div>
             </div>
-            <input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="আপনার নাম *" className="w-full rounded-xl border border-[#c9ddc3] px-4 py-3 text-sm outline-none focus:border-[#477b4d]"/>
-            <input required value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} placeholder="মোবাইল নম্বর *" inputMode="tel" className="w-full rounded-xl border border-[#c9ddc3] px-4 py-3 text-sm outline-none focus:border-[#477b4d]"/>
-            <textarea required value={form.address} onChange={e=>setForm({...form,address:e.target.value})} placeholder="সম্পূর্ণ ঠিকানা *" rows={2} className="w-full resize-y rounded-xl border border-[#c9ddc3] px-4 py-3 text-sm outline-none focus:border-[#477b4d]"/>
-            <div className="rounded-xl bg-[#f3f8ef] p-3 text-sm"><div className="flex justify-between"><span>পণ্যের মূল্য</span><b>{taka(subtotal)}</b></div><div className="mt-1 flex justify-between"><span>ডেলিভারি চার্জ</span><b className="text-emerald-700">{shipping === 0 ? "ফ্রি" : taka(shipping)}</b></div><div className="mt-2 flex justify-between border-t border-[#c9ddc3] pt-2 font-bold"><span>সর্বমোট</span><span className="text-[#477b4d]">{taka(total)}</span></div></div>
+            <input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder={page.name_placeholder || "আপনার নাম *"} className="w-full rounded-xl border border-[#c9ddc3] px-4 py-3 text-sm outline-none focus:border-[#477b4d]"/>
+            <input required value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} placeholder={page.phone_placeholder || "মোবাইল নম্বর *"} inputMode="tel" className="w-full rounded-xl border border-[#c9ddc3] px-4 py-3 text-sm outline-none focus:border-[#477b4d]"/>
+            <textarea required value={form.address} onChange={e=>setForm({...form,address:e.target.value})} placeholder={page.address_placeholder || "সম্পূর্ণ ঠিকানা *"} rows={2} className="w-full resize-y rounded-xl border border-[#c9ddc3] px-4 py-3 text-sm outline-none focus:border-[#477b4d]"/>
+            <div className="rounded-xl bg-[#f3f8ef] p-3 text-sm"><div className="flex justify-between"><span>{page.subtotal_label || "পণ্যের মূল্য"}</span><b>{taka(subtotal)}</b></div><div className="mt-1 flex justify-between"><span>{page.delivery_label || "ডেলিভারি চার্জ"}</span><b className="text-emerald-700">{shipping === 0 ? "ফ্রি" : taka(shipping)}</b></div><div className="mt-2 flex justify-between border-t border-[#c9ddc3] pt-2 font-bold"><span>{page.total_label || "সর্বমোট"}</span><span className="text-[#477b4d]">{taka(total)}</span></div></div>
             <button type="submit" disabled={submitting||!chosen||chosen.price<=0} className="w-full rounded-xl bg-[#477b4d] px-5 py-3.5 text-sm font-bold text-white shadow-sm disabled:opacity-50">{submitting?"অর্ডার প্রসেস হচ্ছে...":(page.cta_text || "অর্ডার কনফার্ম করুন")} <ArrowRight className="ml-1 inline" size={16}/></button>
           </form>
         </div>
@@ -189,6 +189,6 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
     </main>
 
     <footer className="border-t border-[#dce9d8] bg-white px-4 py-5 text-center text-[11px] text-[#647a62]"><div className="font-bold text-[#24432d]">মেথি মিক্স পাউডার</div><p className="mt-1">এটি খাদ্যপণ্য; চিকিৎসা বা ওষুধের বিকল্প নয়।</p></footer>
-    {!isCheckoutVisible && <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#c9ddc3] bg-white/95 px-3 py-2.5 shadow-[0_-8px_30px_#24432d18] backdrop-blur md:hidden"><div className="mx-auto flex max-w-lg items-center gap-3"><div className="min-w-0 flex-1"><div className="text-[10px] font-semibold text-[#647a62]">বিশেষ অফার • সারা দেশে ডেলিভারি ফ্রি</div><div className="text-sm font-bold leading-5 text-[#24432d]">১ ফাইল কিনুন, ১ ফাইল ফ্রি পান</div><div className="text-xs font-bold text-[#477b4d]">২ ফাইল মাত্র ৳৫৯৯</div></div><button onClick={scrollOrder} className="shrink-0 rounded-xl bg-[#24432d] px-4 py-3 text-sm font-bold text-white shadow-md">এখনই অর্ডার <ArrowRight className="ml-1 inline" size={14}/></button></div></div>}
+    {!isCheckoutVisible && <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#c9ddc3] bg-white/95 px-3 py-2.5 shadow-[0_-8px_30px_#24432d18] backdrop-blur md:hidden"><div className="mx-auto flex max-w-lg items-center gap-3"><div className="min-w-0 flex-1"><div className="text-[10px] font-semibold text-[#647a62]">{page.floating_label || "বিশেষ অফার • সারা দেশে ডেলিভারি ফ্রি"}</div><div className="text-sm font-bold leading-5 text-[#24432d]">{page.floating_offer || "১ ফাইল কিনুন, ১ ফাইল ফ্রি পান"}</div><div className="text-xs font-bold text-[#477b4d]">{page.floating_price || "২ ফাইল মাত্র ৳৫৯৯"}</div></div><button onClick={scrollOrder} className="shrink-0 rounded-xl bg-[#24432d] px-4 py-3 text-sm font-bold text-white shadow-md">{page.floating_cta || "এখনই অর্ডার"} <ArrowRight className="ml-1 inline" size={14}/></button></div></div>}
   </div>;
 }
