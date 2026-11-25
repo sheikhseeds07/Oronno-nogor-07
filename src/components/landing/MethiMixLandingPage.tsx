@@ -45,13 +45,17 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
   const product = (page?.products ?? null) as Product | null;
   const addons = (Array.isArray(page?.addons) ? page.addons : []) as Addon[];
   const heroImage = page?.hero_image || product?.images?.[0] || "";
-  const basePrice = Number(page?.sale_price ?? product?.sale_price ?? page?.regular_price ?? product?.price ?? 0);
-  const regularPrice = Number(page?.regular_price ?? product?.price ?? 0) || null;
-  const delivery = Number(page?.main_delivery_fee ?? 70);
-  const packages = useMemo<Package[]>(() => {
-    const primary = product ? [{ id: product.id, name: product.name, price: basePrice, oldPrice: regularPrice, image: heroImage, deliveryFee: delivery }] : [];
-    return primary.concat(addons.map((a, i) => ({ id: a.product_id || "addon-" + i, name: a.name, price: Number(a.price), oldPrice: a.old_price ?? null, image: a.image || heroImage, deliveryFee: a.delivery_fee == null ? delivery : Number(a.delivery_fee) })));
-  }, [product, addons, basePrice, regularPrice, heroImage, delivery]);
+  // Fixed launch offer: one pack + one free pack, with nationwide free delivery.
+  const basePrice = 599;
+  const delivery = 0;
+  const packages = useMemo<Package[]>(() => product ? [{
+    id: product.id,
+    name: "১ প্যাকেট + ১ প্যাকেট ফ্রি (মোট ২ প্যাকেট)",
+    price: basePrice,
+    oldPrice: null,
+    image: heroImage,
+    deliveryFee: 0,
+  }] : [], [product, basePrice, heroImage]);
   const chosen = packages[selected] || packages[0];
   const subtotal = (chosen?.price || 0) * quantity;
   const shipping = chosen?.deliveryFee ?? delivery;
@@ -89,7 +93,7 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
     <FacebookPixel eager />
     <style>{".methi-mix-page{font-family:'Hind Siliguri','Noto Sans Bengali',sans-serif}.methi-grain{background-image:radial-gradient(rgba(32,56,45,.075) .7px,transparent .7px);background-size:14px 14px}.methi-float{animation:methiFloat 6s ease-in-out infinite}.methi-reveal{animation:methiReveal .7s ease both}@keyframes methiFloat{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-9px) rotate(1deg)}}@keyframes methiReveal{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}@media(prefers-reduced-motion:reduce){.methi-float,.methi-reveal{animation:none}}"}
     </style>
-    <div className="bg-[#20382d] px-3 py-2 text-center text-xs sm:text-sm font-bold tracking-wide text-[#f7e9c8]">প্রাকৃতিক উপাদানের পরিচিতি • ১৭টি উপাদানের সমন্বয় • বিস্তারিত জেনে অর্ডার করুন</div>
+    <div className="bg-[#20382d] px-3 py-2 text-center text-xs sm:text-sm font-bold tracking-wide text-[#f7e9c8]">১ প্যাকেট কিনলে ১ প্যাকেট ফ্রি • মূল্য ৳৫৯৯ • সারা দেশে ডেলিভারি ফ্রি</div>
     <header className="relative z-10 border-b border-[#e7e0d1] bg-[#fbfaf5]/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2"><span className="grid h-10 w-10 place-items-center rounded-2xl bg-[#20382d] text-[#f4dfad]"><Leaf size={21}/></span><div><div className="text-lg font-black leading-none">মেথি মিক্স</div><div className="mt-1 text-[10px] font-semibold tracking-[.18em] text-[#788274]">HERBAL BLEND</div></div></div>
@@ -105,7 +109,7 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
             <h1 className="mt-5 max-w-xl text-4xl font-black leading-[1.2] tracking-tight sm:text-5xl lg:text-6xl">{page.hero_title || "প্রতিদিনের খাদ্যাভ্যাসে যোগ করুন মেথি মিক্স"}</h1>
             <p className="mt-4 max-w-xl text-base leading-8 text-[#e4e9dd] sm:text-lg">{page.hero_subtitle || "পরিচিত ১৭টি বীজ, মসলা ও উদ্ভিজ্জ উপাদানের সমন্বয়ে তৈরি একটি বিশেষ পাউডার ব্লেন্ড।"}</p>
             <div className="mt-6 flex flex-wrap gap-2 text-xs font-bold text-[#f3e6c9]"><span className="rounded-full bg-white/10 px-3 py-2">১৭টি উপাদান</span><span className="rounded-full bg-white/10 px-3 py-2">উপাদান সম্পর্কে জানুন</span><span className="rounded-full bg-white/10 px-3 py-2">ক্যাশ অন ডেলিভারি</span></div>
-            <div className="mt-7 flex flex-wrap items-center gap-4">{chosen && chosen.price > 0 ? <div><div className="text-xs text-[#c8d1c2]">শুরু হচ্ছে</div><div className="text-3xl font-black text-[#f1d39a]">{taka(chosen.price)}</div></div> : <div className="text-sm font-semibold text-[#f1d39a]">দাম ও প্যাকেজ Admin থেকে সেট করুন</div>}<button onClick={scrollOrder} className="rounded-2xl bg-[#d39b4c] px-6 py-3.5 font-black text-[#20382d] shadow-xl transition hover:-translate-y-1">প্যাকেজ দেখুন <ArrowRight className="ml-1 inline" size={16}/></button></div>
+            <div className="mt-7 flex flex-wrap items-center gap-4">{chosen && chosen.price > 0 ? <div><div className="text-xs text-[#c8d1c2]">১ প্যাকেট + ১ প্যাকেট ফ্রি</div><div className="text-3xl font-black text-[#f1d39a]">{taka(chosen.price)}</div><div className="text-xs font-bold text-[#f1d39a]">সারা দেশে ডেলিভারি ফ্রি</div></div> : <div className="text-sm font-semibold text-[#f1d39a]">পণ্যটি Admin থেকে যুক্ত করুন</div>}<button onClick={scrollOrder} className="rounded-2xl bg-[#d39b4c] px-6 py-3.5 font-black text-[#20382d] shadow-xl transition hover:-translate-y-1">প্যাকেজ দেখুন <ArrowRight className="ml-1 inline" size={16}/></button></div>
             <p className="mt-4 text-[11px] leading-5 text-[#bdc9b8]">এটি খাদ্যপণ্য; কোনো রোগের চিকিৎসা বা ওষুধের বিকল্প নয়।</p>
           </div>
           <div className="methi-float order-1 md:order-2"><div className="relative mx-auto max-w-[440px] rounded-[2.5rem] border border-white/15 bg-gradient-to-br from-[#f3ead5] to-[#d8c7a6] p-4 shadow-2xl">
@@ -134,7 +138,7 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
             <input required value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} placeholder="মোবাইল নম্বর *" inputMode="tel" className="w-full rounded-xl border border-[#ded8ca] bg-white px-4 py-3 text-sm outline-none focus:border-[#b9843f]"/>
             <textarea required value={form.address} onChange={e=>setForm({...form,address:e.target.value})} placeholder="সম্পূর্ণ ঠিকানা *" rows={3} className="w-full resize-y rounded-xl border border-[#ded8ca] bg-white px-4 py-3 text-sm outline-none focus:border-[#b9843f]"/>
             <textarea value={form.note} onChange={e=>setForm({...form,note:e.target.value})} placeholder="অতিরিক্ত নির্দেশনা (ঐচ্ছিক)" rows={2} className="w-full resize-y rounded-xl border border-[#ded8ca] bg-white px-4 py-3 text-sm outline-none focus:border-[#b9843f]"/>
-            <div className="space-y-2 rounded-2xl bg-[#f0eee6] p-4 text-sm"><div className="flex justify-between"><span>পণ্যের মূল্য</span><b>{taka(subtotal)}</b></div><div className="flex justify-between"><span>ডেলিভারি চার্জ</span><b>{taka(shipping)}</b></div><div className="flex justify-between border-t border-[#d8d2c4] pt-2 text-base"><b>সর্বমোট</b><b className="text-[#a87534]">{taka(total)}</b></div></div>
+            <div className="space-y-2 rounded-2xl bg-[#f0eee6] p-4 text-sm"><div className="flex justify-between"><span>পণ্যের মূল্য</span><b>{taka(subtotal)}</b></div><div className="flex justify-between"><span>ডেলিভারি চার্জ</span><b className="text-emerald-700">ফ্রি</b></div><div className="flex justify-between border-t border-[#d8d2c4] pt-2 text-base"><b>সর্বমোট</b><b className="text-[#a87534]">{taka(total)}</b></div></div>
             <button type="submit" disabled={submitting||!chosen||chosen.price<=0} className="w-full rounded-2xl bg-[#c28b3c] px-5 py-4 font-black text-white shadow-lg transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50">{submitting?"অর্ডার প্রসেস হচ্ছে...":"অর্ডার কনফার্ম করুন"} <ArrowRight className="ml-1 inline" size={17}/></button><p className="text-center text-[11px] leading-5 text-[#778174]">অর্ডার জমা হলে এটি আমাদের নিয়মিত Orders সেকশনে যুক্ত হবে।</p>
           </form>
         </div></div></section>
