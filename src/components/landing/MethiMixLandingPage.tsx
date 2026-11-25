@@ -107,9 +107,9 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
     <main className="mx-auto max-w-4xl px-4">
       <section className="py-5 sm:py-8">
         <h1 className="methi-hero-title mb-4 text-center text-[27px] font-extrabold leading-[1.35] tracking-normal text-[#24432d] sm:text-4xl" style={{ wordSpacing: "0.12em", letterSpacing: "normal" }}>
-          <span className="block">মেথি মিক্স</span>
-          <span className="mx-auto mt-2 block w-fit max-w-full rounded-lg bg-[#edf5e9] px-4 py-2 text-[20px] font-extrabold leading-[1.5] tracking-normal text-[#477b4d] sm:text-2xl">১ ফাইল কিনলেই ১ ফাইল ফ্রি!</span>
-          <span className="mx-auto mt-2.5 block max-w-[540px] rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-[15px] font-bold leading-[1.6] tracking-normal text-red-700 sm:text-lg">মাত্র ৭ দিনে স্বস্তি না পেলে ১০০% টাকা ফেরত গ্যারান্টি!</span>
+          <span className="block">{page.hero_title || "মেথি মিক্স"}</span>
+          <span className="mx-auto mt-2 block w-fit max-w-full rounded-lg bg-[#edf5e9] px-4 py-2 text-[20px] font-extrabold leading-[1.5] tracking-normal text-[#477b4d] sm:text-2xl">{page.hero_subtitle || "১ ফাইল কিনলেই ১ ফাইল ফ্রি!"}</span>
+          <span className="mx-auto mt-2.5 block max-w-[540px] rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-[15px] font-bold leading-[1.6] tracking-normal text-red-700 sm:text-lg">{page.guarantee_text || "মাত্র ৭ দিনে স্বস্তি না পেলে ১০০% টাকা ফেরত গ্যারান্টি!"}</span>
         </h1>
         <div className="relative mx-auto max-w-[440px] overflow-hidden rounded-[26px] border border-[#c9ddc3] bg-[#f3f8ef] p-2 shadow-[0_14px_40px_#24432d14]">
           {heroImage ? <SafeImage src={toImg(heroImage,{w:880,q:88})} alt={page.title || "মেথি মিক্স পাউডার"} className="aspect-square w-full rounded-[20px] object-cover"/> :
@@ -136,14 +136,14 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
           <p className="mt-1 text-center text-xs text-[#6b8066]">প্রতিদিনের খাবারের সঙ্গে ভেষজ উপাদানের সমন্বয়</p>
         </div>
         <div className="mx-3 mb-3 overflow-hidden rounded-[17px] border border-[#dce9d8] bg-white/90 sm:mx-5 sm:mb-5">
-          {[
-            "গ্যাস্ট্রিক সমস্যা দূর হবে।",
-            "ঘন ঘন টক ঢেকুর বন্ধ হবে।",
-            "খাওয়াই রুচি বাড়বে।",
-            "বুকে জ্বালাপোড়া বন্ধ হবে।",
-            "বদহজম উঠবে না।",
-          ].map((benefit, index) => (
-            <div key={benefit} className={"flex items-center gap-3 px-3.5 py-3 sm:px-5 sm:py-3.5 " + (index !== 4 ? "border-b border-[#edf2e9]" : "")}>
+          {(Array.isArray(page.features) && page.features.length ? page.features : [
+            { title: "গ্যাস্ট্রিক সমস্যা দূর হবে।" },
+            { title: "ঘন ঘন টক ঢেকুর বন্ধ হবে।" },
+            { title: "খাওয়াই রুচি বাড়বে।" },
+            { title: "বুকে জ্বালাপোড়া বন্ধ হবে।" },
+            { title: "বদহজম উঠবে না।" },
+          ]).map((benefit, index) => (
+            <div key={benefit.title || index} className={"flex items-center gap-3 px-3.5 py-3 sm:px-5 sm:py-3.5 " + (index !== (page.features?.length || 5) - 1 ? "border-b border-[#edf2e9]" : "")}>
               <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#edf5e9] text-[#52764d]">
                 <Sprout size={16} strokeWidth={2.1} />
               </span>
@@ -168,9 +168,9 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
                 {chosen?.image ? <SafeImage src={toImg(chosen.image,{w:160,q:80})} alt="মেথি মিক্স পাউডার" className="h-full w-full object-cover"/> : <div className="grid h-full w-full place-items-center text-[#477b4d]"><Sprout size={25}/></div>}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-[13px] font-bold leading-5 text-[#24432d]">মেথি মিক্স পাউডার</div>
-                <div className="text-[11px] font-semibold leading-4 text-[#477b4d]">১ ফাইল কিনুন, ১ ফাইল ফ্রি</div>
-                <div className="text-[11px] leading-4 text-[#647a62]">২ ফাইলের প্যাকেজ • ৳৫৯৯</div>
+                <div className="text-[13px] font-bold leading-5 text-[#24432d]">{chosen?.name || page.title || "মেথি মিক্স পাউডার"}</div>
+                <div className="text-[11px] font-semibold leading-4 text-[#477b4d]">{page.hero_subtitle || "১ ফাইল কিনুন, ১ ফাইল ফ্রি"}</div>
+                <div className="text-[11px] leading-4 text-[#647a62]">২ ফাইলের প্যাকেজ • ৳{chosen?.price || 599}</div>
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <button type="button" aria-label="পরিমাণ কমান" onClick={()=>setQuantity(q=>Math.max(1,q-1))} className="grid h-7 w-7 place-items-center rounded-full bg-white text-sm font-bold">−</button>
