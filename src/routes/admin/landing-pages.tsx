@@ -252,14 +252,22 @@ function LandingPagesAdmin() {
       const { error: costError } = await supabase.from("products").update({ cost }).eq("id", productId);
       if (costError) return toast.error(`প্রডাক্ট কস্ট সংরক্ষণ হয়নি: ${costError.message}`);
     }
-    const { error } = editing.id
-      ? await supabase.from("landing_pages").update(payload).eq("id", editing.id)
-      : await supabase.from("landing_pages").insert(payload);
+    const { data: savedPage, error } = editing.id
+      ? await supabase.from("landing_pages").update(payload).eq("id", editing.id).select(LANDING_PAGES_COLUMNS).single()
+      : await supabase.from("landing_pages").insert(payload).select(LANDING_PAGES_COLUMNS).single();
     if (error) return toast.error(error.message);
+    if (!savedPage) return toast.error("সংরক্ষণের পর আপডেট তথ্য পাওয়া যায়নি");
     toast.success("সংরক্ষণ হয়েছে");
     // Keep any already-open landing page in the same app in sync immediately.
     // Seed Combo uses the clean landing query; All Product pages use their own key.
     const savedSlug = editing.slug;
+    if (savedSlug === "methi-mix") {
+      qc.setQueryData(["landing-methi-mix", savedSlug], (current: Record<string, unknown> | undefined) => ({
+        ...(current ?? {}),
+        ...savedPage,
+        products: (current as { products?: unknown } | undefined)?.products ?? null,
+      }));
+    }
     await Promise.all([
       qc.invalidateQueries({ queryKey: ["admin-landing"] }),
       qc.invalidateQueries({ queryKey: ["admin-landing-linked-product-ids"] }),
