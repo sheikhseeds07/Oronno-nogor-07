@@ -153,6 +153,12 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
             </div>
           ))}
         </div>
+        <div className="mx-3 mb-4 mt-4 sm:mx-5">
+          <button type="button" onClick={scrollOrder} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#477b4d] px-5 py-3.5 text-sm font-extrabold text-white shadow-[0_8px_20px_#24432d24] transition hover:bg-[#386a40] active:scale-[.99]">
+            <ShoppingBag size={18} strokeWidth={2.4} />
+            এখনই অর্ডার করুন
+          </button>
+        </div>
       </section>
 
       <section className="border-t border-[#dce9d8] py-7">
