@@ -15,6 +15,7 @@ const LazyCleanLandingPage = lazy(() => import("@/components/landing/CleanLandin
 const LazyProfessionalLandingPage = lazy(() => import("@/components/landing/ProfessionalLandingPage").then((m) => ({ default: m.ProfessionalLandingPage })));
 const LazyProductStyleLandingPage = lazy(() => import("@/components/landing/ProductStyleLandingPage").then((m) => ({ default: m.ProductStyleLandingPage })));
 const LazyAllProductLandingPage = lazy(() => import("@/components/landing/AllProductLandingPage").then((m) => ({ default: m.AllProductLandingPage })));
+const LazyMethiMixLandingPage = lazy(() => import("@/components/landing/MethiMixLandingPage").then((m) => ({ default: m.MethiMixLandingPage })));
 
 function LandingRouteFallback() {
   return <div className="min-h-screen bg-[#f7f9f6]" aria-hidden="true" />;
@@ -192,6 +193,7 @@ const isKaralaStyle = (slug: string) => landingBaseSlug(slug) === "karala";
 
 function LandingPage() {
   const { slug } = useParams({ from: "/landing/$slug" });
+  if (slug === "methi-mix") return <LandingTemplateBoundary><LazyMethiMixLandingPage slug={slug} /></LandingTemplateBoundary>;
   // Copies inherit 100% of the original page behaviour: resolve every
   // slug-specific flag from the base slug, not the suffixed copy slug.
   const behaviorSlug = landingBaseSlug(slug);
