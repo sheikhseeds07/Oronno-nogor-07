@@ -99,7 +99,7 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
 
   return <div className="methi-mix-page min-h-screen overflow-hidden bg-[#fbfdf9] pb-20 text-[#24432d]">
     <FacebookPixel eager />
-    <style>{`@import url('https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@400;500;600;700;800&family=Hind+Siliguri:wght@400;500;600;700&display=swap');
+    <style>{`@import url('https://fonts.googleapis.com/css2?family=Anek+Bangla:wght@400;500;600;700;800&family=Hind+Siliguri:wght@400;500;600;700&display=block');
       .methi-mix-page{font-family:'Hind Siliguri','Anek Bangla',sans-serif}.methi-mix-page .methi-hero-title{font-family:'Anek Bangla','Hind Siliguri',sans-serif;font-weight:800;letter-spacing:normal;word-spacing:.12em}
       .methi-mix-page button,.methi-mix-page input,.methi-mix-page textarea{font:inherit}
       .methi-mix-page .methi-card{border:1px solid #dce9d8;background:#fff;border-radius:18px}
