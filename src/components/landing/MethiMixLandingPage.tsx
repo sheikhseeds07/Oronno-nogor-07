@@ -36,6 +36,13 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
   const [submitting, setSubmitting] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [isCheckoutVisible, setIsCheckoutVisible] = useState(false);
+  const { data: page, isLoading } = useQuery({
+    queryKey: ["landing-methi-mix", slug],
+    staleTime: 10_000,
+    gcTime: 60_000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => (await supabase.from("landing_pages").select(LANDING_PAGES_COLUMNS + ", products(" + LANDING_PRODUCT_COLUMNS + ")").eq("slug", slug).eq("is_published", true).maybeSingle()).data,
+  });
   useEffect(() => {
     if (isLoading || !page) return;
     const target = document.getElementById("methi-checkout-form");
@@ -46,13 +53,6 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
     observer.observe(target);
     return () => observer.disconnect();
   }, [isLoading, page]);
-  const { data: page, isLoading } = useQuery({
-    queryKey: ["landing-methi-mix", slug],
-    staleTime: 10_000,
-    gcTime: 60_000,
-    refetchOnWindowFocus: false,
-    queryFn: async () => (await supabase.from("landing_pages").select(LANDING_PAGES_COLUMNS + ", products(" + LANDING_PRODUCT_COLUMNS + ")").eq("slug", slug).eq("is_published", true).maybeSingle()).data,
-  });
   const product = (page?.products ?? null) as Product | null;
   const addons = (Array.isArray(page?.addons) ? page.addons : []) as Addon[];
   const heroImage = page?.hero_image || product?.images?.[0] || "";
