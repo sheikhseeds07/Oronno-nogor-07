@@ -12,9 +12,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import {
-  ArrowRight, CheckCircle2, ChevronDown, CircleHelp, Leaf, PackageCheck,
+  ArrowRight, ChevronDown, CircleHelp, Leaf, PackageCheck,
   ShieldCheck, ShoppingBag, Sprout, CircleDot, Wheat, Flower2, Droplet,
-  Flame, Nut, Cherry, Citrus, TreePine, Soup, CookingPot, Sun, Circle,
+  Flame, Nut, Citrus, TreePine, CookingPot, Circle,
   Sparkles, Truck,
 } from "lucide-react";
 import { trackInitiateCheckout, trackPurchase } from "@/lib/fbq";
