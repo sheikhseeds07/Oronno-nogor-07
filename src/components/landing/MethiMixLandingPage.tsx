@@ -56,8 +56,8 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
   const subtotal = (chosen?.price || 0) * quantity;
   const shipping = chosen?.deliveryFee ?? delivery;
   const total = subtotal + shipping;
-  const rawSteps = (page?.planting_steps ?? {}) as { seed_table?: Ingredient[]; gallery_images?: string[]; methi_usage_text?: string; methi_story_text?: string };
-  const ingredients = rawSteps.seed_table?.length ? rawSteps.seed_table.filter((x) => x.name?.trim()) : DEFAULT_INGREDIENTS.map((name) => ({ name }));
+  const rawSteps = (page?.planting_steps ?? {}) as { seed_table?: Ingredient[]; gallery_images?: string[]; methi_initialized?: boolean; methi_usage_text?: string; methi_story_text?: string };
+  const ingredients = rawSteps.methi_initialized && rawSteps.seed_table?.length ? rawSteps.seed_table.filter((x) => x.name?.trim()) : DEFAULT_INGREDIENTS.map((name) => ({ name }));
   const gallery = (rawSteps.gallery_images || []).filter(Boolean);
   const features = (page?.features || []).filter((x: any) => x?.title);
   const why = (page?.why_choose_us || []).filter((x: any) => x?.title);
