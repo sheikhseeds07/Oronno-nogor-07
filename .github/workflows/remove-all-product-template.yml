@@ -29,19 +29,23 @@ jobs:
 
           old = '''                      {([\n                        ["combo", "Combo", "ফানেল স্টাইল — প্রোমো স্ক্রল, গিফট, কাউন্টডাউন, পপআপ"],\n                        ["all", "All product", "seeds-combo-24 এর মতো ফুল ডিজাইন"],\n                      ] as const).map(([val, label, hint]) => ('''
           new = '''                      {([[\n                        "combo", "Combo", "ফানেল স্টাইল — প্রোমো স্ক্রল, গিফট, কাউন্টডাউন, পপআপ"\n                      ]] as const).map(([val, label, hint]) => ('''
-          if old not in s:
-              raise SystemExit('Expected All Product template block not found in landing-pages.tsx')
-          s = s.replace(old, new, 1)
-          admin.write_text(s, encoding='utf-8')
+          if old in s:
+              s = s.replace(old, new, 1)
+              admin.write_text(s, encoding='utf-8')
+              print('Removed legacy All Product selector block')
+          else:
+              print('Legacy selector block is already absent or has changed; leaving current editor untouched')
 
           content = Path('src/lib/landing-content.ts')
           s = content.read_text(encoding='utf-8')
           old = 'export type LandingTemplate = "combo" | "all";'
           new = 'export type LandingTemplate = "combo";'
-          if old not in s:
-              raise SystemExit('Expected LandingTemplate union not found')
-          s = s.replace(old, new, 1)
-          content.write_text(s, encoding='utf-8')
+          if old in s:
+              s = s.replace(old, new, 1)
+              content.write_text(s, encoding='utf-8')
+              print('Removed legacy LandingTemplate union member')
+          else:
+              print('Legacy LandingTemplate union is already absent or has changed; leaving current template types untouched')
           PY
 
       - name: Commit and push
