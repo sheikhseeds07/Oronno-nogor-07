@@ -12,31 +12,19 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import {
-  ArrowRight, ChevronDown, CircleHelp, Leaf, PackageCheck,
-  ShieldCheck, ShoppingBag, Sprout, CircleDot, Wheat, Flower2, Droplet,
-  Flame, Nut, Citrus, TreePine, CookingPot, Circle,
-  Sparkles, Truck, Waves,
+  ArrowRight, ChevronDown, CircleHelp, PackageCheck,
+  ShieldCheck, ShoppingBag, Sprout, Truck,
 } from "lucide-react";
 import { trackInitiateCheckout, trackPurchase } from "@/lib/fbq";
 import { toast } from "sonner";
 
-type Ingredient = { name: string; qty?: string; image?: string };
 type Product = { id: string; name: string; price: number; sale_price: number | null; images: string[] | null };
 type Addon = { product_id?: string; name: string; price: number; image?: string; old_price?: number; delivery_fee?: number | null };
 type Package = { id: string; name: string; price: number; oldPrice: number | null; image: string; deliveryFee: number };
 
-const DEFAULT_INGREDIENTS = [
-  "মেথি দানা","কালোজিরা","জিরা","মৌরি","সরিষা দানা","ধনিয়া","তিসি বীজ",
-  "চিয়া সিড","তোকমা দানা","কালো তিল","সাদা তিল","ইসবগুলের ভুসি",
-  "আমলকী গুঁড়া","দারুচিনি","এলাচ","লবঙ্গ","শুকনো আদা গুঁড়া",
-];
-const INGREDIENT_ICONS = [
-  Sprout, CircleDot, Wheat, Flower2, Droplet, Leaf, Nut, CircleDot, Droplet,
-  Circle, Circle, Waves, Citrus, TreePine, Sparkles, Flame, CookingPot,
-];
 const FAQS = [
   { q: "মেথি মিক্স কী এবং এর কাজ কী?", a: "মেথি মিক্স বিভিন্ন ভেষজ ও মসলাজাতীয় উপাদানের সমন্বয়ে তৈরি একটি খাদ্যপণ্য। এটি কোনো নির্দিষ্ট রোগ সারায় বা গ্যাস্ট্রিকের চিকিৎসা করে—এমন প্রমাণিত দাবি করা যায় না। পেটের অস্বস্তি বা হজমের সমস্যা নিয়মিত হলে চিকিৎসকের পরামর্শ নিন।" },
-  { q: "এতে কী কী উপাদান রয়েছে?", a: "প্রস্তুতকারকের দেওয়া তথ্য অনুযায়ী এতে আমলকী, হরিতকি, বহেড়া, সোনাপাতা, জোয়ান, ধনিয়া, মৌরি ও মেথি চূর্ণসহ প্রায় ১৫টি উপাদান রয়েছে। সম্পূর্ণ ও নির্ভুল তালিকার জন্য প্যাকেটের লেবেল দেখুন।" },
+  { q: "এতে কী কী উপাদান রয়েছে?", a: "উপাদানের সম্পূর্ণ ও নির্ভুল তালিকা জানতে পণ্যের প্যাকেটের লেবেল দেখুন।" },
   { q: "এটি কি ওষুধ? জেনে রাখুন", a: "এটি খাদ্য সম্পূরক, ওষুধ নয়। গর্ভবতী, স্তন্যদানকারী মা, শিশু বা নিয়মিত ওষুধ সেবনকারী হলে খাওয়ার আগে চিকিৎসকের পরামর্শ নিন।" },
 ];
 
@@ -76,10 +64,6 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
   const subtotal = (chosen?.price || 599) * quantity;
   const shipping = 0;
   const total = subtotal;
-  const rawSteps = (page?.planting_steps ?? {}) as { seed_table?: Ingredient[]; methi_initialized?: boolean };
-  const ingredients = rawSteps.methi_initialized && rawSteps.seed_table?.length
-    ? rawSteps.seed_table.filter((x) => x.name?.trim())
-    : DEFAULT_INGREDIENTS.map((name) => ({ name }));
   const scrollOrder = () => document.getElementById("methi-order")?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   const submit = async (event: React.FormEvent) => {
@@ -130,46 +114,6 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
         </div>
       </section>
 
-
-      <section className="border-t border-[#fee2e2] py-6">
-        <div className="text-center"><span className="text-xs font-bold tracking-wide text-[#c62828]">DIGESTIVE WELLNESS</span><h2 className="mt-1 text-xl font-extrabold sm:text-2xl">হজমের অস্বস্তি সম্পর্কে জানুন</h2><p className="mt-1 text-xs text-[#806b70]">পেটের অস্বস্তির লক্ষণগুলো অবহেলা করবেন না</p></div>
-        <div className="mt-4 overflow-hidden rounded-2xl border border-[#fee2e2] bg-white">
-          {["পেটে গ্যাস ও অস্বস্তি","পেট, বুক বা পিঠে ব্যথা","টক ঢেকুর ও বমি বমি ভাব","ক্ষুধামন্দা ও খাবারে অরুচি","বুকে জ্বালাপোড়া","বদহজম ও কোষ্ঠকাঠিন্য","দুর্বলতা"].map((item,i)=><div key={item} className="flex items-center gap-3 border-b border-[#fff0f0] px-4 py-3"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#fff1f2] text-xs font-bold text-[#c62828]">{i+1}</span><span className="text-sm font-semibold text-[#3b1720]">{item}</span></div>)}
-        </div>
-        <p className="mt-3 rounded-xl bg-[#fff7f7] p-3 text-xs leading-5 text-[#80565d]">এসব উপসর্গের কারণ একাধিক হতে পারে। মেথি মিক্স এসব সমস্যা দূর করে বা গ্যাস্ট্রিকের চিকিৎসা করে—এমন নিশ্চয়তা দেওয়া যায় না। ব্যথা, বুকজ্বালা বা হজমের সমস্যা চলতে থাকলে চিকিৎসকের পরামর্শ নিন।</p>
-      </section>
-
-      <section className="border-t border-[#fee2e2] py-6">
-        <div className="text-center"><span className="text-xs font-bold text-[#c62828]">INGREDIENTS</span><h2 className="mt-1 text-xl font-extrabold sm:text-2xl">মেথি মিক্সের উপাদান</h2><p className="mt-1 text-xs text-[#806b70]">প্রস্তুতকারকের দেওয়া উপাদান পরিচিতি</p></div>
-        <div className="mt-4 overflow-hidden rounded-2xl border border-[#fee2e2] bg-white">
-          <div className="grid grid-cols-1 divide-y divide-[#fff0f0] sm:grid-cols-2 sm:divide-y-0">
-            {ingredients.map((item,i)=><div key={item.name} className="flex items-center gap-3 border-b border-[#fff0f0] px-4 py-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#fff1f2] text-[#c62828]"><Leaf size={18}/></span><span className="text-sm font-semibold text-[#3b1720]">{item.name}</span></div>)}
-          </div>
-          <div className="border-t border-[#fff0f0] bg-[#fffafa] px-4 py-3 text-xs leading-5 text-[#806b70]">এতে উল্লেখিত উপাদানগুলোর পাশাপাশি প্রস্তুতকারকের তথ্য অনুযায়ী প্রায় ১৫টি উপাদান রয়েছে। সম্পূর্ণ উপাদান তালিকা প্যাকেটের লেবেল থেকে যাচাই করুন।</div>
-        </div>
-      </section>
-
-      <section className="border-t border-[#fee2e2] py-6">
-        <div className="text-center"><span className="text-xs font-bold text-[#c62828]">HOW TO USE</span><h2 className="mt-1 text-xl font-extrabold sm:text-2xl">খাওয়ার নিয়ম</h2></div>
-        <div className="methi-card mt-4 flex items-start gap-3 border-[#fee2e2] p-4">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#fff1f2] text-[#c62828]"><CookingPot size={22}/></span>
-          <div><h3 className="text-sm font-bold text-[#3b1720]">প্রস্তুতকারকের দেওয়া ব্যবহারবিধি</h3><p className="mt-1 text-sm leading-6 text-[#59464a]">প্রতিদিন রাতে খাবারের পর এক চামচ পাউডার আধা গ্লাস স্বাভাবিক পানিতে ভালোভাবে গুলিয়ে পান করার নির্দেশনা দেওয়া হয়েছে।</p><p className="mt-2 text-xs leading-5 text-[#806b70]">ব্যবহারের আগে প্যাকেটের লেবেলে থাকা নির্দেশনা ও পরিমাণ মিলিয়ে নিন। সোনাপাতা/সেনা-জাতীয় উপাদান থাকলে নিয়মিত ব্যবহারের আগে চিকিৎসক বা ফার্মাসিস্টের পরামর্শ নিন।</p></div>
-        </div>
-      </section>
-
-      <section className="border-t border-[#fee2e2] py-6">
-        <div className="rounded-2xl border border-[#fecaca] bg-[#fff7f7] p-4">
-          <h2 className="text-base font-extrabold text-[#a51d2d]">জেনে রাখুন</h2>
-          <p className="mt-2 text-sm leading-6 text-[#59464a]">এটি খাদ্য সম্পূরক, ওষুধ নয়। গর্ভবতী, স্তন্যদানকারী মা, শিশু বা নিয়মিত ওষুধ সেবনকারী হলে খাওয়ার আগে চিকিৎসকের পরামর্শ নিন।</p>
-        </div>
-      </section>
-      <section className="border-t border-[#fee2e2] py-7">
-        <div className="grid grid-cols-3 gap-2.5">
-          <div className="methi-card p-3 text-center"><Truck size={20} className="mx-auto text-[#c62828]"/><div className="mt-1 text-xs font-bold">ডেলিভারি ফ্রি</div></div>
-          <div className="methi-card p-3 text-center"><PackageCheck size={20} className="mx-auto text-[#c62828]"/><div className="mt-1 text-xs font-bold">১ + ১ প্যাক</div></div>
-          <div className="methi-card p-3 text-center"><ShieldCheck size={20} className="mx-auto text-[#c62828]"/><div className="mt-1 text-xs font-bold">সহজ অর্ডার</div></div>
-        </div>
-      </section>
 
       <section className="border-t border-[#fee2e2] py-7">
         <h2 className="flex items-center gap-2 text-xl font-bold"><CircleHelp size={20} className="text-[#c62828]"/> সাধারণ প্রশ্ন</h2>
