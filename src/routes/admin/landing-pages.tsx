@@ -172,7 +172,7 @@ function LandingPagesAdmin() {
           gallery_images: [],
         },
       } : {}),
-      features: p.slug === "methi-mix" && !currentMethiContent.methi_initialized
+      features: p.slug === "methi-mix" && (!p.features?.length || p.features.length !== 5 || p.features[0]?.title === "১৭টি তালিকাভুক্ত উপাদান")
         ? [
             { title: "গ্যাস্ট্রিক সমস্যা দূর হবে।", text: "" },
             { title: "ঘন ঘন টক ঢেকুর বন্ধ হবে।", text: "" },
@@ -189,6 +189,11 @@ function LandingPagesAdmin() {
             { title: "কাস্টমার সাপোর্ট", text: "অর্ডার সংক্রান্ত সহায়তার জন্য যোগাযোগ করুন।", icon: "☎️" },
           ]
         : p.why_choose_us?.length ? p.why_choose_us : DEFAULT_WHY,
+      faq: p.slug === "methi-mix" && !p.faq?.length ? [
+        { q: "মেথি মিক্স কী এবং এর কাজ কী?", a: "মেথি মিক্স বিভিন্ন ভেষজ ও মসলাজাতীয় উপাদানের সমন্বয়ে তৈরি একটি খাদ্যপণ্য। এটি কোনো নির্দিষ্ট রোগ সারায় বা গ্যাস্ট্রিকের চিকিৎসা করে—এমন প্রমাণিত দাবি করা যায় না। পেটের অস্বস্তি বা হজমের সমস্যা নিয়মিত হলে চিকিৎসকের পরামর্শ নিন।" },
+        { q: "এতে কী কী উপাদান রয়েছে?", a: "উপাদানের সম্পূর্ণ ও নির্ভুল তালিকা জানতে পণ্যের ফাইলের লেবেল দেখুন।" },
+        { q: "এটি কি ওষুধ? জেনে রাখুন", a: "এটি খাদ্য সম্পূরক, ওষুধ নয়। গর্ভবতী, স্তন্যদানকারী মা, শিশু বা নিয়মিত ওষুধ সেবনকারী হলে খাওয়ার আগে চিকিৎসকের পরামর্শ নিন।" },
+      ] : p.faq,
       reviews: p.slug === "methi-mix" && !currentMethiContent.methi_initialized ? [] : p.reviews?.length ? p.reviews : DEFAULT_REVIEWS,
       planting_steps: { ...(p.slug === "methi-mix" ? methiContent : mergeContent(p.planting_steps)), top_bar_enabled: (p.planting_steps as (LandingContent & { top_bar_enabled?: boolean }) | null)?.top_bar_enabled ?? true },
     });
