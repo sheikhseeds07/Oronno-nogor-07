@@ -17,6 +17,7 @@ import { toast } from "sonner";
 
 type Ingredient = { name: string; qty?: string; image?: string };
 type Product = { id: string; name: string; price: number; sale_price: number | null; images: string[] | null };
+type Addon = { product_id?: string; name: string; price: number; image?: string; old_price?: number; delivery_fee?: number | null };
 type Package = { id: string; name: string; price: number; oldPrice: number | null; image: string; deliveryFee: number };
 const DEFAULT_INGREDIENTS = ["মেথি দানা","কালোজিরা","জিরা","মৌরি","সরিষা দানা","ধনিয়া","তিসি বীজ","চিয়া সিড","তোকমা দানা","কালো তিল","সাদা তিল","ইসবগুলের ভুসি","আমলকী গুঁড়া","দারুচিনি","এলাচ","লবঙ্গ","শুকনো আদা গুঁড়া"];
 const FAQS = [
@@ -42,18 +43,29 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
     queryFn: async () => (await supabase.from("landing_pages").select(LANDING_PAGES_COLUMNS + ", products(" + LANDING_PRODUCT_COLUMNS + ")").eq("slug", slug).eq("is_published", true).maybeSingle()).data,
   });
   const product = (page?.products ?? null) as Product | null;
+  const addons = (Array.isArray(page?.addons) ? page.addons : []) as Addon[];
   const heroImage = page?.hero_image || product?.images?.[0] || "";
   // Fixed launch offer: one pack + one free pack, with nationwide free delivery.
   const basePrice = 599;
   const delivery = 0;
-  const packages = useMemo<Package[]>(() => product ? [{
-    id: product.id,
-    name: "১ প্যাকেট + ১ প্যাকেট ফ্রি (মোট ২ প্যাকেট)",
-    price: basePrice,
-    oldPrice: null,
-    image: heroImage,
-    deliveryFee: 0,
-  }] : [], [product, basePrice, heroImage]);
+  const packages = useMemo<Package[]>(() => {
+    if (product) return [{
+      id: product.id,
+      name: product.name,
+      price: basePrice,
+      oldPrice: null,
+      image: heroImage,
+      deliveryFee: 0,
+    }];
+    return addons.slice(0, 1).map((addon, index) => ({
+      id: addon.product_id || "addon-" + index,
+      name: addon.name,
+      price: Number(addon.price),
+      oldPrice: null,
+      image: addon.image || heroImage,
+      deliveryFee: 0,
+    }));
+  }, [product, addons, basePrice, heroImage]);
   const chosen = packages[selected] || packages[0];
   const subtotal = (chosen?.price || 0) * quantity;
   const shipping = chosen?.deliveryFee ?? delivery;
