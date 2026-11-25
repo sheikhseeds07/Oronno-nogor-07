@@ -92,10 +92,10 @@ export const Route = createFileRoute("/landing/$slug")({
   // Ad traffic lands here cold: the hero image is the largest paint element, so
   // it starts downloading from the streamed HTML head instead of waiting for
   // React to hydrate and mount the template.
-  head: ({ loaderData }) => {
+  head: ({ loaderData, params }) => {
     const data = loaderData as { title?: string | null; description?: string | null; heroImage?: string | null } | null | undefined;
     const hero = data?.heroImage || null;
-    const title = data?.title ? `${data.title} — Sheikh Seeds` : undefined;
+    const title = data?.title ? `${data.title} — ${params.slug === "methi-mix" ? "Methi Mix" : "Sheikh Seeds"}` : undefined;
     const description = data?.description || undefined;
     return {
       meta: [
