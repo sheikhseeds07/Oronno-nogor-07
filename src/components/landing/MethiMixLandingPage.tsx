@@ -38,9 +38,10 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
   const [isCheckoutVisible, setIsCheckoutVisible] = useState(false);
   const { data: page, isLoading } = useQuery({
     queryKey: ["landing-methi-mix", slug],
-    staleTime: 10_000,
-    gcTime: 60_000,
-    refetchOnWindowFocus: false,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     queryFn: async () => (await supabase.from("landing_pages").select(LANDING_PAGES_COLUMNS + ", products(" + LANDING_PRODUCT_COLUMNS + ")").eq("slug", slug).eq("is_published", true).maybeSingle()).data,
   });
   useEffect(() => {
@@ -108,7 +109,7 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
       <section className="py-5 sm:py-8">
         <h1 className="methi-hero-title mb-4 text-center text-[27px] font-extrabold leading-[1.35] tracking-normal text-[#24432d] sm:text-4xl" style={{ wordSpacing: "0.12em", letterSpacing: "normal" }}>
           <span className="block">{page.hero_title || "মেথি মিক্স"}</span>
-          <span className="mx-auto mt-2 block w-fit max-w-full rounded-lg bg-[#edf5e9] px-4 py-2 text-[20px] font-extrabold leading-[1.5] tracking-normal text-[#477b4d] sm:text-2xl">{page.hero_subtitle || "১ ফাইল কিনলেই ১ ফাইল ফ্রি!"}</span>
+          <span className="mx-auto mt-2 block w-fit max-w-full rounded-lg bg-[#edf5e9] px-4 py-2 text-[20px] font-extrabold leading-[1.5] tracking-normal text-[#477b4d] sm:text-2xl">{page.hero_subtitle?.trim() || "১ ফাইল কিনলেই ১ ফাইল ফ্রি!"}</span>
           <span className="mx-auto mt-2.5 block max-w-[540px] rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-[15px] font-bold leading-[1.6] tracking-normal text-red-700 sm:text-lg">{page.guarantee_text || "মাত্র ৭ দিনে স্বস্তি না পেলে ১০০% টাকা ফেরত গ্যারান্টি!"}</span>
         </h1>
         <div className="relative mx-auto max-w-[440px] overflow-hidden rounded-[26px] border border-[#c9ddc3] bg-[#f3f8ef] p-2 shadow-[0_14px_40px_#24432d14]">
