@@ -42,7 +42,7 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
     gcTime: 0,
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
-    queryFn: async () => (await supabase.from("landing_pages").select(LANDING_PAGES_COLUMNS + ", products(" + LANDING_PRODUCT_COLUMNS + ")").eq("slug", slug).eq("is_published", true).maybeSingle()).data,
+    queryFn: async () => (await supabase.from("landing_pages").select("*, products(" + LANDING_PRODUCT_COLUMNS + ")").eq("slug", slug).eq("is_published", true).maybeSingle()).data,
   });
   useEffect(() => {
     if (isLoading || !page) return;
