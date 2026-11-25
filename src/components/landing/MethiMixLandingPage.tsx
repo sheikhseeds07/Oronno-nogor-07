@@ -114,6 +114,35 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
         </div>
       </section>
 
+      <section aria-labelledby="methi-benefits-title" className="mx-auto -mt-1 mb-7 max-w-2xl overflow-hidden rounded-[24px] border border-[#dce9d8] bg-[linear-gradient(145deg,#f7fbf3_0%,#edf5e9_52%,#f8faf3_100%)] shadow-[0_14px_38px_#24452a12]">
+        <div className="relative overflow-hidden px-4 pb-3 pt-5 sm:px-6 sm:pt-6">
+          <div className="pointer-events-none absolute -right-7 -top-8 h-28 w-28 rounded-full bg-[#dcebd3]/70 blur-2xl" />
+          <div className="relative flex items-center justify-center gap-2 text-[#52764d]">
+            <Sprout size={19} strokeWidth={2.2} />
+            <span className="text-[11px] font-bold tracking-[.16em]">HERBAL CARE</span>
+            <Sprout size={19} strokeWidth={2.2} className="scale-x-[-1]" />
+          </div>
+          <h2 id="methi-benefits-title" className="methi-hero-title mt-1 text-center text-[23px] font-extrabold text-[#24452a] sm:text-[26px]">মেথি মিক্স পাউডারের উপকারিতা</h2>
+          <p className="mt-1 text-center text-xs text-[#6b8066]">প্রতিদিনের খাবারের সঙ্গে ভেষজ উপাদানের সমন্বয়</p>
+        </div>
+        <div className="mx-3 mb-3 overflow-hidden rounded-[17px] border border-[#dce9d8] bg-white/90 sm:mx-5 sm:mb-5">
+          {[
+            "গ্যাস্ট্রিক সমস্যা দূর হবে।",
+            "ঘন ঘন টক ঢেকুর বন্ধ হবে।",
+            "খাওয়াই রুচি বাড়বে।",
+            "বুকে জ্বালাপোড়া বন্ধ হবে।",
+            "বদহজম উঠবে না।",
+          ].map((benefit, index) => (
+            <div key={benefit} className={"flex items-center gap-3 px-3.5 py-3 sm:px-5 sm:py-3.5 " + (index !== 4 ? "border-b border-[#edf2e9]" : "")}>
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#edf5e9] text-[#52764d]">
+                <Sprout size={16} strokeWidth={2.1} />
+              </span>
+              <span className="text-[14px] font-semibold leading-6 text-[#344b35] sm:text-[15px]">{benefit}</span>
+              <span className="ml-auto text-[#91aa87]"><ShieldCheck size={17} /></span>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <section className="border-t border-[#fee2e2] py-7">
         <h2 className="flex items-center gap-2 text-xl font-bold"><CircleHelp size={20} className="text-[#c62828]"/> সাধারণ প্রশ্ন</h2>
