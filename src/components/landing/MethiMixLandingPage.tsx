@@ -62,7 +62,7 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
       id: addon.product_id || "addon-" + index, name: addon.name, price: Number(addon.price),
       oldPrice: null, image: addon.image || heroImage, deliveryFee: 0,
     }));
-  }, [product, addons, heroImage]);
+  }, [product, addons, heroImage, page?.sale_price]);
   const chosen = packages[0];
   const subtotal = (chosen?.price || Number(page?.sale_price) || 599) * quantity;
   const shipping = Number(page?.main_delivery_fee) || 0;
@@ -75,12 +75,12 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
     if (!chosen || !chosen.id || chosen.price <= 0) return toast.error("পণ্যের প্যাকেজ Admin থেকে যুক্ত করতে হবে");
     setSubmitting(true);
     try {
-      const items = [{ id: chosen.id, name: "১ ফাইল + ১ ফাইল ফ্রি", price: Number(page?.sale_price) || 599, quantity }];
+      const items = [{ id: chosen.id, name: `${page.title || "মেথি মিক্স"} — ${page.hero_subtitle || "১ ফাইল + ১ ফাইল ফ্রি"}`, price: Number(page?.sale_price) || 599, quantity }];
       trackInitiateCheckout(items, total);
       const order = await runPlaceOrder({ data: {
         landing_slug: slug, customer_name: form.name.trim(),
         customer_phone: form.phone.replace(/[\\s-]/g, ""),
-        customer_address: form.address.trim(), delivery_fee: 0, items,
+        customer_address: form.address.trim(), delivery_fee: shipping, items,
         source_url: typeof window !== "undefined" ? window.location.href : null,
         ...getFbContext(),
       } });
