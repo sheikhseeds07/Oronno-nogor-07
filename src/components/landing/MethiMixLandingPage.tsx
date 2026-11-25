@@ -106,9 +106,10 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
     `}</style>
     <main className="mx-auto max-w-4xl px-4">
       <section className="py-5 sm:py-8">
-        <h1 className="methi-hero-title mb-4 text-center text-3xl font-extrabold leading-[1.2] text-[#24432d] sm:text-4xl">
-          মেথি মিক্স পাউডার
-          <span className="mt-2 block text-xl font-extrabold text-[#477b4d] sm:text-2xl">১ ফাইলের সাথে ১ ফাইল ফ্রি</span>
+        <h1 className="methi-hero-title mb-4 text-center text-[27px] font-extrabold leading-[1.25] text-[#24432d] sm:text-4xl">
+          মেথি মিক্স
+          <span className="mt-1.5 block text-[21px] font-extrabold text-[#477b4d] sm:text-2xl">১ ফাইল কিনলেই ১ ফাইল ফ্রি!</span>
+          <span className="mx-auto mt-2 block max-w-[540px] rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[15px] font-bold leading-6 text-red-700 sm:text-lg">৭ দিন ব্যবহারের পরও সন্তুষ্ট না হলে ১০০% টাকা ফেরত গ্যারান্টি!</span>
         </h1>
         <div className="relative mx-auto max-w-[440px] overflow-hidden rounded-[26px] border border-[#c9ddc3] bg-[#f3f8ef] p-2 shadow-[0_14px_40px_#24432d14]">
           {heroImage ? <SafeImage src={toImg(heroImage,{w:880,q:88})} alt={page.title || "মেথি মিক্স পাউডার"} className="aspect-square w-full rounded-[20px] object-cover"/> :
