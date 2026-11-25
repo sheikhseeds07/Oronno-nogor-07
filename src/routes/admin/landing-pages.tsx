@@ -391,7 +391,7 @@ function LandingPagesAdmin() {
             <div className="p-5 space-y-4 overflow-y-auto flex-1">
               {tab === "main" && (
                 <>
-                  <Field label="টেমপ্লেট">
+                  {editing.slug !== "methi-mix" && <Field label="টেমপ্লেট">
                     <div className="grid grid-cols-2 gap-2">
                       {([["combo", "Combo", "ফানেল স্টাইল — প্রোমো স্ক্রল, গিফট, কাউন্টডাউন, পপআপ"], ["all-product", "All product", "লাইভ Karala landing page-এর হুবহু ডিজাইন ও ফিচার"]] as const).map(([val, label, hint]) => (
                         <button key={val} type="button" onClick={() => setC({ template: val })}
@@ -401,7 +401,7 @@ function LandingPagesAdmin() {
                         </button>
                       ))}
                     </div>
-                  </Field>
+                  </Field>}
                   <Field label="Landing page name">
                     <input value={editing.title} onChange={(e) => set({ title: e.target.value })} placeholder="যেমন: প্রিমিয়াম টমেটো বীজ" className="w-full border rounded-lg px-3 py-2" />
                   </Field>
