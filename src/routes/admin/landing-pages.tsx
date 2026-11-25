@@ -53,6 +53,9 @@ type LP = {
   addons?: Addon[];
   theme_color?: string;
   planting_steps?: LandingContent | null;
+  description?: string | null;
+  guarantee_text?: string | null;
+  faq?: { q: string; a: string }[] | null;
 };
 
 export const Route = createFileRoute("/admin/landing-pages")({ component: LandingPagesAdmin });
@@ -232,7 +235,7 @@ function LandingPagesAdmin() {
     await Promise.all([
       qc.invalidateQueries({ queryKey: ["admin-landing"] }),
       qc.invalidateQueries({ queryKey: ["admin-landing-linked-product-ids"] }),
-      qc.invalidateQueries({ queryKey: ["landing-clean", savedSlug] }),
+      qc.invalidateQueries({ queryKey: ["landing-clean", savedSlug] }),\n      qc.invalidateQueries({ queryKey: ["landing-methi-mix", savedSlug] }),
       qc.invalidateQueries({ queryKey: ["landing-all-product", savedSlug] }),
       qc.invalidateQueries({ queryKey: ["landing-template", savedSlug] }),
     ]);
@@ -374,13 +377,15 @@ function LandingPagesAdmin() {
             </div>
 
             <div className="flex gap-1 px-3 pt-3 border-b text-sm">
-              {([
-                ["main", "Main"],
-                ["page", "Full page"],
-                ...((C.template as string) === "all" || C.template === "product" || C.template === "all-product" ? [] : [["content", "কনটেন্ট"] as const]),
-                ["products", C.template === "product" || C.template === "all-product" ? "Product" : "Products"],
-                ...((C.template as string) === "all-product" ? [["combo-offer", "Combo Offer"] as const] : []),
-              ] as const).map(([k, l]) => (
+              {(editing.slug === "methi-mix"
+                ? ([["main", "সাধারণ"], ["page", "হেডলাইন ও ছবি"], ["content", "বিস্তারিত"]] as const)
+                : ([
+                    ["main", "Main"],
+                    ["page", "Full page"],
+                    ...((C.template as string) === "all" || C.template === "product" || C.template === "all-product" ? [] : [["content", "কনটেন্ট"] as const]),
+                    ["products", C.template === "product" || C.template === "all-product" ? "Product" : "Products"],
+                    ...((C.template as string) === "all-product" ? [["combo-offer", "Combo Offer"] as const] : []),
+                  ] as const)).map(([k, l]) => (
                 <button key={k} onClick={() => setTab(k as typeof tab)}
                   className={`px-4 py-2 rounded-t-lg font-semibold ${tab === k ? "bg-brand text-white" : "hover:bg-muted"}`}>
                   {l}
@@ -391,6 +396,13 @@ function LandingPagesAdmin() {
             <div className="p-5 space-y-4 overflow-y-auto flex-1">
               {tab === "main" && (
                 <>
+                  {editing.slug === "methi-mix" ? (
+                    <div className="space-y-4">
+                      <Field label="পেজের নাম"><input value={editing.title} onChange={(e) => set({ title: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="পেজ লিংক"><input value={editing.slug} disabled className="w-full border rounded-lg px-3 py-2 bg-muted" /><div className="mt-1 text-xs text-muted-foreground">/landing/methi-mix</div></Field>
+                      <label className="flex items-center gap-2 border-t pt-3"><input type="checkbox" checked={editing.is_published ?? false} onChange={(e) => set({ is_published: e.target.checked })} /><span className="font-semibold">লাইভ পেজ পাবলিশড রাখুন</span></label>
+                    </div>
+                  ) : <>
                   {editing.slug !== "methi-mix" && <Field label="টেমপ্লেট">
                     <div className="grid grid-cols-2 gap-2">
                       {([["combo", "Combo", "ফানেল স্টাইল — প্রোমো স্ক্রল, গিফট, কাউন্টডাউন, পপআপ"], ["all-product", "All product", "লাইভ Karala landing page-এর হুবহু ডিজাইন ও ফিচার"]] as const).map(([val, label, hint]) => (
@@ -465,10 +477,28 @@ function LandingPagesAdmin() {
                       )}
                     </div>
                   )}
+                  </>}
                 </>
               )}
               {tab === "page" && (
                 <>
+                  {editing.slug === "methi-mix" ? (
+                    <div className="space-y-4">
+                      <Field label="প্রধান হেডলাইন"><input value={editing.hero_title ?? "মেথি মিক্স"} onChange={(e) => set({ hero_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="অফার লাইন"><input value={editing.hero_subtitle ?? "১ ফাইল কিনলেই ১ ফাইল ফ্রি!"} onChange={(e) => set({ hero_subtitle: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="গ্যারান্টি বক্সের লেখা"><textarea rows={2} value={editing.guarantee_text ?? "মাত্র ৭ দিনে স্বস্তি না পেলে ১০০% টাকা ফেরত গ্যারান্টি!"} onChange={(e) => set({ guarantee_text: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="প্রধান প্রোডাক্ট ইমেজ">
+                        <input type="file" accept="image/*" onChange={async (e) => { const file=e.target.files?.[0]; if(!file)return; const url=await uploadImage(file); if(url)set({hero_image:url}); e.target.value=""; }} className="w-full text-sm" />
+                        <input value={editing.hero_image ?? ""} onChange={(e)=>set({hero_image:e.target.value})} placeholder="ইমেজ URL" className="mt-2 w-full border rounded-lg px-3 py-2 text-sm" />
+                        {editing.hero_image && <SafeImage src={editing.hero_image} alt="" className="mt-2 max-h-48 w-full rounded-lg border object-contain" />}
+                      </Field>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Field label="অফার মূল্য (৳)"><input type="number" min={1} value={editing.sale_price ?? 599} onChange={(e)=>set({sale_price:Number(e.target.value)||0})} className="w-full border rounded-lg px-3 py-2" /></Field>
+                        <Field label="ডেলিভারি চার্জ (৳)"><input type="number" min={0} value={editing.main_delivery_fee ?? 0} onChange={(e)=>set({main_delivery_fee:Number(e.target.value)||0})} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      </div>
+                      <Field label="অর্ডার প্রোডাক্ট"><ProductPicker products={products} value={editing.product_id} onChange={(product_id)=>set({product_id})} placeholder="প্রোডাক্ট নির্বাচন করুন" /></Field>
+                    </div>
+                  ) : <>
                   <Field label="হেডলাইন"><input value={editing.hero_title ?? ""} onChange={(e) => set({ hero_title: e.target.value })} placeholder="বড় টাইটেল" className="w-full border rounded-lg px-3 py-2" /></Field>
                   <Field label="ইমেজের নিচের ছোট টেক্সট"><textarea rows={2} value={editing.hero_subtitle ?? ""} onChange={(e) => set({ hero_subtitle: e.target.value })} placeholder="খালি রাখলে দেখাবে না" className="w-full border rounded-lg px-3 py-2" /></Field>
                   <Field label="মূল ইমেজ">
@@ -509,11 +539,24 @@ function LandingPagesAdmin() {
                   <div className="pt-3 border-t"><div className="font-semibold text-sm mb-2">কাস্টমার রিভিউ</div><RepeatList<Review> items={editing.reviews || []} onChange={(reviews) => set({ reviews })} empty={{ name: "", rating: 5, text: "" }} render={(r, upd) => (<><div className="grid grid-cols-3 gap-2 mb-2"><input placeholder="নাম" value={r.name} onChange={(e) => upd({ ...r, name: e.target.value })} className="col-span-2 border rounded-lg px-3 py-2" /><input type="number" min={1} max={5} value={r.rating} onChange={(e) => upd({ ...r, rating: Number(e.target.value) })} className="border rounded-lg px-3 py-2" /></div><textarea placeholder="রিভিউ" rows={2} value={r.text} onChange={(e) => upd({ ...r, text: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></>)} /></div>
                     </>
                   )}
+                  </>}
                 </>
               )}
-
               {tab === "content" && (C.template as string) !== "all" && (
                 <>
+                  {editing.slug === "methi-mix" ? (
+                    <div className="space-y-4">
+                      <Field label="ইমেজের নিচের সতর্কবার্তা"><textarea rows={3} value={editing.description ?? "দীর্ঘদিন ধরে পেটের অস্বস্তি, বদহজম বা অস্বাভাবিক উপসর্গ থাকলে অবহেলা না করে চিকিৎসকের পরামর্শ নিন।"} onChange={(e)=>set({description:e.target.value})} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <div className="border-t pt-3">
+                        <div className="mb-2 font-bold text-sm">লাইভ পেজের বৈশিষ্ট্য তালিকা</div>
+                        <RepeatList<Feature> items={editing.features ?? []} onChange={(features)=>set({features})} empty={{title:"",text:""}} render={(item,upd)=><div className="space-y-2"><input value={item.title} onChange={(e)=>upd({...item,title:e.target.value})} placeholder="বৈশিষ্ট্যের লেখা" className="w-full border rounded-lg px-3 py-2"/><input value={item.text ?? ""} onChange={(e)=>upd({...item,text:e.target.value})} placeholder="অতিরিক্ত বর্ণনা (ঐচ্ছিক)" className="w-full border rounded-lg px-3 py-2 text-sm"/></div>} />
+                      </div>
+                      <div className="border-t pt-3">
+                        <div className="mb-2 font-bold text-sm">সাধারণ প্রশ্ন (FAQ)</div>
+                        <RepeatList<{q:string;a:string}> items={editing.faq ?? []} onChange={(faq)=>set({faq})} empty={{q:"",a:""}} render={(item,upd)=><div className="space-y-2"><input value={item.q} onChange={(e)=>upd({...item,q:e.target.value})} placeholder="প্রশ্ন" className="w-full border rounded-lg px-3 py-2"/><textarea rows={2} value={item.a} onChange={(e)=>upd({...item,a:e.target.value})} placeholder="উত্তর" className="w-full border rounded-lg px-3 py-2 text-sm"/></div>} />
+                      </div>
+                    </div>
+                  ) : <>
                   <div className="text-xs text-muted-foreground">পেজের প্রতিটি টেক্সট ও ইমেজ এখান থেকে বদলানো যাবে। খালি রাখলে সেই অংশ পেজে দেখাবে না।</div>
                   <div className="rounded-lg border p-3 space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-3"><div><div className="text-sm font-bold text-slate-800">গ্যারান্টি কার্ড পপআপ</div><div className="text-xs text-muted-foreground mt-0.5">ON করলে পেজে প্রবেশের পর পপআপ দেখাবে, OFF করলে দেখাবে না।</div></div><div className="inline-flex rounded-xl border bg-muted/40 p-1 gap-1"><button type="button" aria-pressed={C.show_popup !== false} onClick={() => setC({ show_popup: true })} className={`min-w-16 rounded-lg px-4 py-2 text-sm font-extrabold transition ${C.show_popup !== false ? "bg-emerald-600 text-white shadow-sm" : "text-muted-foreground hover:bg-background"}`}>ON</button><button type="button" aria-pressed={C.show_popup === false} onClick={() => setC({ show_popup: false })} className={`min-w-16 rounded-lg px-4 py-2 text-sm font-extrabold transition ${C.show_popup === false ? "bg-rose-600 text-white shadow-sm" : "text-muted-foreground hover:bg-background"}`}>OFF</button></div></div>
@@ -570,9 +613,9 @@ function LandingPagesAdmin() {
                   <div className="pt-3 border-t space-y-3"><div className="font-semibold text-sm">সেকশন হেডিং</div><div className="grid grid-cols-2 gap-3"><Field label="বৈশিষ্ট্য — ছোট"><input value={C.features_kicker} onChange={(e) => setC({ features_kicker: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="বৈশিষ্ট্য — বড়"><input value={C.features_title} onChange={(e) => setC({ features_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="কেন কিনবেন — ছোট"><input value={C.why_kicker} onChange={(e) => setC({ why_kicker: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="কেন কিনবেন — বড়"><input value={C.why_title} onChange={(e) => setC({ why_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="রিভিউ — ছোট"><input value={C.reviews_kicker} onChange={(e) => setC({ reviews_kicker: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="রিভিউ — বড়"><input value={C.reviews_title} onChange={(e) => setC({ reviews_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="প্যাকেজ — ছোট"><input value={C.package_kicker} onChange={(e) => setC({ package_kicker: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="প্যাকেজ — বড়"><input value={C.package_title} onChange={(e) => setC({ package_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field></div></div>
                   <div className="pt-3 border-t space-y-3"><div className="grid grid-cols-2 gap-3"><Field label="নামের লেবেল"><input value={C.name_label} onChange={(e) => setC({ name_label: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="ফোনের লেবেল"><input value={C.phone_label} onChange={(e) => setC({ phone_label: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="ঠিকানার লেবেল"><input value={C.address_label} onChange={(e) => setC({ address_label: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="সাবমিট বাটন"><input value={C.submit_text} onChange={(e) => setC({ submit_text: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field></div><Field label="ফর্মের নিচের ছোট নোট"><input value={C.cod_note} onChange={(e) => setC({ cod_note: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field></div>
                   <button type="button" onClick={() => setEditing({ ...editing, planting_steps: { ...DEFAULT_CONTENT } })} className="text-xs underline text-muted-foreground">সব কনটেন্ট ডিফল্টে ফিরিয়ে নিন</button>
+                  </>}
                 </>
               )}
-
               {tab === "combo-offer" && C.template === "all-product" && (
                 <>
                   <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-3.5">
