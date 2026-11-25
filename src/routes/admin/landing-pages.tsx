@@ -150,12 +150,13 @@ function LandingPagesAdmin() {
           gallery_images: [],
         },
       } : {}),
-      features: p.slug === "methi-mix" && !currentMethiContent.methi_initialized
+      features: p.slug === "methi-mix" && (!p.features?.length || p.features[0]?.title === "১৭টি তালিকাভুক্ত উপাদান")
         ? [
-            { title: "১৭টি তালিকাভুক্ত উপাদান", text: "পণ্যের উপাদানগুলো এক জায়গায় দেখে নিন।", icon: "🌿" },
-            { title: "উপাদানের ছবি", text: "প্রতিটি উপাদানের ছবি ও নাম আলাদাভাবে দেখুন।", icon: "🔎" },
-            { title: "স্পষ্ট প্যাকেজ তথ্য", text: "প্যাকেটের ওজন, মূল্য ও ব্যবহারবিধি জেনে অর্ডার করুন।", icon: "📦" },
-            { title: "সহজ অনলাইন অর্ডার", text: "নাম, ফোন ও ঠিকানা দিয়ে অর্ডার জমা দিন।", icon: "🛒" },
+            { title: "গ্যাস্ট্রিক সমস্যা দূর হবে।", text: "" },
+            { title: "ঘন ঘন টক ঢেকুর বন্ধ হবে।", text: "" },
+            { title: "খাওয়াই রুচি বাড়বে।", text: "" },
+            { title: "বুকে জ্বালাপোড়া বন্ধ হবে।", text: "" },
+            { title: "বদহজম উঠবে না।", text: "" },
           ]
         : p.features?.length ? p.features : DEFAULT_FEATURES,
       why_choose_us: p.slug === "methi-mix" && !currentMethiContent.methi_initialized
@@ -235,7 +236,8 @@ function LandingPagesAdmin() {
     await Promise.all([
       qc.invalidateQueries({ queryKey: ["admin-landing"] }),
       qc.invalidateQueries({ queryKey: ["admin-landing-linked-product-ids"] }),
-      qc.invalidateQueries({ queryKey: ["landing-clean", savedSlug] }),\n      qc.invalidateQueries({ queryKey: ["landing-methi-mix", savedSlug] }),
+      qc.invalidateQueries({ queryKey: ["landing-clean", savedSlug] }),
+      qc.invalidateQueries({ queryKey: ["landing-methi-mix", savedSlug] }),
       qc.invalidateQueries({ queryKey: ["landing-all-product", savedSlug] }),
       qc.invalidateQueries({ queryKey: ["landing-template", savedSlug] }),
     ]);
