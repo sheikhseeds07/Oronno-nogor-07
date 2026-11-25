@@ -127,6 +127,11 @@ function LandingPagesAdmin() {
 
   const openEdit = (row: unknown) => {
     const p = row as LP;
+    const currentMethiContent = mergeContent(p.planting_steps) as LandingContent & { methi_initialized?: boolean };
+    const methiIngredientNames = ["মেথি দানা","কালোজিরা","জিরা","মৌরি","সরিষা দানা","ধনিয়া","তিসি বীজ","চিয়া সিড","তোকমা দানা","কালো তিল","সাদা তিল","ইসবগুলের ভুসি","আমলকী গুঁড়া","দারুচিনি","এলাচ","লবঙ্গ","শুকনো আদা গুঁড়া"];
+    const methiContent = p.slug === "methi-mix"
+      ? { ...currentMethiContent, template: "premium" as const, ...(!currentMethiContent.methi_initialized ? { seed_table: methiIngredientNames.map((name) => ({ name, qty: "", image: "" })), methi_initialized: true } : {}) }
+      : currentMethiContent;
     setProductCostDrafts({});
     setEditing({
       ...empty,
@@ -142,10 +147,24 @@ function LandingPagesAdmin() {
           gallery_images: [],
         },
       } : {}),
-      features: p.features?.length ? p.features : DEFAULT_FEATURES,
-      why_choose_us: p.why_choose_us?.length ? p.why_choose_us : DEFAULT_WHY,
-      reviews: p.reviews?.length ? p.reviews : DEFAULT_REVIEWS,
-      planting_steps: { ...mergeContent(p.planting_steps), top_bar_enabled: (p.planting_steps as (LandingContent & { top_bar_enabled?: boolean }) | null)?.top_bar_enabled ?? true },
+      features: p.slug === "methi-mix" && !currentMethiContent.methi_initialized
+        ? [
+            { title: "১৭টি তালিকাভুক্ত উপাদান", text: "পণ্যের উপাদানগুলো এক জায়গায় দেখে নিন।", icon: "🌿" },
+            { title: "উপাদানের ছবি", text: "প্রতিটি উপাদানের ছবি ও নাম আলাদাভাবে দেখুন।", icon: "🔎" },
+            { title: "স্পষ্ট প্যাকেজ তথ্য", text: "প্যাকেটের ওজন, মূল্য ও ব্যবহারবিধি জেনে অর্ডার করুন।", icon: "📦" },
+            { title: "সহজ অনলাইন অর্ডার", text: "নাম, ফোন ও ঠিকানা দিয়ে অর্ডার জমা দিন।", icon: "🛒" },
+          ]
+        : p.features?.length ? p.features : DEFAULT_FEATURES,
+      why_choose_us: p.slug === "methi-mix" && !currentMethiContent.methi_initialized
+        ? [
+            { title: "অর্ডারের আগে তথ্য", text: "পণ্যের উপাদান ও প্যাকেজের তথ্য দেখে নিন।", icon: "📋" },
+            { title: "সারা দেশে ডেলিভারি", text: "আপনার ঠিকানায় পণ্য পাঠানোর ব্যবস্থা।", icon: "🚚" },
+            { title: "ক্যাশ অন ডেলিভারি", text: "প্রযোজ্য ক্ষেত্রে পণ্য হাতে পেয়ে মূল্য পরিশোধ করুন।", icon: "💵" },
+            { title: "কাস্টমার সাপোর্ট", text: "অর্ডার সংক্রান্ত সহায়তার জন্য যোগাযোগ করুন।", icon: "☎️" },
+          ]
+        : p.why_choose_us?.length ? p.why_choose_us : DEFAULT_WHY,
+      reviews: p.slug === "methi-mix" && !currentMethiContent.methi_initialized ? [] : p.reviews?.length ? p.reviews : DEFAULT_REVIEWS,
+      planting_steps: { ...(p.slug === "methi-mix" ? methiContent : mergeContent(p.planting_steps)), top_bar_enabled: (p.planting_steps as (LandingContent & { top_bar_enabled?: boolean }) | null)?.top_bar_enabled ?? true },
     });
     setTab("main");
   };
@@ -372,7 +391,7 @@ function LandingPagesAdmin() {
             <div className="p-5 space-y-4 overflow-y-auto flex-1">
               {tab === "main" && (
                 <>
-                  <Field label="টেমপ্লেট">
+                  {editing.slug !== "methi-mix" && <Field label="টেমপ্লেট">
                     <div className="grid grid-cols-2 gap-2">
                       {([["combo", "Combo", "ফানেল স্টাইল — প্রোমো স্ক্রল, গিফট, কাউন্টডাউন, পপআপ"], ["all-product", "All product", "লাইভ Karala landing page-এর হুবহু ডিজাইন ও ফিচার"]] as const).map(([val, label, hint]) => (
                         <button key={val} type="button" onClick={() => setC({ template: val })}
@@ -382,7 +401,7 @@ function LandingPagesAdmin() {
                         </button>
                       ))}
                     </div>
-                  </Field>
+                  </Field>}
                   <Field label="Landing page name">
                     <input value={editing.title} onChange={(e) => set({ title: e.target.value })} placeholder="যেমন: প্রিমিয়াম টমেটো বীজ" className="w-full border rounded-lg px-3 py-2" />
                   </Field>
@@ -542,10 +561,10 @@ function LandingPagesAdmin() {
                     <Field label="গিফট বুলেট পয়েন্ট (এক লাইনে একটি)"><textarea rows={4} value={C.gift_bullets.join("\n")} onChange={(e) => setC({ gift_bullets: e.target.value.split("\n").filter((x) => x.trim()) })} className="w-full border rounded-lg px-3 py-2 text-sm" /></Field>
                   </div>
                   <div className="pt-3 border-t space-y-3">
-                    <div className="font-semibold text-sm">বীজের তালিকা (টেবিল)</div>
+                    <div className="font-semibold text-sm">{editing.slug === "methi-mix" ? "মেথি মিক্সের ১৭টি উপাদান" : "বীজের তালিকা (টেবিল)"}</div>
                     <div className="grid grid-cols-2 gap-3"><Field label="ছোট হেডিং"><input value={C.seed_kicker} onChange={(e) => setC({ seed_kicker: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="বড় হেডিং"><input value={C.seed_title} onChange={(e) => setC({ seed_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="কলাম ১ নাম"><input value={C.seed_col_1} onChange={(e) => setC({ seed_col_1: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="কলাম ২ নাম"><input value={C.seed_col_2} onChange={(e) => setC({ seed_col_2: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field></div>
                     <p className="text-xs text-muted-foreground">নিচের + বোতামে নতুন বীজ যোগ করুন, ডিলিট আইকনে বাদ দিন। যত রো থাকবে, ল্যান্ডিং পেজে ঠিক তত লাইনই দেখাবে।</p>
-                    <RepeatList<SeedRow> items={C.seed_table} onChange={(seed_table) => setC({ seed_table })} empty={{ name: "", qty: "", image: "" }} render={(s, upd) => (<div className="pr-6 space-y-2"><div className="grid grid-cols-2 gap-2"><input placeholder="বীজের নাম" value={s.name} onChange={(e) => upd({ ...s, name: e.target.value })} className="border rounded-lg px-3 py-2 text-sm" /><input placeholder="পরিমাণ" value={s.qty} onChange={(e) => upd({ ...s, qty: e.target.value })} className="border rounded-lg px-3 py-2 text-sm" /></div><div className="flex items-center gap-2">{s.image ? <SafeImage src={s.image} alt={s.name} className="w-12 h-12 object-cover rounded-lg border" /> : <div className="w-12 h-12 rounded-lg border bg-muted flex items-center justify-center text-lg">🌱</div>}<input type="file" accept="image/*" onChange={async (ev) => { const fl = ev.target.files?.[0]; if (!fl) return; const url = await uploadImage(fl); if (url) upd({ ...s, image: url }); }} className="text-xs flex-1" />{s.image && <button type="button" onClick={() => upd({ ...s, image: "" })} className="text-xs text-destructive font-semibold">সরান</button>}</div></div>)} />
+                    <RepeatList<SeedRow> items={C.seed_table} onChange={(seed_table) => setC({ seed_table })} empty={{ name: "", qty: "", image: "" }} render={(s, upd) => (<div className="pr-6 space-y-2"><div className="grid grid-cols-2 gap-2"><input placeholder={editing.slug === "methi-mix" ? "উপাদানের নাম" : "বীজের নাম"} value={s.name} onChange={(e) => upd({ ...s, name: e.target.value })} className="border rounded-lg px-3 py-2 text-sm" /><input placeholder="পরিমাণ" value={s.qty} onChange={(e) => upd({ ...s, qty: e.target.value })} className="border rounded-lg px-3 py-2 text-sm" /></div><div className="flex items-center gap-2">{s.image ? <SafeImage src={s.image} alt={s.name} className="w-12 h-12 object-cover rounded-lg border" /> : <div className="w-12 h-12 rounded-lg border bg-muted flex items-center justify-center text-lg">🌱</div>}<input type="file" accept="image/*" onChange={async (ev) => { const fl = ev.target.files?.[0]; if (!fl) return; const url = await uploadImage(fl); if (url) upd({ ...s, image: url }); }} className="text-xs flex-1" />{s.image && <button type="button" onClick={() => upd({ ...s, image: "" })} className="text-xs text-destructive font-semibold">সরান</button>}</div></div>)} />
                   </div>
                   <div className="pt-3 border-t space-y-3"><label className="flex items-center gap-2 font-semibold text-sm"><input type="checkbox" checked={C.show_countdown !== false} onChange={(e) => setC({ show_countdown: e.target.checked })} />কাউন্টডাউন টাইমার দেখান</label><div className="grid grid-cols-2 gap-3"><Field label="টাইমারের টেক্সট"><input value={C.countdown_title} onChange={(e) => setC({ countdown_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="কত ঘণ্টা"><input type="number" min={1} value={C.countdown_hours} onChange={(e) => setC({ countdown_hours: Number(e.target.value) || 1 })} className="w-full border rounded-lg px-3 py-2" /></Field></div></div>
                   <div className="pt-3 border-t space-y-3"><div className="font-semibold text-sm">সেকশন হেডিং</div><div className="grid grid-cols-2 gap-3"><Field label="বৈশিষ্ট্য — ছোট"><input value={C.features_kicker} onChange={(e) => setC({ features_kicker: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="বৈশিষ্ট্য — বড়"><input value={C.features_title} onChange={(e) => setC({ features_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="কেন কিনবেন — ছোট"><input value={C.why_kicker} onChange={(e) => setC({ why_kicker: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="কেন কিনবেন — বড়"><input value={C.why_title} onChange={(e) => setC({ why_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="রিভিউ — ছোট"><input value={C.reviews_kicker} onChange={(e) => setC({ reviews_kicker: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="রিভিউ — বড়"><input value={C.reviews_title} onChange={(e) => setC({ reviews_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="প্যাকেজ — ছোট"><input value={C.package_kicker} onChange={(e) => setC({ package_kicker: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field><Field label="প্যাকেজ — বড়"><input value={C.package_title} onChange={(e) => setC({ package_title: e.target.value })} className="w-full border rounded-lg px-3 py-2" /></Field></div></div>
