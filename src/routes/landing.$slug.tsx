@@ -194,6 +194,10 @@ const isKaralaStyle = (slug: string) => landingBaseSlug(slug) === "karala";
 function LandingPage() {
   const { slug } = useParams({ from: "/landing/$slug" });
   if (slug === "methi-mix") return <LandingTemplateBoundary><LazyMethiMixLandingPage slug={slug} /></LandingTemplateBoundary>;
+  return <LandingPageTemplate slug={slug} />;
+}
+
+function LandingPageTemplate({ slug }: { slug: string }) {
   // Copies inherit 100% of the original page behaviour: resolve every
   // slug-specific flag from the base slug, not the suffixed copy slug.
   const behaviorSlug = landingBaseSlug(slug);
