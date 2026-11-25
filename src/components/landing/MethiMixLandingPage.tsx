@@ -110,36 +110,45 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
       .methi-mix-page .methi-card{border:1px solid #e8e4d8;background:#fff;border-radius:18px}
       @media(prefers-reduced-motion:no-preference){.methi-mix-page .methi-card{transition:transform .2s ease,box-shadow .2s ease}.methi-mix-page .methi-card:hover{transform:translateY(-2px);box-shadow:0 10px 26px #20382d12}}
     `}</style>
-    <div className="bg-[#20382d] px-3 py-1.5 text-center text-xs font-bold text-[#f2dfb7]">১ + ১ ফ্রি <span className="mx-1 opacity-50">•</span> ৳৫৯৯ <span className="mx-1 opacity-50">•</span> সারা দেশে ডেলিভারি ফ্রি</div>
-    <header className="border-b border-[#e8e4d8] bg-white">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-2.5">
-        <div className="flex items-center gap-2.5"><span className="grid h-9 w-9 place-items-center rounded-xl bg-[#20382d] text-[#f2dfb7]"><Leaf size={19}/></span><div className="text-lg font-bold leading-none">মেথি মিক্স</div></div>
-        <button onClick={scrollOrder} className="rounded-full bg-[#bd8b45] px-4 py-2 text-xs font-bold text-white">অর্ডার করুন <ArrowRight className="ml-1 inline" size={13}/></button>
-      </div>
-    </header>
-
-    <main className="mx-auto max-w-5xl px-4">
-      <section className="grid items-center gap-5 py-7 sm:grid-cols-2 sm:py-10">
-        <div className="order-2 sm:order-1">
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-[#e9eee5] px-3 py-1 text-xs font-bold text-[#456247]"><Sparkles size={13}/> ১৭ উপাদানের ব্লেন্ড</div>
-          <h1 className="text-3xl font-bold leading-[1.25] sm:text-4xl">{page.hero_title || "১৭ উপাদানের মেথি মিক্স পাউডার"}</h1>
-          <p className="mt-2 text-sm leading-6 text-[#69766a]">{page.hero_subtitle || "পরিচিত বীজ, মসলা ও উদ্ভিজ্জ উপাদানের বিশেষ মিশ্রণ।"}</p>
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <div><div className="text-[11px] text-[#788476]">১ প্যাকেট + ১ প্যাকেট ফ্রি</div><div className="text-3xl font-bold text-[#a87534]">৳৫৯৯</div></div>
-            <button onClick={scrollOrder} className="rounded-xl bg-[#20382d] px-5 py-3 text-sm font-bold text-white shadow-sm">অর্ডার করুন <ArrowRight className="ml-1 inline" size={15}/></button>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-3 text-xs font-semibold text-[#647261]"><span className="inline-flex items-center gap-1"><Truck size={14}/> ফ্রি ডেলিভারি</span><span className="inline-flex items-center gap-1"><ShieldCheck size={14}/> ক্যাশ অন ডেলিভারি</span></div>
-          <p className="mt-2 text-[10px] text-[#879184]">এটি খাদ্যপণ্য, ওষুধ বা চিকিৎসার বিকল্প নয়।</p>
+    <main className="mx-auto max-w-4xl px-4">
+      <section className="py-5 sm:py-8">
+        <h1 className="mb-4 text-center text-2xl font-bold leading-snug text-[#20382d] sm:text-3xl">
+          মেথি মিক্স পাউডার
+          <span className="mt-1 block text-lg font-semibold text-[#a87534] sm:text-xl">১ প্যাকেটের সাথে ১ প্যাকেট ফ্রি</span>
+        </h1>
+        <div className="relative mx-auto max-w-[440px] overflow-hidden rounded-[26px] border border-[#e5dfd1] bg-[#eee9dc] p-2 shadow-[0_14px_40px_#20382d14]">
+          {heroImage ? <SafeImage src={toImg(heroImage,{w:880,q:88})} alt={page.title || "মেথি মিক্স পাউডার"} className="aspect-square w-full rounded-[20px] object-cover"/> :
+            <div className="grid aspect-square place-items-center rounded-[20px] bg-gradient-to-br from-[#e7e8d8] to-[#d8c7a6] text-[#52634b]"><div className="text-center"><Sprout size={58} className="mx-auto mb-2"/><div className="text-lg font-bold">মেথি মিক্স</div></div></div>}
+          <div className="absolute bottom-4 right-4 rounded-xl bg-[#20382d] px-4 py-2 text-sm font-bold text-[#f2dfb7] shadow">২ প্যাকেট ৳৫৯৯</div>
         </div>
-        <div className="order-1 sm:order-2">
-          <div className="relative mx-auto max-w-[370px] overflow-hidden rounded-[26px] border border-[#e5dfd1] bg-[#eee9dc] p-2 shadow-sm">
-            {heroImage ? <SafeImage src={toImg(heroImage,{w:760,q:86})} alt={page.title || "মেথি মিক্স"} className="aspect-square w-full rounded-[20px] object-cover"/> :
-              <div className="grid aspect-square place-items-center rounded-[20px] bg-gradient-to-br from-[#e7e8d8] to-[#d8c7a6] text-[#52634b]"><div className="text-center"><Sprout size={58} className="mx-auto mb-2"/><div className="text-lg font-bold">মেথি মিক্স</div><div className="text-xs">১ প্যাকেট + ১ প্যাকেট ফ্রি</div></div></div>}
-            <div className="absolute bottom-4 right-4 rounded-xl bg-[#20382d] px-3 py-2 text-sm font-bold text-[#f2dfb7] shadow">৳৫৯৯ • ডেলিভারি ফ্রি</div>
+      </section>
+
+      <section className="border-t border-[#e8e4d8] py-6">
+        <div className="text-center">
+          <span className="text-xs font-bold tracking-wide text-[#a87534]">WHAT'S INSIDE</span>
+          <h2 className="mt-1 text-xl font-bold sm:text-2xl">মেথি মিক্সের উপাদান</h2>
+          <p className="mt-1 text-xs text-[#788476]">১৭টি নির্বাচিত উপাদানের পরিচিতি</p>
+        </div>
+        <div className="mt-4 overflow-hidden rounded-2xl border border-[#e5e1d5] bg-white shadow-sm">
+          <div className="grid grid-cols-2 gap-px bg-[#e9e6dc] sm:grid-cols-3">
+            {ingredients.map((item,i)=>{const Icon=INGREDIENT_ICONS[i%INGREDIENT_ICONS.length];return <div key={item.name+i} className="flex min-h-[66px] items-center gap-2.5 bg-white px-3 py-2.5"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#edf1e8] text-[#58704e]"><Icon size={21} strokeWidth={1.8}/></span><div className="min-w-0"><div className="text-sm font-semibold leading-5">{item.name}</div>{item.qty&&<div className="text-[10px] text-[#8a9385]">{item.qty}</div>}</div></div>})}
           </div>
         </div>
       </section>
 
+      <section className="border-t border-[#e8e4d8] py-6">
+        <div className="text-center"><span className="text-xs font-bold text-[#a87534]">WHY CHOOSE IT</span><h2 className="mt-1 text-xl font-bold sm:text-2xl">মেথি মিক্সের ৫টি বৈশিষ্ট্য</h2></div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {[
+            ["বিভিন্ন উপাদানের সমন্বয়","মেথি, বীজ, মসলা ও উদ্ভিজ্জ উপাদান একসাথে।",Sprout],
+            ["আঁশযুক্ত উপাদান","তিসি, চিয়া ও ইসবগুলের মতো আঁশযুক্ত উপাদান রয়েছে।",Waves],
+            ["স্বাদ ও সুগন্ধের বৈচিত্র্য","জিরা, মৌরি, দারুচিনি ও এলাচের মতো পরিচিত মসলা।",Sparkles],
+            ["ব্যবহারে সুবিধাজনক","বিভিন্ন উপাদান আলাদা করে মেশানোর ঝামেলা কমায়।",PackageCheck],
+            ["একসাথে ২ প্যাকেট","এক প্যাকেটের সাথে আরেক প্যাকেট ফ্রি—দীর্ঘদিন ব্যবহারের সুবিধা।",ShoppingBag],
+          ].map(([title,desc,Icon],i)=>{const BenefitIcon=Icon as typeof Sprout;return <div key={String(title)} className="methi-card flex items-start gap-3 p-3.5"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#edf1e8] text-[#58704e]"><BenefitIcon size={20}/></span><div><div className="text-sm font-bold">{String(title)}</div><p className="mt-0.5 text-xs leading-5 text-[#788476]">{String(desc)}</p></div></div>})}
+        </div>
+        <p className="mt-3 text-[11px] leading-5 text-[#8a9385]">এগুলো উপাদানভিত্তিক সাধারণ খাদ্যগুণ ও ব্যবহারিক বৈশিষ্ট্য; কোনো রোগ নিরাময় বা চিকিৎসার দাবি নয়।</p>
+      </section>
       <section className="border-t border-[#e8e4d8] py-7">
         <div className="flex items-end justify-between gap-3"><div><h2 className="text-xl font-bold sm:text-2xl">১৭টি উপাদান</h2><p className="mt-1 text-xs text-[#788476]">প্রতিটি উপাদানের পরিচিত আইকনসহ তালিকা</p></div><span className="rounded-full bg-[#e9eee5] px-3 py-1 text-xs font-bold text-[#456247]">১৭ ITEMS</span></div>
         <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4">
@@ -178,6 +187,6 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
     </main>
 
     <footer className="border-t border-[#e8e4d8] bg-white px-4 py-5 text-center text-[11px] text-[#788476]"><div className="font-bold text-[#20382d]">মেথি মিক্স পাউডার</div><p className="mt-1">এটি খাদ্যপণ্য; চিকিৎসা বা ওষুধের বিকল্প নয়।</p></footer>
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#e1ddcf] bg-white/95 p-2 shadow-lg backdrop-blur md:hidden"><div className="mx-auto flex max-w-lg items-center gap-3"><div className="min-w-0 flex-1"><div className="text-[10px] text-[#788476]">১ + ১ ফ্রি</div><div className="text-base font-bold text-[#20382d]">৳৫৯৯</div></div><button onClick={scrollOrder} className="rounded-xl bg-[#20382d] px-5 py-3 text-sm font-bold text-white">অর্ডার করুন <ArrowRight className="ml-1 inline" size={14}/></button></div></div>
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#d9dfd3] bg-white/95 px-3 py-2.5 shadow-[0_-8px_30px_#20382d18] backdrop-blur md:hidden"><div className="mx-auto flex max-w-lg items-center gap-3"><div className="min-w-0 flex-1"><div className="text-[10px] font-semibold text-[#788476]">বিশেষ অফার • সারা দেশে ডেলিভারি ফ্রি</div><div className="text-sm font-bold leading-5 text-[#20382d]">১ প্যাকেট কিনুন, ১ প্যাকেট ফ্রি পান</div><div className="text-xs font-bold text-[#a87534]">২ প্যাকেট মাত্র ৳৫৯৯</div></div><button onClick={scrollOrder} className="shrink-0 rounded-xl bg-[#20382d] px-4 py-3 text-sm font-bold text-white shadow-md">এখনই অর্ডার <ArrowRight className="ml-1 inline" size={14}/></button></div></div>
   </div>;
 }
