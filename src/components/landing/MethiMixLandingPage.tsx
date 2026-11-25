@@ -182,7 +182,7 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
             <input required value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} placeholder="মোবাইল নম্বর *" inputMode="tel" className="w-full rounded-xl border border-[#c9ddc3] px-4 py-3 text-sm outline-none focus:border-[#477b4d]"/>
             <textarea required value={form.address} onChange={e=>setForm({...form,address:e.target.value})} placeholder="সম্পূর্ণ ঠিকানা *" rows={2} className="w-full resize-y rounded-xl border border-[#c9ddc3] px-4 py-3 text-sm outline-none focus:border-[#477b4d]"/>
             <div className="rounded-xl bg-[#f3f8ef] p-3 text-sm"><div className="flex justify-between"><span>পণ্যের মূল্য</span><b>{taka(subtotal)}</b></div><div className="mt-1 flex justify-between"><span>ডেলিভারি চার্জ</span><b className="text-emerald-700">{shipping === 0 ? "ফ্রি" : taka(shipping)}</b></div><div className="mt-2 flex justify-between border-t border-[#c9ddc3] pt-2 font-bold"><span>সর্বমোট</span><span className="text-[#477b4d]">{taka(total)}</span></div></div>
-            <button type="submit" disabled={submitting||!chosen||chosen.price<=0} className="w-full rounded-xl bg-[#477b4d] px-5 py-3.5 text-sm font-bold text-white shadow-sm disabled:opacity-50">{submitting?"অর্ডার প্রসেস হচ্ছে...":"অর্ডার কনফার্ম করুন"} <ArrowRight className="ml-1 inline" size={16}/></button>
+            <button type="submit" disabled={submitting||!chosen||chosen.price<=0} className="w-full rounded-xl bg-[#477b4d] px-5 py-3.5 text-sm font-bold text-white shadow-sm disabled:opacity-50">{submitting?"অর্ডার প্রসেস হচ্ছে...":(page.cta_text || "অর্ডার কনফার্ম করুন")} <ArrowRight className="ml-1 inline" size={16}/></button>
           </form>
         </div>
       </section>
