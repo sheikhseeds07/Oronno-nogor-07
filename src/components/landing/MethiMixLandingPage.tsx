@@ -37,12 +37,15 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [isCheckoutVisible, setIsCheckoutVisible] = useState(false);
   useEffect(() => {
+    if (isLoading || !page) return;
     const target = document.getElementById("methi-checkout-form");
     if (!target) return;
-    const observer = new IntersectionObserver(([entry]) => setIsCheckoutVisible(entry.isIntersecting), { threshold: 0, rootMargin: "0px 0px 0px 0px" });
+    const observer = new IntersectionObserver(([entry]) => {
+      setIsCheckoutVisible(entry.isIntersecting);
+    }, { threshold: 0, rootMargin: "0px" });
     observer.observe(target);
     return () => observer.disconnect();
-  }, []);
+  }, [isLoading, page]);
   const { data: page, isLoading } = useQuery({
     queryKey: ["landing-methi-mix", slug],
     staleTime: 10_000,
