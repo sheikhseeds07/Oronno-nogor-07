@@ -37,7 +37,7 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [isCheckoutVisible, setIsCheckoutVisible] = useState(false);
   useEffect(() => {
-    const target = document.getElementById("methi-order");
+    const target = document.getElementById("methi-checkout-form");
     if (!target) return;
     const observer = new IntersectionObserver(([entry]) => setIsCheckoutVisible(entry.isIntersecting), { threshold: 0, rootMargin: "0px 0px 0px 0px" });
     observer.observe(target);
@@ -151,7 +151,7 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
       <section id="methi-order" className="scroll-mt-4 border-t border-[#dce9d8] py-7">
         <div className="mx-auto max-w-xl overflow-hidden rounded-[22px] border border-[#c9ddc3] bg-white shadow-sm">
           <div className="bg-[#24432d] px-5 py-4 text-white"><div className="flex items-center gap-2 text-xs font-semibold text-[#e7f1e1]"><ShoppingBag size={15}/> অর্ডার ফর্ম</div><h2 className="mt-1 text-2xl font-bold">অর্ডার কনফার্ম করুন</h2><p className="mt-1 text-xs text-[#e7f1e1]">১ ফাইল + ১ ফাইল ফ্রি — ৳৫৯৯</p></div>
-          <form onSubmit={submit} className="space-y-3 p-4 sm:p-5">
+          <form id="methi-checkout-form" onSubmit={submit} className="space-y-3 p-4 sm:p-5">
             <div className="flex items-center justify-between rounded-xl bg-[#f3f8ef] p-3"><div><div className="text-sm font-bold">মেথি মিক্স ১ + ১ ফ্রি</div><div className="text-xs text-[#647a62]">সর্বমোট ৳৫৯৯ × পরিমাণ</div></div><div className="flex items-center gap-3"><button type="button" onClick={()=>setQuantity(q=>Math.max(1,q-1))} className="grid h-8 w-8 place-items-center rounded-full bg-white font-bold">−</button><span className="min-w-4 text-center text-sm font-bold">{quantity}</span><button type="button" onClick={()=>setQuantity(q=>Math.min(10,q+1))} className="grid h-8 w-8 place-items-center rounded-full bg-white font-bold">+</button></div></div>
             <input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="আপনার নাম *" className="w-full rounded-xl border border-[#c9ddc3] px-4 py-3 text-sm outline-none focus:border-[#477b4d]"/>
             <input required value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} placeholder="মোবাইল নম্বর *" inputMode="tel" className="w-full rounded-xl border border-[#c9ddc3] px-4 py-3 text-sm outline-none focus:border-[#477b4d]"/>
