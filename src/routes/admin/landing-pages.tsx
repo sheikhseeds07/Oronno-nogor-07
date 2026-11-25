@@ -55,6 +55,28 @@ type LP = {
   planting_steps?: LandingContent | null;
   description?: string | null;
   guarantee_text?: string | null;
+  warning_title?: string | null;
+  benefits_title?: string | null;
+  benefits_subtitle?: string | null;
+  faq_heading?: string | null;
+  order_kicker?: string | null;
+  order_heading?: string | null;
+  order_subtitle?: string | null;
+  product_card_title?: string | null;
+  product_card_offer?: string | null;
+  product_card_price?: string | null;
+  name_placeholder?: string | null;
+  phone_placeholder?: string | null;
+  address_placeholder?: string | null;
+  subtotal_label?: string | null;
+  delivery_label?: string | null;
+  total_label?: string | null;
+  footer_title?: string | null;
+  footer_disclaimer?: string | null;
+  floating_label?: string | null;
+  floating_offer?: string | null;
+  floating_price?: string | null;
+  floating_cta?: string | null;
   faq?: { q: string; a: string }[] | null;
 };
 
@@ -553,6 +575,31 @@ function LandingPagesAdmin() {
                       <div className="border-t pt-3">
                         <div className="mb-2 font-bold text-sm">লাইভ পেজের বৈশিষ্ট্য তালিকা</div>
                         <RepeatList<Feature> items={editing.features ?? []} onChange={(features)=>set({features})} empty={{title:"",text:""}} render={(item,upd)=><div className="space-y-2"><input value={item.title} onChange={(e)=>upd({...item,title:e.target.value})} placeholder="বৈশিষ্ট্যের লেখা" className="w-full border rounded-lg px-3 py-2"/><input value={item.text ?? ""} onChange={(e)=>upd({...item,text:e.target.value})} placeholder="অতিরিক্ত বর্ণনা (ঐচ্ছিক)" className="w-full border rounded-lg px-3 py-2 text-sm"/></div>} />
+                      </div>
+                      <div className="border-t pt-3 space-y-3">
+                        <div className="font-bold text-sm">লাইভ পেজের অন্যান্য লেখা — মূল লেখাগুলো অপরিবর্তিত রাখা হয়েছে</div>
+                      <Field label="সতর্কবার্তার শিরোনাম"><input value={editing.warning_title ?? "আপনি জানেন কি?"} onChange={(e)=>set({warning_title:e.target.value})} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="বৈশিষ্ট্য অংশের শিরোনাম"><input value={editing.benefits_title ?? "মেথি মিক্স পাউডারের উপকারিতা"} onChange={(e)=>set({benefits_title:e.target.value})} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="বৈশিষ্ট্য অংশের ছোট লেখা"><input value={editing.benefits_subtitle ?? "প্রতিদিনের খাবারের সঙ্গে ভেষজ উপাদানের সমন্বয়"} onChange={(e)=>set({benefits_subtitle:e.target.value})} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="FAQ অংশের শিরোনাম"><input value={editing.faq_heading ?? "সাধারণ প্রশ্ন"} onChange={(e)=>set({faq_heading:e.target.value})} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="চেকআউটের ছোট শিরোনাম"><input value={editing.order_kicker ?? "অর্ডার ফর্ম"} onChange={(e)=>set({order_kicker:e.target.value})} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="চেকআউটের শিরোনাম"><input value={editing.order_heading ?? "অর্ডার কনফার্ম করুন"} onChange={(e)=>set({order_heading:e.target.value})} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="চেকআউটের অফার লেখা"><input value={editing.order_subtitle ?? "১ ফাইল + ১ ফাইল ফ্রি — ৳৫৯৯"} onChange={(e)=>set({order_subtitle:e.target.value})} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="চেকআউট প্রোডাক্টের নাম"><input value={editing.product_card_title ?? "মেথি মিক্স পাউডার"} onChange={(e)=>set({product_card_title:e.target.value})} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="চেকআউট প্রোডাক্টের অফার"><input value={editing.product_card_offer ?? "১ ফাইল কিনুন, ১ ফাইল ফ্রি"} onChange={(e)=>set({product_card_offer:e.target.value})} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="চেকআউট প্রোডাক্টের মূল্য লেখা"><input value={editing.product_card_price ?? "২ ফাইলের প্যাকেজ • ৳৫৯৯"} onChange={(e)=>set({product_card_price:e.target.value})} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="নাম ফিল্ডের লেখা"><input value={editing.name_placeholder ?? "আপনার নাম *"} onChange={(e)=>set({name_placeholder:e.target.value})} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="ফোন ফিল্ডের লেখা"><input value={editing.phone_placeholder ?? "মোবাইল নম্বর *"} onChange={(e)=>set({phone_placeholder:e.target.value})} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="ঠিকানা ফিল্ডের লেখা"><input value={editing.address_placeholder ?? "সম্পূর্ণ ঠিকানা *"} onChange={(e)=>set({address_placeholder:e.target.value})} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="মূল্য হিসাবের লেবেল"><input value={editing.subtotal_label ?? "পণ্যের মূল্য"} onChange={(e)=>set({subtotal_label:e.target.value})} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="ডেলিভারি হিসাবের লেবেল"><input value={editing.delivery_label ?? "ডেলিভারি চার্জ"} onChange={(e)=>set({delivery_label:e.target.value})} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="সর্বমোটের লেবেল"><input value={editing.total_label ?? "সর্বমোট"} onChange={(e)=>set({total_label:e.target.value})} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="ফুটারের পণ্যের নাম"><input value={editing.footer_title ?? "মেথি মিক্স পাউডার"} onChange={(e)=>set({footer_title:e.target.value})} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="ফুটারের নিচের লেখা"><input value={editing.footer_disclaimer ?? "এটি খাদ্যপণ্য; চিকিৎসা বা ওষুধের বিকল্প নয়।"} onChange={(e)=>set({footer_disclaimer:e.target.value})} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="ফ্লোটিং অফারের ছোট লেখা"><input value={editing.floating_label ?? "বিশেষ অফার • সারা দেশে ডেলিভারি ফ্রি"} onChange={(e)=>set({floating_label:e.target.value})} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="ফ্লোটিং অফারের মূল লেখা"><input value={editing.floating_offer ?? "১ ফাইল কিনুন, ১ ফাইল ফ্রি পান"} onChange={(e)=>set({floating_offer:e.target.value})} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="ফ্লোটিং অফারের মূল্য লেখা"><input value={editing.floating_price ?? "২ ফাইল মাত্র ৳৫৯৯"} onChange={(e)=>set({floating_price:e.target.value})} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="ফ্লোটিং বাটনের লেখা"><input value={editing.floating_cta ?? "এখনই অর্ডার"} onChange={(e)=>set({floating_cta:e.target.value})} className="w-full border rounded-lg px-3 py-2" /></Field>
                       </div>
                       <div className="border-t pt-3">
                         <div className="mb-2 font-bold text-sm">সাধারণ প্রশ্ন (FAQ)</div>
