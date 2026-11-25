@@ -127,7 +127,6 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
         <div className="relative mx-auto max-w-[440px] overflow-hidden rounded-[26px] border border-[#fecaca] bg-[#fff7f7] p-2 shadow-[0_14px_40px_#3b172014]">
           {heroImage ? <SafeImage src={toImg(heroImage,{w:880,q:88})} alt={page.title || "মেথি মিক্স পাউডার"} className="aspect-square w-full rounded-[20px] object-cover"/> :
             <div className="grid aspect-square place-items-center rounded-[20px] bg-gradient-to-br from-[#ffe4e6] to-[#fecdd3] text-[#c62828]"><div className="text-center"><Sprout size={58} className="mx-auto mb-2"/><div className="text-lg font-bold">মেথি মিক্স</div></div></div>}
-          <div className="absolute bottom-4 right-4 rounded-xl bg-[#3b1720] px-4 py-2 text-sm font-bold text-[#f0eaff] shadow">২ প্যাকেট ৳৫৯৯</div>
         </div>
       </section>
 
