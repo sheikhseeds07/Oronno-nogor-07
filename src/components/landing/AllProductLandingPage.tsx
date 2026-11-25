@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useRef, type ReactElement, type ReactNode
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Check, ChevronDown, Leaf, MapPin, PackageCheck, Phone, ShieldCheck, ShoppingBag, Sparkles, Truck, User, Wallet, X } from "lucide-react";
+import { Check, Leaf, MapPin, PackageCheck, Phone, ShieldCheck, ShoppingBag, Sparkles, Truck, User, Wallet, X } from "lucide-react";
 import { supabase } from "@/lib/personal-supabase/client";
 import { createLandingCheckoutIntent, finalizeLandingCheckoutIntent, placeOrder } from "@/lib/place-order.functions";
 import { useCheckoutAutofill } from "@/lib/useCheckoutAutofill";
@@ -500,7 +500,6 @@ export function AllProductLandingPage({ slug }: { slug: string }) {
             <Button size="lg" onClick={handleCta} className="all-product-primary-cta h-13 w-full text-base font-black shadow-xl sm:h-14"><ShoppingBag className="h-5 w-5" />{isNutrimix ? "২৪ প্রকার বীজ ফ্রী নিন" : (page.cta_text || "এখনই অর্ডার করুন")}<span aria-hidden="true">→</span></Button>
           </div>
         </div>
-        <ChevronDown className="absolute bottom-2 left-1/2 h-5 w-5 -translate-x-1/2 animate-bounce text-all-product-gold" />
       </section>
 
       {(detailRows.length > 0 || C.gallery_images.length > 0) && <section className="bg-all-product-muted-surface py-7"><div className="mx-auto max-w-3xl px-4">
