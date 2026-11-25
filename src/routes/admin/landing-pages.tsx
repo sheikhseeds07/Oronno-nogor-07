@@ -495,7 +495,8 @@ function LandingPagesAdmin() {
                         {editing.hero_image && <SafeImage src={editing.hero_image} alt="" className="mt-2 max-h-48 w-full rounded-lg border object-contain" />}
                       </Field>
                       <div className="grid grid-cols-2 gap-3">
-                        <Field label="অফার মূল্য (৳)"><input type="number" min={1} value={editing.sale_price ?? 599} onChange={(e)=>set({sale_price:Number(e.target.value)||0})} className="w-full border rounded-lg px-3 py-2" /></Field>
+                        <Field label="অর্ডার বাটনের লেখা"><input value={editing.cta_text ?? "অর্ডার কনফার্ম করুন"} onChange={(e)=>set({cta_text:e.target.value})} className="w-full border rounded-lg px-3 py-2" /></Field>
+                      <Field label="অফার মূল্য (৳)"><input type="number" min={1} value={editing.sale_price ?? 599} onChange={(e)=>set({sale_price:Number(e.target.value)||0})} className="w-full border rounded-lg px-3 py-2" /></Field>
                         <Field label="ডেলিভারি চার্জ (৳)"><input type="number" min={0} value={editing.main_delivery_fee ?? 0} onChange={(e)=>set({main_delivery_fee:Number(e.target.value)||0})} className="w-full border rounded-lg px-3 py-2" /></Field>
                       </div>
                       <Field label="অর্ডার প্রোডাক্ট"><ProductPicker products={products} value={editing.product_id} onChange={(product_id)=>set({product_id})} placeholder="প্রোডাক্ট নির্বাচন করুন" /></Field>
