@@ -169,7 +169,7 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-[13px] font-bold leading-5 text-[#24432d]">{page.product_card_title || chosen?.name || page.title || "মেথি মিক্স পাউডার"}</div>
-                <div className="text-[11px] font-semibold leading-4 text-[#477b4d]">{page.product_card_offer || "১ ফাইল কিনুন, ১ ফাইল ফ্রি"}</div>
+                <div className="text-[11px] font-extrabold leading-4 text-red-600">ডেলিভারি চার্জ ফ্রি</div>
                 <div className="text-[11px] leading-4 text-[#647a62]">{page.product_card_price || `২ ফাইলের প্যাকেজ • ৳${chosen?.price || 599}`}</div>
               </div>
               <div className="flex shrink-0 items-center gap-2">
