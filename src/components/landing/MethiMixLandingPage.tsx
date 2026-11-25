@@ -132,7 +132,7 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
             <span className="text-[11px] font-bold tracking-[.16em]">HERBAL CARE</span>
             <Sprout size={19} strokeWidth={2.2} className="scale-x-[-1]" />
           </div>
-          <h2 id="methi-benefits-title" className="methi-hero-title mt-1 text-center text-[23px] font-extrabold text-[#24452a] sm:text-[26px]">{page.benefits_title || "মেথি মিক্স পাউডারের উপকারিতা"}</h2>
+          <h2 id="methi-benefits-title" className="methi-hero-title mt-1 whitespace-nowrap text-center text-[clamp(15px,4.6vw,26px)] font-extrabold leading-tight tracking-tight text-[#24452a]">{page.benefits_title || "মেথি মিক্স পাউডারের উপকারিতা"}</h2>
           <p className="mt-1 text-center text-xs text-[#6b8066]">{page.benefits_subtitle || "প্রতিদিনের খাবারের সঙ্গে ভেষজ উপাদানের সমন্বয়"}</p>
         </div>
         <div className="mx-3 mb-3 overflow-hidden rounded-[17px] border border-[#dce9d8] bg-white/90 sm:mx-5 sm:mb-5">
@@ -147,7 +147,7 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
               <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#edf5e9] text-[#52764d]">
                 <Sprout size={16} strokeWidth={2.1} />
               </span>
-              <span className="text-[14px] font-semibold leading-6 text-[#344b35] sm:text-[15px]">{benefit.title || benefit.text}</span>
+              <span className="text-[16px] font-bold leading-6 text-[#344b35] sm:text-[17px]">{benefit.title || benefit.text}</span>
               <span className="ml-auto text-[#91aa87]"><ShieldCheck size={17} /></span>
             </div>
           ))}
