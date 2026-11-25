@@ -147,9 +147,23 @@ function LandingPagesAdmin() {
           gallery_images: [],
         },
       } : {}),
-      features: p.features?.length ? p.features : DEFAULT_FEATURES,
-      why_choose_us: p.why_choose_us?.length ? p.why_choose_us : DEFAULT_WHY,
-      reviews: p.reviews?.length ? p.reviews : DEFAULT_REVIEWS,
+      features: p.slug === "methi-mix" && !currentMethiContent.methi_initialized
+        ? [
+            { title: "১৭টি তালিকাভুক্ত উপাদান", text: "পণ্যের উপাদানগুলো এক জায়গায় দেখে নিন।", icon: "🌿" },
+            { title: "উপাদানের ছবি", text: "প্রতিটি উপাদানের ছবি ও নাম আলাদাভাবে দেখুন।", icon: "🔎" },
+            { title: "স্পষ্ট প্যাকেজ তথ্য", text: "প্যাকেটের ওজন, মূল্য ও ব্যবহারবিধি জেনে অর্ডার করুন।", icon: "📦" },
+            { title: "সহজ অনলাইন অর্ডার", text: "নাম, ফোন ও ঠিকানা দিয়ে অর্ডার জমা দিন।", icon: "🛒" },
+          ]
+        : p.features?.length ? p.features : DEFAULT_FEATURES,
+      why_choose_us: p.slug === "methi-mix" && !currentMethiContent.methi_initialized
+        ? [
+            { title: "অর্ডারের আগে তথ্য", text: "পণ্যের উপাদান ও প্যাকেজের তথ্য দেখে নিন।", icon: "📋" },
+            { title: "সারা দেশে ডেলিভারি", text: "আপনার ঠিকানায় পণ্য পাঠানোর ব্যবস্থা।", icon: "🚚" },
+            { title: "ক্যাশ অন ডেলিভারি", text: "প্রযোজ্য ক্ষেত্রে পণ্য হাতে পেয়ে মূল্য পরিশোধ করুন।", icon: "💵" },
+            { title: "কাস্টমার সাপোর্ট", text: "অর্ডার সংক্রান্ত সহায়তার জন্য যোগাযোগ করুন।", icon: "☎️" },
+          ]
+        : p.why_choose_us?.length ? p.why_choose_us : DEFAULT_WHY,
+      reviews: p.slug === "methi-mix" && !currentMethiContent.methi_initialized ? [] : p.reviews?.length ? p.reviews : DEFAULT_REVIEWS,
       planting_steps: { ...(p.slug === "methi-mix" ? methiContent : mergeContent(p.planting_steps)), top_bar_enabled: (p.planting_steps as (LandingContent & { top_bar_enabled?: boolean }) | null)?.top_bar_enabled ?? true },
     });
     setTab("main");
