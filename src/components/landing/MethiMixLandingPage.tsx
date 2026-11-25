@@ -22,7 +22,7 @@ type Product = { id: string; name: string; price: number; sale_price: number | n
 type Addon = { product_id?: string; name: string; price: number; image?: string; old_price?: number; delivery_fee?: number | null };
 type Package = { id: string; name: string; price: number; oldPrice: number | null; image: string; deliveryFee: number };
 
-const FAQS = [
+const DEFAULT_FAQS = [
   { q: "মেথি মিক্স কী এবং এর কাজ কী?", a: "মেথি মিক্স বিভিন্ন ভেষজ ও মসলাজাতীয় উপাদানের সমন্বয়ে তৈরি একটি খাদ্যপণ্য। এটি কোনো নির্দিষ্ট রোগ সারায় বা গ্যাস্ট্রিকের চিকিৎসা করে—এমন প্রমাণিত দাবি করা যায় না। পেটের অস্বস্তি বা হজমের সমস্যা নিয়মিত হলে চিকিৎসকের পরামর্শ নিন।" },
   { q: "এতে কী কী উপাদান রয়েছে?", a: "উপাদানের সম্পূর্ণ ও নির্ভুল তালিকা জানতে পণ্যের ফাইলের লেবেল দেখুন।" },
   { q: "এটি কি ওষুধ? জেনে রাখুন", a: "এটি খাদ্য সম্পূরক, ওষুধ নয়। গর্ভবতী, স্তন্যদানকারী মা, শিশু বা নিয়মিত ওষুধ সেবনকারী হলে খাওয়ার আগে চিকিৎসকের পরামর্শ নিন।" },
@@ -57,16 +57,16 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
   const addons = (Array.isArray(page?.addons) ? page.addons : []) as Addon[];
   const heroImage = page?.hero_image || product?.images?.[0] || "";
   const packages = useMemo<Package[]>(() => {
-    if (product) return [{ id: product.id, name: product.name, price: 599, oldPrice: null, image: heroImage, deliveryFee: 0 }];
+    if (product) return [{ id: product.id, name: product.name, price: Number(page?.sale_price) || 599, oldPrice: null, image: heroImage, deliveryFee: 0 }];
     return addons.slice(0, 1).map((addon, index) => ({
       id: addon.product_id || "addon-" + index, name: addon.name, price: Number(addon.price),
       oldPrice: null, image: addon.image || heroImage, deliveryFee: 0,
     }));
   }, [product, addons, heroImage]);
   const chosen = packages[0];
-  const subtotal = (chosen?.price || 599) * quantity;
-  const shipping = 0;
-  const total = subtotal;
+  const subtotal = (chosen?.price || Number(page?.sale_price) || 599) * quantity;
+  const shipping = Number(page?.main_delivery_fee) || 0;
+  const total = subtotal + shipping;
   const scrollOrder = () => document.getElementById("methi-order")?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   const submit = async (event: React.FormEvent) => {
@@ -75,7 +75,7 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
     if (!chosen || !chosen.id || chosen.price <= 0) return toast.error("পণ্যের প্যাকেজ Admin থেকে যুক্ত করতে হবে");
     setSubmitting(true);
     try {
-      const items = [{ id: chosen.id, name: "১ ফাইল + ১ ফাইল ফ্রি", price: 599, quantity }];
+      const items = [{ id: chosen.id, name: "১ ফাইল + ১ ফাইল ফ্রি", price: Number(page?.sale_price) || 599, quantity }];
       trackInitiateCheckout(items, total);
       const order = await runPlaceOrder({ data: {
         landing_slug: slug, customer_name: form.name.trim(),
@@ -120,7 +120,7 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
             <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-red-100 text-red-700"><ShieldCheck size={16}/></span>
             <h2 className="text-[14px] font-extrabold text-red-800">আপনি জানেন কি?</h2>
           </div>
-          <p className="mt-1.5 text-[12px] font-medium leading-5 text-red-900">দীর্ঘদিন ধরে পেটের অস্বস্তি, বদহজম বা অস্বাভাবিক উপসর্গ থাকলে অবহেলা না করে চিকিৎসকের পরামর্শ নিন।</p>
+          <p className="mt-1.5 text-[12px] font-medium leading-5 text-red-900">{page.description || "দীর্ঘদিন ধরে পেটের অস্বস্তি, বদহজম বা অস্বাভাবিক উপসর্গ থাকলে অবহেলা না করে চিকিৎসকের পরামর্শ নিন।"}</p>
         </div>
       </section>
 
@@ -147,7 +147,7 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
               <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#edf5e9] text-[#52764d]">
                 <Sprout size={16} strokeWidth={2.1} />
               </span>
-              <span className="text-[14px] font-semibold leading-6 text-[#344b35] sm:text-[15px]">{benefit}</span>
+              <span className="text-[14px] font-semibold leading-6 text-[#344b35] sm:text-[15px]">{benefit.title || benefit.text}</span>
               <span className="ml-auto text-[#91aa87]"><ShieldCheck size={17} /></span>
             </div>
           ))}
@@ -156,7 +156,7 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
 
       <section className="border-t border-[#dce9d8] py-7">
         <h2 className="flex items-center gap-2 text-xl font-bold"><CircleHelp size={20} className="text-[#477b4d]"/> সাধারণ প্রশ্ন</h2>
-        <div className="mt-3 space-y-2">{FAQS.map((faq,i)=><div key={faq.q} className="methi-card overflow-hidden"><button onClick={()=>setOpenFaq(openFaq===i?null:i)} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold"><span>{faq.q}</span><ChevronDown size={17} className={"shrink-0 transition "+(openFaq===i?"rotate-180":"")}/></button>{openFaq===i&&<p className="px-4 pb-3 text-xs leading-6 text-[#647a62]">{faq.a}</p>}</div>)}</div>
+        <div className="mt-3 space-y-2">{(Array.isArray(page.faq) && page.faq.length ? page.faq : DEFAULT_FAQS).map((faq,i)=><div key={faq.q} className="methi-card overflow-hidden"><button onClick={()=>setOpenFaq(openFaq===i?null:i)} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-semibold"><span>{faq.q}</span><ChevronDown size={17} className={"shrink-0 transition "+(openFaq===i?"rotate-180":"")}/></button>{openFaq===i&&<p className="px-4 pb-3 text-xs leading-6 text-[#647a62]">{faq.a}</p>}</div>)}</div>
       </section>
 
       <section id="methi-order" className="scroll-mt-4 border-t border-[#dce9d8] py-7">
@@ -181,7 +181,7 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
             <input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="আপনার নাম *" className="w-full rounded-xl border border-[#c9ddc3] px-4 py-3 text-sm outline-none focus:border-[#477b4d]"/>
             <input required value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} placeholder="মোবাইল নম্বর *" inputMode="tel" className="w-full rounded-xl border border-[#c9ddc3] px-4 py-3 text-sm outline-none focus:border-[#477b4d]"/>
             <textarea required value={form.address} onChange={e=>setForm({...form,address:e.target.value})} placeholder="সম্পূর্ণ ঠিকানা *" rows={2} className="w-full resize-y rounded-xl border border-[#c9ddc3] px-4 py-3 text-sm outline-none focus:border-[#477b4d]"/>
-            <div className="rounded-xl bg-[#f3f8ef] p-3 text-sm"><div className="flex justify-between"><span>পণ্যের মূল্য</span><b>{taka(subtotal)}</b></div><div className="mt-1 flex justify-between"><span>ডেলিভারি চার্জ</span><b className="text-emerald-700">ফ্রি</b></div><div className="mt-2 flex justify-between border-t border-[#c9ddc3] pt-2 font-bold"><span>সর্বমোট</span><span className="text-[#477b4d]">{taka(total)}</span></div></div>
+            <div className="rounded-xl bg-[#f3f8ef] p-3 text-sm"><div className="flex justify-between"><span>পণ্যের মূল্য</span><b>{taka(subtotal)}</b></div><div className="mt-1 flex justify-between"><span>ডেলিভারি চার্জ</span><b className="text-emerald-700">{shipping === 0 ? "ফ্রি" : taka(shipping)}</b></div><div className="mt-2 flex justify-between border-t border-[#c9ddc3] pt-2 font-bold"><span>সর্বমোট</span><span className="text-[#477b4d]">{taka(total)}</span></div></div>
             <button type="submit" disabled={submitting||!chosen||chosen.price<=0} className="w-full rounded-xl bg-[#477b4d] px-5 py-3.5 text-sm font-bold text-white shadow-sm disabled:opacity-50">{submitting?"অর্ডার প্রসেস হচ্ছে...":"অর্ডার কনফার্ম করুন"} <ArrowRight className="ml-1 inline" size={16}/></button>
           </form>
         </div>
