@@ -15,7 +15,7 @@ import {
   ArrowRight, ChevronDown, CircleHelp, Leaf, PackageCheck,
   ShieldCheck, ShoppingBag, Sprout, CircleDot, Wheat, Flower2, Droplet,
   Flame, Nut, Citrus, TreePine, CookingPot, Circle,
-  Sparkles, Truck,
+  Sparkles, Truck, Waves,
 } from "lucide-react";
 import { trackInitiateCheckout, trackPurchase } from "@/lib/fbq";
 import { toast } from "sonner";
