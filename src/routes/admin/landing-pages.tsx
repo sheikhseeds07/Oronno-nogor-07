@@ -150,7 +150,7 @@ function LandingPagesAdmin() {
           gallery_images: [],
         },
       } : {}),
-      features: p.slug === "methi-mix" && (!p.features?.length || p.features[0]?.title === "১৭টি তালিকাভুক্ত উপাদান")
+      features: p.slug === "methi-mix" && !currentMethiContent.methi_initialized
         ? [
             { title: "গ্যাস্ট্রিক সমস্যা দূর হবে।", text: "" },
             { title: "ঘন ঘন টক ঢেকুর বন্ধ হবে।", text: "" },
