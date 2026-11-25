@@ -114,6 +114,13 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
           {heroImage ? <SafeImage src={toImg(heroImage,{w:880,q:88})} alt={page.title || "মেথি মিক্স পাউডার"} className="aspect-square w-full rounded-[20px] object-cover"/> :
             <div className="grid aspect-square place-items-center rounded-[20px] bg-gradient-to-br from-[#e7f1e1] to-[#fecdd3] text-[#477b4d]"><div className="text-center"><Sprout size={58} className="mx-auto mb-2"/><div className="text-lg font-bold">মেথি মিক্স</div></div></div>}
         </div>
+        <div className="mx-auto mt-3 max-w-[440px] rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 shadow-sm">
+          <div className="flex items-center gap-2">
+            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-red-100 text-red-700"><ShieldCheck size={16}/></span>
+            <h2 className="text-[14px] font-extrabold text-red-800">আপনি জানেন কি?</h2>
+          </div>
+          <p className="mt-1.5 text-[12px] font-medium leading-5 text-red-900">দীর্ঘদিন ধরে পেটের অস্বস্তি, বদহজম বা অস্বাভাবিক উপসর্গ থাকলে অবহেলা না করে চিকিৎসকের পরামর্শ নিন।</p>
+        </div>
       </section>
 
       <section aria-labelledby="methi-benefits-title" className="mx-auto -mt-1 mb-7 max-w-2xl overflow-hidden rounded-[24px] border border-[#dce9d8] bg-[linear-gradient(145deg,#f7fbf3_0%,#edf5e9_52%,#f8faf3_100%)] shadow-[0_14px_38px_#24452a12]">
@@ -175,7 +182,6 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
             <textarea required value={form.address} onChange={e=>setForm({...form,address:e.target.value})} placeholder="সম্পূর্ণ ঠিকানা *" rows={2} className="w-full resize-y rounded-xl border border-[#c9ddc3] px-4 py-3 text-sm outline-none focus:border-[#477b4d]"/>
             <div className="rounded-xl bg-[#f3f8ef] p-3 text-sm"><div className="flex justify-between"><span>পণ্যের মূল্য</span><b>{taka(subtotal)}</b></div><div className="mt-1 flex justify-between"><span>ডেলিভারি চার্জ</span><b className="text-emerald-700">ফ্রি</b></div><div className="mt-2 flex justify-between border-t border-[#c9ddc3] pt-2 font-bold"><span>সর্বমোট</span><span className="text-[#477b4d]">{taka(total)}</span></div></div>
             <button type="submit" disabled={submitting||!chosen||chosen.price<=0} className="w-full rounded-xl bg-[#477b4d] px-5 py-3.5 text-sm font-bold text-white shadow-sm disabled:opacity-50">{submitting?"অর্ডার প্রসেস হচ্ছে...":"অর্ডার কনফার্ম করুন"} <ArrowRight className="ml-1 inline" size={16}/></button>
-            <p className="text-center text-[10px] text-[#647a62]">অর্ডারটি আমাদের নিয়মিত Orders সেকশনে যুক্ত হবে।</p>
           </form>
         </div>
       </section>
