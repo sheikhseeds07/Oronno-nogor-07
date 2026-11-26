@@ -114,7 +114,7 @@ function Checkout() {
         return;
       }
       const { data: { session } } = await supabase.auth.getSession();
-      const result = await runPlaceOrder({ data: { customer_name: form.name.trim(), customer_phone: normalizeBdPhone(form.phone), alternative_phone: form.altPhone.trim() ? normalizeBdPhone(form.altPhone) : null, customer_address: form.address.trim(), district: null, thana: null, notes: form.note?.trim() || null, delivery_fee: delivery, created_by: session?.user?.id ?? null, checkout_session_id: checkoutSessionId || null, items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, is_freebie: i.is_freebie })), ...getFbContext() } });
+      const result = await runPlaceOrder({ data: { customer_name: form.name.trim(), customer_phone: normalizeBdPhone(form.phone), alternative_phone: form.altPhone.trim() ? normalizeBdPhone(form.altPhone) : null, customer_address: form.address.trim(), district: null, thana: null, notes: form.note?.trim() || null, delivery_fee: delivery, created_by: session?.user?.id ?? null, checkout_session_id: checkoutSessionId || null, is_store_checkout: true, items: items.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, is_freebie: i.is_freebie })), ...getFbContext() } });
       placedSuccessfully.current = true;
       trackPurchase(items, total, result.id);
       clearCheckoutSessionId(checkoutSessionId);
@@ -169,3 +169,4 @@ function Checkout() {
     {repeatOrderSeconds > 0 && <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/60 p-4 backdrop-blur-sm"><div className="w-full max-w-md rounded-[30px] bg-white p-6 text-center shadow-2xl"><div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-brand-light text-2xl">⏳</div><h3 className="mt-4 text-xl font-black">একটু অপেক্ষা করুন</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">{repeatOrderMessage}</p><div className="my-5 rounded-2xl bg-slate-50 py-4"><div className="text-3xl font-black tracking-[.12em] text-brand-dark">{formatCountdown(repeatOrderSeconds)}</div></div><p className="text-[11px] font-semibold text-muted-foreground">সময় শেষ হলে আবার অর্ডার করতে পারবেন।</p></div></div>}
   </SiteLayout>;
 }
+
