@@ -19,7 +19,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const { data: settingsRow } = useQuery(publicSiteSettingsQuery);
   const settings = (settingsRow?.settings ?? {}) as Record<string, unknown>;
   const configuredMinimumHomeOrder = Number(settings.minimum_home_order ?? 200);
-  const minimumHomeOrder = settings.minimum_home_order_enabled === true
+  const minimumHomeOrder = settings.minimum_home_order_enabled !== false
     ? (Number.isFinite(configuredMinimumHomeOrder) ? Math.max(0, Math.floor(configuredMinimumHomeOrder)) : 200)
     : 0;
   const [minimumOpen, setMinimumOpen] = useState(false);
