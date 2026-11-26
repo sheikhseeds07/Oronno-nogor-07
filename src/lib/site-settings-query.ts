@@ -18,6 +18,8 @@ export type PublicSiteSettings = Record<string, unknown> & {
   free_delivery_above?: number;
   delivery_zones?: Array<{ id: string; label: string; fee: number }>;
   delivery_rules?: Array<{ id: string; min_order: number; fee: number }>;
+  minimum_home_order?: number;
+  minimum_home_order_enabled?: boolean;
 };
 
 export type PublicSiteSettingsRow = { settings: PublicSiteSettings } | null;
