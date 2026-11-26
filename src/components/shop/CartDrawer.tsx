@@ -1,6 +1,6 @@
 import { SafeImage } from "@/components/SafeImage";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Minus, Plus, Trash2, X, ShoppingBag, Truck, Sparkles, ArrowRight, ShieldCheck } from "lucide-react";
 import { useCart } from "@/lib/cart-store";
 import { taka, bnDigits } from "@/lib/format";
@@ -17,13 +17,21 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const remove = useCart((s) => s.remove);
   const subtotal = useCart((s) => s.subtotal());
   const { data: settingsRow } = useQuery(publicSiteSettingsQuery);
+  const settings = (settingsRow?.settings ?? {}) as Record<string, unknown>;
+  const configuredMinimumHomeOrder = Number(settings.minimum_home_order ?? 200);
+  const minimumHomeOrder = settings.minimum_home_order_enabled === true
+    ? (Number.isFinite(configuredMinimumHomeOrder) ? Math.max(0, Math.floor(configuredMinimumHomeOrder)) : 200)
+    : 0;
+  const [minimumOpen, setMinimumOpen] = useState(false);
+  const isHome = typeof window !== "undefined" && window.location.pathname === "/";
+  const amountRemaining = Math.max(0, minimumHomeOrder - subtotal);
   const deliveryRules = (settingsRow?.settings?.delivery_rules ?? undefined) as Array<{ id: string; min_order: number; fee: number }> | undefined;
   const { delivery, total, freeRule, amountToFree } = getDeliveryInfo(subtotal, deliveryRules);
   const progressTarget = freeRule?.min_order ?? (delivery === 0 ? subtotal : 0);
   const progressPercent = progressTarget > 0 ? Math.min(100, Math.max(0, (subtotal / progressTarget) * 100)) : 100;
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) { setMinimumOpen(false); return; }
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = prev; };
@@ -32,6 +40,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   if (!open) return null;
 
   const goToCheckout = () => {
+    if (isHome && minimumHomeOrder > 0 && subtotal < minimumHomeOrder) { setMinimumOpen(true); return; }
     onClose();
     void navigate({ to: "/checkout" });
   };
@@ -69,7 +78,34 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
         )}
       </aside>
 
+      {minimumOpen && isHome && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center px-3 sm:px-4" role="dialog" aria-modal="true" aria-labelledby="minimum-order-title">
+          <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-[3px] animate-fade-in" onClick={() => setMinimumOpen(false)} />
+          <div className="relative w-full max-w-[350px] overflow-hidden rounded-[22px] border border-white/80 bg-white shadow-[0_24px_70px_-20px_rgba(15,23,42,.55)] animate-[homeMinPop_.34s_cubic-bezier(.16,1,.3,1)_both]">
+            <style>{`@keyframes homeMinPop{0%{opacity:0;transform:translateY(12px)scale(.96)}100%{opacity:1;transform:none}}@keyframes homeMinGlow{0%,100%{transform:scale(.92);opacity:.45}50%{transform:scale(1.08);opacity:.8}}@media(prefers-reduced-motion:reduce){.home-min-motion{animation:none!important}}`}</style>
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand via-emerald-400 to-amber-400" />
+            <button type="button" onClick={() => setMinimumOpen(false)} aria-label="পপআপ বন্ধ করুন" className="absolute right-2.5 top-2.5 z-10 grid h-7 w-7 place-items-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-800 active:scale-90"><X className="h-3.5 w-3.5" /></button>
+            <div className="relative px-4 pb-4 pt-5 text-center sm:px-5 sm:pb-5">
+              <div className="pointer-events-none absolute left-1/2 top-[-42px] h-28 w-28 -translate-x-1/2 rounded-full bg-brand/15 blur-2xl home-min-motion" style={{ animation: "homeMinGlow 2.8s ease-in-out infinite" }} />
+              <div className="relative mx-auto mb-2.5 grid h-11 w-11 place-items-center rounded-[14px] bg-gradient-to-br from-brand to-brand-dark text-white shadow-[0_9px_22px_-10px_rgba(20,83,45,.75)] ring-4 ring-brand/10"><ShoppingBag className="h-5 w-5" /><span className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full bg-amber-400 text-[8px] font-black text-amber-950 shadow">৳</span></div>
+              <div className="mb-1 inline-flex items-center gap-1 rounded-full border border-brand/10 bg-brand-light/60 px-2 py-0.5 text-[8px] font-extrabold text-brand-dark"><ShieldCheck className="h-2.5 w-2.5" /> ন্যূনতম অর্ডার</div>
+              <h3 id="minimum-order-title" className="whitespace-nowrap text-[16px] font-black tracking-tight text-slate-900 sm:text-[17px]">ন্যূনতম {taka(minimumHomeOrder)} টাকার পণ্য কিনতে হবে</h3>
+              <p className="mx-auto mt-1 max-w-[315px] text-[10px] leading-4 text-slate-500">আমরা আপনাদের জন্য পাইকারি দামে পণ্য দিচ্ছি, তাই অর্ডারের জন্য ন্যূনতম {taka(minimumHomeOrder)} টাকার পণ্য নিতে হবে।</p>
 
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <div className="rounded-xl border border-slate-100 bg-slate-50 px-2.5 py-2 text-left"><div className="text-[8px] font-bold text-slate-400">আপনার বর্তমান মোট</div><div className="mt-0.5 text-base font-black text-brand-dark">{taka(subtotal)}</div></div>
+                <div className="rounded-xl border border-amber-100 bg-amber-50/70 px-2.5 py-2 text-left"><div className="text-[8px] font-bold text-amber-700/70">আরও কিনতে হবে</div><div className="mt-0.5 text-base font-black text-amber-700">{taka(amountRemaining)}</div></div>
+              </div>
+
+              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-gradient-to-r from-brand to-emerald-400 transition-[width] duration-500" style={{ width: `${Math.min(100, (subtotal / minimumHomeOrder) * 100)}%` }} /></div>
+              <div className="mt-1 flex justify-between text-[8px] font-bold text-slate-400"><span>বর্তমান {taka(subtotal)}</span><span>ন্যূনতম {taka(minimumHomeOrder)}</span></div>
+
+              <Link to="/shop" onClick={() => { setMinimumOpen(false); onClose(); }} className="group mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-brand to-brand-dark text-xs font-extrabold text-white shadow-[0_9px_22px_-11px_rgba(20,83,45,.8)] transition hover:-translate-y-0.5 hover:shadow-[0_13px_26px_-11px_rgba(20,83,45,.85)] active:scale-[.98]">আরও কিছু কিনতে চাই <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" /></Link>
+              <button type="button" onClick={() => setMinimumOpen(false)} className="mt-1 h-7 px-3 text-[10px] font-bold text-slate-400 transition hover:text-slate-700">পরে করবো</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
