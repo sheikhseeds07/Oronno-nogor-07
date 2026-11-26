@@ -1,4 +1,4 @@
-const STORAGE_KEY = "sheikh_seeds_public_site_settings_v2";
+const STORAGE_KEY = "sheikh_seeds_public_site_settings_v3";
 const TTL_MS = 24 * 60 * 60 * 1000;
 
 type CacheEnvelope<T> = { savedAt: number; value: T };
