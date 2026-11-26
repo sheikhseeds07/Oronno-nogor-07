@@ -435,9 +435,6 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
       : item);
   }
 
-  await assertMinimumHomeOrder(orderItems);
-
-
   // Server-side minimum cart validation for regular store checkout.
   // Landing-page direct offers do not set this flag and remain unaffected.
   if (data.is_store_checkout === true || data.checkout_session_id) {
