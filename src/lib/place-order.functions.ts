@@ -266,28 +266,9 @@ export const finalizeLandingCheckoutIntent = createServerFn({ method: "POST" }).
   }
   if (intentBlocked === true) throw new Error(`${BLOCKED_ORDER_CODE}: ${BLOCKED_ORDER_MESSAGE}`);
 
-  // Re-check the 48-seed offer at finalization too. This covers intents created
-  // before a deploy and delayed/timer finalization, not just fresh checkouts.
-  const { data: pendingIntent, error: pendingIntentError } = await supabaseAdmin
-    .from("landing_checkout_intents")
-    .select("source_url,seed_items,final_order_id")
-    .eq("id", data.intent_id)
-    .maybeSingle();
-  if (pendingIntentError) throw new Error("অর্ডারের অফারের দাম যাচাই করা যায়নি");
-  if (pendingIntent && !pendingIntent.final_order_id) {
-    const pendingItems = Array.isArray(pendingIntent.seed_items)
-      ? pendingIntent.seed_items as z.infer<typeof ItemSchema>[]
-      : [];
-    const correctedItems = await resolveSeedcombo48Items(pendingItems);
-    if (JSON.stringify(correctedItems) !== JSON.stringify(pendingItems)) {
-      const { error: updateIntentError } = await supabaseAdmin
-        .from("landing_checkout_intents")
-        .update({ seed_items: correctedItems })
-        .eq("id", data.intent_id)
-        .is("final_order_id", null);
-      if (updateIntentError) throw new Error("অর্ডারের অফারের দাম আপডেট করা যায়নি");
-    }
-  }
+  // The 48-seed price is already resolved before the checkout intent is created.
+  // Do not read landing_checkout_intents directly here: public checkout uses the
+  // dedicated RPC for this table, and direct REST access is not granted.
 
   const { data: orderId, error } = await supabaseAdmin.rpc("finalize_landing_checkout_intent", {
     p_intent_id: data.intent_id,
