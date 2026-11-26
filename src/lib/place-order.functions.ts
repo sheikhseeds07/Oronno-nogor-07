@@ -113,18 +113,27 @@ async function saveIntentMarketingSource(intentId: string, inputSource?: string 
 
 type LandingAddon = { product_id?: string | null; name?: string; price?: number; delivery_fee?: number | null };
 
-const SEEDCOMBO_48_SLUG = "seedcombo-copy-mwanao76";
+const SEEDCOMBO_48_SLUGS = ["seedcombo-copy-mwanao76", "48-seed-combo-new"] as const;
 const SEEDCOMBO_48_PRODUCT_ID = "4e66b185-981a-4a9d-b23f-23ec18a77c21";
 
-async function resolveSeedcombo48Items(items: z.infer<typeof ItemSchema>[]) {
-  // This product ID belongs exclusively to the 48-seed landing offer. Resolve
-  // it by ID so stale/missing browser attribution can never bypass the price.
+async function resolveSeedcombo48Items(items: z.infer<typeof ItemSchema>[], sourceUrl?: string | null) {
+  // Both landing pages intentionally share a catalog product ID, but each
+  // page owns its own offer price. Resolve against the page in the submitted URL.
   if (!items.some((item) => item.id === SEEDCOMBO_48_PRODUCT_ID && !item.is_freebie)) return items;
+
+  let requestedSlug: string = SEEDCOMBO_48_SLUGS[0];
+  try {
+    const pathname = new URL(sourceUrl || "https://oronnonogor.com/").pathname;
+    const pathSlug = pathname.split("/").filter(Boolean).pop() || "";
+    if ((SEEDCOMBO_48_SLUGS as readonly string[]).includes(pathSlug)) requestedSlug = pathSlug;
+  } catch {
+    // Preserve the legacy page as the fallback for older clients without source_url.
+  }
 
   const { data: landing, error } = await supabaseAdmin
     .from("landing_pages")
     .select("addons")
-    .eq("slug", SEEDCOMBO_48_SLUG)
+    .eq("slug", requestedSlug)
     .eq("is_published", true)
     .maybeSingle();
   if (error) throw new Error("৪৮ প্রকার বীজের অফারের দাম যাচাই করা যায়নি");
@@ -186,7 +195,7 @@ export const saveIncompleteCheckout = createServerFn({ method: "POST" }).inputVa
   const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
   // Keep incomplete-order snapshots aligned with the current 48-seed landing offer,
   // rather than the stale base products.price still carried by older browser carts.
-  const authoritativeItems = await resolveSeedcombo48Items(data.items);
+  const authoritativeItems = await resolveSeedcombo48Items(data.items, data.source_url);
   const authoritativeSubtotal = authoritativeItems.reduce((sum, item) => sum + (item.is_freebie ? 0 : item.price * item.quantity), 0);
   const authoritativeTotal = authoritativeSubtotal + data.delivery_fee;
   const rpcArgs = { p_phone: data.customer_phone, p_ip: clientIp, p_customer_name: data.customer_name ?? null, p_customer_address: data.customer_address ?? null, p_delivery_zone: data.delivery_zone ?? null, p_delivery_fee: data.delivery_fee, p_subtotal: authoritativeSubtotal, p_total: authoritativeTotal, p_note: data.note ?? null, p_items: authoritativeItems };
@@ -226,7 +235,7 @@ export const createLandingCheckoutIntent = createServerFn({ method: "POST" }).in
   const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
   const deviceId = getOrderDeviceId();
   await assertCustomerNotBlocked(data.customer_phone, deviceId);
-  const authoritativeSeedItems = await resolveSeedcombo48Items(data.seed_items);
+  const authoritativeSeedItems = await resolveSeedcombo48Items(data.seed_items, data.source_url);
   const { data: intentId, error } = await supabaseAdmin.rpc("create_landing_checkout_intent", {
     p_checkout_session_id: data.checkout_session_id,
     p_customer_name: data.customer_name,
@@ -474,7 +483,7 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
 
   // Apply the current editor price to the 48-seed item even when NUTRIMIX
   // or another line is present in the same checkout. Other pages are untouched.
-  orderItems = await resolveSeedcombo48Items(orderItems);
+  orderItems = await resolveSeedcombo48Items(orderItems, data.source_url);
 
   // Server-side minimum cart validation for regular store checkout.
   // Landing-page direct offers do not set this flag and remain unaffected.
