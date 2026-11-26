@@ -5,6 +5,9 @@
 // change to the original.
 export function landingBaseSlug(slug: string): string {
   let out = (slug || "").toLowerCase();
+  // This manually named 48-seed duplicate must inherit the seedcombo template
+  // and all of its route-level behaviour just like an automatically suffixed copy.
+  if (out === "48-seed-combo-new") return "seedcombo";
   let prev = "";
   while (out !== prev) {
     prev = out;
