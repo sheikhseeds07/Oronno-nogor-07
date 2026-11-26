@@ -124,6 +124,26 @@ const LandingFinalizeInputSchema = z.object({
 const IncompleteInputSchema = z.object({ customer_name: z.string().max(255).optional().nullable(), customer_phone: BdPhoneSchema, customer_address: z.string().max(1000).optional().nullable(), delivery_zone: z.string().max(100).optional().nullable(), delivery_fee: z.number().min(0).max(10000), subtotal: z.number().min(0).max(10_000_000), total: z.number().min(0).max(10_000_000), note: z.string().max(2000).optional().nullable(), items: z.array(ItemSchema).min(1).max(100), source_url: z.string().max(2000).optional().nullable(), marketing_source: z.enum(["facebook_ads","tiktok_ads","organic","direct","unknown"]).optional() });
 
 
+async function assertMinimumOrderLimit(subtotal: number) {
+  const { data: rows, error } = await supabaseAdmin.from("site_settings").select("settings").limit(10);
+  if (error) throw new Error("ন্যূনতম অর্ডার লিমিট যাচাই করা যায়নি");
+  let configured: unknown = undefined;
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const rowSettings = (row?.settings ?? {}) as Record<string, unknown>;
+    if (Object.prototype.hasOwnProperty.call(rowSettings, "minimum_order_limit")) configured = rowSettings.minimum_order_limit;
+  }
+  const limit = Number(configured);
+  if (Number.isFinite(limit) && limit > 0 && subtotal < limit) {
+    throw new Error(`MINIMUM_ORDER_LIMIT: অর্ডার করতে কমপক্ষে ৳${Math.floor(limit)} টাকার পণ্য যোগ করুন।`);
+  }
+}
+
+function isLandingCheckoutSource(rawUrl?: string | null) {
+  if (!rawUrl) return false;
+  try { return /^\/landing\/[^/]+\/?$/.test(new URL(rawUrl).pathname); }
+  catch { return false; }
+}
+
 export const lookupCustomerByPhone = createServerFn({ method: "POST" }).inputValidator((input) => z.object({ phone: BdPhoneSchema }).parse(input)).handler(async ({ data }) => {
   // Public checkout must not query the private orders table with the publishable key.
   // This narrowly-scoped SECURITY DEFINER RPC returns only the latest name/address.
@@ -270,6 +290,10 @@ export const createHomeCheckoutIntent = createServerFn({ method: "POST" })
     const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
     const deviceId = getOrderDeviceId();
     await assertCustomerNotBlocked(data.customer_phone, deviceId);
+    if (!isLandingCheckoutSource(data.source_url)) {
+      const seedSubtotal = data.seed_items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      await assertMinimumOrderLimit(seedSubtotal);
+    }
     const { data: settingsRows, error: settingsError } = await supabaseAdmin.from("site_settings").select("settings").limit(10);
     if (settingsError) throw new Error("অফার সেটিংস যাচাই করা যায়নি");
     const rows = Array.isArray(settingsRows) ? settingsRows : [];
@@ -346,6 +370,12 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   // Mobile carriers frequently share one public IP between many unrelated
   // customers. Blocking checkout by phone keeps the fraud block precise and
   // prevents one customer's IP from locking out innocent visitors.
+  // Enforce the configured minimum on regular shop checkout only.
+  // Dedicated landing-page order handlers are intentionally unaffected.
+  if (!isLandingCheckoutSource(data.source_url)) {
+    const cartSubtotal = data.items.filter((item) => item.id !== "home-nutrimix-popup").reduce((sum, item) => sum + item.price * item.quantity, 0);
+    await assertMinimumOrderLimit(cartSubtotal);
+  }
   await assertCustomerNotBlocked(customerPhone, deviceId);
 
   // Home NUTRIMIX is an independent, settings-backed order line. Never trust
