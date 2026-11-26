@@ -161,7 +161,7 @@ function LandingPagesAdmin() {
     setEditing({
       ...empty,
       ...p,
-      ...(p.slug === "seedcombo-copy-mwanao76" ? {
+      ...((p.slug === "seedcombo-copy-mwanao76" || p.slug === "48-seed-combo-new") ? {
         planting_steps: {
           ...mergeContent(p.planting_steps),
           // Consolidate both legacy hero-gallery sources into one editable list for this page.
