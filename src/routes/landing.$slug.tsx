@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect } from "react";
 import { supabase } from "@/lib/personal-supabase/client";
 import { mergeContent } from "@/lib/landing-content";
-import { landingBaseSlug } from "@/lib/landing-slug";
+import { landingBaseSlug, landingDataSlug } from "@/lib/landing-slug";
 import { toImg } from "@/lib/img";
 import { getLandingPageForRoute } from "@/lib/landing-page-cache.functions";
 
@@ -66,7 +66,7 @@ export const Route = createFileRoute("/landing/$slug")({
     const cachedPage = getCachedLandingPage(params.slug);
     const pagePromise = cachedPage !== undefined
       ? Promise.resolve(cachedPage)
-      : getLandingPageForRoute({ data: { slug: params.slug } }).then((page) => {
+      : getLandingPageForRoute({ data: { slug: landingDataSlug(params.slug) } }).then((page) => {
           setCachedLandingPage(params.slug, page);
           return page;
         });
