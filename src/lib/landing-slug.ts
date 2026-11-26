@@ -3,11 +3,10 @@
 // popup behaviour, template picks) must resolve through this helper so a copy
 // renders exactly like the page it was duplicated from, now and after any future
 // change to the original.
-// Render this manually named duplicate from the exact live source row so all content,
-// images, addons, and future edits stay identical to 48 Live.
+// Each landing page reads its own database row. Copies share the template/design,
+// never the editable offer content, prices, text, or images.
 export function landingDataSlug(slug: string): string {
-  const normalized = (slug || "").toLowerCase();
-  return normalized === "48-seed-combo-new" ? "seedcombo-copy-mwanao76" : slug;
+  return slug;
 }
 
 export function landingBaseSlug(slug: string): string {
