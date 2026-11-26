@@ -3,6 +3,13 @@
 // popup behaviour, template picks) must resolve through this helper so a copy
 // renders exactly like the page it was duplicated from, now and after any future
 // change to the original.
+// Render this manually named duplicate from the exact live source row so all content,
+// images, addons, and future edits stay identical to 48 Live.
+export function landingDataSlug(slug: string): string {
+  const normalized = (slug || "").toLowerCase();
+  return normalized === "48-seed-combo-new" ? "seedcombo-copy-mwanao76" : slug;
+}
+
 export function landingBaseSlug(slug: string): string {
   let out = (slug || "").toLowerCase();
   // This manually named 48-seed duplicate must inherit the seedcombo template
