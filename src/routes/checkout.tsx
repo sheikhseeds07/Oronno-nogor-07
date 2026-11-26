@@ -8,7 +8,7 @@ import { hydrateCartStore, useCart } from "@/lib/cart-store";
 import { taka } from "@/lib/format";
 import { supabase } from "@/lib/personal-supabase/client";
 import { toImg } from "@/lib/img";
-import { placeOrder, createHomeCheckoutIntent, finalizeLandingCheckoutIntent } from "@/lib/place-order.functions";
+import { placeOrder, createHomeCheckoutIntent, finalizeHomeCheckoutIntent } from "@/lib/place-order.functions";
 import { clearCheckoutSessionId, useCheckoutAutofill } from "@/lib/useCheckoutAutofill";
 import { toast } from "sonner";
 import { trackInitiateCheckout, trackPurchase } from "@/lib/fbq";
@@ -34,7 +34,7 @@ function Checkout() {
     void hydrateCartStore().then(() => { if (active) setCartReady(true); });
     return () => { active = false; };
   }, []);
-  const items = useCart((s) => s.items); const setQty = useCart((s) => s.setQty); const remove = useCart((s) => s.remove); const subtotal = useCart((s) => s.subtotal()); const clear = useCart((s) => s.clear); const navigate = useNavigate(); const runPlaceOrder = useServerFn(placeOrder); const runCreateHomeIntent = useServerFn(createHomeCheckoutIntent); const runFinalizeHomeIntent = useServerFn(finalizeLandingCheckoutIntent);
+  const items = useCart((s) => s.items); const setQty = useCart((s) => s.setQty); const remove = useCart((s) => s.remove); const subtotal = useCart((s) => s.subtotal()); const clear = useCart((s) => s.clear); const navigate = useNavigate(); const runPlaceOrder = useServerFn(placeOrder); const runCreateHomeIntent = useServerFn(createHomeCheckoutIntent); const runFinalizeHomeIntent = useServerFn(finalizeHomeCheckoutIntent);
   const { data: settingsRow, isFetching: settingsLoading } = useQuery({ ...publicSiteSettingsQuery, staleTime: 0, refetchOnMount: "always", refetchOnWindowFocus: true }); const settings = ((settingsRow?.settings as DeliverySettings) ?? {}) as DeliverySettings; const configuredMinimumHomeOrder = Number(settings.minimum_home_order ?? 200); const minimumHomeOrder = settings.minimum_home_order_enabled !== false && Number.isFinite(configuredMinimumHomeOrder) ? Math.max(0, Math.floor(configuredMinimumHomeOrder)) : 200; const amountBelowMinimum = Math.max(0, minimumHomeOrder - subtotal); const deliveryInfo = getDeliveryInfo(subtotal, settings.delivery_rules); const delivery = deliveryInfo.delivery; const total = deliveryInfo.total;
   const [submitting, setSubmitting] = useState(false); const [nutrimixPopupOpen, setNutrimixPopupOpen] = useState(false); const [noteOpen, setNoteOpen] = useState(false); const [altPhoneOpen, setAltPhoneOpen] = useState(false); const [form, setForm] = useState({ name: "", phone: "", altPhone: "", address: "", note: "", zone: "all" }); const [phoneErr, setPhoneErr] = useState(""); const [blockedOpen, setBlockedOpen] = useState(false); const [repeatOrderMessage, setRepeatOrderMessage] = useState(""); const [repeatOrderSeconds, setRepeatOrderSeconds] = useState(0);
   const placedSuccessfully = useRef(false); const submitLockRef = useRef(false); const homeIntentIdRef = useRef<string | null>(null); const phoneValid = PHONE_RE.test(normalizeBdPhone(form.phone)); const firedICRef = useRef(false);
