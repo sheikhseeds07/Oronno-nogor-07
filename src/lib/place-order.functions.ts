@@ -39,6 +39,23 @@ async function assertCustomerNotBlocked(phone: string, deviceId: string | null) 
     throw new Error(`${BLOCKED_ORDER_CODE}: ${BLOCKED_ORDER_MESSAGE}`);
   }
 }
+
+async function assertMinimumHomeOrder(items: Array<{ price: number; quantity: number }>) {
+  const { data, error } = await supabaseAdmin.from("site_settings").select("settings").order("id", { ascending: true }).limit(10);
+  if (error) throw new Error("ন্যূনতম অর্ডার সেটিংস যাচাই করা যায়নি");
+  const rows = Array.isArray(data) ? data : [];
+  const canonical = (rows[0]?.settings ?? {}) as Record<string, unknown>;
+  // Keep the minimum enabled by default; only an explicit admin OFF switch disables it.
+  if (canonical.minimum_home_order_enabled === false) return;
+  const configured = Number(canonical.minimum_home_order ?? 200);
+  const minimum = Number.isFinite(configured) ? Math.max(0, Math.floor(configured)) : 200;
+  const subtotal = items.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0);
+  if (minimum > 0 && subtotal < minimum) {
+    const remaining = minimum - subtotal;
+    throw new Error("ন্যূনতম ৳" + minimum + " টাকার পণ্য কিনতে হবে। আপনার বর্তমান মোট ৳" + subtotal + " — আরও ৳" + remaining + " টাকার পণ্য যোগ করুন।");
+  }
+}
+
 const ItemSchema = z.object({ id: z.string().min(1).max(64), name: z.string().min(1).max(500), price: z.number().min(0).max(10_000_000), quantity: z.number().int().min(1).max(1000), is_freebie: z.boolean().optional() });
 const BdPhoneSchema = z.preprocess(
   (value) => typeof value === "string" ? normalizeBdPhoneServer(value) : value,
@@ -270,6 +287,7 @@ export const createHomeCheckoutIntent = createServerFn({ method: "POST" })
     const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
     const deviceId = getOrderDeviceId();
     await assertCustomerNotBlocked(data.customer_phone, deviceId);
+    await assertMinimumHomeOrder(data.seed_items);
     const { data: settingsRows, error: settingsError } = await supabaseAdmin.from("site_settings").select("settings").limit(10);
     if (settingsError) throw new Error("অফার সেটিংস যাচাই করা যায়নি");
     const rows = Array.isArray(settingsRows) ? settingsRows : [];
@@ -378,6 +396,8 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
       ? { ...item, name: offerName, price: offerPrice, quantity: 1 }
       : item);
   }
+
+  await assertMinimumHomeOrder(orderItems);
 
   const { data: orderId, error: orderError } = await supabaseAdmin.rpc("place_public_order", {
     p_customer_name: data.customer_name.trim(),
