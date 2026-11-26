@@ -184,7 +184,12 @@ export const lookupCustomerByPhone = createServerFn({ method: "POST" }).inputVal
 
 export const saveIncompleteCheckout = createServerFn({ method: "POST" }).inputValidator((input) => IncompleteInputSchema.parse(input)).handler(async ({ data }) => {
   const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
-  const rpcArgs = { p_phone: data.customer_phone, p_ip: clientIp, p_customer_name: data.customer_name ?? null, p_customer_address: data.customer_address ?? null, p_delivery_zone: data.delivery_zone ?? null, p_delivery_fee: data.delivery_fee, p_subtotal: data.subtotal, p_total: data.total, p_note: data.note ?? null, p_items: data.items };
+  // Keep incomplete-order snapshots aligned with the current 48-seed landing offer,
+  // rather than the stale base products.price still carried by older browser carts.
+  const authoritativeItems = await resolveSeedcombo48Items(data.items);
+  const authoritativeSubtotal = authoritativeItems.reduce((sum, item) => sum + (item.is_freebie ? 0 : item.price * item.quantity), 0);
+  const authoritativeTotal = authoritativeSubtotal + data.delivery_fee;
+  const rpcArgs = { p_phone: data.customer_phone, p_ip: clientIp, p_customer_name: data.customer_name ?? null, p_customer_address: data.customer_address ?? null, p_delivery_zone: data.delivery_zone ?? null, p_delivery_fee: data.delivery_fee, p_subtotal: authoritativeSubtotal, p_total: authoritativeTotal, p_note: data.note ?? null, p_items: authoritativeItems };
   const { data: result, error } = await supabaseAdmin.rpc("upsert_incomplete_checkout", rpcArgs as never);
   if (!error) {
     if (result) {
