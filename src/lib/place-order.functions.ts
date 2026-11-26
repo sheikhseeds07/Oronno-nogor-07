@@ -61,7 +61,7 @@ const BdPhoneSchema = z.preprocess(
   (value) => typeof value === "string" ? normalizeBdPhoneServer(value) : value,
   z.string().regex(PHONE_RE, "সঠিক ১১ ডিজিটের বাংলাদেশি মোবাইল নাম্বার দিন (01XXXXXXXXX)"),
 );
-const InputSchema = z.object({ customer_name: z.string().min(1).max(255), customer_phone: BdPhoneSchema, alternative_phone: BdPhoneSchema.optional().nullable(), customer_address: z.string().min(1).max(1000), district: z.string().max(100).optional().nullable(), thana: z.string().max(100).optional().nullable(), notes: z.string().max(2000).optional().nullable(), delivery_fee: z.number().min(0).max(10000).default(50), items: z.array(ItemSchema).min(1).max(100), created_by: z.string().uuid().optional().nullable(), fbp: z.string().max(200).optional().nullable(), fbc: z.string().max(500).optional().nullable(), source_url: z.string().max(2000).optional().nullable(), marketing_source: z.enum(["facebook_ads","tiktok_ads","organic","direct","unknown"]).optional(), checkout_session_id: z.string().max(200).optional().nullable() });
+const InputSchema = z.object({ customer_name: z.string().min(1).max(255), customer_phone: BdPhoneSchema, alternative_phone: BdPhoneSchema.optional().nullable(), customer_address: z.string().min(1).max(1000), district: z.string().max(100).optional().nullable(), thana: z.string().max(100).optional().nullable(), notes: z.string().max(2000).optional().nullable(), delivery_fee: z.number().min(0).max(10000).default(50), items: z.array(ItemSchema).min(1).max(100), created_by: z.string().uuid().optional().nullable(), fbp: z.string().max(200).optional().nullable(), fbc: z.string().max(500).optional().nullable(), source_url: z.string().max(2000).optional().nullable(), marketing_source: z.enum(["facebook_ads","tiktok_ads","organic","direct","unknown"]).optional(), checkout_session_id: z.string().max(200).optional().nullable(), is_store_checkout: z.boolean().optional() });
 type Input = z.infer<typeof InputSchema>;
 const LandingOrderInputSchema = InputSchema.extend({ landing_slug: z.string().min(1).max(200) });
 
@@ -398,6 +398,51 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   }
 
   await assertMinimumHomeOrder(orderItems);
+
+
+  // Server-side minimum cart validation for regular store checkout.
+  // Landing-page direct offers do not set this flag and remain unaffected.
+  if (data.is_store_checkout === true || data.checkout_session_id) {
+    const { data: minimumRow, error: minimumSettingsError } = await supabaseAdmin
+      .from("site_settings")
+      .select("settings")
+      .order("id", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (minimumSettingsError) throw new Error("ন্যূনতম অর্ডার সেটিংস যাচাই করা যায়নি");
+    const minimumSettings = (minimumRow?.settings ?? {}) as Record<string, unknown>;
+    const minimumEnabled = minimumSettings.minimum_home_order_enabled !== false;
+    const configuredMinimum = Number(minimumSettings.minimum_home_order ?? 200);
+    const minimumOrder = Number.isFinite(configuredMinimum) ? Math.max(0, Math.floor(configuredMinimum)) : 200;
+
+    if (minimumEnabled && minimumOrder > 0) {
+      const productIds = [...new Set(data.items
+        .filter((item) => !item.is_freebie && item.id !== "home-nutrimix-popup" && /^[0-9a-f-]{36}$/i.test(item.id))
+        .map((item) => item.id))];
+      const productPrices = new Map<string, number>();
+      if (productIds.length > 0) {
+        const { data: products, error: productsError } = await supabaseAdmin
+          .from("products")
+          .select("id,price,sale_price")
+          .in("id", productIds);
+        if (productsError) throw new Error("পণ্যের দাম যাচাই করা যায়নি");
+        for (const product of products ?? []) {
+          const salePrice = Number(product.sale_price);
+          const regularPrice = Number(product.price);
+          productPrices.set(product.id, Number.isFinite(salePrice) && salePrice > 0 ? salePrice : regularPrice);
+        }
+      }
+      const checkedSubtotal = orderItems.reduce((sum, item) => {
+        if (item.is_freebie) return sum;
+        if (item.id === "home-nutrimix-popup") return sum + item.price * item.quantity;
+        return sum + (productPrices.get(item.id) ?? item.price) * item.quantity;
+      }, 0);
+      if (checkedSubtotal < minimumOrder) {
+        const remaining = Math.ceil(minimumOrder - checkedSubtotal);
+        throw new Error(`ন্যূনতম অর্ডার ৳${minimumOrder}। আরও ৳${remaining} টাকার পণ্য যোগ করুন।`);
+      }
+    }
+  }
 
   const { data: orderId, error: orderError } = await supabaseAdmin.rpc("place_public_order", {
     p_customer_name: data.customer_name.trim(),
