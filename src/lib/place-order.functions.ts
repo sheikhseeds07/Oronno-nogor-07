@@ -129,8 +129,10 @@ async function resolveSeedcombo48Items(items: z.infer<typeof ItemSchema>[], sour
     if (!candidate) continue;
     try {
       const url = new URL(candidate);
-      const match = url.pathname.match(/^\\/landing\\/([^/]+)\\/?$/);
-      const pathSlug = match ? decodeURIComponent(match[1]) : "";
+      const pathParts = url.pathname.split("/").filter(Boolean);
+      const pathSlug = pathParts.length === 2 && pathParts[0] === "landing"
+        ? decodeURIComponent(pathParts[1])
+        : "";
       if ((SEEDCOMBO_48_SLUGS as readonly string[]).includes(pathSlug)) {
         requestedSlug = pathSlug;
         break;
