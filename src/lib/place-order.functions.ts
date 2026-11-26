@@ -310,6 +310,51 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
   const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
   const deviceId = getOrderDeviceId();
 
+  // Enforce the minimum cart value on the server for the regular store checkout.
+  // Landing-page one-product offers do not use checkout_session_id and remain unaffected.
+  if (data.checkout_session_id) {
+    const { data: minimumRow, error: minimumSettingsError } = await supabaseAdmin
+      .from("site_settings")
+      .select("settings")
+      .order("id", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (minimumSettingsError) throw new Error("ন্যূনতম অর্ডার সেটিংস যাচাই করা যায়নি");
+    const minimumSettings = (minimumRow?.settings ?? {}) as Record<string, unknown>;
+    const minimumEnabled = minimumSettings.minimum_home_order_enabled !== false;
+    const configuredMinimum = Number(minimumSettings.minimum_home_order ?? 200);
+    const minimumOrder = Number.isFinite(configuredMinimum) ? Math.max(0, Math.floor(configuredMinimum)) : 200;
+
+    if (minimumEnabled && minimumOrder > 0) {
+      const productIds = [...new Set(data.items
+        .filter((item) => !item.is_freebie && item.id !== "home-nutrimix-popup" && /^[0-9a-f-]{36}$/i.test(item.id))
+        .map((item) => item.id))];
+      const productPrices = new Map<string, number>();
+      if (productIds.length > 0) {
+        const { data: products, error: productsError } = await supabaseAdmin
+          .from("products")
+          .select("id,price,sale_price")
+          .in("id", productIds);
+        if (productsError) throw new Error("পণ্যের দাম যাচাই করা যায়নি");
+        for (const product of products ?? []) {
+          const salePrice = Number(product.sale_price);
+          const regularPrice = Number(product.price);
+          productPrices.set(product.id, Number.isFinite(salePrice) && salePrice > 0 ? salePrice : regularPrice);
+        }
+      }
+      const checkedSubtotal = orderItems.reduce((sum, item) => {
+        if (item.is_freebie) return sum;
+        if (item.id === "home-nutrimix-popup") return sum + item.price * item.quantity;
+        return sum + (productPrices.get(item.id) ?? item.price) * item.quantity;
+      }, 0);
+      if (checkedSubtotal < minimumOrder) {
+        const remaining = Math.ceil(minimumOrder - checkedSubtotal);
+        throw new Error(`ন্যূনতম অর্ডার ৳${minimumOrder}। আরও ৳${remaining} টাকার পণ্য যোগ করুন।`);
+      }
+    }
+  }
+
+
   // Landing pages own their delivery charge. Resolve it server-side from the
   // landing configuration so a generic checkout fallback (e.g. ৳50) can never
   // overwrite an explicitly configured free-delivery offer.
