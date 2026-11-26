@@ -122,12 +122,22 @@ async function resolveSeedcombo48Items(items: z.infer<typeof ItemSchema>[], sour
   if (!items.some((item) => item.id === SEEDCOMBO_48_PRODUCT_ID && !item.is_freebie)) return items;
 
   let requestedSlug: string = SEEDCOMBO_48_SLUGS[0];
-  try {
-    const pathname = new URL(sourceUrl || "https://oronnonogor.com/").pathname;
-    const pathSlug = pathname.split("/").filter(Boolean).pop() || "";
-    if ((SEEDCOMBO_48_SLUGS as readonly string[]).includes(pathSlug)) requestedSlug = pathSlug;
-  } catch {
-    // Preserve the legacy page as the fallback for older clients without source_url.
+  // Some checkout paths do not submit source_url. In that case the browser
+  // request Referer still identifies the exact landing page that opened checkout.
+  const candidates = [sourceUrl, getRequestHeader("referer")];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    try {
+      const url = new URL(candidate);
+      const match = url.pathname.match(/^\\/landing\\/([^/]+)\\/?$/);
+      const pathSlug = match ? decodeURIComponent(match[1]) : "";
+      if ((SEEDCOMBO_48_SLUGS as readonly string[]).includes(pathSlug)) {
+        requestedSlug = pathSlug;
+        break;
+      }
+    } catch {
+      // Try the next trusted request URL candidate.
+    }
   }
 
   const { data: landing, error } = await supabaseAdmin
