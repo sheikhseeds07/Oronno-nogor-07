@@ -116,17 +116,9 @@ type LandingAddon = { product_id?: string | null; name?: string; price?: number;
 const SEEDCOMBO_48_SLUG = "seedcombo-copy-mwanao76";
 const SEEDCOMBO_48_PRODUCT_ID = "4e66b185-981a-4a9d-b23f-23ec18a77c21";
 
-async function resolveSeedcombo48Items(sourceUrl: string | null | undefined, items: z.infer<typeof ItemSchema>[]) {
-  if (!sourceUrl) return items;
-  let slug = "";
-  try {
-    const url = new URL(sourceUrl);
-    const match = url.pathname.match(/^\/landing\/([^/]+)\/?$/);
-    if (match) slug = decodeURIComponent(match[1]);
-  } catch {
-    return items;
-  }
-  if (slug !== SEEDCOMBO_48_SLUG) return items;
+async function resolveSeedcombo48Items(items: z.infer<typeof ItemSchema>[]) {
+  // This product ID belongs exclusively to the 48-seed landing offer. Resolve
+  // it by ID so stale/missing browser attribution can never bypass the price.
   if (!items.some((item) => item.id === SEEDCOMBO_48_PRODUCT_ID && !item.is_freebie)) return items;
 
   const { data: landing, error } = await supabaseAdmin
@@ -229,7 +221,7 @@ export const createLandingCheckoutIntent = createServerFn({ method: "POST" }).in
   const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
   const deviceId = getOrderDeviceId();
   await assertCustomerNotBlocked(data.customer_phone, deviceId);
-  const authoritativeSeedItems = await resolveSeedcombo48Items(data.source_url, data.seed_items);
+  const authoritativeSeedItems = await resolveSeedcombo48Items(data.seed_items);
   const { data: intentId, error } = await supabaseAdmin.rpc("create_landing_checkout_intent", {
     p_checkout_session_id: data.checkout_session_id,
     p_customer_name: data.customer_name,
@@ -286,7 +278,7 @@ export const finalizeLandingCheckoutIntent = createServerFn({ method: "POST" }).
     const pendingItems = Array.isArray(pendingIntent.seed_items)
       ? pendingIntent.seed_items as z.infer<typeof ItemSchema>[]
       : [];
-    const correctedItems = await resolveSeedcombo48Items(pendingIntent.source_url, pendingItems);
+    const correctedItems = await resolveSeedcombo48Items(pendingItems);
     if (JSON.stringify(correctedItems) !== JSON.stringify(pendingItems)) {
       const { error: updateIntentError } = await supabaseAdmin
         .from("landing_checkout_intents")
@@ -496,7 +488,7 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
 
   // Apply the current editor price to the 48-seed item even when NUTRIMIX
   // or another line is present in the same checkout. Other pages are untouched.
-  orderItems = await resolveSeedcombo48Items(data.source_url, orderItems);
+  orderItems = await resolveSeedcombo48Items(orderItems);
 
   // Server-side minimum cart validation for regular store checkout.
   // Landing-page direct offers do not set this flag and remain unaffected.
