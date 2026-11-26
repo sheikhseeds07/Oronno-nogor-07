@@ -435,6 +435,43 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
       : item);
   }
 
+  // The 48-seed combo has a page-specific offer price. Resolve it from the
+  // published landing configuration on the server, so a browser with cached
+  // pre-edit page data cannot submit the old catalog price.
+  if (data.items.length === 1 && data.source_url) {
+    let landingSlug: string | null = null;
+    try {
+      const sourceUrl = new URL(data.source_url);
+      const match = sourceUrl.pathname.match(/^\\/landing\\/([^/]+)\\/?$/);
+      if (match) landingSlug = decodeURIComponent(match[1]);
+    } catch {
+      // Ignore malformed source URLs; ordinary checkout behavior is unchanged.
+    }
+
+    if (landingSlug === "seedcombo-copy-mwanao76") {
+      const requested = orderItems[0];
+      if (requested && requested.id !== HOME_NUTRIMIX_ITEM_ID && !requested.is_freebie) {
+        const { data: landing, error: landingError } = await supabaseAdmin
+          .from("landing_pages")
+          .select("addons")
+          .eq("slug", landingSlug)
+          .eq("is_published", true)
+          .maybeSingle();
+        if (landingError) throw new Error("ল্যান্ডিং পেজের অফারের দাম যাচাই করা যায়নি");
+        const addons = Array.isArray(landing?.addons) ? landing.addons as LandingAddon[] : [];
+        const offer = addons.find((item) => item.product_id === requested.id);
+        if (!offer) throw new Error("৪৮ প্রকার বীজের অফারটি বর্তমানে পাওয়া যাচ্ছে না");
+        const configuredPrice = Number(offer.price);
+        if (!Number.isFinite(configuredPrice) || configuredPrice <= 0) {
+          throw new Error("৪৮ প্রকার বীজের অফারের দাম সঠিক নয়");
+        }
+        orderItems = orderItems.map((item, index) => index === 0
+          ? { ...item, name: String(offer.name || item.name), price: configuredPrice }
+          : item);
+      }
+    }
+  }
+
   // Server-side minimum cart validation for regular store checkout.
   // Landing-page direct offers do not set this flag and remain unaffected.
   if (data.is_store_checkout === true || data.checkout_session_id) {
