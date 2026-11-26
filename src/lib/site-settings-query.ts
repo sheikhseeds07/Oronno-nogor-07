@@ -18,6 +18,8 @@ export type PublicSiteSettings = Record<string, unknown> & {
   free_delivery_above?: number;
   delivery_zones?: Array<{ id: string; label: string; fee: number }>;
   delivery_rules?: Array<{ id: string; min_order: number; fee: number }>;
+  minimum_home_order?: number;
+  minimum_home_order_enabled?: boolean;
 };
 
 export type PublicSiteSettingsRow = { settings: PublicSiteSettings } | null;
@@ -43,7 +45,7 @@ export const publicSiteSettingsQuery = {
     if (typeof window === "undefined" && serverSettingsCache && Date.now() - serverSettingsCache.at < SETTINGS_CACHE_TTL_MS) {
       return serverSettingsCache.value;
     }
-    const { data, error } = await supabase.from("site_settings").select("settings").limit(10);
+    const { data, error } = await supabase.from("site_settings").select("settings").order("id", { ascending: true }).limit(10);
     if (error) throw error;
     // Settings have historically been split across multiple rows. Merge them instead of maybeSingle().
     const rows = Array.isArray(data) ? data : [];
@@ -53,6 +55,11 @@ export const publicSiteSettingsQuery = {
     for (const row of rows) {
       const rowSettings = (row?.settings as PublicSiteSettings | null) ?? {};
       for (const key of popupKeys) if (key in rowSettings) (settings as Record<string, unknown>)[key] = rowSettings[key];
+    }
+    // The admin settings editor saves the canonical minimum-order values to the first row.
+    const minimumSettings = (rows[0]?.settings as PublicSiteSettings | null) ?? {};
+    for (const key of ["minimum_home_order", "minimum_home_order_enabled"] as const) {
+      if (Object.prototype.hasOwnProperty.call(minimumSettings, key)) (settings as Record<string, unknown>)[key] = minimumSettings[key];
     }
     const value = { settings };
     if (typeof window === "undefined") serverSettingsCache = { at: Date.now(), value };
