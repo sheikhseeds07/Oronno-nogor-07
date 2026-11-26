@@ -267,6 +267,44 @@ export const finalizeLandingCheckoutIntent = createServerFn({ method: "POST" }).
 });
 
 
+// Home-store checkout uses a dedicated database finalizer that enforces the
+// minimum inside the same transaction that creates the order. Landing pages
+// continue using finalizeLandingCheckoutIntent and remain exempt.
+export const finalizeHomeCheckoutIntent = createServerFn({ method: "POST" })
+  .inputValidator((input) => LandingFinalizeInputSchema.parse(input))
+  .handler(async ({ data }) => {
+    const { data: intentBlocked, error: intentBlockError } = await supabaseAdmin.rpc("is_landing_checkout_intent_blocked" as never, {
+      p_intent_id: data.intent_id,
+    } as never);
+    if (intentBlockError) {
+      logger.error("[finalizeHomeCheckoutIntent] block check failed:", intentBlockError.message);
+      throw new Error("ডিভাইস ব্লক স্ট্যাটাস যাচাই করা যায়নি");
+    }
+    if (intentBlocked === true) throw new Error(`${BLOCKED_ORDER_CODE}: ${BLOCKED_ORDER_MESSAGE}`);
+
+    const { data: orderId, error } = await supabaseAdmin.rpc("finalize_home_checkout_intent" as never, {
+      p_intent_id: data.intent_id,
+      p_include_nutrimix: data.include_nutrimix,
+    } as never);
+    if (error) {
+      if (/blocked/i.test(error.message ?? "")) throw new Error(BLOCKED_ORDER_MESSAGE);
+      throw new Error(error.message || "Order create failed");
+    }
+    if (!orderId || typeof orderId !== "string") throw new Error("Order create failed");
+
+    if (data.emit_purchase !== false) {
+      const { data: dispatched, error: dispatchError } = await supabaseAdmin.rpc("dispatch_landing_purchase", {
+        p_intent_id: data.intent_id,
+        p_order_id: orderId,
+      } as never);
+      if (dispatchError || dispatched !== true) {
+        logger.error("[finalizeHomeCheckoutIntent] CAPI dispatch failed:", dispatchError?.message ?? "dispatch rejected");
+      }
+    }
+    return { id: orderId };
+  });
+
+
 const HomeCheckoutIntentInputSchema = z.object({
   checkout_session_id: z.string().uuid(),
   customer_name: z.string().min(1).max(255),
