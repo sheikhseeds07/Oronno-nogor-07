@@ -113,6 +113,40 @@ async function saveIntentMarketingSource(intentId: string, inputSource?: string 
 
 type LandingAddon = { product_id?: string | null; name?: string; price?: number; delivery_fee?: number | null };
 
+const SEEDCOMBO_48_SLUG = "seedcombo-copy-mwanao76";
+const SEEDCOMBO_48_PRODUCT_ID = "4e66b185-981a-4a9d-b23f-23ec18a77c21";
+
+async function resolveSeedcombo48Items(sourceUrl: string | null | undefined, items: z.infer<typeof ItemSchema>[]) {
+  if (!sourceUrl) return items;
+  let slug = "";
+  try {
+    const url = new URL(sourceUrl);
+    const match = url.pathname.match(/^\/landing\/([^/]+)\/?$/);
+    if (match) slug = decodeURIComponent(match[1]);
+  } catch {
+    return items;
+  }
+  if (slug !== SEEDCOMBO_48_SLUG) return items;
+  if (!items.some((item) => item.id === SEEDCOMBO_48_PRODUCT_ID && !item.is_freebie)) return items;
+
+  const { data: landing, error } = await supabaseAdmin
+    .from("landing_pages")
+    .select("addons")
+    .eq("slug", SEEDCOMBO_48_SLUG)
+    .eq("is_published", true)
+    .maybeSingle();
+  if (error) throw new Error("৪৮ প্রকার বীজের অফারের দাম যাচাই করা যায়নি");
+  const addons = Array.isArray(landing?.addons) ? landing.addons as LandingAddon[] : [];
+  const offer = addons.find((item) => item.product_id === SEEDCOMBO_48_PRODUCT_ID);
+  const price = Number(offer?.price);
+  if (!offer || !Number.isFinite(price) || price <= 0) {
+    throw new Error("৪৮ প্রকার বীজের অফারটি বর্তমানে সঠিকভাবে সেট করা নেই");
+  }
+  return items.map((item) => item.id === SEEDCOMBO_48_PRODUCT_ID && !item.is_freebie
+    ? { ...item, name: String(offer.name || item.name), price }
+    : item);
+}
+
 const LandingIntentInputSchema = z.object({
   checkout_session_id: z.string().uuid(),
   customer_name: z.string().min(1).max(255),
@@ -195,13 +229,14 @@ export const createLandingCheckoutIntent = createServerFn({ method: "POST" }).in
   const clientIp = getRequestIP({ xForwardedFor: true }) ?? null;
   const deviceId = getOrderDeviceId();
   await assertCustomerNotBlocked(data.customer_phone, deviceId);
+  const authoritativeSeedItems = await resolveSeedcombo48Items(data.source_url, data.seed_items);
   const { data: intentId, error } = await supabaseAdmin.rpc("create_landing_checkout_intent", {
     p_checkout_session_id: data.checkout_session_id,
     p_customer_name: data.customer_name,
     p_customer_phone: data.customer_phone,
     p_customer_address: data.customer_address,
     p_delivery_fee: data.delivery_fee,
-    p_seed_items: data.seed_items,
+    p_seed_items: authoritativeSeedItems,
     p_nutrimix_item: data.nutrimix_item ?? null,
     p_notes: data.notes ?? null,
     p_client_ip: clientIp,
@@ -435,42 +470,9 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
       : item);
   }
 
-  // The 48-seed combo has a page-specific offer price. Resolve it from the
-  // published landing configuration on the server, so a browser with cached
-  // pre-edit page data cannot submit the old catalog price.
-  if (data.items.length === 1 && data.source_url) {
-    let landingSlug: string | null = null;
-    try {
-      const sourceUrl = new URL(data.source_url);
-      const match = sourceUrl.pathname.match(/^\/landing\/([^/]+)\/?$/);
-      if (match) landingSlug = decodeURIComponent(match[1]);
-    } catch {
-      // Ignore malformed source URLs; ordinary checkout behavior is unchanged.
-    }
-
-    if (landingSlug === "seedcombo-copy-mwanao76") {
-      const requested = orderItems[0];
-      if (requested && requested.id !== HOME_NUTRIMIX_ITEM_ID && !requested.is_freebie) {
-        const { data: landing, error: landingError } = await supabaseAdmin
-          .from("landing_pages")
-          .select("addons")
-          .eq("slug", landingSlug)
-          .eq("is_published", true)
-          .maybeSingle();
-        if (landingError) throw new Error("ল্যান্ডিং পেজের অফারের দাম যাচাই করা যায়নি");
-        const addons = Array.isArray(landing?.addons) ? landing.addons as LandingAddon[] : [];
-        const offer = addons.find((item) => item.product_id === requested.id);
-        if (!offer) throw new Error("৪৮ প্রকার বীজের অফারটি বর্তমানে পাওয়া যাচ্ছে না");
-        const configuredPrice = Number(offer.price);
-        if (!Number.isFinite(configuredPrice) || configuredPrice <= 0) {
-          throw new Error("৪৮ প্রকার বীজের অফারের দাম সঠিক নয়");
-        }
-        orderItems = orderItems.map((item, index) => index === 0
-          ? { ...item, name: String(offer.name || item.name), price: configuredPrice }
-          : item);
-      }
-    }
-  }
+  // Apply the current editor price to the 48-seed item even when NUTRIMIX
+  // or another line is present in the same checkout. Other pages are untouched.
+  orderItems = await resolveSeedcombo48Items(data.source_url, orderItems);
 
   // Server-side minimum cart validation for regular store checkout.
   // Landing-page direct offers do not set this flag and remain unaffected.
