@@ -196,7 +196,7 @@ export function CleanLandingPage({slug}:{slug:string}){
     const seedItem={id:selected.product_id,name:selected.name,price:selected.price,quantity:1};
     const nutrimixItem={id:p.id,name:p.name,price:p.price,quantity:1};
     if(!landingInitiateCheckoutRef.current){landingInitiateCheckoutRef.current=true;trackInitiateCheckout([seedItem],total);}
-    const intent=await runCreateLandingIntent({data:{checkout_session_id:landingCheckoutSessionRef.current,customer_name:form.name,customer_phone:normalizeBdPhone(form.phone),customer_address:form.address,delivery_fee:deliveryFee,seed_items:[seedItem],nutrimix_item:nutrimixItem,notes:form.note||null,alternative_phone:form.altPhone||null,...getFbContext()}});
+    const intent=await runCreateLandingIntent({data:{checkout_session_id:landingCheckoutSessionRef.current,customer_name:form.name,customer_phone:normalizeBdPhone(form.phone),customer_address:form.address,delivery_fee:deliveryFee,seed_items:[seedItem],nutrimix_item:nutrimixItem,notes:form.note||null,alternative_phone:form.altPhone||null,...getFbContext(),source_url:typeof window!=="undefined"?window.location.href:getFbContext().source_url}});
     landingIntentIdRef.current=intent.id;
     setNutrimix(p);setNutrimixOpen(true);
   }catch(error){landingInitiateCheckoutRef.current=false;notifyOrderError(error)}
