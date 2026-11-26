@@ -442,7 +442,7 @@ export const placeOrder = createServerFn({ method: "POST" }).inputValidator((inp
     let landingSlug: string | null = null;
     try {
       const sourceUrl = new URL(data.source_url);
-      const match = sourceUrl.pathname.match(/^\\/landing\\/([^/]+)\\/?$/);
+      const match = sourceUrl.pathname.match(/^\/landing\/([^/]+)\/?$/);
       if (match) landingSlug = decodeURIComponent(match[1]);
     } catch {
       // Ignore malformed source URLs; ordinary checkout behavior is unchanged.
