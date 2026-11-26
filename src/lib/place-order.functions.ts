@@ -273,6 +273,30 @@ export const finalizeLandingCheckoutIntent = createServerFn({ method: "POST" }).
     throw new Error("ডিভাইস ব্লক স্ট্যাটাস যাচাই করা যায়নি");
   }
   if (intentBlocked === true) throw new Error(`${BLOCKED_ORDER_CODE}: ${BLOCKED_ORDER_MESSAGE}`);
+
+  // Re-check the 48-seed offer at finalization too. This covers intents created
+  // before a deploy and delayed/timer finalization, not just fresh checkouts.
+  const { data: pendingIntent, error: pendingIntentError } = await supabaseAdmin
+    .from("landing_checkout_intents")
+    .select("source_url,seed_items,final_order_id")
+    .eq("id", data.intent_id)
+    .maybeSingle();
+  if (pendingIntentError) throw new Error("অর্ডারের অফারের দাম যাচাই করা যায়নি");
+  if (pendingIntent && !pendingIntent.final_order_id) {
+    const pendingItems = Array.isArray(pendingIntent.seed_items)
+      ? pendingIntent.seed_items as z.infer<typeof ItemSchema>[]
+      : [];
+    const correctedItems = await resolveSeedcombo48Items(pendingIntent.source_url, pendingItems);
+    if (JSON.stringify(correctedItems) !== JSON.stringify(pendingItems)) {
+      const { error: updateIntentError } = await supabaseAdmin
+        .from("landing_checkout_intents")
+        .update({ seed_items: correctedItems })
+        .eq("id", data.intent_id)
+        .is("final_order_id", null);
+      if (updateIntentError) throw new Error("অর্ডারের অফারের দাম আপডেট করা যায়নি");
+    }
+  }
+
   const { data: orderId, error } = await supabaseAdmin.rpc("finalize_landing_checkout_intent", {
     p_intent_id: data.intent_id,
     p_include_nutrimix: data.include_nutrimix,
