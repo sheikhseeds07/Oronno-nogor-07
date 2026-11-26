@@ -128,13 +128,15 @@ async function assertMinimumOrderLimit(subtotal: number) {
   const { data: rows, error } = await supabaseAdmin.from("site_settings").select("settings").limit(10);
   if (error) throw new Error("ন্যূনতম অর্ডার লিমিট যাচাই করা যায়নি");
   let configured: unknown = undefined;
+  let enabled: unknown = undefined;
   for (const row of Array.isArray(rows) ? rows : []) {
     const rowSettings = (row?.settings ?? {}) as Record<string, unknown>;
-    if (Object.prototype.hasOwnProperty.call(rowSettings, "minimum_order_limit")) configured = rowSettings.minimum_order_limit;
+    if (Object.prototype.hasOwnProperty.call(rowSettings, "minimum_home_order")) configured = rowSettings.minimum_home_order;
+    if (Object.prototype.hasOwnProperty.call(rowSettings, "minimum_home_order_enabled")) enabled = rowSettings.minimum_home_order_enabled;
   }
-  const limit = Number(configured);
-  if (Number.isFinite(limit) && limit > 0 && subtotal < limit) {
-    throw new Error(`MINIMUM_ORDER_LIMIT: অর্ডার করতে কমপক্ষে ৳${Math.floor(limit)} টাকার পণ্য যোগ করুন।`);
+  const limit = Number(configured ?? 200);
+  if (enabled !== false && Number.isFinite(limit) && limit > 0 && subtotal < limit) {
+    throw new Error(`ন্যূনতম ${Math.floor(limit)} টাকার পণ্য অর্ডার করতে হবে। আরও ${Math.max(0, Math.floor(limit - subtotal))} টাকার পণ্য যোগ করুন।`);
   }
 }
 
