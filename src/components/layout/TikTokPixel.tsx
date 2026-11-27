@@ -92,18 +92,26 @@ export function TikTokPixel() {
       send("PageView");
     };
     let active = true;
-    void fetch("/api/public/tiktok-events").then(response => response.ok ? response.json() : null).then(config => {
-      if (!active) return;
-      configResolved = true;
-      if (!config?.enabled || !config?.pixel_id) { pendingEvents.length = 0; return; }
-      init(config.pixel_id);
-      enabled = true;
-      const queued = pendingEvents.splice(0);
-      queued.forEach(deliver);
-      pageView();
-    }).catch(() => {
-      if (active) configResolved = true;
-    });
+    const loadConfig = (attempt = 0) => {
+      void fetch("/api/public/tiktok-events").then(response => {
+        if (!response.ok) throw new Error("TikTok pixel config unavailable");
+        return response.json();
+      }).then(config => {
+        if (!active) return;
+        configResolved = true;
+        if (!config?.enabled || !config?.pixel_id) { pendingEvents.length = 0; return; }
+        init(config.pixel_id);
+        enabled = true;
+        const queued = pendingEvents.splice(0);
+        queued.forEach(deliver);
+        pageView();
+      }).catch(() => {
+        if (!active) return;
+        if (attempt < 3) window.setTimeout(() => loadConfig(attempt + 1), [700, 1800, 4000][attempt]);
+        else { configResolved = true; pendingEvents.length = 0; }
+      });
+    };
+    loadConfig();
     const originalPush = history.pushState, originalReplace = history.replaceState;
     const onRoute = () => pageView();
     history.pushState = function(...args: Parameters<History["pushState"]>) { const result = originalPush.apply(this, args); window.dispatchEvent(new Event("oronno:tiktok-route")); return result; };
