@@ -1,0 +1,46 @@
+name: Stability audit (isolated)
+
+on:
+  push:
+    branches:
+      - "stability-audit-*"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stability-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout isolated audit branch
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.2.15"
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run storage and R2 regression checks
+        run: bun run check:storage
+
+      - name: Build production bundle (isolated CI workspace only)
+        env:
+          R2_PUBLIC_URL: /media
+        run: bun run build

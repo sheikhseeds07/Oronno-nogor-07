@@ -124,13 +124,16 @@ await checkAsync('R2 success caches bytes and honors ETag', async () => {
   assert.equal((await h.serve(req('product-images/found.webp', { 'If-None-Match': '"r2-etag"' }))).status, 304);
   assert.equal(h.pulls(), 1);
 });
-await checkAsync('concurrent requests share one R2 read', async () => {
+await checkAsync('concurrent requests use request-local R2 reads without shared pending promises', async () => {
   let finish;
   const wait = new Promise(resolve => { finish = resolve; });
   const h = mediaHarness({ get: async () => { await wait; return { body: new Response('one').body }; } });
   const first = h.serve(req()); const second = h.serve(req());
   finish();
-  assert.deepEqual((await Promise.all([first, second])).map(r => r.status), [200, 200]); assert.equal(h.pulls(), 1);
+  const responses = await Promise.all([first, second]);
+  assert.deepEqual(responses.map(r => r.status), [200, 200]);
+  assert.deepEqual(await Promise.all(responses.map(r => r.text())), ['one', 'one']);
+  assert.equal(h.pulls(), 2);
 });
 await checkAsync('invalid and legacy requests validate before one R2 read', async () => {
   const h = mediaHarness({ get: () => null });
