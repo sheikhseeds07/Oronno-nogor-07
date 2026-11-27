@@ -19,12 +19,16 @@ export function NewOrderNotifier() {
         // order + order_items after INSERT so the popup always shows the real price.
         let order: any = row;
         try {
-          const [{ data: freshOrder }, { data: items }] = await Promise.all([
-            supabase.from("orders").select("id,customer_name,customer_phone,total,subtotal,delivery_fee,discount").eq("id", row?.id).maybeSingle(),
-            supabase.from("order_items").select("product_name,price,quantity,subtotal").eq("order_id", row?.id),
-          ]);
-          if (freshOrder) order = { ...row, ...freshOrder };
-          if (Array.isArray(items)) order.items = items;
+          const { data: freshOrder } = await supabase
+            .from("orders")
+            .select("id,customer_name,customer_phone,total,subtotal,delivery_fee,discount,order_items(product_name,price,quantity,subtotal)")
+            .eq("id", row?.id)
+            .maybeSingle();
+          if (freshOrder) {
+            order = { ...row, ...freshOrder };
+            const items = (freshOrder as any).order_items;
+            if (Array.isArray(items)) order.items = items;
+          }
         } catch {
           // Keep the realtime row as a fallback.
         }
