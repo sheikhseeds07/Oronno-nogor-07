@@ -11,7 +11,6 @@ type R2ObjectLike = {
 type R2BucketLike = { get(key: string): Promise<R2ObjectLike | null> };
 type EdgeCache = { match(key: Request): Promise<Response | undefined>; put(key: Request, response: Response): Promise<void>; delete?(key: Request): Promise<boolean> };
 type Snapshot = { body: ArrayBuffer; headers: Headers };
-const inflight = new Map<string, Promise<Snapshot | null>>();
 
 function response(body: BodyInit | null, status: number, policy: string, initial?: Headers) {
   const headers = new Headers(initial);
@@ -25,20 +24,14 @@ function placeholderResponse() {
 }
 
 async function readR2(bucket: R2BucketLike, key: string): Promise<Snapshot | null> {
-  const pending = inflight.get(key);
-  if (pending) return pending;
-  const pull = (async () => {
-    const object = await bucket.get(key);
-    if (!object) return null;
-    const headers = new Headers();
-    object.writeHttpMetadata?.(headers);
-    if (object.httpEtag) headers.set("ETag", object.httpEtag);
-    const body = await new Response(object.body).arrayBuffer();
-    headers.set("Content-Length", String(body.byteLength));
-    return { headers, body };
-  })();
-  inflight.set(key, pull);
-  try { return await pull; } finally { inflight.delete(key); }
+  const object = await bucket.get(key);
+  if (!object) return null;
+  const headers = new Headers();
+  object.writeHttpMetadata?.(headers);
+  if (object.httpEtag) headers.set("ETag", object.httpEtag);
+  const body = await new Response(object.body).arrayBuffer();
+  headers.set("Content-Length", String(body.byteLength));
+  return { headers, body };
 }
 
 async function serveMedia(request: Request): Promise<Response> {
