@@ -139,10 +139,7 @@ async function readPersistentCache(phone: string): Promise<PersistentHit | null>
     .select("configured,stats,error,expires_at,fetched_at,steadfast_source")
     .eq("phone", phone)
     .maybeSingle();
-  if (error || !data) {
-    persistentReadCache.set(phone, { expiresAt: Date.now() + PERSISTENT_READ_TTL_MS, hit: null });
-    return null;
-  }
+  if (error || !data) return null;
 
   const cachedStats = normalizeStats(data.stats);
   const courierStats = cachedStats.filter((row) => row.name.toLowerCase() !== "overall");
