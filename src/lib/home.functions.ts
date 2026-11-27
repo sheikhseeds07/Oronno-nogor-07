@@ -21,23 +21,17 @@ async function getHomeDataFallback(): Promise<HomeData> {
   return { banners: (bannersRes.data ?? []) as HomeBanner[], categories, subcategories, products: (popularRes.data ?? []) as HomeProduct[] };
 }
 
-// Short-lived cache so an SSR render (and repeated client calls) reuse one
-// Supabase response instead of paying egress on every page view.
-// Keep the SSR memory cache short-lived so product price/popular changes reach the home quickly.
-// Public catalog caching is still handled separately at the Cloudflare edge.
+// Cache only resolved data at module scope. Never share a pending Promise between
+// Cloudflare requests: its continuation belongs to the request that created it.
 const HOME_TTL_MS = 300_000;
 let homeCache: { data: HomeData; at: number } | null = null;
-let homeInFlight: Promise<HomeData> | null = null;
 
 export async function getHomeData(): Promise<HomeData> {
   if (homeCache && Date.now() - homeCache.at < HOME_TTL_MS) return homeCache.data;
-  if (!homeInFlight) {
-    homeInFlight = fetchHomeData().then(fresh => {
-      homeCache = { data: fresh, at: Date.now() };
-      return fresh;
-    }).finally(() => { homeInFlight = null; });
-  }
-  return homeInFlight;
+
+  const fresh = await fetchHomeData();
+  homeCache = { data: fresh, at: Date.now() };
+  return fresh;
 }
 
 async function fetchHomeData(): Promise<HomeData> {
