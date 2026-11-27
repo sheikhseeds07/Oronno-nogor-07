@@ -76,8 +76,17 @@ function readMarketingSourceFromUrl(): { source: MarketingSource; url: string } 
   return null;
 }
 
+function isAdminLandingPreview(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.location.pathname.startsWith("/landing/")
+    && new URLSearchParams(window.location.search).get("admin_preview") === "1";
+}
+
 export function captureMarketingSource(): MarketingSource {
   if (typeof window === "undefined") return "unknown";
+  // Orders placed from the admin landing-page preview are internal tests,
+  // not customer traffic. Ignore stale ad/referrer cookies for this session.
+  if (isAdminLandingPreview()) return "direct";
   const fromUrl = readMarketingSourceFromUrl();
   // Save the original ad/referral URL before the visitor navigates to /checkout.
   // The checkout URL itself is not the acquisition source.
@@ -109,7 +118,7 @@ export function getFbContext(): FbContext {
     fbp: ensureFbp(),
     fbc: ensureFbc(),
     source_url: typeof window !== "undefined"
-      ? (readCookie(ATTRIBUTION_URL_COOKIE) || window.location.href)
+      ? (isAdminLandingPreview() ? window.location.href : (readCookie(ATTRIBUTION_URL_COOKIE) || window.location.href))
       : null,
     marketing_source: captureMarketingSource(),
   };
