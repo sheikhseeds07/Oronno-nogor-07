@@ -19,7 +19,7 @@ export function NewOrderNotifier() {
         // order + order_items after INSERT so the popup always shows the real price.
         let order: any = row;
         try {
-          const { data: freshOrder } = await supabase
+          const { data: freshOrder } = await (supabase as any)
             .from("orders")
             .select("id,customer_name,customer_phone,total,subtotal,delivery_fee,discount,order_items(product_name,price,quantity,subtotal)")
             .eq("id", row?.id)
