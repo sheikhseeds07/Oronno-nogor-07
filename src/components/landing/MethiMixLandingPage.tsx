@@ -76,7 +76,7 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
     if (!chosen || !chosen.id || chosen.price <= 0) return toast.error("পণ্যের প্যাকেজ Admin থেকে যুক্ত করতে হবে");
     setSubmitting(true);
     try {
-      const items = [{ id: chosen.id, name: `${page.title || "মেথি মিক্স"} — ${page.hero_subtitle || "১ ফাইল + ১ ফাইল ফ্রি"}`, price: Number(page?.sale_price) || 599, quantity }];
+      const items = [{ id: chosen.id, name: `${page.title || "মেথি মিক্স"} — ${page.hero_subtitle || "১ ফাইল + ১ ফাইল ফ্রি"}`, price: chosen.price, quantity }];
       trackInitiateCheckout(items, total);
       const order = await runPlaceOrder({ data: {
         landing_slug: slug, customer_name: form.name.trim(),
