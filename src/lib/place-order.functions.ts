@@ -591,7 +591,7 @@ export const placeLandingOrder = createServerFn({ method: "POST" }).inputValidat
     ...((Array.isArray(page.addons) ? page.addons : []) as LandingAddon[]).map((addon, index) => ({
       id: addon.product_id || `addon-${index}`,
       name: String(addon.name ?? ""),
-      price: Number(addon.price ?? 0),
+      price: data.landing_slug === "methi-mix" ? mainPrice : Number(addon.price ?? 0),
       deliveryFee: addon.delivery_fee == null ? Number(page.main_delivery_fee ?? 70) : Number(addon.delivery_fee),
     })),
   ];
