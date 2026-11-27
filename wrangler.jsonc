@@ -3,7 +3,7 @@
   "name": "oronno-nogor-07",
   "main": ".output/server/index.mjs",
   "compatibility_date": "2026-08-12",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": ["nodejs_compat", "handle_cross_request_promise_resolution"],
   "vars": { "R2_PUBLIC_URL": "/media" },
   "cache": {
     "enabled": true
