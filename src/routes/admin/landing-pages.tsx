@@ -384,9 +384,9 @@ function LandingPagesAdmin() {
                 </span>
               </div>
               <div className="flex gap-1 mt-3">
-                <Link to="/landing/$slug" params={{ slug: p.slug }} target="_blank" className="flex-1 text-center p-1.5 hover:bg-muted rounded text-xs">
+                <a href={`/landing/${encodeURIComponent(p.slug)}?admin_preview=1`} target="_blank" rel="noopener noreferrer" className="flex-1 text-center p-1.5 hover:bg-muted rounded text-xs">
                   <ExternalLink className="w-3.5 h-3.5 inline" /> দেখুন
-                </Link>
+                </a>
                 <button onClick={() => openEdit(p)} className="flex-1 p-1.5 hover:bg-muted rounded text-xs">
                   <Edit className="w-3.5 h-3.5 inline" /> এডিট
                 </button>
