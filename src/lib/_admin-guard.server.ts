@@ -16,54 +16,40 @@ type CachedAuthz = {
   permissions: PermissionMap;
 };
 const authzCache = new Map<string, CachedAuthz>();
-const authzInFlight = new Map<string, Promise<CachedAuthz>>();
 
 async function loadAuthz(userId: string): Promise<CachedAuthz> {
   const cached = authzCache.get(userId);
   if (cached && cached.expiresAt > Date.now()) return cached;
   if (cached) authzCache.delete(userId);
 
-  const existing = authzInFlight.get(userId);
-  if (existing) return existing;
+  const { data: rawAccess, error } = await supabaseAdmin.rpc("get_my_staff_access");
+  if (error) throw new Error(error.message);
+  const access = rawAccess && typeof rawAccess === "object"
+    ? rawAccess as Record<string, unknown>
+    : {};
+  if (access.user_id !== userId) throw new Error("Unauthorized");
 
-  const request = (async (): Promise<CachedAuthz> => {
-    const { data: rawAccess, error } = await supabaseAdmin.rpc("get_my_staff_access");
-    if (error) throw new Error(error.message);
-    const access = rawAccess && typeof rawAccess === "object"
-      ? rawAccess as Record<string, unknown>
-      : {};
-    if (access.user_id !== userId) throw new Error("Unauthorized");
+  const role = typeof access.role === "string" ? access.role : null;
+  const isSuperAdmin = role === "super_admin";
+  const isAdmin = isSuperAdmin || role === "admin";
+  const isStaff = isAdmin || role === "employee";
+  const permissions = access.permissions && typeof access.permissions === "object"
+    ? access.permissions as PermissionMap
+    : {};
 
-    const role = typeof access.role === "string" ? access.role : null;
-    const isSuperAdmin = role === "super_admin";
-    const isAdmin = isSuperAdmin || role === "admin";
-    const isStaff = isAdmin || role === "employee";
-    const permissions = access.permissions && typeof access.permissions === "object"
-      ? access.permissions as PermissionMap
-      : {};
-
-    const value = {
-      expiresAt: Date.now() + AUTHZ_CACHE_TTL_MS,
-      isStaff,
-      isAdmin,
-      isSuperAdmin,
-      permissions,
-    };
-    // Cache only successful staff authorization contexts. Unknown/unauthorized
-    // users are re-checked on every request, so this optimization never turns a
-    // failed authorization into a cached allow.
-    if (isStaff) authzCache.set(userId, value);
-    return value;
-  })();
-
-  authzInFlight.set(userId, request);
-  try {
-    return await request;
-  } finally {
-    authzInFlight.delete(userId);
-  }
+  const value = {
+    expiresAt: Date.now() + AUTHZ_CACHE_TTL_MS,
+    isStaff,
+    isAdmin,
+    isSuperAdmin,
+    permissions,
+  };
+  // Cache only successful staff authorization contexts. Unknown/unauthorized
+  // users are re-checked on every request, so this optimization never turns a
+  // failed authorization into a cached allow.
+  if (isStaff) authzCache.set(userId, value);
+  return value;
 }
-
 export function clearAuthzCache(userId?: string) {
   if (userId) authzCache.delete(userId);
   else authzCache.clear();
