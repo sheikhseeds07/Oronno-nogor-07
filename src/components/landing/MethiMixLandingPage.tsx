@@ -60,7 +60,7 @@ export function MethiMixLandingPage({ slug }: { slug: string }) {
   const packages = useMemo<Package[]>(() => {
     if (product) return [{ id: product.id, name: product.name, price: Number(page?.sale_price) || 599, oldPrice: null, image: heroImage, deliveryFee: 0 }];
     return addons.slice(0, 1).map((addon, index) => ({
-      id: addon.product_id || "addon-" + index, name: addon.name, price: Number(addon.price),
+      id: addon.product_id || "addon-" + index, name: addon.name, price: Number(page?.sale_price) || Number(addon.price),
       oldPrice: null, image: addon.image || heroImage, deliveryFee: 0,
     }));
   }, [product, addons, heroImage, page?.sale_price]);
