@@ -13,7 +13,6 @@ type LockRow = { order_id: string; user_id: string; user_name: string; heartbeat
 
 const displayNameCache = new Map<string, { expiresAt: number; name: string }>();
 const lockListCache = new Map<string, { expiresAt: number; locks: LockRow[] }>();
-const lockListInFlight = new Map<string, Promise<LockRow[]>>();
 
 function clearLockListCache() {
   lockListCache.clear();
@@ -104,31 +103,19 @@ export const listOrderLocks = createServerFn({ method: "POST" })
     if (cached && cached.expiresAt > Date.now()) return { locks: cached.locks };
     if (cached) lockListCache.delete(key);
 
-    const existing = lockListInFlight.get(key);
-    if (existing) return { locks: await existing };
-
-    const request = (async (): Promise<LockRow[]> => {
-      const { data: rows } = await supabaseAdmin
-        .from("order_locks")
-        .select("order_id,user_id,user_name,heartbeat_at")
-        .in("order_id", data.order_ids);
-      const cutoff = Date.now() - STALE_MS;
-      return (rows ?? [])
-        .filter((r) => Boolean(r.order_id && r.user_id && r.heartbeat_at) && new Date(r.heartbeat_at).getTime() >= cutoff)
-        .map((r) => ({
-          order_id: String(r.order_id),
-          user_id: String(r.user_id),
-          user_name: r.user_name ?? "Staff",
-          heartbeat_at: String(r.heartbeat_at),
-        }));
-    })();
-
-    lockListInFlight.set(key, request);
-    try {
-      const fresh = await request;
-      writeLockCache(key, fresh);
-      return { locks: fresh };
-    } finally {
-      lockListInFlight.delete(key);
-    }
+    const { data: rows } = await supabaseAdmin
+      .from("order_locks")
+      .select("order_id,user_id,user_name,heartbeat_at")
+      .in("order_id", data.order_ids);
+    const cutoff = Date.now() - STALE_MS;
+    const fresh = (rows ?? [])
+      .filter((r) => Boolean(r.order_id && r.user_id && r.heartbeat_at) && new Date(r.heartbeat_at).getTime() >= cutoff)
+      .map((r) => ({
+        order_id: String(r.order_id),
+        user_id: String(r.user_id),
+        user_name: r.user_name ?? "Staff",
+        heartbeat_at: String(r.heartbeat_at),
+      }));
+    writeLockCache(key, fresh);
+    return { locks: fresh };
   });
