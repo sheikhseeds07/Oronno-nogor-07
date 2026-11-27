@@ -12,6 +12,9 @@ const EventSchema = z.object({
   ttclid: z.string().max(1000).optional().nullable(),
   ttp: z.string().max(500).optional().nullable(),
   externalId: z.string().max(500).optional().nullable(),
+  phone: z.string().max(100).optional().nullable(),
+  clientIp: z.string().max(100).optional().nullable(),
+  userAgent: z.string().max(1000).optional().nullable(),
 });
 export const Route = createFileRoute("/api/public/tiktok-events")({
   server: { handlers: {
@@ -23,7 +26,7 @@ export const Route = createFileRoute("/api/public/tiktok-events")({
     POST: async ({ request }) => {
       try {
         const event = EventSchema.parse(await request.json());
-        const result = await sendTikTokEvent({ ...event, clientIp: getRequestIP({ xForwardedFor: true }) ?? null, userAgent: getRequestHeader("user-agent") ?? null });
+        const result = await sendTikTokEvent({ ...event, clientIp: event.clientIp ?? getRequestIP({ xForwardedFor: true }) ?? null, userAgent: event.userAgent ?? getRequestHeader("user-agent") ?? null });
         return Response.json({ ok: result.ok, ...(result.message ? { message: result.message } : {}) }, { status: result.ok ? 200 : 503 });
       } catch (error) {
         if (error instanceof z.ZodError) return Response.json({ ok: false, error: "Invalid event" }, { status: 400 });
