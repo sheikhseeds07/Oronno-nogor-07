@@ -8,15 +8,16 @@ type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
 };
 
-let serverEntryPromise: Promise<ServerEntry> | undefined;
+// Cache the resolved module, not its in-flight import Promise. A pending Promise
+// created during one Worker request must not be awaited by another request.
+let serverEntry: ServerEntry | undefined;
 
 async function getServerEntry(): Promise<ServerEntry> {
-  if (!serverEntryPromise) {
-    serverEntryPromise = import("@tanstack/react-start/server-entry").then(
-      (m) => (m.default ?? m) as ServerEntry,
-    );
+  if (!serverEntry) {
+    const m = await import("@tanstack/react-start/server-entry");
+    serverEntry = (m.default ?? m) as ServerEntry;
   }
-  return serverEntryPromise;
+  return serverEntry;
 }
 
 function isPublicCacheablePage(request: Request): boolean {
