@@ -33,14 +33,12 @@ const CACHE_VERSION = "courier-history-v18-hoorin-all-couriers";
 const MAX_CACHE_ENTRIES = 3000;
 
 const courierCache = new Map<string, CacheEntry>();
-const inFlight = new Map<string, Promise<CourierHistoryResult>>();
 
 // Deduplicate repeated persistent-cache reads during Admin list renders.
 // This does not change courier-history freshness; it only avoids repeated
 // database reads for the same phone within a short burst.
 const PERSISTENT_READ_TTL_MS = 15 * 60_000;
 const persistentReadCache = new Map<string, { expiresAt: number; hit: PersistentHit | null }>();
-const persistentReadInFlight = new Map<string, Promise<PersistentHit | null>>();
 
 function readCache(key: string): CourierHistoryResult | null {
   const hit = courierCache.get(key);
@@ -135,17 +133,16 @@ async function readPersistentCache(phone: string): Promise<PersistentHit | null>
   if (cached && cached.expiresAt > Date.now()) return cached.hit;
   if (cached) persistentReadCache.delete(phone);
 
-  const inFlightRead = persistentReadInFlight.get(phone);
-  if (inFlightRead) return inFlightRead;
-
-  const request = (async (): Promise<PersistentHit | null> => {
   const admin = supabaseAdmin as any;
   const { data, error } = await admin
     .from("courier_history_cache")
-     .select("configured,stats,error,expires_at,fetched_at,steadfast_source")
+    .select("configured,stats,error,expires_at,fetched_at,steadfast_source")
     .eq("phone", phone)
     .maybeSingle();
-  if (error || !data) return null;
+  if (error || !data) {
+    persistentReadCache.set(phone, { expiresAt: Date.now() + PERSISTENT_READ_TTL_MS, hit: null });
+    return null;
+  }
 
   const cachedStats = normalizeStats(data.stats);
   const courierStats = cachedStats.filter((row) => row.name.toLowerCase() !== "overall");
@@ -162,16 +159,9 @@ async function readPersistentCache(phone: string): Promise<PersistentHit | null>
   const expiresAt = new Date(String(data.expires_at ?? "")).getTime();
   const fetchedAtMs = new Date(String(data.fetched_at ?? "")).getTime();
   const hasCourierRecords = Number(result.overall?.total ?? 0) > 0 || courierStats.some((row) => row.total > 0 || row.success > 0 || row.cancelled > 0);
-  return { result, fresh: hasCourierRecords && Number.isFinite(expiresAt) && expiresAt > Date.now() && data.steadfast_source === "hoorin-all-couriers-v4", fetchedAtMs };
-  })();
-  persistentReadInFlight.set(phone, request);
-  try {
-    const hit = await request;
-    persistentReadCache.set(phone, { expiresAt: Date.now() + PERSISTENT_READ_TTL_MS, hit });
-    return hit;
-  } finally {
-    persistentReadInFlight.delete(phone);
-  }
+  const hit = { result, fresh: hasCourierRecords && Number.isFinite(expiresAt) && expiresAt > Date.now() && data.steadfast_source === "hoorin-all-couriers-v4", fetchedAtMs };
+  persistentReadCache.set(phone, { expiresAt: Date.now() + PERSISTENT_READ_TTL_MS, hit });
+  return hit;
 }
 
 export const fetchCourierHistory = createServerFn({ method: "POST" })
@@ -198,9 +188,6 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
       if (memoryCached) return memoryCached;
       return { configured: false, stats: [], error: null };
     }
-
-    const existing = inFlight.get(cacheKey);
-    if (existing) return existing;
 
     const request = (async (): Promise<CourierHistoryResult> => {
       const beforeInvoke = persistent ?? await readPersistentCache(phone);
@@ -291,12 +278,7 @@ export const fetchCourierHistory = createServerFn({ method: "POST" })
       return normalized;
     })();
 
-    inFlight.set(cacheKey, request);
-    try {
-      const result = await request;
-      writeCache(cacheKey, result);
-      return result;
-    } finally {
-      inFlight.delete(cacheKey);
-    }
+    const result = await request;
+    writeCache(cacheKey, result);
+    return result;
   });
