@@ -864,6 +864,11 @@ function LandingPagesAdmin() {
                       <div className="text-sm font-black text-slate-900">প্রডাক্ট</div>
                       <div className="text-[11px] text-slate-500">{C.template === "all-product" ? "☷ ধরে টেনে প্রডাক্টের ক্রম সাজান। পরিবর্তনটি সংরক্ষণ করলে Landing Page-এ একই ক্রমে দেখাবে। বিস্তারিত পরিবর্তনে এডিট / ভিউ চাপুন।" : "সাধারণ অবস্থায় শুধু প্রডাক্টের নাম, ইমেজ ও দাম দেখাবে। বিস্তারিত পরিবর্তন করতে এডিট / ভিউ চাপুন।"}</div>
                     </div>
+                    {editing.slug === "methi-mix" && (
+                      <button type="button" onClick={() => setProductEditor("main")} className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-white px-3 py-2.5 text-sm font-black text-emerald-800 hover:bg-emerald-50">
+                        <Edit className="h-4 w-4" /> মেইন প্রডাক্ট এডিট করুন
+                      </button>
+                    )}
                     <div className="space-y-1.5">
                       {(editing.addons || []).map((item, index) => (
                         <div
@@ -940,6 +945,7 @@ function LandingPagesAdmin() {
                                 </div>
                               </div>
                             )}
+                            {editing.slug === "methi-mix" && <Field label="মেইন প্রডাক্টের দাম (৳)"><input type="number" min={1} value={editing.sale_price ?? 650} onChange={e=>set({sale_price:Math.max(1,Number(e.target.value)||1)})} className="w-full rounded-xl border px-3 py-2.5 font-black" /><div className="mt-1 text-[11px] text-slate-500">এই দাম শুধু /landing/methi-mix পেজের অর্ডার ও চেকআউটে প্রযোজ্য হবে।</div></Field>}
                             <Field label="মেইন প্রডাক্টের ডেলিভারি চার্জ (৳)"><div className="flex items-center gap-2"><input type="number" min={0} value={editing.main_delivery_fee??70} onChange={e=>set({main_delivery_fee:Math.max(0,Number(e.target.value)||0)})} className="flex-1 rounded-xl border px-3 py-2.5 font-semibold"/><label className="flex items-center gap-1.5 rounded-lg border bg-slate-50 px-3 py-2 text-sm font-semibold"><input type="checkbox" checked={Number(editing.main_delivery_fee)===0} onChange={e=>set({main_delivery_fee:e.target.checked?0:70})}/>ফ্রি</label></div></Field>
                             <div className="flex justify-end border-t pt-3"><button type="button" onClick={()=>setProductEditor(null)} className="rounded-lg bg-brand px-4 py-2 text-xs font-black text-white">সম্পন্ন</button></div>
                           </div>
