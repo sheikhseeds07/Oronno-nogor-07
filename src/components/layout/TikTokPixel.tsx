@@ -49,16 +49,40 @@ export function TikTokPixel() {
     if (initialClickId) writeAttributionCookie("_ttclid", initialClickId);
     if (!readCookie("_tt_external_id")) writeAttributionCookie("_tt_external_id", crypto.randomUUID());
     let lastPath = "";
+    let configResolved = false;
     let enabled = false;
-    const send: TikTokBridge = (event, properties = {}, eventId = safeUUID() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`) => {
-      if (!enabled || !window.ttq) return eventId;
-      const params = { ...properties, event_id: eventId };
-      const pixelEvent = event === "PageView" ? "Pageview" : event === "Purchase" ? "CompletePayment" : event === "Lead" ? "SubmitForm" : event;
-      window.ttq.track(pixelEvent, properties, { event_id: eventId });
+    type QueuedTikTokEvent = { event: string; properties: Record<string, unknown>; eventId: string; sourceUrl: string };
+    const pendingEvents: QueuedTikTokEvent[] = [];
+    const sendServer = (item: QueuedTikTokEvent, attempt = 0) => {
+      const payload = {
+        event: item.event, event_id: item.eventId, event_source_url: item.sourceUrl,
+        properties: item.properties, ttclid: readCookie("_ttclid"), ttp: readCookie("_ttp"),
+        externalId: readCookie("_tt_external_id"),
+      };
       void fetch("/api/public/tiktok-events", {
         method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true,
-        body: JSON.stringify({ event, event_id: eventId, event_source_url: window.location.href, properties, ttclid: readCookie("_ttclid"), ttp: readCookie("_ttp"), externalId: readCookie("_tt_external_id") }),
-      }).catch(() => undefined);
+        body: JSON.stringify(payload),
+      }).then(response => {
+        if (!response.ok && (response.status === 429 || response.status >= 500) && attempt < 3) {
+          window.setTimeout(() => sendServer(item, attempt + 1), [700, 1800, 4000][attempt]);
+        }
+      }).catch(() => {
+        if (attempt < 3) window.setTimeout(() => sendServer(item, attempt + 1), [700, 1800, 4000][attempt]);
+      });
+    };
+    const deliver = (item: QueuedTikTokEvent) => {
+      if (!enabled || !window.ttq) return;
+      const pixelEvent = item.event === "PageView" ? "Pageview" : item.event === "Purchase" ? "CompletePayment" : item.event === "Lead" ? "SubmitForm" : item.event;
+      try { window.ttq.track(pixelEvent, item.properties, { event_id: item.eventId }); } catch { /* server copy remains independent */ }
+      sendServer(item);
+    };
+    const send: TikTokBridge = (event, properties = {}, eventId = safeUUID() ?? (Date.now() + "-" + Math.random().toString(36).slice(2))) => {
+      const item: QueuedTikTokEvent = { event, properties, eventId, sourceUrl: window.location.href };
+      if (!configResolved) {
+        if (pendingEvents.length < 200) pendingEvents.push(item);
+        return eventId;
+      }
+      if (enabled) deliver(item);
       return eventId;
     };
     const pageView = () => {
@@ -69,11 +93,17 @@ export function TikTokPixel() {
     };
     let active = true;
     void fetch("/api/public/tiktok-events").then(response => response.ok ? response.json() : null).then(config => {
-      if (!active || !config?.enabled || !config?.pixel_id) return;
+      if (!active) return;
+      configResolved = true;
+      if (!config?.enabled || !config?.pixel_id) { pendingEvents.length = 0; return; }
       init(config.pixel_id);
       enabled = true;
+      const queued = pendingEvents.splice(0);
+      queued.forEach(deliver);
       pageView();
-    }).catch(() => undefined);
+    }).catch(() => {
+      if (active) configResolved = true;
+    });
     const originalPush = history.pushState, originalReplace = history.replaceState;
     const onRoute = () => pageView();
     history.pushState = function(...args: Parameters<History["pushState"]>) { const result = originalPush.apply(this, args); window.dispatchEvent(new Event("oronno:tiktok-route")); return result; };
