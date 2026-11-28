@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth, type Permissions } from "@/lib/auth";
 import { supabase } from "@/lib/personal-supabase/client";
 import { readPublicSettingsCache, writePublicSettingsCache } from "@/lib/public-settings-cache";
-import { LayoutDashboard, Package, ShoppingBag, Users, FolderTree, Image as ImageIcon, Settings, Globe, UserCog, LogOut, Menu, X, Layers, FileSpreadsheet, PanelLeftClose, PanelLeftOpen, ChevronRight, Sparkles, Leaf } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingBag, Users, FolderTree, Image as ImageIcon, Settings, Globe, UserCog, LogOut, Repeat2, Menu, X, Layers, FileSpreadsheet, PanelLeftClose, PanelLeftOpen, ChevronRight, Sparkles, Leaf } from "lucide-react";
 import { NewOrderNotifier } from "@/components/admin/NewOrderNotifier";
 import { AdminOrderStability } from "@/components/admin/AdminOrderStability";
 import { PresswayyCard } from "@/components/admin/PresswayyCard";
@@ -319,6 +319,12 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
   const visibleNav = allowedNav;
   if (!pageAllowed) return <div className="min-h-screen flex items-center justify-center bg-muted px-4">{firstAllowed ? <div className="text-sm text-muted-foreground">এক মুহূর্ত…</div> : <div className="max-w-md rounded-xl border bg-card p-6 text-center shadow-sm"><h1 className="text-xl font-bold text-brand-dark">কোনো অনুমতি দেওয়া হয়নি</h1><p className="mt-2 text-sm text-muted-foreground">আপনার জন্য এখনো কোনো অংশের অনুমতি দেওয়া হয়নি। CEO-কে জানান।</p><button onClick={() => navigate({ to: "/" })} className="mt-5 rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-primary-foreground">হোমে যান</button></div>}</div>;
   const logout = async () => { await supabase.auth.signOut(); navigate({ to: "/" }); };
+  const switchAccount = async () => {
+    // End the current staff session before showing the login form for another account.
+    await supabase.auth.signOut();
+    try { window.localStorage.removeItem("ss_auth_cache_v1"); } catch { /* storage may be unavailable */ }
+    navigate({ to: "/login" as any, replace: true });
+  };
   return <div data-admin-route={loc.pathname} className="admin-theme-scope flex min-h-screen bg-muted">
     {<style>{adminThemeIsolationCss}</style>}<style>{adminHeaderAnnouncementCss}</style>{loc.pathname === "/admin/orders" && <style>{orderUiCss}</style>}
     <aside className={`fixed lg:sticky lg:top-0 top-0 left-0 h-screen z-50 overflow-hidden bg-[#101827] border-r border-white/10 shadow-2xl shadow-slate-950/30 transition-all duration-500 ease-[cubic-bezier(.22,1,.36,1)] ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} ${collapsed ? "w-20" : "w-72"}`}>
