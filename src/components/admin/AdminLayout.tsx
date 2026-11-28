@@ -344,8 +344,9 @@ export function AdminLayout({ children, headerExtra }: { children: React.ReactNo
           {active && <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-gradient-to-b from-emerald-300 via-cyan-300 to-violet-400 shadow-[0_0_14px_rgba(45,212,191,.8)]" />}
         </Link>; })}
       </nav>
-      <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-white/10 bg-slate-950/45 backdrop-blur-xl">
-        <button onClick={logout} className="group w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:text-red-200 hover:bg-red-500/10 transition-all duration-300"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-500/15 text-red-400 group-hover:bg-red-500/25 group-hover:scale-105 transition-transform"><LogOut className="w-4 h-4" /></span>{!collapsed && <span>Logout</span>}</button>
+      <div className={`absolute bottom-0 left-0 right-0 p-3 border-t border-white/10 bg-slate-950/45 backdrop-blur-xl ${collapsed ? "flex flex-col gap-2" : "flex items-center gap-2"}`}>
+        <button onClick={switchAccount} title="Switch Account" aria-label="Switch Account" className="group min-w-0 flex-1 flex items-center gap-2 px-2.5 py-2.5 rounded-xl text-sm text-emerald-200 hover:text-white hover:bg-emerald-500/15 border border-emerald-400/20 transition-all duration-300"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-300 group-hover:bg-emerald-500/25 group-hover:scale-105 transition-transform"><Repeat2 className="w-4 h-4" /></span>{!collapsed && <span className="truncate">Switch</span>}</button>
+        <button onClick={logout} title="Logout" aria-label="Logout" className="group min-w-0 flex-1 flex items-center gap-2 px-2.5 py-2.5 rounded-xl text-sm text-slate-300 hover:text-red-200 hover:bg-red-500/10 transition-all duration-300"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-500/15 text-red-400 group-hover:bg-red-500/25 group-hover:scale-105 transition-transform"><LogOut className="w-4 h-4" /></span>{!collapsed && <span className="truncate">Logout</span>}</button>
       </div>
     </aside>
     <NewOrderNotifier /><AdminOrderStability />
