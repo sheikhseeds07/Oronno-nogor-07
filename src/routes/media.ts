@@ -34,6 +34,18 @@ async function readR2(bucket: R2BucketLike, key: string): Promise<Snapshot | nul
   return { headers, body };
 }
 
+// Coalesce simultaneous cache misses for the same asset into one R2 read.
+const inFlightMediaReads = new Map<string, Promise<Snapshot | null>>();
+function readR2Shared(bucket: R2BucketLike, key: string): Promise<Snapshot | null> {
+  const existing = inFlightMediaReads.get(key);
+  if (existing) return existing;
+  const pending = readR2(bucket, key).finally(() => {
+    if (inFlightMediaReads.get(key) === pending) inFlightMediaReads.delete(key);
+  });
+  inFlightMediaReads.set(key, pending);
+  return pending;
+}
+
 async function serveMedia(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const rawKey = url.searchParams.get("asset");
@@ -58,7 +70,7 @@ async function serveMedia(request: Request): Promise<Response> {
   if (!delivered) {
     const bucket = getCloudflareR2Bucket<R2BucketLike>();
     if (!bucket) return placeholderResponse();
-    const object = key.includes("/thank-you-audio/") ? await readR2(bucket, key) : await readR2Image(() => readR2(bucket, key));
+    const object = key.includes("/thank-you-audio/") ? await readR2Shared(bucket, key) : await readR2Image(() => readR2Shared(bucket, key));
     delivered = object === null || object === R2_IMAGE_PLACEHOLDER
       ? placeholderResponse()
       : response(object.body, 200, "public, max-age=31536000, s-maxage=31536000, immutable", object.headers);
